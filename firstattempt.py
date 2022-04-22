@@ -25,7 +25,10 @@ def write_ctrl(mat, mf, mt, ns=None):
     return '{:>4}{:>2}{:>3}'.format(mat, mf, mt) + nsstr
 
 def get_ctrl(dic):
-    return dic['MAT'], dic['MF'], dic['MT']
+    mat = dic.get
+    return (dic.get('MAT', None),
+            dic.get('MF', None), 
+            dic.get('MT', None))
 
 def read_cont(line):
     C1 = fortstr2float(line[0:11])
@@ -105,33 +108,55 @@ class EndfConverter(Visitor):
                 vals.append(0)
         return vals
 
+    def __check_end_of_lines(self):
+        mat, mf, mt = get_ctrl(self.__datadic)
+        if self.__ofs >= len(self.__lines):
+            raise ValueError('Unexpected end of input, but was expecting more in ' +
+                             f'MAT {mat}, MF {mf}, MT {mt}')
+
+    def __check_ctrl_continuity(self):
+            mat, mf, mt = get_ctrl(self.__datadic)
+            curmat, curmf, curmt = read_ctrl(self.__lines[self.__ofs]) 
+            if mat and curmat != mat:
+                raise ValueError(f'Expecting MAT {mat} in line #{self.__ofs}')
+            if mf and curmf != mf:
+                raise ValueError(f'Expecting MF {mf} in line #{self.__ofs}')
+            if mt and curmt != mt:
+                raise ValueError(f'Expecting MT {mt} in line #{self.__ofs}')
+
+    def __check_ctrl_conformity(self):
+        curmat, curmf, curmt = read_ctrl(self.__lines[self.__ofs])
+        for node in tree.find_data('mat_spec'):
+            if len(node.children) == 1:
+                mat = int(node.children[0])
+                if curmat != mat:
+                    raise ValueError(f'Expecting MAT {mat} in line #{self.__curofs}')
+            break
+        for node in tree.find_data('mf_spec'):
+            if len(node.children) == 1:
+                mf = int(node.children[0])
+                if curmf != mf:
+                    raise ValueError(f'Expecting MF {mf} in line #{self.__ofs} but got {curmf}\n' +
+                                     self.__lines[self.__ofs])
+            break
+        for node in tree.find_data('mt_spec'):
+            if len(node.children) == 1:
+                mt = int(node.children[0])
+                if curmt != mt:
+                    raise ValueError(f'Expecting MT {mt} in line #{self.__curofs}')
+
     def ctrl_spec(self, tree):
         if self.__mode == 'read':
-            curmat, curmf, curmt = read_ctrl(self.__lines[self.__ofs])
-            for node in tree.find_data('mat_spec'):
-                if len(node.children) == 1:
-                    mat = int(node.children[0])
-                    if curmat != mat:
-                        raise ValueError(f'Expecting MAT {mat} in line #{self.__curofs}')
-                break
-            for node in tree.find_data('mf_spec'):
-                if len(node.children) == 1:
-                    mf = int(node.children[0])
-                    if curmf != mf:
-                        raise ValueError(f'Expecting MF {mf} in line #{self.__ofs} but got {curmf}\n' +
-                                         self.__lines[self.__ofs])
-                break
-            for node in tree.find_data('mt_spec'):
-                if len(node.children) == 1:
-                    mt = int(node.children[0])
-                    if curmt != mt:
-                        raise ValueError(f'Expecting MT {mt} in line #{self.__curofs}')
+            self.__check_end_of_lines()
+            self.__check_ctrl_conformity()
 
     def head_fields(self, tree):
         varnames = [str(tok) for tok in tree.children]
         if 'ZA' not in varnames or 'AWR' not in varnames:
             raise TypeError('The first two fields of a HEAD record must be named ZA and AWR')
         if self.__mode == 'read':
+            self.__check_end_of_lines()
+            self.__check_ctrl_continuity()
             mat, mf, mt = read_ctrl(self.__lines[self.__ofs])
             self.__datadic.update({'MAT': mat, 'MF': mf, 'MT': mt})
             values = read_cont(self.__lines[self.__ofs])
@@ -147,6 +172,8 @@ class EndfConverter(Visitor):
     def cont_fields(self, tree):
         varnames = [str(tok) for tok in tree.children]
         if self.__mode == 'read':
+            self.__check_end_of_lines()
+            self.__check_ctrl_continuity()
             mat, mf, mt = read_ctrl(self.__lines[self.__ofs])
             self.__datadic.update({'MAT': mat, 'MF': mf, 'MT': mt})
             values = read_cont(self.__lines[self.__ofs])
@@ -170,6 +197,8 @@ class EndfConverter(Visitor):
         tblcolnames = [tok.value for tok in t2[0].children]
         assert varnames[4] == 'NR' and varnames[5] == 'NP'
         if self.__mode == 'read':
+            self.__check_end_of_lines()
+            self.__check_ctrl_continuity()
             mat, mf, mt = read_ctrl(self.__lines[self.__ofs])
             self.__datadic.update({'MAT': mat, 'MF': mf, 'MT': mt})
             values = read_cont(self.__lines[self.__ofs])
@@ -201,15 +230,10 @@ class EndfConverter(Visitor):
             self.__ofs += 1 + len(tbllines)
 
     def send_line(self, tree):
-        print('hahaha')
         if self.__mode == 'read':
-            print('huhuhu')
-            bla = self.__lines
-            blub = self.__ofs
-            import pdb; pdb.set_trace()
-            mat, mf, mt = read_ctrl(self.__lines[self.__ofs])
-            values = read_cont(self.__lines[self.__ofs])
-            curmat, curmf, curmt = get_ctrl(self.__datadic)
+            self.__check_end_of_lines()
+            mat, mf, mt = get_ctrl(self.__datadic)
+            curmat, curmf, curmt = read_ctrl(self.__lines[self.__ofs])
             if mat != curmat:
                 raise ValueError(f'Wrong MAT in SEND record at line #{self.__ofs}\n' +
                                  f'expected {mat} but got {curmat}')
@@ -219,21 +243,28 @@ class EndfConverter(Visitor):
             if curmt != 0:
                 raise ValueError(f'Wrong MT in SEND record at line #{self.__ofs}\n' +
                                  f'MT must be zero but is {curmt}')
+            # check if all values are zero
+            values = read_cont(self.__lines[self.__ofs])
+            for v in values:
+                if v != 0:
+                    raise ValueError('SEND record must contain only zeros ' +
+                                     f'but not the case in line #{self.__ofs}')
             self.__ofs += 1
-            print('haaaa')
         else:
-            print('blaaaaaaa')
-            pass
-            #self.__NS += 1
-            #mat, mf, mt = get_ctrl(self.__datadic)
-            #values = self.__extract_vals(varnames)
-            #curline = write_cont(values) + write_ctrl(mat, mf, mt, ns=self.__NS)
-            #self.__lines.append(curline)
+            self.__NS += 1
+            mat, mf, _ = get_ctrl(self.__datadic)
+            mt = 0
+            curline = write_cont([0]*6) + write_ctrl(mat, mf, mt, ns=99999)
+            self.__lines.append(curline)
         self.__ofs += 1
+        self.__NS = 0
 
     def endf2dic(self, lines, tree):
         self.__ofs = 0
         self.__datadic = {}
+        self.__MAT = None
+        self.__MF = None
+        self.__MT = None
         self.__NS = 0
         lines = [l for l in lines if l.strip()]
         self.__lines = lines
@@ -251,10 +282,10 @@ class EndfConverter(Visitor):
         return self.__lines
 
 
-from endf_spec import endf_spec_mf3_mt as curspec
-from endf_snippets import endf_cont_mf3_mt16 as curcont
-#from endf_spec import endf_spec_mf1_mt451 as curspec
-#from endf_snippets import endf_cont_mf1_mt451 as curcont
+#from endf_spec import endf_spec_mf3_mt as curspec
+#from endf_snippets import endf_cont_mf3_mt16 as curcont
+from endf_spec import endf_spec_mf1_mt451 as curspec
+from endf_snippets import endf_cont_mf1_mt451 as curcont
 
 with open('endf.lark', 'r') as f:
     mygrammar = f.read()
@@ -269,7 +300,7 @@ datadic = converter.endf2dic(mylines, tree)
 print(datadic)
 newline = converter.dic2endf(datadic, tree)
 #print(datadic)
-mylines = '\n'.join(mylines[1:-1])
+mylines = '\n'.join(mylines[1:])
 print('#######')
 print(mylines)
 print('#######')

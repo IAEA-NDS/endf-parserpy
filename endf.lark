@@ -5,7 +5,7 @@
 %ignore " "
 
 endf_format : mt_sec
-mt_sec : (NEWLINE | head_line | cont_line | tab1_line)*
+mt_sec : NEWLINE* head_line (NEWLINE | head_line | cont_line | tab1_line)* send_line
 
 // control numbers
 ctrl_spec : mat_spec "," mf_spec "," mt_spec

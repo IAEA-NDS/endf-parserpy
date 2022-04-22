@@ -30,3 +30,10 @@ def float2fortstr(val, width=11):
     assert len(numstr) == width
     return numstr
 
+def read_fancy_floats(line, n=6, blank=None):
+    for i in range(0,n*11,11):
+        if line[i:i+11] == ' '*66 and blank is None:
+            pass
+    assert isinstance(line, str)
+    return [fortstr2float(l[i*11:(i+1)*11]) for i in range(0,6,2)]
+

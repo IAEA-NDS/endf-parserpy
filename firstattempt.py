@@ -1,6 +1,6 @@
 from lark import Lark, Visitor, Transformer
 from lark.reconstruct import Reconstructor
-from utils import fortstr2float, float2fortstr
+from utils import fortstr2float, float2fortstr, read_fancy_floats
 
 # [MAT, MF, MT/ content] RECORD-TYPE
 # [MAT, MF, MT/ HL] TEXT
@@ -45,14 +45,6 @@ def write_cont(fields):
     N2 = str(fields[5]).rjust(11)
     return C1 + C2 + L1 + L2 + N1 + N2
 
-def read_six_fancy_floats(line, blank=None):
-    for i in range(0,66,11):
-        if line[i:i+11] == ' '*66 and blank is None:
-            pass
-    assert isinstance(line, str)
-    return [fortstr2float(l[i*11:(i+1)*11]) for i in range(0,6,2)]
-
-
 def read_tab1_body_lines(lines, ofs, nr, np):
     NBT = []; INT = []
     for i in range(nr):
@@ -63,10 +55,11 @@ def read_tab1_body_lines(lines, ofs, nr, np):
     while np > 0:
         l = lines[ofs]
         m = min(6, 2*np)
-        xvals += [fortstr2float(l[i*11:(i+1)*11]) for i in range(0, m, 2)] 
-        yvals += [fortstr2float(l[i*11:(i+1)*11]) for i in range(1, m, 2)]
+        vals += read_fancy_floats(l, m)
         np -= m // 2
         ofs += 1
+    xvals += vals[::2]
+    yvals += vals[1::2]
     return {'NBT': NBT, 'INT': INT, 'X': xvals,'Y':  yvals}, ofs 
 
 def construct_tab1_body_lines(NBT, INT, xvals, yvals):

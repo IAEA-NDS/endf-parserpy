@@ -1,0 +1,32 @@
+%import common.DIGIT
+%import common.NEWLINE
+%import common.STRING
+%import common.CNAME
+%ignore " "
+
+endf_format : (NEWLINE | head_line | cont_line | tab1_line)*
+
+// control numbers
+ctrl_spec : mat_spec "," mf_spec "," mt_spec
+mat_spec : "MAT" | DIGIT+ 
+mf_spec : "MF" | DIGIT+
+mt_spec : "MT" | DIGIT+
+
+// HEAD record
+head_line : "[" ctrl_spec "/" head_fields "]" "HEAD" NEWLINE*
+head_fields : CFIELD "," CFIELD "," IFIELD "," IFIELD "," IFIELD "," IFIELD 
+
+// CONT record
+cont_line : "[" ctrl_spec "/" cont_fields "]" "CONT" NEWLINE* 
+cont_fields : CFIELD "," CFIELD "," IFIELD "," IFIELD "," IFIELD "," IFIELD 
+
+// TAB1 record
+tab1_line : "[" ctrl_spec "/" tab1_fields "]" "TAB1" ("(" table_name ")")? NEWLINE* 
+tab1_fields : tab1_cont_fields "/" tab1_def 
+tab1_cont_fields : CFIELD "," CFIELD "," IFIELD "," IFIELD "," IFIELD "," IFIELD 
+tab1_def : CNAME "/" CNAME
+table_name : CNAME
+
+// possible field values
+CFIELD: CNAME | "0.0"
+IFIELD: CNAME | "0"

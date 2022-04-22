@@ -14,11 +14,23 @@ from utils import fortstr2float, float2fortstr
 # [MAT,MF,MT/ C1, C2, L1, L2, NR, NZ/ Zint ]TAB2
 # [MAT, MF, MT / II, JJ, KIJ ] INTG
 
+def read_ctrl(line):
+    MAT = int(line[66:70])
+    MF = int(line[70:72])
+    MT = int(line[72:75])
+    return MAT, MF, MT
+
+def write_ctrl(mat, mf, mt, ns=None):
+    nsstr = '' if not ns else str(ns).rjust(5)
+    return '{:>4}{:>2}{:>3}'.format(mat, mf, mt) + nsstr
+
+def get_ctrl(dic):
+    return dic['MAT'], dic['MF'], dic['MT']
 
 def read_cont(line):
     C1 = fortstr2float(line[0:11])
     C2 = fortstr2float(line[11:22])
-    L1 = fortstr2float(line[22:33])
+    L1 = int(line[22:33])
     L2 = int(line[33:44])
     N1 = int(line[44:55])
     N2 = int(line[55:66])
@@ -94,30 +106,64 @@ class EndfConverter(Visitor):
             vns = vn.strip()
             if vns not in ('0', '0.0'):
                 vals.append(self.__datadic[vn])
+            elif vns == '0.0':
+                vals.append(0)
             else:
-                vals.append(vns.rjust(11))
+                vals.append(0)
         return vals
+
+    def ctrl_spec(self, tree):
+        if self.__mode == 'read':
+            curmat, curmf, curmt = read_ctrl(self.__lines[self.__ofs])
+            for node in tree.find_data('mat_spec'):
+                if len(node.children) == 1:
+                    mat = int(node.children[0])
+                    if curmat != mat:
+                        raise ValueError(f'Expecting MAT {mat} in line #{self.__curofs}')
+                break
+            for node in tree.find_data('mf_spec'):
+                if len(node.children) == 1:
+                    mf = int(node.children[0])
+                    if curmf != mf:
+                        raise ValueError(f'Expecting MF {mf} in line #{self.__ofs} but got {curmf}\n' +
+                                         self.__lines[self.__ofs])
+                break
+            for node in tree.find_data('mt_spec'):
+                if len(node.children) == 1:
+                    mt = int(node.children[0])
+                    if curmt != mt:
+                        raise ValueError(f'Expecting MT {mt} in line #{self.__curofs}')
 
     def head_fields(self, tree):
         varnames = [str(tok) for tok in tree.children]
         if 'ZA' not in varnames or 'AWR' not in varnames:
             raise TypeError('The first two fields of a HEAD record must be named ZA and AWR')
         if self.__mode == 'read':
+            mat, mf, mt = read_ctrl(self.__lines[self.__ofs])
+            self.__datadic.update({'MAT': mat, 'MF': mf, 'MT': mt})
             values = read_cont(self.__lines[self.__ofs])
             self.__update_dic(varnames, values)
         else:
+            self.__NS += 1
+            mat, mf, mt = get_ctrl(self.__datadic)
             values = self.__extract_vals(varnames)
-            self.__lines.append(write_cont(values))
+            curline = write_cont(values) + write_ctrl(mat, mf, mt, ns=self.__NS)
+            self.__lines.append(curline)
         self.__ofs += 1
 
     def cont_fields(self, tree):
         varnames = [str(tok) for tok in tree.children]
         if self.__mode == 'read': 
+            mat, mf, mt = read_ctrl(self.__lines[self.__ofs])
+            self.__datadic.update({'MAT': mat, 'MF': mf, 'MT': mt})
             values = read_cont(self.__lines[self.__ofs])
             self.__update_dic(varnames, values)
         else:
+            self.__NS += 1
+            mat, mf, mt = get_ctrl(self.__datadic)
             values = self.__extract_vals(varnames)
-            self.__lines.append(write_cont(values))
+            curline = write_cont(values) + write_ctrl(mat, mf, mt, ns=self.__NS)
+            self.__lines.append(curline)
         self.__ofs += 1
 
     def tab1_line(self, tree):
@@ -131,6 +177,8 @@ class EndfConverter(Visitor):
         tblcolnames = [tok.value for tok in t2[0].children] 
         assert varnames[4] == 'NR' and varnames[5] == 'NP'
         if self.__mode == 'read':
+            mat, mf, mt = read_ctrl(self.__lines[self.__ofs])
+            self.__datadic.update({'MAT': mat, 'MF': mf, 'MT': mt})
             values = read_cont(self.__lines[self.__ofs])
             self.__ofs += 1
             self.__update_dic(varnames[:4], values[:4])
@@ -140,21 +188,29 @@ class EndfConverter(Visitor):
             tbl[tblcolnames[1]] = tbl.pop('Y')
             self.__datadic[tblname] = tbl
         else:
+            mat, mf, mt = get_ctrl(self.__datadic)
             values = self.__extract_vals(varnames[:4])
             tbl = self.__datadic[tblname] 
             nr = len(tbl['NBT'])
             np = len(tbl[tblcolnames[0]])
-            values += [str(nr).rjust(11), str(np).rjust(11)]
+            values += [nr, np] 
+            curlines = [write_cont(values)]
             tbllines = construct_tab1_body_lines(
                     tbl['NBT'], tbl['INT'], tbl[tblcolnames[0]], tbl[tblcolnames[1]])
-            self.__lines.append(write_cont(values))
-            self.__lines += tbllines
+            curlines += tbllines
+            ctrl_str = write_ctrl(mat, mf, mt)
+            self.__NS += 1
+            curlines = [ss + write_ctrl(mat, mf, mt, self.__NS+i)
+                        for i, ss in enumerate(curlines)]
+            self.__NS += len(curlines)
+            self.__lines += curlines
             bla = self.__lines
             self.__ofs += 1 + len(tbllines) 
 
     def endf2dic(self, lines, tree):
         self.__ofs = 0
         self.__datadic = {}
+        self.__NS = 0
         lines = [l for l in lines if l.strip()]
         self.__lines = lines
         self.__mode = 'read'
@@ -164,14 +220,17 @@ class EndfConverter(Visitor):
     def dic2endf(self, datadic, tree):
         self.__ofs = 0
         self.__datadic = datadic
+        self.__NS = 0
         self.__lines = []
         self.__mode = 'write'
         super().visit(tree)
         return self.__lines
 
 
-from endf_spec import endf_spec_mf3_mt as curspec
-from endf_snippets import endf_cont_mf3_mt16 as curcont
+#from endf_spec import endf_spec_mf3_mt as curspec
+#from endf_snippets import endf_cont_mf3_mt16 as curcont
+from endf_spec import endf_spec_mf1_mt451 as curspec
+from endf_snippets import endf_cont_mf1_mt451 as curcont
 
 with open('endf.lark', 'r') as f:
     mygrammar = f.read()
@@ -183,8 +242,15 @@ print(tree.pretty())
 mylines = curcont.splitlines()
 converter = EndfConverter()
 datadic = converter.endf2dic(mylines, tree)
+print(datadic)
 newline = converter.dic2endf(datadic, tree)
-#print(mylines)
 #print(datadic)
+mylines = '\n'.join(mylines[1:-1])
+print('#######')
+print(mylines)
+print('#######')
+newlines = '\n'.join(newline)
 print('\n'.join(newline))
+print('#######')
+assert(mylines == newlines)
 

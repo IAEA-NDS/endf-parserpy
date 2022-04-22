@@ -1,6 +1,6 @@
 from lark import Lark, Visitor, Transformer
 from lark.reconstruct import Reconstructor
-from utils import fortstr2float, float2fortstr, read_fancy_floats
+from utils import fortstr2float, float2fortstr, read_endf_floats
 
 # [MAT, MF, MT/ content] RECORD-TYPE
 # [MAT, MF, MT/ HL] TEXT
@@ -51,28 +51,28 @@ def read_tab1_body_lines(lines, ofs, nr, np):
         NBT.append(int(lines[ofs+i][:11]))
         INT.append(int(lines[ofs+i][11:22]))
     ofs += nr
-    xvals = []; yvals = []
+    vals = []
     while np > 0:
         l = lines[ofs]
         m = min(6, 2*np)
-        vals += read_fancy_floats(l, m)
+        vals += read_endf_floats(l, m)
         np -= m // 2
         ofs += 1
-    xvals += vals[::2]
-    yvals += vals[1::2]
-    return {'NBT': NBT, 'INT': INT, 'X': xvals,'Y':  yvals}, ofs 
+    xvals = vals[::2]
+    yvals = vals[1::2]
+    return {'NBT': NBT, 'INT': INT, 'X': xvals,'Y':  yvals}, ofs
 
 def construct_tab1_body_lines(NBT, INT, xvals, yvals):
     assert len(NBT) == len(INT)
     assert len(xvals) == len(yvals)
     lines = []
     for i in range(len(NBT)):
-        curline = str(NBT[i]).rjust(11) + str(INT[i]).rjust(11) + ' '*44 
+        curline = str(NBT[i]).rjust(11) + str(INT[i]).rjust(11) + ' '*44
         lines.append(curline)
     elcnt = 0
     curline = ''
     for x, y in zip(xvals, yvals):
-        curline += float2fortstr(x, width=11) + float2fortstr(y, width=11) 
+        curline += float2fortstr(x, width=11) + float2fortstr(y, width=11)
         elcnt += 2
         if elcnt == 6:
             elcnt = 0
@@ -82,7 +82,7 @@ def construct_tab1_body_lines(NBT, INT, xvals, yvals):
         lines.append(curline)
     return lines
 
-        
+
 
 class EndfConverter(Visitor):
 
@@ -146,7 +146,7 @@ class EndfConverter(Visitor):
 
     def cont_fields(self, tree):
         varnames = [str(tok) for tok in tree.children]
-        if self.__mode == 'read': 
+        if self.__mode == 'read':
             mat, mf, mt = read_ctrl(self.__lines[self.__ofs])
             self.__datadic.update({'MAT': mat, 'MF': mf, 'MT': mt})
             values = read_cont(self.__lines[self.__ofs])
@@ -167,7 +167,7 @@ class EndfConverter(Visitor):
         assert len(t3) == 0 or len(t3) == 1
         tblname = 'table' if len(t3)==0 else t3[0].children[0].value
         varnames = [tok.value for tok in t1[0].children]
-        tblcolnames = [tok.value for tok in t2[0].children] 
+        tblcolnames = [tok.value for tok in t2[0].children]
         assert varnames[4] == 'NR' and varnames[5] == 'NP'
         if self.__mode == 'read':
             mat, mf, mt = read_ctrl(self.__lines[self.__ofs])
@@ -183,10 +183,10 @@ class EndfConverter(Visitor):
         else:
             mat, mf, mt = get_ctrl(self.__datadic)
             values = self.__extract_vals(varnames[:4])
-            tbl = self.__datadic[tblname] 
+            tbl = self.__datadic[tblname]
             nr = len(tbl['NBT'])
             np = len(tbl[tblcolnames[0]])
-            values += [nr, np] 
+            values += [nr, np]
             curlines = [write_cont(values)]
             tbllines = construct_tab1_body_lines(
                     tbl['NBT'], tbl['INT'], tbl[tblcolnames[0]], tbl[tblcolnames[1]])
@@ -198,7 +198,38 @@ class EndfConverter(Visitor):
             self.__NS += len(curlines)
             self.__lines += curlines
             bla = self.__lines
-            self.__ofs += 1 + len(tbllines) 
+            self.__ofs += 1 + len(tbllines)
+
+    def send_line(self, tree):
+        print('hahaha')
+        if self.__mode == 'read':
+            print('huhuhu')
+            bla = self.__lines
+            blub = self.__ofs
+            import pdb; pdb.set_trace()
+            mat, mf, mt = read_ctrl(self.__lines[self.__ofs])
+            values = read_cont(self.__lines[self.__ofs])
+            curmat, curmf, curmt = get_ctrl(self.__datadic)
+            if mat != curmat:
+                raise ValueError(f'Wrong MAT in SEND record at line #{self.__ofs}\n' +
+                                 f'expected {mat} but got {curmat}')
+            if mf != curmf:
+                raise ValueError(f'Wrong MF in SEND record at line #{self.__ofs}\n' +
+                                 f'expected {mf} but got {curmf}')
+            if curmt != 0:
+                raise ValueError(f'Wrong MT in SEND record at line #{self.__ofs}\n' +
+                                 f'MT must be zero but is {curmt}')
+            self.__ofs += 1
+            print('haaaa')
+        else:
+            print('blaaaaaaa')
+            pass
+            #self.__NS += 1
+            #mat, mf, mt = get_ctrl(self.__datadic)
+            #values = self.__extract_vals(varnames)
+            #curline = write_cont(values) + write_ctrl(mat, mf, mt, ns=self.__NS)
+            #self.__lines.append(curline)
+        self.__ofs += 1
 
     def endf2dic(self, lines, tree):
         self.__ofs = 0
@@ -220,10 +251,10 @@ class EndfConverter(Visitor):
         return self.__lines
 
 
-#from endf_spec import endf_spec_mf3_mt as curspec
-#from endf_snippets import endf_cont_mf3_mt16 as curcont
-from endf_spec import endf_spec_mf1_mt451 as curspec
-from endf_snippets import endf_cont_mf1_mt451 as curcont
+from endf_spec import endf_spec_mf3_mt as curspec
+from endf_snippets import endf_cont_mf3_mt16 as curcont
+#from endf_spec import endf_spec_mf1_mt451 as curspec
+#from endf_snippets import endf_cont_mf1_mt451 as curcont
 
 with open('endf.lark', 'r') as f:
     mygrammar = f.read()

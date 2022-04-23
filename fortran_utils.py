@@ -30,16 +30,16 @@ def float2fortstr(val, width=11):
     assert len(numstr) == width
     return numstr
 
-def read_endf_floats(line, n=6, blank=None):
+def read_fort_floats(line, n=6, w=11, blank=None):
     assert isinstance(line, str)
     vals = []
-    for i in range(0,n*11,11):
-        if line[i:i+11] == ' '*66:
+    for i in range(0, n*w, w):
+        if line[i:i+w] == ' '*w:
             if blank is None:
-                raise ValueError
+                raise ValueError('blank encountered but blank=None')
             else:
                 vals.append(blank)
         else:
-            vals.append(fortstr2float(line[i:i+11]))
+            vals.append(fortstr2float(line[i:i+w]))
     return vals
 

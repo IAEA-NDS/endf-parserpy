@@ -65,7 +65,7 @@ def read_tab1_body_lines(lines, ofs, nr, np):
     yvals = vals[1::2]
     return {'NBT': NBT, 'INT': INT, 'X': xvals,'Y':  yvals}, ofs
 
-def construct_tab1_body_lines(NBT, INT, xvals, yvals):
+def write_tab1_body_lines(NBT, INT, xvals, yvals):
     assert len(NBT) == len(INT)
     assert len(xvals) == len(yvals)
     lines = []
@@ -150,6 +150,7 @@ class EndfConverter(Visitor):
             self.__check_end_of_lines()
             self.__check_ctrl_conformity()
 
+
     def head_fields(self, tree):
         varnames = [str(tok) for tok in tree.children]
         if 'ZA' not in varnames or 'AWR' not in varnames:
@@ -217,7 +218,7 @@ class EndfConverter(Visitor):
             np = len(tbl[tblcolnames[0]])
             values += [nr, np]
             curlines = [write_cont(values)]
-            tbllines = construct_tab1_body_lines(
+            tbllines = write_tab1_body_lines(
                     tbl['NBT'], tbl['INT'], tbl[tblcolnames[0]], tbl[tblcolnames[1]])
             curlines += tbllines
             ctrl_str = write_ctrl(mat, mf, mt)

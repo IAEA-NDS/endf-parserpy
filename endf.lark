@@ -46,11 +46,11 @@ table_name : CNAME
 send_line : "SEND" NEWLINE*
 
 // FOR loop
-for_loop : "for" for_head for_body "endfor" 
-for_head : VARNAME "=" FOR_START ".." FOR_STOP ":" 
+for_loop : "for" for_head for_body "endfor"
+for_head : VARNAME "=" for_start "to" for_stop ":"
 for_body : NEWLINE* code_token* NEWLINE*
-FOR_START : INT
-FOR_STOP : INT
+for_start :  expr
+for_stop :   expr
 
 // arithmetic expression
 // adopted from: http://marvin.cs.uidaho.edu/Teaching/CS445/grammar.pdf (3.3)
@@ -58,8 +58,8 @@ expr : addition | subtraction | addpart
 addpart : multiplication | division | mulpart
 mulpart : minusexpr | extvarname | NUMBER | bracketexpr
 
-multiplication : addpart "*" mulpart 
-division : addpart "/" mulpart 
+multiplication : addpart "*" mulpart
+division : addpart "/" mulpart
 addition : expr "+" addpart
 subtraction : expr "-" addpart
 

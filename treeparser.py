@@ -99,7 +99,9 @@ with open('endf.lark', 'r') as f:
     mygrammar = f.read()
 
 from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
-from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
+#from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
+with open('testdata/mf1_mt451_test.txt', 'r') as f:
+    curcont = f.read()
 
 #curspec = "3 + 7 / (-N+2)"
 #curspec = '3*(-N/2+5)*2/5-7'
@@ -116,6 +118,8 @@ datadic = parser.parse(lines, tree)
 newlines = parser.write(datadic, tree)
 print(datadic)
 print('\n'.join(newlines))
+
+print(datadic)
 
 
 

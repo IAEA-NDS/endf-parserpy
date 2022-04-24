@@ -14,7 +14,7 @@ endf_spec_mf1_mt451_wtext = \
 [MAT, 1,451/ AWI, EMAX, LREL, 0, NSUB, NVER]CONT
 [MAT, 1,451/ TEMP, 0.0, LDRV, 0, NWD, NXC]CONT 
 for i=1..5:
-    [MAT, 1,451/ DESCRIPTION]TEXT
+    [MAT, 1,451/ DESCRIPTION[i]]TEXT
 endfor
 SEND
 """

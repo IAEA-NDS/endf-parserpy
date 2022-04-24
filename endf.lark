@@ -45,16 +45,14 @@ send_line : "SEND" NEWLINE*
 for_loop : "for" for_head for_body "endfor" 
 for_head : VARNAME "=" FOR_START ".." FOR_STOP ":" 
 for_body : NEWLINE* code_token* NEWLINE*
-VARNAME : CNAME
 FOR_START : INT
 FOR_STOP : INT
 
 // arithmetic expression
 // adopted from: http://marvin.cs.uidaho.edu/Teaching/CS445/grammar.pdf (3.3)
-
 expr : addition | subtraction | addpart
 addpart : multiplication | division | mulpart
-mulpart : minusexpr | CNAME | NUMBER | bracketexpr
+mulpart : minusexpr | extvarname | NUMBER | bracketexpr
 
 multiplication : addpart "*" mulpart 
 division : addpart "/" mulpart 
@@ -64,6 +62,10 @@ subtraction : expr "-" addpart
 minusexpr: "-" mulpart
 bracketexpr : "(" expr ")"
 
+// allowed variable names (including indices)
+extvarname : VARNAME ("[" INDEXVAR "]")?
+VARNAME : CNAME
+INDEXVAR : CNAME
 
 // possible field values
 CFIELD: CNAME | "0.0"

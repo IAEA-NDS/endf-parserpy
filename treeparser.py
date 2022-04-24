@@ -1,7 +1,7 @@
 from lark import Lark
 from tree_utils import is_tree, get_name, get_child, get_child_value
 from endf_parsing_utils import map_cont_dic, map_head_dic, map_text_dic
-from flow_control_utils import cycle_for_loop 
+from flow_control_utils import cycle_for_loop
 
 from endf_utils import (read_cont, write_cont, get_ctrl,
         write_head, read_head, read_text, write_text)
@@ -20,10 +20,9 @@ class BasicEndfParser():
     def process_text_line(self, tree):
         if self.rwmode == 'read':
             text_dic, self.ofs = read_text(lines, self.ofs, with_ctrl=True)
-            newdic = map_text_dic(tree, text_dic)
-            self.datadic.update(newdic)
+            map_text_dic(tree, text_dic, self.datadic, self.loop_vars)
         else:
-            text_dic = map_text_dic(tree, self.datadic, inverse=True)
+            text_dic = map_text_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
             text_dic.update(get_ctrl(self.datadic))
             newlines = write_text(text_dic, with_ctrl=True)
             self.lines += newlines
@@ -31,11 +30,10 @@ class BasicEndfParser():
     def process_head_line(self, tree):
         if self.rwmode == 'read':
             cont_dic, self.ofs = read_head(lines, self.ofs, with_ctrl=True)
-            newdic = map_head_dic(tree, cont_dic)
-            newdic.update(get_ctrl(cont_dic))
-            self.datadic.update(newdic)
+            map_head_dic(tree, cont_dic, self.datadic, self.loop_vars)
+            self.datadic.update(get_ctrl(cont_dic))
         else:
-            head_dic = map_head_dic(tree, self.datadic, inverse=True)
+            head_dic = map_head_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
             head_dic.update(get_ctrl(self.datadic))
             newlines = write_head(head_dic, with_ctrl=True)
             self.lines += newlines
@@ -43,16 +41,15 @@ class BasicEndfParser():
     def process_cont_line(self, tree):
         if self.rwmode == 'read':
             cont_dic, self.ofs = read_cont(lines, self.ofs)
-            newdic = map_cont_dic(tree, cont_dic)
-            self.datadic.update(newdic)
+            map_cont_dic(tree, cont_dic, self.datadic, self.loop_vars)
         else:
-            cont_dic = map_cont_dic(tree, self.datadic, inverse=True)
+            cont_dic = map_cont_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
             cont_dic.update(get_ctrl(self.datadic))
             newlines = write_cont(cont_dic, with_ctrl=True)
             self.lines += newlines
 
     def process_for_loop(self, tree):
-        return cycle_for_loop(tree, self.run_instruction, {})  
+        return cycle_for_loop(tree, self.run_instruction, self.loop_vars)
 
     def run_instruction(self, t):
         if t.data in self.actions:
@@ -66,7 +63,7 @@ class BasicEndfParser():
                     print(str(child))
 
     def parse(self, lines, tree):
-        self.counter_vars = {}
+        self.loop_vars = {}
         self.datadic = {}
         self.rwmode = 'read'
         self.ofs = 0
@@ -74,7 +71,7 @@ class BasicEndfParser():
         return self.datadic
 
     def write(self, endf_dic, tree):
-        self_countervars = {}
+        self.loop_vars = {}
         self.lines = []
         self.rwmode = 'write'
         self.ofs = 0

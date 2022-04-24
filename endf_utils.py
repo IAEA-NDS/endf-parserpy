@@ -10,10 +10,9 @@ def skip_blank_lines(lines, ofs):
     return ofs
 
 def read_ctrl(line):
-    MAT = int(line[66:70])
-    MF = int(line[70:72])
-    MT = int(line[72:75])
-    return MAT, MF, MT
+    return {'MAT': int(line[66:70]),
+            'MF' : int(line[70:72]),
+            'MT' : int(line[72:75])}
 
 def write_ctrl(dic, ns=None):
     nsstr = '' if not ns else str(ns).rjust(5)
@@ -25,23 +24,28 @@ def get_ctrl(dic):
             dic.get('MF', None), 
             dic.get('MT', None))
 
-def read_cont(lines, ofs=0):
+def read_cont(lines, ofs=0, with_ctrl=True):
     ofs = skip_blank_lines(lines, ofs)
     line = lines[ofs]
-    return ({'C1' : fortstr2float(line[0:11]),
-             'C2' : fortstr2float(line[11:22]),
-             'L1' : int(line[22:33]),
-             'L2' : int(line[33:44]),
-             'N1' : int(line[44:55]),
-             'N2' : int(line[55:66])}, ofs+1)
+    dic = {'C1' : fortstr2float(line[0:11]),
+           'C2' : fortstr2float(line[11:22]),
+           'L1' : int(line[22:33]),
+           'L2' : int(line[33:44]),
+           'N1' : int(line[44:55]),
+           'N2' : int(line[55:66])}
+    if with_ctrl:
+        ctrl = read_ctrl(line)
+        dic.update(ctrl)
+    return dic, ofs+1
 
-def write_cont(dic):
+def write_cont(dic, with_ctrl=True):
     C1 = float2fortstr(dic['C1'])
     C2 = float2fortstr(dic['C2'])
     L1 = str(dic['L1']).rjust(11)
     L2 = str(dic['L2']).rjust(11)
     N1 = str(dic['N1']).rjust(11)
     N2 = str(dic['N2']).rjust(11)
+    CTRL = write_ctrl(dic) if with_ctrl else ''
     return [C1 + C2 + L1 + L2 + N1 + N2]
 
 def read_tab1(lines, ofs=0):

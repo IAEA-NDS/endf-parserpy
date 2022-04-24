@@ -19,10 +19,9 @@ def write_ctrl(dic, ns=None):
     return '{:>4}{:>2}{:>3}'.format( dic['MAT'], dic['MF'], dic['MT']) + nsstr
 
 def get_ctrl(dic):
-    mat = dic.get
-    return (dic.get('MAT', None),
-            dic.get('MF', None), 
-            dic.get('MT', None))
+    return {'MAT': dic['MAT'],
+            'MF' : dic['MF'],
+            'MT' : dic['MT']}
 
 def read_cont(lines, ofs=0, with_ctrl=True):
     ofs = skip_blank_lines(lines, ofs)
@@ -46,7 +45,13 @@ def write_cont(dic, with_ctrl=True):
     N1 = str(dic['N1']).rjust(11)
     N2 = str(dic['N2']).rjust(11)
     CTRL = write_ctrl(dic) if with_ctrl else ''
-    return [C1 + C2 + L1 + L2 + N1 + N2]
+    return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
+
+# alias for the endf HEAD record type
+# which is for the time being dealt with
+# in exactly the same way as the CONT record type
+write_head = write_cont
+read_head = read_cont
 
 def read_tab1(lines, ofs=0):
     ofs = skip_blank_lines(lines, ofs)

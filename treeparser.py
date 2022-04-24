@@ -3,7 +3,8 @@ from tree_utils import is_tree, get_name, get_child, get_child_value
 from endf_parsing_utils import map_cont_to_dic, map_head_to_dic
 from flow_control_utils import cycle_for_loop 
 
-from endf_utils import read_cont, write_cont
+from endf_utils import (read_cont, write_cont, get_ctrl,
+        write_head, read_head)
 
 
 class BasicEndfParser():
@@ -17,15 +18,26 @@ class BasicEndfParser():
 
     def process_head_line(self, tree):
         if self.rwmode == 'read':
-            cont_dic, self.ofs = read_cont(lines, self.ofs)
+            cont_dic, self.ofs = read_head(lines, self.ofs, with_ctrl=True)
             newdic = map_head_to_dic(tree, cont_dic)
+            newdic.update(get_ctrl(cont_dic))
             self.datadic.update(newdic)
+        else:
+            head_dic = map_head_to_dic(tree, self.datadic, inverse=True)
+            head_dic.update(get_ctrl(self.datadic))
+            newlines = write_head(head_dic, with_ctrl=True)
+            self.lines += newlines
 
     def process_cont_line(self, tree):
         if self.rwmode == 'read':
             cont_dic, self.ofs = read_cont(lines, self.ofs)
             newdic = map_cont_to_dic(tree, cont_dic)
             self.datadic.update(newdic)
+        else:
+            cont_dic = map_cont_to_dic(tree, self.datadic, inverse=True)
+            cont_dic.update(get_ctrl(self.datadic))
+            newlines = write_cont(cont_dic, with_ctrl=True)
+            self.lines += newlines
 
     def process_for_loop(self, tree):
         return cycle_for_loop(tree, self.run_instruction, {})  
@@ -47,9 +59,15 @@ class BasicEndfParser():
         self.rwmode = 'read'
         self.ofs = 0
         self.run_instruction(tree)
-        print(self.datadic)
+        return self.datadic
 
-
+    def write(self, endf_dic, tree):
+        self_countervars = {}
+        self.lines = []
+        self.rwmode = 'write'
+        self.ofs = 0
+        self.run_instruction(tree)
+        return self.lines
 
 
 # helpful functions
@@ -72,8 +90,11 @@ print(tree.pretty())
 
 lines = curcont.splitlines()
 
-
 parser = BasicEndfParser()
-parser.parse(lines, tree)
+datadic = parser.parse(lines, tree)
+newlines = parser.write(datadic, tree)
+print(datadic)
+print('\n'.join(newlines))
+
 
 

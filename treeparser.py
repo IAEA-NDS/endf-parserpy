@@ -121,13 +121,16 @@ class BasicEndfParser():
 with open('endf.lark', 'r') as f:
     mygrammar = f.read()
 
-#from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
-#from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
+from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
+from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
 #with open('testdata/mf1_mt451_test.txt', 'r') as f:
 #    curcont = f.read()
 
-from testdata.endf_spec import endf_spec_mf3_mt as curspec
-from testdata.endf_snippets import endf_cont_mf3_mt16 as curcont
+#from testdata.endf_spec import endf_spec_mf3_mt as curspec
+#from testdata.endf_snippets import endf_cont_mf3_mt16 as curcont
+
+#from testdata.endf_spec import endf_spec_several_mfmt as curspec
+#from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
 
 myparser = Lark(mygrammar, start='code_token')
 tree = myparser.parse(curspec)

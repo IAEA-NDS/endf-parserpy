@@ -6,18 +6,18 @@
 %import common.NUMBER
 %ignore " "
 
-endf_format : mt_sec
-mt_sec : NEWLINE* head_line (NEWLINE | head_line | cont_line | tab1_line)* send_line
-
 code_token: (endf_line | for_loop | NEWLINE)*
 endf_line : head_line | cont_line | tab1_line
-            | text_line | dir_line  | send_line
+            | text_line | dir_line  | send_line | dummy_line
 
 // control numbers
 ctrl_spec : MAT_SPEC "," MF_SPEC "," MT_SPEC
 MAT_SPEC : "MAT" | INT
 MF_SPEC :  "MF" | INT
 MT_SPEC : "MT" | INT
+
+// DUMMY record (read but not processed)
+dummy_line : "[" ctrl_spec "/" /.*\]/ "DUMMY" NEWLINE*
 
 // TEXT record
 text_line : "[" ctrl_spec "/" text_fields "]" "TEXT" NEWLINE*

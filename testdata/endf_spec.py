@@ -40,3 +40,8 @@ endf_spec_mf3_mt = \
 [MAT, 3, MT/ QM, QI, 0, LR, NR, NP / E / xs]TAB1 (xstable)
 SEND
 """
+
+endf_spec_several_mfmt = """
+[MAT, MF, MT/ ZA, AWR, 0, 0, 0, 0] DUMMY 
+"""
+

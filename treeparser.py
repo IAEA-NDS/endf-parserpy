@@ -2,7 +2,7 @@ from lark import Lark
 from tree_utils import is_tree, get_name, get_child, get_child_value
 from endf_parsing_utils import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_tab1_dic)
-from flow_control_utils import cycle_for_loop
+from flow_control_utils import cycle_for_loop, evaluate_if_statement
 
 from endf_utils import (read_cont, write_cont, get_ctrl,
         write_head, read_head, read_text, write_text,
@@ -14,13 +14,16 @@ class BasicEndfParser():
 
     def __init__(self):
         actions = {}
+        # endf record treatment
         actions['head_line'] = self.process_head_line
         actions['cont_line'] = self.process_cont_line
         actions['text_line'] = self.process_text_line
         actions['dir_line'] = self.process_dir_line
         actions['tab1_line'] = self.process_tab1_line
         actions['send_line'] = self.process_send_line
+        # program flow
         actions['for_loop'] = self.process_for_loop
+        actions['if_statement'] = self.process_if_statement
         self.actions = actions
 
     def process_text_line(self, tree):
@@ -84,6 +87,10 @@ class BasicEndfParser():
     def process_for_loop(self, tree):
         return cycle_for_loop(tree, self.run_instruction, self.datadic, self.loop_vars)
 
+    def process_if_statement(self, tree):
+        evaluate_if_statement(tree, self.run_instruction,
+                              self.datadic, self.loop_vars)
+
     def run_instruction(self, t):
         if t.data in self.actions:
             print(t.data)
@@ -121,8 +128,8 @@ class BasicEndfParser():
 with open('endf.lark', 'r') as f:
     mygrammar = f.read()
 
-from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
-from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
+#from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
+#from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
 #with open('testdata/mf1_mt451_test.txt', 'r') as f:
 #    curcont = f.read()
 
@@ -131,6 +138,9 @@ from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
 
 #from testdata.endf_spec import endf_spec_several_mfmt as curspec
 #from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
+
+from testdata.endf_spec import endf_spec_mf1_mt451 as curspec
+from testdata.endf_snippets import endf_cont_mf1_mt451 as curcont
 
 myparser = Lark(mygrammar, start='code_token')
 tree = myparser.parse(curspec)

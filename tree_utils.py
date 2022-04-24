@@ -21,11 +21,14 @@ def get_value(token):
 def get_child_names(tree):
     return (get_name(t) for t in tree.children) 
 
-def get_child(tree, name):
+def get_child(tree, name, nofail=False):
     for child in tree.children:
         if get_name(child) == name:
             return child
-    raise IndexError(f'name {name} not found among child nodes')
+    if nofail:
+        return None
+    else:
+        raise IndexError(f'name {name} not found among child nodes')
 
 def get_child_value(tree, name):
     for child in tree.children:

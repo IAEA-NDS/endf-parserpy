@@ -1,4 +1,4 @@
-from tree_utils import get_child, get_child_value
+from tree_utils import get_child, get_child_value, get_child_names
 from endf_parsing_utils import get_varname, get_indexvar, eval_expr
 
 def eval_expr_with_var(expr, datadic, loop_vars):
@@ -38,4 +38,26 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars):
         loop_vars[varname] = i
         tree_handler(for_body)
     del(loop_vars[varname])
+
+def evaluate_if_statement(tree, tree_handler, datadic, loop_vars):
+    assert tree.data == 'if_statement'
+    if_condition = get_child(tree, 'if_condition')
+    lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
+    if_body = get_child(tree, 'if_body')
+    # evaluate the condition
+    assert len(if_condition.children) == 3
+    left_expr = if_condition.children[0]
+    cmpop = get_child_value(if_condition, 'IF_RELATION')
+    right_expr = if_condition.children[2]
+    left_val = eval_expr_with_var(left_expr, datadic, loop_vars)
+    right_val = eval_expr_with_var(right_expr, datadic, loop_vars)
+    if ((cmpop == ">" and left_val > right_val) or
+        (cmpop == "<" and left_val < right_val) or
+        (cmpop =="<=" and left_val <= right_val) or
+        (cmpop ==">=" and left_val >= right_val) or
+        (cmpop =="!=" and left_val != right_val) or
+        (cmpop =="==" and left_val == right_val)):
+        print('hahahaha')
+
+        tree_handler(if_body)
 

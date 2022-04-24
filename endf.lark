@@ -9,9 +9,9 @@
 endf_format : mt_sec
 mt_sec : NEWLINE* head_line (NEWLINE | head_line | cont_line | tab1_line)* send_line
 
-code_token: (endf_line | for_loop)*
-
-endf_line : NEWLINE* (head_line | cont_line | tab1_line | text_line | send_line) NEWLINE*
+code_token: (endf_line | for_loop | NEWLINE)*
+endf_line : head_line | cont_line | tab1_line
+            | text_line | dir_line  | send_line
 
 // control numbers
 ctrl_spec : MAT_SPEC "," MF_SPEC "," MT_SPEC
@@ -30,6 +30,10 @@ head_fields : expr "," expr "," expr "," expr "," expr "," expr
 // CONT record
 cont_line : "[" ctrl_spec "/" cont_fields "]" "CONT" NEWLINE*
 cont_fields : expr "," expr "," expr "," expr "," expr "," expr
+
+// DIR record
+dir_line : "[" ctrl_spec "/" "blank" "," "blank" "," dir_fields "]" "DIR" NEWLINE*
+dir_fields :  expr "," expr "," expr "," expr
 
 // TAB1 record
 tab1_line : "[" ctrl_spec "/" tab1_fields "]" "TAB1" ("(" table_name ")")? NEWLINE*

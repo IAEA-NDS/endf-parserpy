@@ -59,6 +59,10 @@ def map_cont_dic(cont_line_node, cont_dic={}, datadic={}, loop_vars={}, inverse=
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, cont_dic, datadic, loop_vars, inverse)
 
+def map_dir_dic(dir_line_node, dir_dic={}, datadic={}, loop_vars={}, inverse=False):
+    expr_list = get_child(dir_line_node, 'dir_fields').children
+    cn = ('L1', 'L2', 'N1', 'N2')
+    return map_record_helper(expr_list, cn, dir_dic, datadic, loop_vars, inverse)
 
 def get_varname(expr):
     for ch in expr.children:

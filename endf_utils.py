@@ -37,6 +37,28 @@ def write_text(dic, with_ctrl=True):
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [TEXT + CTRL]
 
+def read_dir(lines, ofs=0, with_ctrl=True):
+    ofs = skip_blank_lines(lines, ofs)
+    line = lines[ofs]
+    dic = {'L1' : int(line[22:33]),
+           'L2' : int(line[33:44]),
+           'N1' : int(line[44:55]),
+           'N2' : int(line[55:66])}
+    if with_ctrl:
+        ctrl = read_ctrl(line)
+        dic.update(ctrl)
+    return dic, ofs+1
+
+def write_dir(dic, with_ctrl=True):
+    C1 = ' '*11
+    C2 = ' '*11
+    L1 = str(dic['L1']).rjust(11)
+    L2 = str(dic['L2']).rjust(11)
+    N1 = str(dic['N1']).rjust(11)
+    N2 = str(dic['N2']).rjust(11)
+    CTRL = write_ctrl(dic) if with_ctrl else ''
+    return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
+
 def read_cont(lines, ofs=0, with_ctrl=True):
     ofs = skip_blank_lines(lines, ofs)
     line = lines[ofs]

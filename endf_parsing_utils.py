@@ -22,7 +22,7 @@ def map_record_helper(oldkeys, newkeys, dic, inverse):
                              f'expected {k2} but read {dic[k1]}')
     return newdic
 
-def map_head_to_dic(head_line_node, head_dic, inverse=False):
+def map_head_dic(head_line_node, head_dic, inverse=False):
     head_fields = get_child(head_line_node, 'head_fields')
     vn = tuple((get_varname(t) for t in head_fields.children))
     vm = (eval_expr(t)[0] if vn[i] is None else vn[i]
@@ -30,7 +30,7 @@ def map_head_to_dic(head_line_node, head_dic, inverse=False):
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
     return map_record_helper(cn, vm, head_dic, inverse)
 
-def map_cont_to_dic(cont_line_node, cont_dic, inverse=False):
+def map_cont_dic(cont_line_node, cont_dic, inverse=False):
     cont_fields = get_child(cont_line_node, 'cont_fields')
     vn = tuple((get_varname(t) for t in cont_fields.children))
     vm = (eval_expr(t)[0] if vn[i] is None else vn[i]

@@ -6,7 +6,8 @@ from flow_control_utils import cycle_for_loop
 
 from endf_utils import (read_cont, write_cont, get_ctrl,
         write_head, read_head, read_text, write_text,
-        read_dir, write_dir, read_tab1, write_tab1)
+        read_dir, write_dir, read_tab1, write_tab1,
+        read_send, write_send)
 
 
 class BasicEndfParser():
@@ -18,12 +19,13 @@ class BasicEndfParser():
         actions['text_line'] = self.process_text_line
         actions['dir_line'] = self.process_dir_line
         actions['tab1_line'] = self.process_tab1_line
+        actions['send_line'] = self.process_send_line
         actions['for_loop'] = self.process_for_loop
         self.actions = actions
 
     def process_text_line(self, tree):
         if self.rwmode == 'read':
-            text_dic, self.ofs = read_text(lines, self.ofs, with_ctrl=True)
+            text_dic, self.ofs = read_text(self.lines, self.ofs, with_ctrl=True)
             map_text_dic(tree, text_dic, self.datadic, self.loop_vars)
         else:
             text_dic = map_text_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
@@ -33,7 +35,7 @@ class BasicEndfParser():
 
     def process_head_line(self, tree):
         if self.rwmode == 'read':
-            cont_dic, self.ofs = read_head(lines, self.ofs, with_ctrl=True)
+            cont_dic, self.ofs = read_head(self.lines, self.ofs, with_ctrl=True)
             map_head_dic(tree, cont_dic, self.datadic, self.loop_vars)
             self.datadic.update(get_ctrl(cont_dic))
         else:
@@ -44,7 +46,7 @@ class BasicEndfParser():
 
     def process_cont_line(self, tree):
         if self.rwmode == 'read':
-            cont_dic, self.ofs = read_cont(lines, self.ofs)
+            cont_dic, self.ofs = read_cont(self.lines, self.ofs)
             map_cont_dic(tree, cont_dic, self.datadic, self.loop_vars)
         else:
             cont_dic = map_cont_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
@@ -54,7 +56,7 @@ class BasicEndfParser():
 
     def process_dir_line(self, tree):
         if self.rwmode == 'read':
-            dir_dic, self.ofs = read_dir(lines, self.ofs)
+            dir_dic, self.ofs = read_dir(self.lines, self.ofs)
             map_dir_dic(tree, dir_dic, self.datadic, self.loop_vars)
         else:
             dir_dic = map_dir_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
@@ -64,12 +66,19 @@ class BasicEndfParser():
 
     def process_tab1_line(self, tree):
         if self.rwmode == 'read':
-            tab1_dic, self.ofs = read_tab1(lines, self.ofs)
+            tab1_dic, self.ofs = read_tab1(self.lines, self.ofs)
             map_tab1_dic(tree, tab1_dic, self.datadic, self.loop_vars)
         else:
             tab1_dic = map_tab1_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
             tab1_dic.update(get_ctrl(self.datadic))
             newlines = write_tab1(tab1_dic, with_ctrl=True)
+            self.lines += newlines
+
+    def process_send_line(self, tree):
+        if self.rwmode == 'read':
+            read_send(self.lines, self.ofs)
+        else:
+            newlines = write_send(self.datadic, with_ctrl=True)
             self.lines += newlines
 
     def process_for_loop(self, tree):
@@ -89,6 +98,7 @@ class BasicEndfParser():
     def parse(self, lines, tree):
         self.loop_vars = {}
         self.datadic = {}
+        self.lines = lines
         self.rwmode = 'read'
         self.ofs = 0
         self.run_instruction(tree)
@@ -96,6 +106,7 @@ class BasicEndfParser():
 
     def write(self, endf_dic, tree):
         self.loop_vars = {}
+        self.datadic = endf_dic
         self.lines = []
         self.rwmode = 'write'
         self.ofs = 0
@@ -122,14 +133,16 @@ myparser = Lark(mygrammar, start='code_token')
 tree = myparser.parse(curspec)
 #print(tree.pretty())
 
-lines = curcont.splitlines()
+xlines = curcont.splitlines()
 
 parser = BasicEndfParser()
-datadic = parser.parse(lines, tree)
+datadic = parser.parse(xlines, tree)
+
+parser = BasicEndfParser()
 newlines = parser.write(datadic, tree)
 
 print('#####################')
-print('\n'.join(lines))
+print('\n'.join(xlines))
 print('---------------------')
 print('\n'.join(newlines))
 print('#####################')

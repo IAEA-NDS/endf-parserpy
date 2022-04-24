@@ -83,6 +83,28 @@ def write_cont(dic, with_ctrl=True):
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
+def read_send(lines, ofs=0, with_ctrl=True):
+    ofs = skip_blank_lines(lines, ofs)
+    dic, ofs = read_cont(lines, ofs, with_ctrl)
+    if dic['C1'] != 0 or dic['C2'] != 0 or \
+       dic['L1'] != 0 or dic['L2'] != 0 or \
+       dic['N1'] != 0 or dic['N2'] != 0 or \
+       dic['MT'] != 0:
+           raise ValueError('Not a Section End (SEND) record')
+    return dic, ofs
+
+def write_send(dic, with_ctrl=True):
+    C1 = float2fortstr(0)
+    C2 = float2fortstr(0)
+    L1 = '0'.rjust(11)
+    L2 = '0'.rjust(11)
+    N1 = '0'.rjust(11)
+    N2 = '0'.rjust(11)
+    ctrl_dic = get_ctrl(dic)
+    ctrl_dic['MT'] = 0
+    CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
+    return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
+
 # alias for the endf HEAD record type
 # which is for the time being dealt with
 # in exactly the same way as the CONT record type

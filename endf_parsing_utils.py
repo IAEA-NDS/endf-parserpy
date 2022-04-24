@@ -1,6 +1,6 @@
 from tree_utils import is_token, is_tree, get_name, get_value, get_child
 
-def map_head_dic(head_line_node, head_dic):
+def map_head_to_dic(head_line_node, head_dic):
     head_fields = get_child(head_line_node, 'head_fields')
     vn = tuple((get_varname(t) for t in head_fields.children))
     vm = (eval_expr(t)[0] if vn[i] is None else vn[i]
@@ -16,7 +16,7 @@ def map_head_dic(head_line_node, head_dic):
                                  f'expected {k2} but read {head_dic[k1]}')
     return newdic
 
-def map_cont_dic(cont_line_node, cont_dic):
+def map_cont_to_dic(cont_line_node, cont_dic):
     cont_fields = get_child(cont_line_node, 'cont_fields')
     vn = tuple((get_varname(t) for t in cont_fields.children))
     vm = (eval_expr(t)[0] if vn[i] is None else vn[i]

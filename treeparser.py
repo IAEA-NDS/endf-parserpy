@@ -1,6 +1,6 @@
 from lark import Lark
 from tree_utils import is_tree, get_name, get_child, get_child_value
-from endf_parsing_utils import map_cont_dic, map_head_dic
+from endf_parsing_utils import map_cont_to_dic, map_head_to_dic
 from flow_control_utils import cycle_for_loop 
 
 from endf_utils import read_cont, write_cont
@@ -18,13 +18,13 @@ class BasicEndfParser():
     def process_head_line(self, tree):
         if self.rwmode == 'read':
             cont_dic, self.ofs = read_cont(lines, self.ofs)
-            newdic = map_head_dic(tree, cont_dic)
+            newdic = map_head_to_dic(tree, cont_dic)
             self.datadic.update(newdic)
 
     def process_cont_line(self, tree):
         if self.rwmode == 'read':
             cont_dic, self.ofs = read_cont(lines, self.ofs)
-            newdic = map_cont_dic(tree, cont_dic)
+            newdic = map_cont_to_dic(tree, cont_dic)
             self.datadic.update(newdic)
 
     def process_for_loop(self, tree):

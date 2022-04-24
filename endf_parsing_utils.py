@@ -1,20 +1,23 @@
 from tree_utils import is_token, is_tree, get_name, get_value, get_child
 
+def map_record_helper(oldkeys, newkeys, dic):
+    newdic = {}
+    for k1, k2 in zip(oldkeys, newkeys):
+        if isinstance(k2, str):
+            newdic[k2] = dic[k1] 
+        else:
+            if dic[k1] != k2:
+                raise ValueError( 'Error while reading record ' +
+                                 f'expected {k2} but read {head_dic[k1]}')
+    return newdic
+
 def map_head_to_dic(head_line_node, head_dic):
     head_fields = get_child(head_line_node, 'head_fields')
     vn = tuple((get_varname(t) for t in head_fields.children))
     vm = (eval_expr(t)[0] if vn[i] is None else vn[i]
             for i, t in enumerate(head_fields.children))
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
-    newdic = {}
-    for k1, k2 in zip(cn, vm):
-        if isinstance(k2, str):
-            newdic[k2] = head_dic[k1] 
-        else:
-            if head_dic[k1] != k2:
-                raise ValueError( 'Error while recording HEAD record ' +
-                                 f'expected {k2} but read {head_dic[k1]}')
-    return newdic
+    return map_record_helper(cn, vm, head_dic) 
 
 def map_cont_to_dic(cont_line_node, cont_dic):
     cont_fields = get_child(cont_line_node, 'cont_fields')
@@ -22,15 +25,7 @@ def map_cont_to_dic(cont_line_node, cont_dic):
     vm = (eval_expr(t)[0] if vn[i] is None else vn[i]
             for i, t in enumerate(cont_fields.children))
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
-    newdic = {}
-    for k1, k2 in zip(cn, vm):
-        if isinstance(k2, str):
-            newdic[k2] = cont_dic[k1] 
-        else:
-            if cont_dic[k1] != k2:
-                raise ValueError( 'Error while recording CONT record ' +
-                                 f'expected {k2} but read {cont_dic[k1]}')
-    return newdic
+    return map_record_helper(cn, vm, cont_dic)
 
 def get_varname(expr):
     for ch in expr.children:

@@ -23,6 +23,20 @@ def get_ctrl(dic):
             'MF' : dic['MF'],
             'MT' : dic['MT']}
 
+def read_text(lines, ofs=0, with_ctrl=True):
+    ofs = skip_blank_lines(lines, ofs)
+    line = lines[ofs]
+    dic = {'HL': line[0:66]}
+    if with_ctrl:
+        ctrl = read_ctrl(line)
+        dic.update(ctrl)
+    return dic, ofs+1
+
+def write_text(dic, with_ctrl=True):
+    TEXT = dic['HL']
+    CTRL = write_ctrl(dic) if with_ctrl else ''
+    return [TEXT + CTRL]
+
 def read_cont(lines, ofs=0, with_ctrl=True):
     ofs = skip_blank_lines(lines, ofs)
     line = lines[ofs]

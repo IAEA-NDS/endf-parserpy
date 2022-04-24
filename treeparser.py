@@ -1,10 +1,10 @@
 from lark import Lark
 from tree_utils import is_tree, get_name, get_child, get_child_value
-from endf_parsing_utils import map_cont_dic, map_head_dic
+from endf_parsing_utils import map_cont_dic, map_head_dic, map_text_dic
 from flow_control_utils import cycle_for_loop 
 
 from endf_utils import (read_cont, write_cont, get_ctrl,
-        write_head, read_head)
+        write_head, read_head, read_text, write_text)
 
 
 class BasicEndfParser():
@@ -13,8 +13,20 @@ class BasicEndfParser():
         actions = {}
         actions['head_line'] = self.process_head_line
         actions['cont_line'] = self.process_cont_line
+        actions['text_line'] = self.process_text_line
         actions['for_loop'] = self.process_for_loop
         self.actions = actions
+
+    def process_text_line(self, tree):
+        if self.rwmode == 'read':
+            text_dic, self.ofs = read_text(lines, self.ofs, with_ctrl=True)
+            newdic = map_text_dic(tree, text_dic)
+            self.datadic.update(newdic)
+        else:
+            text_dic = map_text_dic(tree, self.datadic, inverse=True)
+            text_dic.update(get_ctrl(self.datadic))
+            newlines = write_text(text_dic, with_ctrl=True)
+            self.lines += newlines
 
     def process_head_line(self, tree):
         if self.rwmode == 'read':
@@ -77,8 +89,8 @@ class BasicEndfParser():
 with open('endf.lark', 'r') as f:
     mygrammar = f.read()
 
-from testdata.endf_spec import endf_spec_mf1_mt451 as curspec
-from testdata.endf_snippets import endf_cont_mf1_mt451 as curcont
+from testdata.endf_spec import endf_spec_mf1_mt451_wtext as curspec
+from testdata.endf_snippets import endf_cont_mf1_mt451_wtext as curcont
 
 #curspec = "3 + 7 / (-N+2)"
 #curspec = '3*(-N/2+5)*2/5-7'

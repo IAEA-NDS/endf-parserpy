@@ -11,13 +11,17 @@ mt_sec : NEWLINE* head_line (NEWLINE | head_line | cont_line | tab1_line)* send_
 
 code_token: (endf_line | for_loop)*
 
-endf_line : NEWLINE* (head_line | cont_line | tab1_line | send_line) NEWLINE*
+endf_line : NEWLINE* (head_line | cont_line | tab1_line | text_line | send_line) NEWLINE*
 
 // control numbers
 ctrl_spec : MAT_SPEC "," MF_SPEC "," MT_SPEC
 MAT_SPEC : "MAT" | INT
 MF_SPEC :  "MF" | INT
 MT_SPEC : "MT" | INT
+
+// TEXT record
+text_line : "[" ctrl_spec "/" text_fields "]" "TEXT" NEWLINE*
+text_fields : expr
 
 // HEAD record
 head_line : "[" ctrl_spec "/" head_fields "]" "HEAD" NEWLINE*

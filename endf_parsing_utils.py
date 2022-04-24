@@ -22,6 +22,14 @@ def map_record_helper(oldkeys, newkeys, dic, inverse):
                              f'expected {k2} but read {dic[k1]}')
     return newdic
 
+def map_text_dic(text_line_node, text_dic, inverse=False):
+    text_fields = get_child(text_line_node, 'text_fields')
+    vn = tuple((get_varname(t) for t in text_fields.children))
+    vm = (eval_expr(t)[0] if vn[i] is None else vn[i]
+            for i, t in enumerate(text_fields.children))
+    cn = ('HL',)
+    return map_record_helper(cn, vm, text_dic, inverse)
+
 def map_head_dic(head_line_node, head_dic, inverse=False):
     head_fields = get_child(head_line_node, 'head_fields')
     vn = tuple((get_varname(t) for t in head_fields.children))

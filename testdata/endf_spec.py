@@ -7,17 +7,14 @@ endf_spec_mf1_mt451 = \
 SEND
 """
 
-endf_spec_mf1_mt451_forloop = \
+endf_spec_mf1_mt451_wtext = \
 """
 [MAT, 1,451/ ZA, AWR, LRP, LFI, NLIB, NMOD]HEAD
 [MAT, 1,451/ ELIS, STA, LIS, LISO, 0, NFOR]CONT
 [MAT, 1,451/ AWI, EMAX, LREL, 0, NSUB, NVER]CONT
 [MAT, 1,451/ TEMP, 0.0, LDRV, 0, NWD, NXC]CONT 
 for i=1..5:
-    [MAT, 1,451/ ABC, DEF, 0, 0, NWD, NXC]CONT 
-    for j=1..7:
-        [MAT, 1,451/ XY, 0.0, (PI/3)+4, 0, NWD, HA]CONT 
-    endfor
+    [MAT, 1,451/ DESCRIPTION]TEXT
 endfor
 SEND
 """

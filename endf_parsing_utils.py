@@ -1,11 +1,22 @@
-from tree_utils import is_token, is_tree, get_name, get_value, get_child
+from tree_utils import is_token, is_tree, get_name, get_value, get_child, get_child_names
 
 
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inverse):
-    vn = tuple((get_varname(t) for t in expr_list))
+    # these internal functions are hacks to allow for default names for some fields:
+    # some fields in the ENDF language specification are optional and then no
+    # Tree/Token is created for them but we still need to use their default names
+    # in the mapping
+    def get_varname_tmp(expr):
+        return expr if isinstance(expr, str) else get_varname(expr)
+    def get_indexvar_tmp(expr):
+        return None if isinstance(expr, str) else get_indexvar(expr)
+
+    vn = tuple((get_varname_tmp(t) for t in expr_list))
     newkeys = (eval_expr(t)[0] if vn[i] is None else vn[i]
             for i, t in enumerate(expr_list))
-    indexvars = tuple(get_indexvar(t) for t in expr_list)
+    indexvars = tuple(get_indexvar_tmp(t) for t in expr_list)
+    #if 'table' in basekeys:
+    #    import pdb; pdb.set_trace()
     if not inverse:
         zipit = zip(basekeys, newkeys, indexvars)
         dic = record_dic
@@ -63,6 +74,45 @@ def map_dir_dic(dir_line_node, dir_dic={}, datadic={}, loop_vars={}, inverse=Fal
     expr_list = get_child(dir_line_node, 'dir_fields').children
     cn = ('L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, dir_dic, datadic, loop_vars, inverse)
+
+def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=False):
+    tab1_fields = get_child(tab1_line_node, 'tab1_fields')
+    tab1_cont_fields = get_child(tab1_fields, 'tab1_cont_fields')
+    tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
+    if 'table_name' in get_child_names(tab1_line_node):
+        tblname_expr = get_child(tab1_line_node, 'table_name')
+        tblvarname = get_varname(tblname_expr)
+    else:
+        tblvarname = 'table'
+    # deal with the mapping of the variable names in the table first
+    cn = ('NBT', 'INT', 'X', 'Y')
+    tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
+    expr_list = ['NBT', 'INT'] + list(tab1_def_fields)
+    if not inverse:
+        tbl_datadic = {}
+        tbl_dic = tab1_dic['table']
+    else:
+        tbl_datadic = datadic[tblvarname]
+        tbl_dic = {}
+    tbl_ret = map_record_helper(expr_list, cn, tbl_dic, tbl_datadic,
+                                loop_vars, inverse)
+    # we remove NR and NP (last two elements) because redundant information
+    # and not used by write_tab1 and read_tab1
+    expr_list = tab1_cont_fields.children[:-2]
+    cn = ('C1', 'C2', 'L1', 'L2', 'table')
+    if 'table_name' in get_child_names(tab1_line_node):
+        tblname_expr = get_child(tab1_line_node, 'table_name')
+        expr_list.append(tblname_expr)
+        tblvarname = get_varname(tblname_expr)
+    else:
+        expr_list.append('table')
+        tblvarname = 'table'
+    main_ret = map_record_helper(expr_list, cn, tab1_dic, datadic, loop_vars, inverse)
+    # add the table dictionary to the main dictionary
+    new_tblname = tblvarname if not inverse else 'table'
+    main_ret[new_tblname] = tbl_ret
+    return main_ret
+
 
 def get_varname(expr):
     for ch in expr.children:

@@ -1,11 +1,12 @@
 from lark import Lark
 from tree_utils import is_tree, get_name, get_child, get_child_value
-from endf_parsing_utils import map_cont_dic, map_head_dic, map_text_dic, map_dir_dic
+from endf_parsing_utils import (map_cont_dic, map_head_dic, map_text_dic,
+        map_dir_dic, map_tab1_dic)
 from flow_control_utils import cycle_for_loop
 
 from endf_utils import (read_cont, write_cont, get_ctrl,
         write_head, read_head, read_text, write_text,
-        read_dir, write_dir)
+        read_dir, write_dir, read_tab1, write_tab1)
 
 
 class BasicEndfParser():
@@ -16,6 +17,7 @@ class BasicEndfParser():
         actions['cont_line'] = self.process_cont_line
         actions['text_line'] = self.process_text_line
         actions['dir_line'] = self.process_dir_line
+        actions['tab1_line'] = self.process_tab1_line
         actions['for_loop'] = self.process_for_loop
         self.actions = actions
 
@@ -60,6 +62,16 @@ class BasicEndfParser():
             newlines = write_dir(dir_dic, with_ctrl=True)
             self.lines += newlines
 
+    def process_tab1_line(self, tree):
+        if self.rwmode == 'read':
+            tab1_dic, self.ofs = read_tab1(lines, self.ofs)
+            map_tab1_dic(tree, tab1_dic, self.datadic, self.loop_vars)
+        else:
+            tab1_dic = map_tab1_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
+            tab1_dic.update(get_ctrl(self.datadic))
+            newlines = write_tab1(tab1_dic, with_ctrl=True)
+            self.lines += newlines
+
     def process_for_loop(self, tree):
         return cycle_for_loop(tree, self.run_instruction, self.datadic, self.loop_vars)
 
@@ -98,28 +110,30 @@ class BasicEndfParser():
 with open('endf.lark', 'r') as f:
     mygrammar = f.read()
 
-from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
+#from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
 #from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
-with open('testdata/mf1_mt451_test.txt', 'r') as f:
-    curcont = f.read()
+#with open('testdata/mf1_mt451_test.txt', 'r') as f:
+#    curcont = f.read()
 
-#curspec = "3 + 7 / (-N+2)"
-#curspec = '3*(-N/2+5)*2/5-7'
+from testdata.endf_spec import endf_spec_mf3_mt as curspec
+from testdata.endf_snippets import endf_cont_mf3_mt16 as curcont
 
-#myparser = Lark(mygrammar, start='code_token')
 myparser = Lark(mygrammar, start='code_token')
 tree = myparser.parse(curspec)
-print(tree.pretty())
+#print(tree.pretty())
 
 lines = curcont.splitlines()
 
 parser = BasicEndfParser()
 datadic = parser.parse(lines, tree)
 newlines = parser.write(datadic, tree)
-print(datadic)
+
+print('#####################')
+print('\n'.join(lines))
+print('---------------------')
 print('\n'.join(newlines))
+print('#####################')
 
 print(datadic)
-
 
 

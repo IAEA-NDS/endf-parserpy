@@ -89,19 +89,29 @@ def write_cont(dic, with_ctrl=True):
 write_head = write_cont
 read_head = read_cont
 
-def read_tab1(lines, ofs=0):
+def read_tab1(lines, ofs=0, with_ctrl=True):
     ofs = skip_blank_lines(lines, ofs)
+    startline = lines[ofs]
     dic, ofs = read_cont(lines, ofs)
     tbl_dic, ofs = read_tab1_body_lines(lines, ofs, dic['N1'], dic['N2'])
     dic['table'] = tbl_dic
+    if with_ctrl:
+        ctrl = read_ctrl(startline)
+        dic.update(ctrl)
     return dic, ofs
 
-def write_tab1(dic):
-    lines = write_cont(dic)
+def write_tab1(dic, with_ctrl=True):
+    dic = dic.copy()
     tbl_dic = dic['table']
+    dic.update({'N1': len(tbl_dic['NBT']),
+                'N2': len(tbl_dic['X'])})
+    lines = write_cont(dic, with_ctrl=True)
     tbl_lines = write_tab1_body_lines(
             tbl_dic['NBT'], tbl_dic['INT'],
             tbl_dic['X'], tbl_dic['Y'])
+    if with_ctrl:
+        ctrl = write_ctrl(dic)
+        tbl_lines = [t + ctrl for t in tbl_lines]
     return lines + tbl_lines
 
 def read_tab1_body_lines(lines, ofs, nr, np):

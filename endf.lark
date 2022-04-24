@@ -38,9 +38,9 @@ dir_fields :  expr "," expr "," expr "," expr
 // TAB1 record
 tab1_line : "[" ctrl_spec "/" tab1_fields "]" "TAB1" ("(" table_name ")")? NEWLINE*
 tab1_fields : tab1_cont_fields "/" tab1_def
-tab1_cont_fields : CFIELD "," CFIELD "," IFIELD "," IFIELD "," IFIELD "," IFIELD
-tab1_def : CNAME "/" CNAME
-table_name : CNAME
+tab1_cont_fields : expr "," expr "," expr "," expr "," expr "," expr
+tab1_def : VARNAME "/" VARNAME
+table_name : VARNAME
 
 // SEND record
 send_line : "SEND" NEWLINE*

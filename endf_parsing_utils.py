@@ -1,5 +1,21 @@
-from tree_utils import is_token, is_tree, get_name, get_value, get_child, get_child_names
+from tree_utils import (is_token, is_tree, get_name, get_value,
+        get_child, get_child_names, get_child_value)
 
+def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
+    ctrl_spec = get_child(record_line_node, 'ctrl_spec')
+    dic = record_dic if not inverse else datadic
+    cur_mat = dic['MAT']
+    cur_mf  = dic['MF']
+    cur_mt  = dic['MT']
+    exp_mat = get_child_value(ctrl_spec, 'MAT_SPEC')
+    exp_mf = get_child_value(ctrl_spec, 'MF_SPEC')
+    exp_mt = get_child_value(ctrl_spec, 'MT_SPEC')
+    if exp_mat != 'MAT' and int(exp_mat) != cur_mat:
+        raise TypeError(f'Expected MAT {exp_mat} but encountered {cur_mat}')
+    if exp_mf != 'MF' and int(exp_mf) != cur_mf:
+        raise TypeError(f'Expected MF {exp_mf} but encountered {cur_mf}')
+    if exp_mt != 'MT' and int(exp_mt) != cur_mt:
+        raise TypeError(f'Expected MT {exp_mt} but encountered {cur_mt}')
 
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inverse):
     # these internal functions are hacks to allow for default names for some fields:
@@ -56,26 +72,31 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     return newdic
 
 def map_text_dic(text_line_node, text_dic={}, datadic={}, loop_vars={}, inverse=False):
+    check_ctrl_spec(text_line_node, text_dic, datadic, inverse)
     expr_list = get_child(text_line_node, 'text_fields').children
     cn = ('HL',)
     return map_record_helper(expr_list, cn, text_dic, datadic, loop_vars, inverse)
 
 def map_head_dic(head_line_node, head_dic={}, datadic={}, loop_vars={}, inverse=False):
+    check_ctrl_spec(head_line_node, head_dic, datadic, inverse)
     expr_list = get_child(head_line_node, 'head_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, head_dic, datadic, loop_vars, inverse)
 
 def map_cont_dic(cont_line_node, cont_dic={}, datadic={}, loop_vars={}, inverse=False):
+    check_ctrl_spec(cont_line_node, cont_dic, datadic, inverse)
     expr_list = get_child(cont_line_node, 'cont_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, cont_dic, datadic, loop_vars, inverse)
 
 def map_dir_dic(dir_line_node, dir_dic={}, datadic={}, loop_vars={}, inverse=False):
+    check_ctrl_spec(dir_line_node, dir_dic, datadic, inverse)
     expr_list = get_child(dir_line_node, 'dir_fields').children
     cn = ('L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, dir_dic, datadic, loop_vars, inverse)
 
 def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=False):
+    check_ctrl_spec(tab1_line_node, tab1_dic, datadic, inverse)
     tab1_fields = get_child(tab1_line_node, 'tab1_fields')
     tab1_cont_fields = get_child(tab1_fields, 'tab1_cont_fields')
     tab1_def_fields = get_child(tab1_fields, 'tab1_def').children

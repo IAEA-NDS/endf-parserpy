@@ -61,7 +61,7 @@ class BasicEndfParser():
             self.lines += newlines
 
     def process_for_loop(self, tree):
-        return cycle_for_loop(tree, self.run_instruction, self.loop_vars)
+        return cycle_for_loop(tree, self.run_instruction, self.datadic, self.loop_vars)
 
     def run_instruction(self, t):
         if t.data in self.actions:

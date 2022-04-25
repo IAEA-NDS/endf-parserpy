@@ -15,6 +15,22 @@ from endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
 class BasicEndfParser():
 
     def __init__(self):
+        # obtain the parsing tree for the language
+        # in which ENDF reading recipes are formulated
+        with open('endf.lark', 'r') as f:
+            endf_recipe_grammar = f.read()
+        endf_recipe_grammar_parser= Lark(endf_recipe_grammar, start='code_token')
+        from endf_spec import spec_dic
+        tree_dic = {}
+        for mf in spec_dic:
+            tree_dic.setdefault(mf, {})
+            if isinstance(spec_dic[mf], str):
+                tree_dic[mf] = endf_recipe_grammar_parser.parse(spec_dic[mf])
+            else:
+                for mt in spec_dic[mf]:
+                    tree_dic[mf][mt] = endf_recipe_grammar_parser.parse(spec_dic[mf][mt])
+        self.tree_dic = tree_dic
+
         # endf record treatment
         endf_actions = {}
         endf_actions['head_line'] = self.process_head_line
@@ -147,7 +163,8 @@ class BasicEndfParser():
         self.rwmode = dump['rwmode']
         self.ofs = dump['ofs']
 
-    def get_responsible_tree(self, tree_dic, mf, mt):
+    def get_responsible_tree(self, dic, mf, mt):
+        tree_dic = self.tree_dic
         if mf in tree_dic:
             if is_tree(tree_dic[mf]):
                 return tree_dic[mf]
@@ -156,7 +173,8 @@ class BasicEndfParser():
         else:
             return None
 
-    def parse(self, lines, tree_dic):
+    def parse(self, lines):
+        tree_dic = self.tree_dic
         mfmt_dic = split_sections(lines)
         for mf in mfmt_dic:
             for mt in mfmt_dic[mf]:
@@ -169,7 +187,8 @@ class BasicEndfParser():
                     mfmt_dic[mf][mt] = self.datadic
         return mfmt_dic
 
-    def write(self, endf_dic, tree_dic, mf_list=None, mt_list=None):
+    def write(self, endf_dic, mf_list=None, mt_list=None):
+        tree_dic = self.tree_dic
         lines = []
         for mf in sorted(endf_dic):
             for mt in sorted(endf_dic[mf]):
@@ -207,37 +226,18 @@ class BasicEndfParser():
         return lines
 
 
-# helpful functions
+# some testing
 
-# some test data for development
-
-with open('endf.lark', 'r') as f:
-    mygrammar = f.read()
-
-myparser = Lark(mygrammar, start='code_token')
-
-from endf_spec import spec_dic
 with open('n_2925_29-Cu-63.endf', 'r') as f:
     curcont = f.read()
-
-tree_dic = {}
-for mf in spec_dic:
-    tree_dic.setdefault(mf, {})
-    if isinstance(spec_dic[mf], str):
-        tree_dic[mf] = myparser.parse(spec_dic[mf])
-    else:
-        for mt in spec_dic[mf]:
-            tree_dic[mf][mt] = myparser.parse(spec_dic[mf][mt])
-
-
-# test parsing
 xlines = curcont.splitlines()
+
 parser = BasicEndfParser()
-datadic = parser.parse(xlines, tree_dic)
+datadic = parser.parse(xlines)
 
 # test writing back
 parser = BasicEndfParser()
-newlines = parser.write(datadic, tree_dic)
+newlines = parser.write(datadic)
 
 outlines = '\n'.join(newlines)
 with open('testdata/my_n_2925_29-Cu-63.endf', 'w') as f:

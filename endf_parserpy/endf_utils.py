@@ -1,4 +1,4 @@
-from fortran_utils import (float2fortstr, fortstr2float,
+from .fortran_utils import (float2fortstr, fortstr2float,
         read_fort_floats, write_fort_floats)
 
 

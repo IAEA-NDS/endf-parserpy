@@ -1,5 +1,5 @@
 import re
-from tree_utils import (is_token, is_tree, get_name, get_value,
+from .tree_utils import (is_token, is_tree, get_name, get_value,
         get_child, get_child_names, get_child_value)
 
 def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):

@@ -1,5 +1,5 @@
-from tree_utils import get_child, get_child_value, get_child_names
-from endf_parsing_utils import get_varname, get_indexvar, eval_expr
+from .tree_utils import get_child, get_child_value, get_child_names
+from .endf_parsing_utils import get_varname, get_indexvar, eval_expr
 
 def eval_expr_with_var(expr, datadic, loop_vars):
     v = eval_expr(expr)

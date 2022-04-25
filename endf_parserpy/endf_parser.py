@@ -1,11 +1,11 @@
 from copy import deepcopy
 from lark import Lark
-from tree_utils import is_tree, get_name, get_child, get_child_value
-from endf_parsing_utils import (map_cont_dic, map_head_dic, map_text_dic,
+from .tree_utils import is_tree, get_name, get_child, get_child_value
+from .endf_parsing_utils import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_tab1_dic)
-from flow_control_utils import cycle_for_loop, evaluate_if_statement, should_proceed
+from .flow_control_utils import cycle_for_loop, evaluate_if_statement, should_proceed
 
-from endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
+from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         write_head, read_head, read_text, write_text,
         read_dir, write_dir, read_tab1, write_tab1,
         read_send, write_send, write_fend, write_mend, write_tend,
@@ -17,8 +17,8 @@ class BasicEndfParser():
     def __init__(self):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
-        from endf_lark import endf_recipe_grammar
-        from endf_spec import spec_dic
+        from .endf_lark import endf_recipe_grammar
+        from .endf_spec import spec_dic
         endf_recipe_grammar_parser= Lark(endf_recipe_grammar, start='code_token')
         tree_dic = {}
         for mf in spec_dic:
@@ -222,22 +222,4 @@ class BasicEndfParser():
         lines.extend(write_mend(with_ctrl=True, with_ns=True))
         lines.extend(write_tend(with_ctrl=True, with_ns=True))
         return lines
-
-
-# some testing
-
-with open('n_2925_29-Cu-63.endf', 'r') as f:
-    curcont = f.read()
-xlines = curcont.splitlines()
-
-parser = BasicEndfParser()
-datadic = parser.parse(xlines)
-
-# test writing back
-parser = BasicEndfParser()
-newlines = parser.write(datadic)
-
-outlines = '\n'.join(newlines)
-with open('testdata/my_n_2925_29-Cu-63.endf', 'w') as f:
-    f.write(outlines)
 

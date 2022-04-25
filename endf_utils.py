@@ -1,13 +1,5 @@
 from fortran_utils import float2fortstr, fortstr2float, read_fort_floats
 
-def skip_blank_lines(lines, ofs):
-    if ofs >= len(lines):
-        raise IndexError('expected input but consumed all lines')
-    while ''.join(lines[ofs].strip()) == '':
-        ofs += 1
-        if ofs >= len(lines):
-            raise IndexError('expected input but consumed all lines')
-    return ofs
 
 def read_ctrl(line):
     return {'MAT': int(line[66:70]),
@@ -172,4 +164,34 @@ def write_tab1_body_lines(NBT, INT, xvals, yvals):
     if elcnt != 0:
         lines.append(curline)
     return lines
+
+def is_blank_line(line):
+    l = ''.join(line.strip())
+    return l == ''
+
+def skip_blank_lines(lines, ofs):
+    if ofs >= len(lines):
+        raise IndexError('expected input but consumed all lines')
+    while is_blank_line(lines[ofs]):
+        ofs += 1
+        if ofs >= len(lines):
+            raise IndexError('expected input but consumed all lines')
+    return ofs
+
+def split_sections(lines):
+    mfdic = {}
+    for line in lines:
+        if is_blank_line(line):
+            continue
+        dic = read_ctrl(line)
+        mf = dic['MF']
+        mt = dic['MT']
+        # end markers (SEND, MEND, FEND, TEND) ignored
+        if mf != 0 and mt != 0:
+            mfdic.setdefault(mf, {})
+            mtdic = mfdic[mf]
+            mt = dic['MT']
+            mtdic.setdefault(mt, [])
+            mtdic[mt].append(line)
+    return mfdic
 

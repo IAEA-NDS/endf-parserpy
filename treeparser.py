@@ -5,10 +5,10 @@ from endf_parsing_utils import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_tab1_dic)
 from flow_control_utils import cycle_for_loop, evaluate_if_statement, should_proceed
 
-from endf_utils import (read_cont, write_cont, get_ctrl,
+from endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         write_head, read_head, read_text, write_text,
         read_dir, write_dir, read_tab1, write_tab1,
-        read_send, write_send)
+        read_send, write_send, split_sections)
 
 
 class BasicEndfParser():
@@ -109,9 +109,13 @@ class BasicEndfParser():
             for child in t.children:
                 if is_tree(child):
                     self.run_instruction(child)
-                else:
-                    pass
-                    print(str(child))
+
+    def reset_parser_state(self, rwmode='read', lines=[], datadic={}):
+        self.loop_vars = {}
+        self.datadic = datadic
+        self.lines = lines
+        self.rwmode = rwmode
+        self.ofs = 0
 
     def dump_parser_state(self):
         return {'loop_vars': deepcopy(self.loop_vars),
@@ -130,23 +134,33 @@ class BasicEndfParser():
         self.rwmode = dump['rwmode']
         self.ofs = dump['ofs']
 
-    def parse(self, lines, tree):
-        self.loop_vars = {}
-        self.datadic = {}
-        self.lines = lines
-        self.rwmode = 'read'
-        self.ofs = 0
-        self.run_instruction(tree)
-        return self.datadic
+    def parse(self, lines, tree_dic):
+        mfmt_dic = split_sections(lines)
+        for mf in mfmt_dic:
+            for mt in mfmt_dic[mf]:
+                curlines = mfmt_dic[mf][mt]
+                if mf in tree_dic and mt in tree_dic[mf]:
+                    self.reset_parser_state(rwmode='read', lines=curlines)
+                    self.run_instruction(tree)
+                    mfmt_dic[mf][mt] = self.datadic
+        return mfmt_dic
 
-    def write(self, endf_dic, tree):
-        self.loop_vars = {}
-        self.datadic = endf_dic
-        self.lines = []
-        self.rwmode = 'write'
-        self.ofs = 0
-        self.run_instruction(tree)
-        return self.lines
+    def write(self, endf_dic, tree_dic):
+        lines = []
+        for mf in sorted(endf_dic):
+            for mt in sorted(endf_dic[mf]):
+                if mf in tree_dic and mt in tree_dic[mf]:
+                    datadic = endf_dic[mf][mt]
+                    self.reset_parser_state(rwmode='write', datadic=datadic)
+                    self.run_instruction(tree)
+                    lines.extend(self.lines)
+                else:
+                    # if no recipe is available to parse a
+                    # section, it will be preserved as a
+                    # string in the parse step
+                    # and we output it unchanged
+                    lines.extend(endf_dic[mf][mt])
+        return lines
 
 
 # helpful functions
@@ -156,10 +170,11 @@ class BasicEndfParser():
 with open('endf.lark', 'r') as f:
     mygrammar = f.read()
 
-#from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
+from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
 #from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
-#with open('testdata/mf1_mt451_test.txt', 'r') as f:
-#    curcont = f.read()
+
+with open('n_2925_29-Cu-63.endf', 'r') as f:
+    curcont = f.read()
 
 #from testdata.endf_spec import endf_spec_mf3_mt as curspec
 #from testdata.endf_snippets import endf_cont_mf3_mt16 as curcont
@@ -167,27 +182,29 @@ with open('endf.lark', 'r') as f:
 #from testdata.endf_spec import endf_spec_several_mfmt as curspec
 #from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
 
-from testdata.endf_spec import endf_spec_mf1_mt451 as curspec
-from testdata.endf_snippets import endf_cont_mf1_mt451 as curcont
+#from testdata.endf_spec import endf_spec_mf1_mt451 as curspec
+#from testdata.endf_snippets import endf_cont_mf1_mt451 as curcont
 
 myparser = Lark(mygrammar, start='code_token')
 tree = myparser.parse(curspec)
+
+tree_dic = {1: {451: tree}}
 #print(tree.pretty())
 
 xlines = curcont.splitlines()
 
 parser = BasicEndfParser()
-datadic = parser.parse(xlines, tree)
+datadic = parser.parse(xlines, tree_dic)
 
 parser = BasicEndfParser()
-newlines = parser.write(datadic, tree)
-
-print('#####################')
-print('\n'.join(xlines))
-print('---------------------')
-print('\n'.join(newlines))
-print('#####################')
-
-print(datadic)
+newlines = parser.write(datadic, tree_dic)
+#
+#print('#####################')
+#print('\n'.join(xlines))
+#print('---------------------')
+#print('\n'.join(newlines))
+#print('#####################')
+#
+print(datadic[3][16])
 
 

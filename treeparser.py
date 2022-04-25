@@ -8,7 +8,8 @@ from flow_control_utils import cycle_for_loop, evaluate_if_statement, should_pro
 from endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         write_head, read_head, read_text, write_text,
         read_dir, write_dir, read_tab1, write_tab1,
-        read_send, write_send, split_sections)
+        read_send, write_send, write_fend, write_mend, write_tend,
+        split_sections)
 
 
 class BasicEndfParser():
@@ -115,8 +116,9 @@ class BasicEndfParser():
         # NOTE: default argument datadic={} does not work because
         #       Python's default arguments are evaluated once when
         #       the function is defined, not each time the function
-        #       is called.
-        # For details see:
+        #       is called, and then changes of a mutable object in the
+        #       function are preserved across function evaluations.
+        # For a nice explanation and further details see:
         # https://medium.com/nerd-for-tech/how-default-parameters-could-cause-havoc-python-e6cb3d8fefb8
         # TO CHECK: mutable default arguments have been used elsewhere.
         #           Better to replace to avoid problems during future
@@ -179,13 +181,29 @@ class BasicEndfParser():
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode='write', datadic=datadic)
                     self.run_instruction(cur_tree)
-                    lines.extend(self.lines)
+                    # add the NS number
+                    curlines = [l + str(i).rjust(5)
+                                for i, l in enumerate(self.lines, 1)]
+                    lines.extend(curlines)
                 else:
+                    # nothing is parsed here, but in the spirit of
+                    # defensive coding, we reset the parser nevertheless
+                    self.reset_parser_state(rwmode='write')
                     # if no recipe is available to parse a
                     # MF/MT section, it will be preserved as a
                     # list of strings in the parse step
                     # and we output that unchanged
+                    curlines = endf_dic[mf][mt]
                     lines.extend(endf_dic[mf][mt])
+                    # update the MAT, MF, MT number
+                    self.datadic = read_ctrl(lines[-1])
+
+                # add the SEND record in between the MT subections
+                lines.extend(write_send(self.datadic, with_ctrl=True, with_ns=True))
+            lines.extend(write_fend(self.datadic, with_ctrl=True, with_ns=True))
+
+        lines.extend(write_mend(with_ctrl=True, with_ns=True))
+        lines.extend(write_tend(with_ctrl=True, with_ns=True))
         return lines
 
 
@@ -247,5 +265,7 @@ print(datadic[3][103])
 print('\n'*5)
 print('\n'.join(newlines))
 
-
+outlines = '\n'.join(newlines)
+with open('testdata/my_n_2925_29-Cu-63.endf', 'w') as f:
+    f.write(outlines)
 

@@ -86,7 +86,7 @@ def read_send(lines, ofs=0, with_ctrl=True):
            raise ValueError('Not a Section End (SEND) record')
     return dic, ofs
 
-def write_send(dic, with_ctrl=True):
+def write_send(dic, with_ctrl=True, with_ns=True):
     C1 = float2fortstr(0)
     C2 = float2fortstr(0)
     L1 = '0'.rjust(11)
@@ -96,7 +96,47 @@ def write_send(dic, with_ctrl=True):
     ctrl_dic = get_ctrl(dic)
     ctrl_dic['MT'] = 0
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
-    return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
+    NS = '99999' if with_ns else ''
+    return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
+
+def write_fend(dic, with_ctrl=True, with_ns=True):
+    C1 = float2fortstr(0)
+    C2 = float2fortstr(0)
+    L1 = '0'.rjust(11)
+    L2 = '0'.rjust(11)
+    N1 = '0'.rjust(11)
+    N2 = '0'.rjust(11)
+    ctrl_dic = get_ctrl(dic)
+    ctrl_dic['MF'] = 0
+    ctrl_dic['MT'] = 0
+    CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
+    NS = '0'.rjust(5) if with_ns else ''
+    return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
+
+def write_mend(dic=None, with_ctrl=True, with_ns=True):
+    C1 = float2fortstr(0)
+    C2 = float2fortstr(0)
+    L1 = '0'.rjust(11)
+    L2 = '0'.rjust(11)
+    N1 = '0'.rjust(11)
+    N2 = '0'.rjust(11)
+    ctrl_dic = {'MAT': 0, 'MF': 0, 'MT': 0}
+    CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
+    NS = '0'.rjust(5) if with_ns else ''
+    return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
+
+def write_tend(dic=None, with_ctrl=True, with_ns=True):
+    C1 = float2fortstr(0)
+    C2 = float2fortstr(0)
+    L1 = '0'.rjust(11)
+    L2 = '0'.rjust(11)
+    N1 = '0'.rjust(11)
+    N2 = '0'.rjust(11)
+    ctrl_dic = {'MAT': -1, 'MF': 0, 'MT': 0}
+    CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
+    NS = '0'.rjust(5) if with_ns else ''
+    return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
+
 
 # alias for the endf HEAD record type
 # which is for the time being dealt with

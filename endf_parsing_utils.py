@@ -1,3 +1,4 @@
+import re
 from tree_utils import (is_token, is_tree, get_name, get_value,
         get_child, get_child_names, get_child_value)
 
@@ -21,7 +22,8 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     # these internal functions are hacks to allow for default names for some fields:
     # some fields in the ENDF language specification are optional and then no
     # Tree/Token is created for them but we still need to use their default names
-    # in the mapping
+    # in the mapping. For instance, the specification (xstable) after
+    # [MAT, 3, MT/ QM, QI, 0, LR, NR, NP / E / xs]TAB1 (xstable) is optional
     def get_varname_tmp(expr):
         return expr if isinstance(expr, str) else get_varname(expr)
     def get_indexvar_tmp(expr):
@@ -31,8 +33,6 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     newkeys = (eval_expr(t)[0] if vn[i] is None else vn[i]
             for i, t in enumerate(expr_list))
     indexvars = tuple(get_indexvar_tmp(t) for t in expr_list)
-    #if 'table' in basekeys:
-    #    import pdb; pdb.set_trace()
     if not inverse:
         zipit = zip(basekeys, newkeys, indexvars)
         dic = record_dic
@@ -165,7 +165,12 @@ def eval_expr(expr):
     if name == 'extvarname':
         return (0., 1.)
     elif name == 'NUMBER':
-        v = float(expr.value)
+        # if it was an integer, we preserve this quality
+        vstr = expr.value
+        if re.match('^ *[0-9]+ *$', vstr):
+            v = int(expr.value)
+        else:
+            v = float(expr.value)
         return (v, 0.)
     elif name == 'minusexpr':
         v = eval_expr(expr.children[0])

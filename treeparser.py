@@ -216,22 +216,9 @@ with open('endf.lark', 'r') as f:
 
 myparser = Lark(mygrammar, start='code_token')
 
-#from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
-#from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
-
 from endf_spec import spec_dic
-
 with open('n_2925_29-Cu-63.endf', 'r') as f:
     curcont = f.read()
-
-#from testdata.endf_spec import endf_spec_mf3_mt as curspec
-#from testdata.endf_snippets import endf_cont_mf3_mt16 as curcont
-
-#from testdata.endf_spec import endf_spec_several_mfmt as curspec
-#from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
-
-#from testdata.endf_spec import endf_spec_mf1_mt451 as curspec
-#from testdata.endf_snippets import endf_cont_mf1_mt451 as curcont
 
 tree_dic = {}
 for mf in spec_dic:
@@ -243,27 +230,14 @@ for mf in spec_dic:
             tree_dic[mf][mt] = myparser.parse(spec_dic[mf][mt])
 
 
+# test parsing
 xlines = curcont.splitlines()
-
 parser = BasicEndfParser()
 datadic = parser.parse(xlines, tree_dic)
 
+# test writing back
 parser = BasicEndfParser()
 newlines = parser.write(datadic, tree_dic)
-#
-#print('#####################')
-#print('\n'.join(xlines))
-#print('---------------------')
-#print('\n'.join(newlines))
-#print('#####################')
-#
-
-print(datadic[1][451])
-
-print('\n'*5)
-print(datadic[3][103])
-print('\n'*5)
-print('\n'.join(newlines))
 
 outlines = '\n'.join(newlines)
 with open('testdata/my_n_2925_29-Cu-63.endf', 'w') as f:

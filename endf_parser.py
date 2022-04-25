@@ -17,10 +17,9 @@ class BasicEndfParser():
     def __init__(self):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
-        with open('endf.lark', 'r') as f:
-            endf_recipe_grammar = f.read()
-        endf_recipe_grammar_parser= Lark(endf_recipe_grammar, start='code_token')
+        from endf_lark import endf_recipe_grammar
         from endf_spec import spec_dic
+        endf_recipe_grammar_parser= Lark(endf_recipe_grammar, start='code_token')
         tree_dic = {}
         for mf in spec_dic:
             tree_dic.setdefault(mf, {})
@@ -30,7 +29,6 @@ class BasicEndfParser():
                 for mt in spec_dic[mf]:
                     tree_dic[mf][mt] = endf_recipe_grammar_parser.parse(spec_dic[mf][mt])
         self.tree_dic = tree_dic
-
         # endf record treatment
         endf_actions = {}
         endf_actions['head_line'] = self.process_head_line

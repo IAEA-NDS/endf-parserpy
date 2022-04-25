@@ -1,3 +1,5 @@
+endf_recipe_grammar = \
+"""
 %import common.DIGIT
 %import common.NEWLINE
 %import common.STRING
@@ -82,4 +84,5 @@ INDEXVAR : CNAME
 // possible field values
 CFIELD: CNAME | "0.0"
 IFIELD: CNAME | "0"
+"""
 

@@ -1,4 +1,5 @@
-from fortran_utils import float2fortstr, fortstr2float, read_fort_floats
+from fortran_utils import (float2fortstr, fortstr2float,
+        read_fort_floats, write_fort_floats)
 
 
 def read_ctrl(line):
@@ -129,18 +130,10 @@ def write_tab1(dic, with_ctrl=True):
     return lines + tbl_lines
 
 def read_tab1_body_lines(lines, ofs, nr, np):
-    NBT = []; INT = []
-    for i in range(nr):
-        NBT.append(int(lines[ofs+i][:11]))
-        INT.append(int(lines[ofs+i][11:22]))
-    ofs += nr
-    vals = []
-    while np > 0:
-        l = lines[ofs]
-        m = min(6, 2*np)
-        vals += read_fort_floats(l, m)
-        np -= m // 2
-        ofs += 1
+    vals, ofs = read_endf_numbers(lines, 2*nr, ofs, to_int=True)
+    NBT = vals[::2]
+    INT = vals[1::2]
+    vals, ofs = read_endf_numbers(lines, 2*np, ofs)
     xvals = vals[::2]
     yvals = vals[1::2]
     return {'NBT': NBT, 'INT': INT, 'X': xvals,'Y':  yvals}, ofs
@@ -148,21 +141,37 @@ def read_tab1_body_lines(lines, ofs, nr, np):
 def write_tab1_body_lines(NBT, INT, xvals, yvals):
     assert len(NBT) == len(INT)
     assert len(xvals) == len(yvals)
+    vals = [None]*(2*len(NBT))
+    vals[::2] = NBT
+    vals[1::2] = INT
+    lines = write_endf_numbers(vals, to_int=True)
+    vals = [None]*(2*len(xvals))
+    vals[::2] = xvals
+    vals[1::2] = yvals
+    lines.extend(write_endf_numbers(vals))
+    return lines
+
+def read_endf_numbers(lines, num, ofs, to_int=False):
+    vals = []
+    while num > 0:
+        l = lines[ofs]
+        m = min(6, num)
+        vals += read_fort_floats(l, m)
+        num -= 6
+        ofs += 1
+    if to_int:
+        vals = [int(v) for v in vals]
+    return vals, ofs
+
+def write_endf_numbers(vals, to_int=False):
     lines = []
-    for i in range(len(NBT)):
-        curline = str(NBT[i]).rjust(11) + str(INT[i]).rjust(11) + ' '*44
-        lines.append(curline)
-    elcnt = 0
-    curline = ''
-    for x, y in zip(xvals, yvals):
-        curline += float2fortstr(x, width=11) + float2fortstr(y, width=11)
-        elcnt += 2
-        if elcnt == 6:
-            elcnt = 0
-            lines.append(curline)
-            curline = ''
-    if elcnt != 0:
-        lines.append(curline)
+    for i in range(0, len(vals), 6):
+        m = min(i+6, len(vals))
+        if to_int:
+            lines.append(''.join([str(v).rjust(11) for v in vals[i:m]]))
+        else:
+            lines.append(write_fort_floats(vals[i:m], w=11))
+    lines[-1] = lines[-1].ljust(66)
     return lines
 
 def is_blank_line(line):

@@ -96,22 +96,33 @@ class BasicEndfParser():
                               dump_state = self.dump_parser_state,
                               restore_state = self.restore_parser_state)
 
-    def run_instruction(self, t):
-        if t.data in self.endf_actions:
+    def run_instruction(self, tree):
+        if tree.data in self.endf_actions:
             if should_proceed(tree, self.datadic, self.loop_vars,
                                          action_type='endf_action'):
-                self.endf_actions[t.data](t)
-        elif t.data in self.flow_actions:
+                self.endf_actions[tree.data](tree)
+        elif tree.data in self.flow_actions:
             if should_proceed(tree, self.datadic, self.loop_vars,
                                           action_type='flow_action'):
-                self.flow_actions[t.data](t)
+                self.flow_actions[tree.data](tree)
         else:
-            for child in t.children:
+            for child in tree.children:
                 if is_tree(child):
                     self.run_instruction(child)
 
-    def reset_parser_state(self, rwmode='read', lines=[], datadic={}):
+    def reset_parser_state(self, rwmode='read', lines=None, datadic=None):
         self.loop_vars = {}
+        # NOTE: default argument datadic={} does not work because
+        #       Python's default arguments are evaluated once when
+        #       the function is defined, not each time the function
+        #       is called.
+        # For details see:
+        # https://medium.com/nerd-for-tech/how-default-parameters-could-cause-havoc-python-e6cb3d8fefb8
+        # TO CHECK: mutable default arguments have been used elsewhere.
+        #           Better to replace to avoid problems during future
+        #           development.
+        datadic = datadic if datadic is not None else {}
+        lines = lines if lines is not None else []
         self.datadic = datadic
         self.lines = lines
         self.rwmode = rwmode
@@ -134,31 +145,46 @@ class BasicEndfParser():
         self.rwmode = dump['rwmode']
         self.ofs = dump['ofs']
 
+    def get_responsible_tree(self, tree_dic, mf, mt):
+        if mf in tree_dic:
+            if is_tree(tree_dic[mf]):
+                return tree_dic[mf]
+            elif mt in tree_dic[mf] and is_tree(tree_dic[mf][mt]):
+                return tree_dic[mf][mt]
+        else:
+            return None
+
     def parse(self, lines, tree_dic):
         mfmt_dic = split_sections(lines)
         for mf in mfmt_dic:
             for mt in mfmt_dic[mf]:
+                print(f'working on MF {mf} and MT {mt}\n')
                 curlines = mfmt_dic[mf][mt]
-                if mf in tree_dic and mt in tree_dic[mf]:
+                cur_tree = self.get_responsible_tree(tree_dic, mf, mt)
+                if cur_tree is not None:
                     self.reset_parser_state(rwmode='read', lines=curlines)
-                    self.run_instruction(tree)
+                    self.run_instruction(cur_tree)
                     mfmt_dic[mf][mt] = self.datadic
         return mfmt_dic
 
-    def write(self, endf_dic, tree_dic):
+    def write(self, endf_dic, tree_dic, mf_list=None, mt_list=None):
         lines = []
         for mf in sorted(endf_dic):
             for mt in sorted(endf_dic[mf]):
-                if mf in tree_dic and mt in tree_dic[mf]:
+                if ((mf_list is not None and mf not in mf_list) or
+                    (mt_list is not None and mt not in mt_list)):
+                    continue
+                cur_tree = self.get_responsible_tree(tree_dic, mf, mt)
+                if cur_tree is not None:
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode='write', datadic=datadic)
-                    self.run_instruction(tree)
+                    self.run_instruction(cur_tree)
                     lines.extend(self.lines)
                 else:
                     # if no recipe is available to parse a
-                    # section, it will be preserved as a
-                    # string in the parse step
-                    # and we output it unchanged
+                    # MF/MT section, it will be preserved as a
+                    # list of strings in the parse step
+                    # and we output that unchanged
                     lines.extend(endf_dic[mf][mt])
         return lines
 
@@ -170,8 +196,12 @@ class BasicEndfParser():
 with open('endf.lark', 'r') as f:
     mygrammar = f.read()
 
-from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
+myparser = Lark(mygrammar, start='code_token')
+
+#from testdata.endf_spec import endf_spec_mf1_mt451_wtext_wdir as curspec
 #from testdata.endf_snippets import endf_cont_mf1_mt451_wtext_wdir as curcont
+
+from endf_spec import spec_dic
 
 with open('n_2925_29-Cu-63.endf', 'r') as f:
     curcont = f.read()
@@ -185,11 +215,15 @@ with open('n_2925_29-Cu-63.endf', 'r') as f:
 #from testdata.endf_spec import endf_spec_mf1_mt451 as curspec
 #from testdata.endf_snippets import endf_cont_mf1_mt451 as curcont
 
-myparser = Lark(mygrammar, start='code_token')
-tree = myparser.parse(curspec)
+tree_dic = {}
+for mf in spec_dic:
+    tree_dic.setdefault(mf, {})
+    if isinstance(spec_dic[mf], str):
+        tree_dic[mf] = myparser.parse(spec_dic[mf])
+    else:
+        for mt in spec_dic[mf]:
+            tree_dic[mf][mt] = myparser.parse(spec_dic[mf][mt])
 
-tree_dic = {1: {451: tree}}
-#print(tree.pretty())
 
 xlines = curcont.splitlines()
 
@@ -205,6 +239,13 @@ newlines = parser.write(datadic, tree_dic)
 #print('\n'.join(newlines))
 #print('#####################')
 #
-print(datadic[3][16])
+
+print(datadic[1][451])
+
+print('\n'*5)
+print(datadic[3][103])
+print('\n'*5)
+print('\n'.join(newlines))
+
 
 

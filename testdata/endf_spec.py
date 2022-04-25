@@ -2,7 +2,7 @@ endf_spec_mf1_mt451 = \
 """
 [MAT, 1,451/ ZA, AWR, LRP, LFI, NLIB, NMOD]HEAD
 [MAT, 1,451/ ELIS, STA, LIS, LISO, 0, NFOR]CONT
-if 1 == MF:  
+if 0 == TEMP [lookahead=2]:  
     [MAT, 1,451/ AWI, EMAX, LREL, 0, NSUB, NVER]CONT
     [MAT, 1,451/ TEMP, 0.0, LDRV, 0, NWD, NXC]CONT 
 endif

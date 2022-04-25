@@ -1,8 +1,9 @@
+from copy import deepcopy
 from lark import Lark
 from tree_utils import is_tree, get_name, get_child, get_child_value
 from endf_parsing_utils import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_tab1_dic)
-from flow_control_utils import cycle_for_loop, evaluate_if_statement
+from flow_control_utils import cycle_for_loop, evaluate_if_statement, should_proceed
 
 from endf_utils import (read_cont, write_cont, get_ctrl,
         write_head, read_head, read_text, write_text,
@@ -13,18 +14,20 @@ from endf_utils import (read_cont, write_cont, get_ctrl,
 class BasicEndfParser():
 
     def __init__(self):
-        actions = {}
         # endf record treatment
-        actions['head_line'] = self.process_head_line
-        actions['cont_line'] = self.process_cont_line
-        actions['text_line'] = self.process_text_line
-        actions['dir_line'] = self.process_dir_line
-        actions['tab1_line'] = self.process_tab1_line
-        actions['send_line'] = self.process_send_line
+        endf_actions = {}
+        endf_actions['head_line'] = self.process_head_line
+        endf_actions['cont_line'] = self.process_cont_line
+        endf_actions['text_line'] = self.process_text_line
+        endf_actions['dir_line'] = self.process_dir_line
+        endf_actions['tab1_line'] = self.process_tab1_line
+        endf_actions['send_line'] = self.process_send_line
+        self.endf_actions = endf_actions
         # program flow
-        actions['for_loop'] = self.process_for_loop
-        actions['if_statement'] = self.process_if_statement
-        self.actions = actions
+        flow_actions = {}
+        flow_actions['for_loop'] = self.process_for_loop
+        flow_actions['if_statement'] = self.process_if_statement
+        self.flow_actions = flow_actions
 
     def process_text_line(self, tree):
         if self.rwmode == 'read':
@@ -89,18 +92,43 @@ class BasicEndfParser():
 
     def process_if_statement(self, tree):
         evaluate_if_statement(tree, self.run_instruction,
-                              self.datadic, self.loop_vars)
+                              self.datadic, self.loop_vars,
+                              dump_state = self.dump_parser_state,
+                              restore_state = self.restore_parser_state)
 
     def run_instruction(self, t):
-        if t.data in self.actions:
-            print(t.data)
-            self.actions[t.data](t)
+        if t.data in self.endf_actions:
+            if should_proceed(tree, self.datadic, self.loop_vars,
+                                         action_type='endf_action'):
+                self.endf_actions[t.data](t)
+        elif t.data in self.flow_actions:
+            if should_proceed(tree, self.datadic, self.loop_vars,
+                                          action_type='flow_action'):
+                self.flow_actions[t.data](t)
         else:
             for child in t.children:
                 if is_tree(child):
                     self.run_instruction(child)
                 else:
+                    pass
                     print(str(child))
+
+    def dump_parser_state(self):
+        return {'loop_vars': deepcopy(self.loop_vars),
+                'datadic' : deepcopy(self.datadic),
+                'lines' : deepcopy(self.lines),
+                'rwmode' : self.rwmode,
+                'ofs' : self.ofs}
+
+    def restore_parser_state(self, dump):
+        self.loop_vars.clear()
+        self.loop_vars.update(dump['loop_vars'])
+        self.datadic.clear()
+        self.datadic.update(dump['datadic'])
+        self.lines.clear()
+        self.lines.extend(dump['lines'])
+        self.rwmode = dump['rwmode']
+        self.ofs = dump['ofs']
 
     def parse(self, lines, tree):
         self.loop_vars = {}

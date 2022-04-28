@@ -2,14 +2,14 @@ from copy import deepcopy
 from lark import Lark
 from .tree_utils import is_tree, get_name, get_child, get_child_value
 from .endf_parsing_utils import (map_cont_dic, map_head_dic, map_text_dic,
-        map_dir_dic, map_tab1_dic)
+        map_dir_dic, map_tab1_dic, map_list_dic)
 from .flow_control_utils import cycle_for_loop, evaluate_if_statement, should_proceed
 
 from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         write_head, read_head, read_text, write_text,
         read_dir, write_dir, read_tab1, write_tab1,
         read_send, write_send, write_fend, write_mend, write_tend,
-        split_sections)
+        read_list, write_list, split_sections)
 
 
 class BasicEndfParser():
@@ -36,6 +36,7 @@ class BasicEndfParser():
         endf_actions['text_line'] = self.process_text_line
         endf_actions['dir_line'] = self.process_dir_line
         endf_actions['tab1_line'] = self.process_tab1_line
+        endf_actions['list_line'] = self.process_list_line
         endf_actions['send_line'] = self.process_send_line
         self.endf_actions = endf_actions
         # program flow
@@ -93,6 +94,18 @@ class BasicEndfParser():
             tab1_dic = map_tab1_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
             tab1_dic.update(get_ctrl(self.datadic))
             newlines = write_tab1(tab1_dic, with_ctrl=True)
+            self.lines += newlines
+
+    def process_list_line(self, tree):
+        if self.rwmode == 'read':
+            list_dic, self.ofs = read_list(self.lines, self.ofs)
+            map_list_dic(tree, list_dic, self.datadic, self.loop_vars)
+            # TODO: remove
+            self.ofs += 1
+        else:
+            list_dic = map_list_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
+            list_dic.update(get_ctrl(self.datadic))
+            newlines = write_list(list_dic, with_ctrl=True)
             self.lines += newlines
 
     def process_send_line(self, tree):

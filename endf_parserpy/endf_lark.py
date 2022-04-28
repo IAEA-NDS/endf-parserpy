@@ -9,7 +9,7 @@ endf_recipe_grammar = \
 %ignore " "
 
 code_token: (endf_line | for_loop | if_statement | NEWLINE)*
-endf_line : head_line | cont_line | tab1_line
+endf_line : list_line | head_line | cont_line | tab1_line
             | text_line | dir_line  | send_line | dummy_line
 
 // control numbers
@@ -43,6 +43,13 @@ tab1_fields : tab1_cont_fields "/" tab1_def
 tab1_cont_fields : expr "," expr "," expr "," expr "," expr "," expr
 tab1_def : VARNAME "/" VARNAME
 table_name : VARNAME
+
+// LIST record
+list_line : "[" ctrl_spec "/" list_fields "/" list_body "]" "LIST" ("(" list_name ")")? NEWLINE*
+list_fields : expr "," expr "," expr "," expr "," expr "," expr
+list_body : list_elem_expr
+list_elem_expr : expr
+list_name : VARNAME
 
 // SEND record
 send_line : "SEND" NEWLINE*

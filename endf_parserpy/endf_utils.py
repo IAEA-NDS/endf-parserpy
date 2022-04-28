@@ -144,6 +144,36 @@ def write_tend(dic=None, with_ctrl=True, with_ns=True):
 write_head = write_cont
 read_head = read_cont
 
+def read_list(lines, ofs=0, with_ctrl=True, callback=None):
+    ofs = skip_blank_lines(lines, ofs)
+    dic, ofs = read_cont(lines, ofs, with_ctrl)
+    NPL = dic['N1']
+    if NPL == 0:
+        dic['vals'] = []
+        ofs += 1
+    else:
+        vals, ofs = read_endf_numbers(lines, NPL, ofs)
+        dic['vals'] = vals
+    return dic, ofs
+
+def write_list(dic, with_ctrl=True):
+    NPL = len(dic['vals'])
+    tmpdic = dic.copy()
+    tmpdic['N1'] = NPL
+    lines = write_cont(dic, with_ctrl)
+    if NPL == 0:
+        body_lines = write_endf_numbers([0.0 for i in range(6)])
+    else:
+        ext_vals = dic['vals'].copy()
+        if NPL % 6 != 0:
+            ext_vals += [0.0 for i in range(6 - NPL % 6)]
+        body_lines = write_endf_numbers(ext_vals)
+    if with_ctrl:
+        ctrl = write_ctrl(dic)
+        body_lines = [t + ctrl for t in body_lines]
+    lines += body_lines
+    return lines
+
 def read_tab1(lines, ofs=0, with_ctrl=True):
     ofs = skip_blank_lines(lines, ofs)
     startline = lines[ofs]

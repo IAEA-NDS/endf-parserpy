@@ -1,5 +1,5 @@
 from .tree_utils import get_child, get_child_value, get_child_names
-from .endf_mapping_utils import get_varname, get_indexvar, eval_expr
+from .endf_mapping_utils import get_varname, get_indexvars, eval_expr
 
 def eval_expr_with_var(expr, datadic, loop_vars):
     v = eval_expr(expr)
@@ -8,7 +8,7 @@ def eval_expr_with_var(expr, datadic, loop_vars):
         varname = get_varname(expr)
         if varname not in datadic:
             raise ValueError(f'variable {varname} not found in datadic')
-        indexvar = get_indexvar(expr)
+        indexvar = get_indexvars(expr)
         if indexvar is None:
             return v[0] + v[1] * datadic[varname]
         else:

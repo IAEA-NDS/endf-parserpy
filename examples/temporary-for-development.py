@@ -16,12 +16,12 @@ testline2+='3'.rjust(11) + '4'.rjust(11) + '10'.rjust(11) + '6'.rjust(11)
 testline2+='1111' + '99'.rjust(2) + '333' 
 
 # LIST body
-testline3 = float2fortstr(0) + float2fortstr(0)
-testline3 += ''.join(['1'.rjust(11) for t in range(4)])
+testline3 = float2fortstr(1) + float2fortstr(2)
+testline3 += ''.join([str(i).rjust(11) for i in range(3,7)])
 testline3+='1111' + '99'.rjust(2) + '333' 
 
-testline4 = float2fortstr(2) + float2fortstr(0)
-testline4 += ''.join(['1'.rjust(11) for t in range(4)])
+testline4 = float2fortstr(7) + float2fortstr(8)
+testline4 += ''.join([str(i).rjust(11) for i in range(9,13)])
 testline4+='1111' + '99'.rjust(2) + '333' 
 
 #testlines = [testline1, testline2, testline3, testline4]

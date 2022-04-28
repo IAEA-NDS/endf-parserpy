@@ -2,7 +2,7 @@ import re
 from .tree_utils import (is_token, is_tree, get_name, get_value,
         get_child, get_child_names, get_child_value)
 from .flow_control_utils import cycle_for_loop
-from .endf_mapping_utils import get_varname, get_indexvar, eval_expr, varvalue_expr_conversion
+from .endf_mapping_utils import get_varname, get_indexvars, eval_expr, varvalue_expr_conversion
 
 def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
     ctrl_spec = get_child(record_line_node, 'ctrl_spec')
@@ -28,8 +28,8 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     # [MAT, 3, MT/ QM, QI, 0, LR, NR, NP / E / xs]TAB1 (xstable) is optional
     def get_varname_tmp(expr):
         return expr if isinstance(expr, str) else get_varname(expr)
-    def get_indexvar_tmp(expr):
-        return None if isinstance(expr, str) else get_indexvar(expr)
+    def get_indexvars_tmp(expr):
+        return None if isinstance(expr, str) else get_indexvars(expr)
     def eval_expr_tmp(expr):
         # this is the same result as returned by eval_expr on an expr with just the variable name
         return eval_expr(expr) if not isinstance(expr, str) else (0, 1)
@@ -48,24 +48,25 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
             return varvalue_expr_conversion(vv, val, inverse)
 
     varnames = tuple((get_varname_tmp(t) for t in expr_list))
-    indexvars = tuple(get_indexvar_tmp(t) for t in expr_list)
+    indexvars_list = tuple(get_indexvars_tmp(t) for t in expr_list)
     expr_vvs = tuple((eval_expr_tmp(t) for i, t in enumerate(expr_list)))
-    zipit = zip(basekeys, varnames, indexvars, expr_vvs)
+    zipit = zip(basekeys, varnames, indexvars_list, expr_vvs)
     if not inverse:
-        for sourcekey, targetkey, idxvar, expr_vv in zipit:
+        for sourcekey, targetkey, idxvars, expr_vv in zipit:
             # if the record specification contains a value,
             # hence targetkey is None, we check if the value
             # in the ENDF file is equal to that value and
-            # bomb out if not. Other than that, we don't do anything,
+            # bomb out if not. Except that, we don't do anything else,
             # as the fixed value can be written back during
-            # the inverse transform from the record specification.
+            # the inverse transform from the record specification
+            # in the ENDF recipe.
             if targetkey is None:
                 assert expr_vv[1] == 0
                 if record_dic[sourcekey] != expr_vv[0]:
                     raise ValueError(f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}')
             else:
                 val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
-                if not idxvar:
+                if idxvars is None:
                     if targetkey in datadic and datadic[targetkey] != val:
                         raise ValueError( 'If the same variable appears in several record specifications ' +
                                           'in the ENDF recipe, the corresponding values ' +
@@ -76,24 +77,39 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                                           'is wrong or the ENDF file contains inconsistent data.')
                     datadic[targetkey] = val
                 else:
-                    idx = loop_vars[idxvar]
+                    # loop through indexvars, and initialize
+                    # nested dictionaries with the indicies as keys
                     datadic.setdefault(targetkey, {})
-                    datadic[targetkey][idx] = val
+                    curdic = datadic[targetkey]
+                    for i, idxvar in enumerate(idxvars):
+                        idx = loop_vars[idxvar]
+                        if i < len(idxvars)-1:
+                            curdic.setdefault(idx, {})
+                            curdic = curdic[idx]
+                    idx = loop_vars[idxvars[-1]]
+                    curdic[idx] = val
         return datadic
     # inverse transform
     else:
-        for sourcekey, targetkey, idxvar, expr_vv in zipit:
+        for sourcekey, targetkey, idxvars, expr_vv in zipit:
             if targetkey is None:
                 assert expr_vv[1] == 0
                 record_dic[sourcekey] = expr_vv[0]
             else:
-                if not idxvar:
+                if idxvars is None:
                     val = datadic[targetkey]
                     finalval = varvalue_expr_conversion_tmp(expr_vv, val, inverse)
                     record_dic[sourcekey] = finalval
                 else:
-                    idx = loop_vars[idxvar]
-                    val = datadic[targetkey][idx]
+                    # loop through indexvars to descend
+                    # into nested diciontary to retrieve value
+                    curdic = datadic[targetkey]
+                    for i, idxvar in enumerate(idxvars):
+                        idx = loop_vars[idxvar]
+                        if i < len(idxvars)-1:
+                            curdic = curdic[idx]
+                    idx = loop_vars[idxvars[-1]]
+                    val = curdic[idx]
                     record_dic[sourcekey] = varvalue_expr_conversion_tmp(expr_vv, val, inverse)
         return record_dic
     raise ValueError('Tertium non datur')

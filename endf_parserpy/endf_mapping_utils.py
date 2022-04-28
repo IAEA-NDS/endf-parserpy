@@ -11,15 +11,16 @@ def get_varname(expr):
             return get_value(ch)
     return None
 
-def get_indexvar(expr):
+def get_indexvars(expr):
+    idxvars = []
     for ch in expr.children:
         if is_tree(ch):
-            varname = get_indexvar(ch)
+            varname = get_indexvars(ch)
             if varname is not None:
                 return varname
         elif get_name(ch) in 'INDEXVAR':
-            return get_value(ch)
-    return None
+            idxvars.append(get_value(ch))
+    return idxvars if len(idxvars) > 0 else None
 
 def varvalue_expr_conversion(vv, val, inverse):
     # vv as returned by eval_expr

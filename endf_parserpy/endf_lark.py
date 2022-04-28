@@ -87,7 +87,7 @@ minusexpr: "-" mulpart
 bracketexpr : "(" expr ")"
 
 // allowed variable names (including indices)
-extvarname : VARNAME ("[" INDEXVAR "]")?
+extvarname : VARNAME ("[" INDEXVAR ("," INDEXVAR)* "]")?
 VARNAME : CNAME
 INDEXVAR : CNAME
 

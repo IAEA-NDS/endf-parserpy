@@ -1,5 +1,5 @@
 from .tree_utils import get_child, get_child_value, get_child_names
-from .endf_parsing_utils import get_varname, get_indexvar, eval_expr
+from .endf_mapping_utils import get_varname, get_indexvar, eval_expr
 
 def eval_expr_with_var(expr, datadic, loop_vars):
     v = eval_expr(expr)
@@ -19,20 +19,23 @@ def eval_expr_with_var(expr, datadic, loop_vars):
     else:
         return v[0]
 
-def cycle_for_loop(tree, tree_handler, datadic, loop_vars):
-    assert tree.data == 'for_loop'
-    for_head = get_child(tree, 'for_head')
+def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
+                   loop_name='for_loop', head_name='for_head',  body_name='for_body'):
+    assert tree.data == loop_name
+    for_head = get_child(tree, head_name)
     varname = get_child_value(for_head, 'VARNAME')
     # determine range for loop counter
     start_expr = get_child(for_head, 'for_start')
     stop_expr = get_child(for_head, 'for_stop')
     start = eval_expr_with_var(start_expr, datadic, loop_vars)
     stop = eval_expr_with_var(stop_expr, datadic, loop_vars)
-    assert float(start) == int(start)
-    assert float(stop) == int(stop)
+    if float(start) != int(start):
+        raise ValueError('Loop start index must evaluate to an integer')
+    if float(stop) != int(stop):
+        raise ValueError('Loop stop index must evaluate to an integer')
     start = int(start)
     stop = int(stop)
-    for_body = get_child(tree, 'for_body')
+    for_body = get_child(tree, body_name)
     assert varname not in loop_vars
     for i in range(start, stop+1):
         loop_vars[varname] = i

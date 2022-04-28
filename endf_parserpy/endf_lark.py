@@ -45,11 +45,14 @@ tab1_def : VARNAME "/" VARNAME
 table_name : VARNAME
 
 // LIST record
-list_line : "[" ctrl_spec "/" list_fields "/" list_body "]" "LIST" ("(" list_name ")")? NEWLINE*
+list_line : "[" ctrl_spec "/" list_fields "/"  list_body  "]" "LIST" ("(" list_name ")")? NEWLINE*
 list_fields : expr "," expr "," expr "," expr "," expr "," expr
-list_body : list_elem_expr
-list_elem_expr : expr
+list_body : (expr | list_loop | "," | NEWLINE)+
 list_name : VARNAME
+
+// LIST loop
+list_loop : "{" list_body "}" "{" list_for_head "}"
+list_for_head : VARNAME "=" for_start "to" for_stop
 
 // SEND record
 send_line : "SEND" NEWLINE*

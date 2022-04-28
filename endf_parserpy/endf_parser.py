@@ -1,7 +1,7 @@
 from copy import deepcopy
 from lark import Lark
 from .tree_utils import is_tree, get_name, get_child, get_child_value
-from .endf_parsing_utils import (map_cont_dic, map_head_dic, map_text_dic,
+from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_tab1_dic, map_list_dic)
 from .flow_control_utils import cycle_for_loop, evaluate_if_statement, should_proceed
 

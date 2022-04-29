@@ -58,8 +58,26 @@ for i=1 to NIS:
                     [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint / AP]TAB1
                 endif
                 [MAT, 2,151/ SPI, AP, LAD, 0, NLS, NLSC]CONT
-                [MAT, 2,151/AWRI,APL, L, 0, 6*NRS, NRS/
-                {ER[k] , AJ[k] , GN[k], GG[k] , GFA[k],  GFB[k]}{k=1 to NRS} ]LIST
+                for m=1 to NLS:
+                (spingroup[m])
+                    [MAT, 2,151/AWRI,APL, L, 0, 6*NRS, NRS/
+                    {ER[k] , AJ[k] , GN[k], GG[k] , GFA[k],  GFB[k]}{k=1 to NRS} ]LIST
+                (/spingroup[m])
+                endfor
+            endif
+            if LRF==7:
+                [MAT,2,151/ 0.0, 0.0, IFG, KRM, NJS, KRL ]CONT
+                [MAT,2,151/0.0, 0.0, NPP, 0, 12*NPP, 2*NPP /
+                    {MA[k] , MB[k], ZA[k] , ZB[k] , IA[k] , IB[k] ,
+                    Q[k], PNT [k], SHF[k] , MT[k] , PA[k] , PB[k]}{k=1 to NPP} ]LIST
+                for k=1 to NJS:
+                (spingroup[k])
+                    [MAT,2,151/ AJ, PJ, KBK, KPS, 6*NCH, NCH /
+                    {PPI[l] , L[l] , SCH[l] , BND [l] , APE[l] , APT[l]}{l=1 to NCH} ]LIST
+                    [MAT,2,151/ 0.0, 0.0, 0, NRS, 6*NX, NX /
+                    {ER[n], {GAM[m,n]}{m=1 to NCH}}{n=1 to NRS} ]LIST
+                (/spingroup[k])
+                endfor
             endif
         endif
         if LRU==2:

@@ -37,6 +37,7 @@ for i=1 to NIS:
 
         # Resolved resonance data
         if LRU==1:
+            # Single level Breit-Wigner (SLBW) or Multi level Breit-Wigner (MLBW)
             if LRF==1 or LRF==2:
                 if NRO != 0:
                     [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint / AP]TAB1
@@ -49,6 +50,7 @@ for i=1 to NIS:
                 (/spingroup[m])
                 endfor
             endif
+            # R-matrix Reich-Moore multi level parameters
             if LRF==3:
                 if NRO != 0:
                     [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint / AP]TAB1

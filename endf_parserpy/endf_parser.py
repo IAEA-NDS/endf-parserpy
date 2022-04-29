@@ -3,6 +3,7 @@ from lark import Lark
 from .tree_utils import is_tree, get_name, get_child, get_child_value
 from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_tab1_dic, map_list_dic)
+from .endf_mapping_utils import get_varname, get_indexvars
 from .flow_control_utils import cycle_for_loop, evaluate_if_statement, should_proceed
 
 from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
@@ -43,6 +44,7 @@ class BasicEndfParser():
         flow_actions = {}
         flow_actions['for_loop'] = self.process_for_loop
         flow_actions['if_statement'] = self.process_if_statement
+        flow_actions['section'] = self.process_section
         self.flow_actions = flow_actions
 
     def process_text_line(self, tree):
@@ -115,6 +117,31 @@ class BasicEndfParser():
             newlines = write_send(self.datadic, with_ctrl=True)
             self.lines += newlines
 
+    def process_section(self, tree):
+        section_head = get_child(tree, 'section_head')
+        section_tail = get_child(tree, 'section_tail')
+        varname = get_varname(section_head)
+        varname2 = get_varname(section_tail)
+        if varname != varname2:
+            raise ValueError('The section name in the tail does not correspond to the one in the head')
+        indexvars = get_indexvars(section_head)
+        curdatadic = self.datadic
+        self.datadic.setdefault(varname, {})
+        self.datadic = self.datadic[varname]
+        if indexvars is not None:
+            for idxvar in indexvars:
+                idx = self.loop_vars[idxvar]
+                self.datadic.setdefault(idx, {})
+                self.datadic = self.datadic[idx]
+        section_body = get_child(tree, 'section_body')
+        # provide a pointer so that functions
+        # can look for variable names in the outer scope
+        self.datadic['__up'] = curdatadic
+        self.run_instruction(section_body)
+        # restore the pointer to the current datadic after section_body processed
+        del self.datadic['__up']
+        self.datadic = curdatadic
+
     def process_for_loop(self, tree):
         return cycle_for_loop(tree, self.run_instruction, self.datadic, self.loop_vars)
 
@@ -152,6 +179,7 @@ class BasicEndfParser():
         #           development.
         datadic = datadic if datadic is not None else {}
         lines = lines if lines is not None else []
+        self.loop_vars = {}
         self.datadic = datadic
         self.lines = lines
         self.rwmode = rwmode

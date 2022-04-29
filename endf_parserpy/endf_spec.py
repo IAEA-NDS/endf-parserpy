@@ -27,9 +27,11 @@ spec_dic.setdefault(99, {})
 spec_dic[99] = \
 """
 [MAT,99, MT/ ZA, AWR, 0, 0, 0, 0] HEAD
-[MAT,99, MT/ A, B, C, D, E, F / 
-   {{U[i,j]}{i=1 to 3}}{j=1 to 3}, bla
-]LIST
+(testsec)
+    [MAT,99, MT/ A, B, C, D, E, F / 
+       {{U[i,j]}{i=1 to 3}}{j=1 to 3}, bla
+    ]LIST
+(/testsec)
 """
 
 spec_dic.setdefault(98, {})

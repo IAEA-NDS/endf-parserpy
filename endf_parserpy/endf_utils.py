@@ -12,6 +12,8 @@ def write_ctrl(dic, ns=None):
     return '{:>4}{:>2}{:>3}'.format( dic['MAT'], dic['MF'], dic['MT']) + nsstr
 
 def get_ctrl(dic):
+    while 'MAT' not in dic and '__up' in dic:
+        dic = dic['__up']
     return {'MAT': dic['MAT'],
             'MF' : dic['MF'],
             'MT' : dic['MT']}

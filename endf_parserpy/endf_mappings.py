@@ -7,6 +7,9 @@ from .endf_mapping_utils import get_varname, get_indexvars, eval_expr, varvalue_
 def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
     ctrl_spec = get_child(record_line_node, 'ctrl_spec')
     dic = record_dic if not inverse else datadic
+    # if MAT not found in local scope, scan the outer ones
+    while not 'MAT' in dic and '__up' in dic:
+        dic = dic['__up']
     cur_mat = dic['MAT']
     cur_mf  = dic['MF']
     cur_mt  = dic['MT']

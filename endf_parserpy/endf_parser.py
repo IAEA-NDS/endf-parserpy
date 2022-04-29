@@ -237,10 +237,14 @@ class BasicEndfParser():
         for mf in mfmt_dic:
             write_info(f'Parsing section MF{mf}')
             for mt in mfmt_dic[mf]:
+                curmat = read_ctrl(mfmt_dic[mf][mt][0])
                 write_info(f'Parsing subsection MF/MT {mf}/{mt}')
                 curlines = mfmt_dic[mf][mt]
                 cur_tree = self.get_responsible_tree(tree_dic, mf, mt)
                 if cur_tree is not None:
+                    # we add the SEND line so that parsing fails
+                    # if the MT section cannot be completely parsed
+                    curlines += write_send(curmat, with_ctrl=True)
                     self.reset_parser_state(rwmode='read', lines=curlines)
                     self.run_instruction(cur_tree)
                     mfmt_dic[mf][mt] = self.datadic
@@ -260,10 +264,18 @@ class BasicEndfParser():
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode='write', datadic=datadic)
                     self.run_instruction(cur_tree)
-                    # add the NS number
+                    # the NS number is already part of the last line
+                    curline_send = self.lines[-1]
+                    # add the NS number to the other lines
                     curlines = [l + str(i).rjust(5)
-                                for i, l in enumerate(self.lines, 1)]
+                                for i, l in enumerate(self.lines[:-1], 1)]
+                    curlines.append(curline_send)
                     lines.extend(curlines)
+                    # NOTE: the SEND record is part of the recipe
+                    # so was added by the parser in
+                    # process_send_line method so no need to
+                    # add it here on contrast to the non-parsed
+                    # branch below.
                 else:
                     # nothing is parsed here, but in the spirit of
                     # defensive coding, we reset the parser nevertheless
@@ -276,9 +288,8 @@ class BasicEndfParser():
                     lines.extend(endf_dic[mf][mt])
                     # update the MAT, MF, MT number
                     self.datadic = read_ctrl(lines[-1])
-
-                # add the SEND record in between the MT subections
-                lines.extend(write_send(self.datadic, with_ctrl=True, with_ns=True))
+                    # add the SEND record in between the MT subections
+                    lines.extend(write_send(self.datadic, with_ctrl=True, with_ns=True))
             lines.extend(write_fend(self.datadic, with_ctrl=True, with_ns=True))
 
         lines.extend(write_mend(with_ctrl=True, with_ns=True))

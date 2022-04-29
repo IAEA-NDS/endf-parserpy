@@ -1,3 +1,4 @@
+from .logging_utils import logging, write_info
 from copy import deepcopy
 from lark import Lark
 from .tree_utils import is_tree, get_name, get_child, get_child_value
@@ -11,6 +12,8 @@ from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         read_dir, write_dir, read_tab1, write_tab1,
         read_send, write_send, write_fend, write_mend, write_tend,
         read_list, write_list, split_sections)
+
+logging.basicConfig(level=logging.INFO)
 
 
 class BasicEndfParser():
@@ -49,6 +52,8 @@ class BasicEndfParser():
 
     def process_text_line(self, tree):
         if self.rwmode == 'read':
+            self.loop_vars['__ofs'] = self.ofs
+            # write_info('Reading a TEXT record', self.ofs)
             text_dic, self.ofs = read_text(self.lines, self.ofs, with_ctrl=True)
             map_text_dic(tree, text_dic, self.datadic, self.loop_vars)
         else:
@@ -59,7 +64,10 @@ class BasicEndfParser():
 
     def process_head_line(self, tree):
         if self.rwmode == 'read':
+            self.loop_vars['__ofs'] = self.ofs
+            write_info('Reading a HEAD record', self.ofs)
             cont_dic, self.ofs = read_head(self.lines, self.ofs, with_ctrl=True)
+            write_info('Content of the HEAD record: ' + str(cont_dic), self.ofs)
             map_head_dic(tree, cont_dic, self.datadic, self.loop_vars)
             self.datadic.update(get_ctrl(cont_dic))
         else:
@@ -70,7 +78,10 @@ class BasicEndfParser():
 
     def process_cont_line(self, tree):
         if self.rwmode == 'read':
+            self.loop_vars['__ofs'] = self.ofs
+            write_info('Reading a CONT record', self.ofs)
             cont_dic, self.ofs = read_cont(self.lines, self.ofs)
+            write_info('Content of the CONT record: ' + str(cont_dic))
             map_cont_dic(tree, cont_dic, self.datadic, self.loop_vars)
         else:
             cont_dic = map_cont_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
@@ -80,6 +91,7 @@ class BasicEndfParser():
 
     def process_dir_line(self, tree):
         if self.rwmode == 'read':
+            self.loop_vars['__ofs'] = self.ofs
             dir_dic, self.ofs = read_dir(self.lines, self.ofs)
             map_dir_dic(tree, dir_dic, self.datadic, self.loop_vars)
         else:
@@ -90,6 +102,8 @@ class BasicEndfParser():
 
     def process_tab1_line(self, tree):
         if self.rwmode == 'read':
+            self.loop_vars['__ofs'] = self.ofs
+            write_info('Reading a TAB1 record', self.ofs)
             tab1_dic, self.ofs = read_tab1(self.lines, self.ofs)
             map_tab1_dic(tree, tab1_dic, self.datadic, self.loop_vars)
         else:
@@ -100,10 +114,10 @@ class BasicEndfParser():
 
     def process_list_line(self, tree):
         if self.rwmode == 'read':
+            self.loop_vars['__ofs'] = self.ofs
+            write_info('Reading a LIST record', self.ofs)
             list_dic, self.ofs = read_list(self.lines, self.ofs)
             map_list_dic(tree, list_dic, self.datadic, self.loop_vars)
-            # TODO: remove
-            self.ofs += 1
         else:
             list_dic = map_list_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
             list_dic.update(get_ctrl(self.datadic))
@@ -118,6 +132,7 @@ class BasicEndfParser():
             self.lines += newlines
 
     def process_section(self, tree):
+        self.loop_vars['__ofs'] = self.ofs
         section_head = get_child(tree, 'section_head')
         section_tail = get_child(tree, 'section_tail')
         varname = get_varname(section_head)
@@ -128,16 +143,20 @@ class BasicEndfParser():
         curdatadic = self.datadic
         self.datadic.setdefault(varname, {})
         self.datadic = self.datadic[varname]
+        idcsstr_list = []
         if indexvars is not None:
             for idxvar in indexvars:
                 idx = self.loop_vars[idxvar]
+                idcsstr_list.append(str(idx))
                 self.datadic.setdefault(idx, {})
                 self.datadic = self.datadic[idx]
         section_body = get_child(tree, 'section_body')
         # provide a pointer so that functions
         # can look for variable names in the outer scope
         self.datadic['__up'] = curdatadic
+        write_info(f'Open section {varname}[' + ','.join(idcsstr_list) + ']')
         self.run_instruction(section_body)
+        write_info(f'Close section {varname}[' + ','.join(idcsstr_list) + ']')
         # restore the pointer to the current datadic after section_body processed
         del self.datadic['__up']
         self.datadic = curdatadic
@@ -179,7 +198,7 @@ class BasicEndfParser():
         #           development.
         datadic = datadic if datadic is not None else {}
         lines = lines if lines is not None else []
-        self.loop_vars = {}
+        self.loop_vars = {'__ofs': 0}
         self.datadic = datadic
         self.lines = lines
         self.rwmode = rwmode
@@ -216,8 +235,9 @@ class BasicEndfParser():
         tree_dic = self.tree_dic
         mfmt_dic = split_sections(lines)
         for mf in mfmt_dic:
+            write_info(f'Parsing section MF{mf}')
             for mt in mfmt_dic[mf]:
-                print(f'working on MF {mf} and MT {mt}\n')
+                write_info(f'Parsing subsection MF/MT {mf}/{mt}')
                 curlines = mfmt_dic[mf][mt]
                 cur_tree = self.get_responsible_tree(tree_dic, mf, mt)
                 if cur_tree is not None:
@@ -227,6 +247,7 @@ class BasicEndfParser():
         return mfmt_dic
 
     def write(self, endf_dic, mf_list=None, mt_list=None):
+        self.reset_parser_state(rwmode='write', datadic={})
         tree_dic = self.tree_dic
         lines = []
         for mf in sorted(endf_dic):

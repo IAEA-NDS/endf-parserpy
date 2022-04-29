@@ -1,11 +1,16 @@
-from .tree_utils import get_child, get_child_value, get_child_names
+from .tree_utils import get_child, get_child_value, get_child_names, reconstruct_tree_str
 from .endf_mapping_utils import get_varname, get_indexvars, eval_expr
+from .logging_utils import write_info
 
 def eval_expr_with_var(expr, datadic, loop_vars):
     v = eval_expr(expr)
     # check if variable in expression
     if v[1] != 0:
         varname = get_varname(expr)
+        # if we don't find the variable in the current
+        # scope, we scan the enclosing scopes
+        while not varname in datadic and '__up' in datadic:
+            datadic = datadic['__up']
         if varname not in datadic:
             raise ValueError(f'variable {varname} not found in datadic')
         indexvar = get_indexvars(expr)
@@ -37,10 +42,12 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
     stop = int(stop)
     for_body = get_child(tree, body_name)
     assert varname not in loop_vars
+    write_info(f'Enter for loop (type {loop_name}) ' + reconstruct_tree_str(for_head))
     for i in range(start, stop+1):
         loop_vars[varname] = i
         tree_handler(for_body)
     del(loop_vars[varname])
+    write_info(f'Leave for loop (type {loop_name}) ' + reconstruct_tree_str(for_head))
 
 def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
                           dump_state, restore_state):
@@ -87,13 +94,16 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
         (cmpop =="!=" and left_val != right_val) or
         (cmpop =="==" and left_val == right_val)):
 
+        write_info('Enter if body because ' + reconstruct_tree_str(if_condition) + ' is true')
+
         if lookahead_option:
             restore_state(parser_state)
         tree_handler(if_body)
+        write_info('Leave if body of if condition ' + reconstruct_tree_str(if_condition))
     else:
         if lookahead_option:
             restore_state(parser_state)
-
+        write_info('Skip if body because if condition ' + reconstruct_tree_str(if_condition) + ' is false')
 
 def should_proceed(tree, datadic, loop_vars, action_type):
     if action_type == 'endf_action':

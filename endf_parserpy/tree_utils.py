@@ -44,3 +44,16 @@ def get_child_value_by_pos(tree, pos):
             return str(ch[pos])
     return None
 
+def reconstruct_tree_str(tree):
+    if is_tree(tree):
+        curstr = ''
+        for child in tree.children:
+            curstr += reconstruct_tree_str(child)
+            curstr += ' '
+        curstr = curstr[:-1]
+        return curstr
+    elif is_token(tree):
+        return str(tree)
+    else:
+        raise TypeError('neither token nor tree, what nightmare for a bee!')
+

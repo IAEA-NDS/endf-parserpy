@@ -31,7 +31,7 @@ def varvalue_expr_conversion(vv, val, inverse):
         # (e.g., for counter fields, L1, L2, N1, N2)
         if isinstance(val, int) and isinstance(vv[0], int) and isinstance(vv[1], int):
             if int(res) != res:
-                raise ValueError('Result should be integer')
+                raise ValueError(f'fResult should be integer but obtained {res}')
             return int(res)
         else:
             return res
@@ -51,7 +51,7 @@ def eval_expr(expr):
             v = int(expr.value)
         else:
             v = float(expr.value)
-        return (v, 0.)
+        return (v, 0)
     elif name == 'minusexpr':
         v = eval_expr(expr.children[0])
         return (-v[0], -v[1])

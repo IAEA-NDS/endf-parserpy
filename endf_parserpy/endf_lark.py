@@ -8,7 +8,7 @@ endf_recipe_grammar = \
 %import common.NUMBER
 %ignore " "
 
-code_token: (endf_line | for_loop | if_statement | section | NEWLINE)*
+code_token: (endf_line | for_loop | if_statement | section | NEWLINE | comment_line)*
 endf_line : list_line | head_line | cont_line | tab1_line
             | text_line | dir_line  | send_line | dummy_line
 
@@ -24,6 +24,9 @@ ctrl_spec : MAT_SPEC "," MF_SPEC "," MT_SPEC
 MAT_SPEC : "MAT" | INT
 MF_SPEC :  "MF" | INT
 MT_SPEC : "MT" | INT
+
+// comment line
+comment_line : /^ *#.*$/
 
 // DUMMY record (read but not processed)
 dummy_line : "[" ctrl_spec "/" /.*\]/ "DUMMY" NEWLINE*

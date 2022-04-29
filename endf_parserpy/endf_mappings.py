@@ -1,3 +1,4 @@
+from .logging_utils import logging, abbreviate_valstr, should_skip_logging_info
 import re
 from .tree_utils import (is_token, is_tree, get_name, get_value,
         get_child, get_child_names, get_child_value)
@@ -91,6 +92,13 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                             curdic = curdic[idx]
                     idx = loop_vars[idxvars[-1]]
                     curdic[idx] = val
+
+        # we write out logging info the first time we encounter a variable
+        tmp = tuple(v for v in varnames if v is not None)
+        if not should_skip_logging_info(tmp, datadic):
+            varvals = tuple(abbreviate_valstr(datadic[v]) for v in tmp)
+            logging.info('Variable names in this record: ' + ', '.join([f'{v}: {vv}' for v, vv in zip(tmp, varvals)]))
+
         return datadic
     # inverse transform
     else:
@@ -197,12 +205,12 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
             # of assigning a value of the list body to the appropriate variable in datadic
             if not inverse:
                 vals = list_dic['vals']
-                map_record_helper([node], ('val',), {'val': vals[val_idx]}, datadic, loop_vars, inverse)   
+                map_record_helper([node], ('val',), {'val': vals[val_idx]}, datadic, loop_vars, inverse)
             else:
-                list_val = map_record_helper([node], ('val',), {}, datadic, loop_vars, inverse) 
+                list_val = map_record_helper([node], ('val',), {}, datadic, loop_vars, inverse)
                 list_dic.setdefault('vals', [])
                 list_dic['vals'].append(list_val['val'])
-                
+
             val_idx += 1
             return
         if node_type == 'list_loop':

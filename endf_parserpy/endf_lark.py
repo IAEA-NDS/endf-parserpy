@@ -75,10 +75,13 @@ for_start :  expr
 for_stop :   expr
 
 // IF statement
-if_statement : "if" if_condition (lookahead_option)? ":" if_body "endif"
+if_statement : "if" if_head (lookahead_option)? ":" if_body "endif"
 lookahead_option : "[" "lookahead" "=" expr "]"
+if_head : if_condition ((IF_AND if_condition)* | (IF_OR if_condition))
 if_condition : expr IF_RELATION expr
 IF_RELATION  : ">" | "<" | "!=" | "==" | ">=" | "<="
+IF_AND : "and"
+IF_OR : "or"
 if_body : (code_token | NEWLINE)*
 
 // arithmetic expression

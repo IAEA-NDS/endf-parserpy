@@ -1,4 +1,5 @@
-from .tree_utils import get_child, get_child_value, get_child_names, reconstruct_tree_str
+from .tree_utils import (get_child, get_child_value, get_name,
+        get_child_names, reconstruct_tree_str)
 from .endf_mapping_utils import get_varname, get_indexvars, eval_expr
 from .logging_utils import write_info
 
@@ -49,10 +50,29 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
     del(loop_vars[varname])
     write_info(f'Leave for loop (type {loop_name}) ' + reconstruct_tree_str(for_head))
 
+
+def eval_if_condition(if_condition, datadic, loop_vars):
+    if len(if_condition.children) != 3:
+        raise IndexError('if_condition must have three children')
+    left_expr = if_condition.children[0]
+    cmpop = get_child_value(if_condition, 'IF_RELATION')
+    right_expr = if_condition.children[2]
+    left_val = eval_expr_with_var(left_expr, datadic, loop_vars)
+    right_val = eval_expr_with_var(right_expr, datadic, loop_vars)
+    if ((cmpop == ">" and left_val > right_val) or
+        (cmpop == "<" and left_val < right_val) or
+        (cmpop =="<=" and left_val <= right_val) or
+        (cmpop ==">=" and left_val >= right_val) or
+        (cmpop =="!=" and left_val != right_val) or
+        (cmpop =="==" and left_val == right_val)):
+        return True
+    else:
+        return False
+
 def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
                           dump_state, restore_state):
     assert tree.data == 'if_statement'
-    if_condition = get_child(tree, 'if_condition')
+    if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')
     lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
     lookahead = 0
@@ -81,29 +101,33 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
 
     # evaluate the condition (with variables in datadic potentially
     # affected by the lookahead)
-    assert len(if_condition.children) == 3
-    left_expr = if_condition.children[0]
-    cmpop = get_child_value(if_condition, 'IF_RELATION')
-    right_expr = if_condition.children[2]
-    left_val = eval_expr_with_var(left_expr, datadic, loop_vars)
-    right_val = eval_expr_with_var(right_expr, datadic, loop_vars)
-    if ((cmpop == ">" and left_val > right_val) or
-        (cmpop == "<" and left_val < right_val) or
-        (cmpop =="<=" and left_val <= right_val) or
-        (cmpop ==">=" and left_val >= right_val) or
-        (cmpop =="!=" and left_val != right_val) or
-        (cmpop =="==" and left_val == right_val)):
+    opnames = list(get_child_names(if_head))
+    if 'IF_AND' in opnames and 'IF_OR' in opnames:
+        raise TypeError('"or" and "and" cannot be mixed in if-statement')
+    if 'IF_AND' in opnames:
+        truthval = True
+        for ch in if_head.children:
+            if get_name(ch) == 'if_condition':
+                truthval = truthval and eval_if_condition(ch, datadic, loop_vars)
+    elif 'IF_OR' in opnames:
+        truthval = False
+        for ch in if_head.children:
+            if get_name(ch) == 'if_condition':
+                truthval = truthval or eval_if_condition(ch, datadic, loop_vars)
+    else:
+        ch = get_child(if_head, 'if_condition')
+        truthval = eval_if_condition(ch, datadic, loop_vars)
 
-        write_info('Enter if body because ' + reconstruct_tree_str(if_condition) + ' is true')
-
+    if truthval:
+        write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')
         if lookahead_option:
             restore_state(parser_state)
         tree_handler(if_body)
-        write_info('Leave if body of if condition ' + reconstruct_tree_str(if_condition))
+        write_info('Leave if body of if condition ' + reconstruct_tree_str(if_head))
     else:
         if lookahead_option:
             restore_state(parser_state)
-        write_info('Skip if body because if condition ' + reconstruct_tree_str(if_condition) + ' is false')
+        write_info('Skip if body because if condition ' + reconstruct_tree_str(if_head) + ' is false')
 
 def should_proceed(tree, datadic, loop_vars, action_type):
     if action_type == 'endf_action':

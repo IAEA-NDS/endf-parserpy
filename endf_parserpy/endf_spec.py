@@ -37,19 +37,7 @@ for i=1 to NIS:
 
         # Resolved resonance data
         if LRU==1:
-            if LRF==1:
-                if NRO != 0:
-                    [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint / AP]TAB1
-                endif
-                [MAT, 2,151/ SPI, AP, 0, 0, NLS, 0]CONT
-                for m=1 to NLS:
-                (spingroup[m])
-                    [MAT, 2,151/ AWRI, QX, L, LRX, 6*NRS, NRS /
-                    {ER[k], AJ[k], GT[k], GN[k], GG[k], GF[k]}{k=1 to NRS} ]LIST
-                (/spingroup[m])
-                endfor
-            endif
-            if LRF==2:
+            if LRF==1 or LRF==2:
                 if NRO != 0:
                     [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint / AP]TAB1
                 endif
@@ -91,7 +79,7 @@ for i=1 to NIS:
 
         # Unresolved resonance data
         if LRU==2:
-            if LFW == 0: if LRF==2:
+            if LFW == 0 and LRF==2:
                 if NRO != 0:
                     [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint /AP ] TAB1
                 endif
@@ -108,7 +96,7 @@ for i=1 to NIS:
                     endfor
                 (/l_group[p])
                 endfor
-            endif endif
+            endif
         endif
     (/range[j])
     endfor

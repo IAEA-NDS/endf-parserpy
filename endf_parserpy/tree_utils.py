@@ -19,7 +19,7 @@ def get_value(token):
     return token.value
 
 def get_child_names(tree):
-    return (get_name(t) for t in tree.children) 
+    return list(get_name(t) for t in tree.children)
 
 def get_child(tree, name, nofail=False):
     for child in tree.children:
@@ -35,7 +35,7 @@ def get_child_value(tree, name):
         if is_token(child):
             if get_name(child) == name:
                 return child.value
-    raise IndexError(f'child with name {name} not found') 
+    raise IndexError(f'child with name {name} not found')
 
 def get_child_value_by_pos(tree, pos):
     ch = tree.children

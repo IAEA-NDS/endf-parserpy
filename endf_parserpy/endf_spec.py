@@ -34,6 +34,8 @@ for i=1 to NIS:
     for j=1 to NER:
     (range[j])
         [MAT, 2,151/ EL, EH, LRU, LRF, NRO, NAPS]CONT
+
+        # Resolved resonance data
         if LRU==1:
             if LRF==1:
                 if NRO != 0:
@@ -86,6 +88,8 @@ for i=1 to NIS:
                 endfor
             endif
         endif
+
+        # Unresolved resonance data
         if LRU==2:
             if LFW == 0: if LRF==2:
                 if NRO != 0:

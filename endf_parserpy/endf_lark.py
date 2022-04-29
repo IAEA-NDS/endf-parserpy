@@ -1,5 +1,5 @@
 endf_recipe_grammar = \
-"""
+r"""
 %import common.DIGIT
 %import common.NEWLINE
 %import common.STRING
@@ -8,7 +8,7 @@ endf_recipe_grammar = \
 %import common.NUMBER
 %ignore " "
 
-code_token: (endf_line | for_loop | if_statement | section | NEWLINE | comment_line)*
+code_token: (endf_line | for_loop | if_statement | section | COMMENT_LINE | NEWLINE)*
 endf_line : list_line | head_line | cont_line | tab1_line
             | text_line | dir_line  | send_line | dummy_line
 
@@ -26,7 +26,7 @@ MF_SPEC :  "MF" | INT
 MT_SPEC : "MT" | INT
 
 // comment line
-comment_line : /^ *#.*$/
+COMMENT_LINE : "#" /.*/ NEWLINE
 
 // DUMMY record (read but not processed)
 dummy_line : "[" ctrl_spec "/" /.*\]/ "DUMMY" NEWLINE*
@@ -80,7 +80,6 @@ lookahead_option : "[" "lookahead" "=" expr "]"
 if_condition : expr IF_RELATION expr
 IF_RELATION  : ">" | "<" | "!=" | "==" | ">=" | "<="
 if_body : (code_token | NEWLINE)*
-
 
 // arithmetic expression
 // adopted from: http://marvin.cs.uidaho.edu/Teaching/CS445/grammar.pdf (3.3)

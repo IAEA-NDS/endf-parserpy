@@ -50,8 +50,8 @@ dir_fields :  expr "," expr "," expr "," expr
 tab1_line : "[" ctrl_spec "/" tab1_fields "]" "TAB1" ("(" table_name ")")? NEWLINE*
 tab1_fields : tab1_cont_fields "/" tab1_def
 tab1_cont_fields : expr "," expr "," expr "," expr "," expr "," expr
-tab1_def : VARNAME "/" VARNAME
-table_name : VARNAME
+tab1_def : extvarname "/" extvarname
+table_name : extvarname
 
 // LIST record
 list_line : "[" ctrl_spec "/" list_fields "/"  list_body  "]" "LIST" ("(" list_name ")")? NEWLINE*

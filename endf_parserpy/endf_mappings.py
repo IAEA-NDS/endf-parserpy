@@ -31,7 +31,9 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     # in the mapping. For instance, the specification (xstable) after
     # [MAT, 3, MT/ QM, QI, 0, LR, NR, NP / E / xs]TAB1 (xstable) is optional
     def get_varname_tmp(expr):
-        return expr if isinstance(expr, str) else get_varname(expr)
+        # the "not is_token(expr)" part is a hack because a Token seems to be regarded
+        # as type "str" because isinstance(expr, str) evaluates to tree for a Token
+        return expr if isinstance(expr, str) and not is_token(expr)  else get_varname(expr)
     def get_indexvars_tmp(expr):
         return None if isinstance(expr, str) else get_indexvars(expr)
     def eval_expr_tmp(expr):
@@ -158,7 +160,7 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=
         tblname_expr = get_child(tab1_line_node, 'table_name')
         tblvarname = get_varname(tblname_expr)
     else:
-        tblvarname = 'table'
+        tblvarname = None
     # deal with the mapping of the variable names in the table first
     cn = ('NBT', 'INT', 'X', 'Y')
     tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
@@ -167,25 +169,24 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=
         tbl_datadic = {}
         tbl_dic = tab1_dic['table']
     else:
-        tbl_datadic = datadic[tblvarname]
+        tbl_datadic = datadic if tblvarname is None else datadic[tblvarname]
         tbl_dic = {}
     tbl_ret = map_record_helper(expr_list, cn, tbl_dic, tbl_datadic,
                                 loop_vars, inverse)
     # we remove NR and NP (last two elements) because redundant information
     # and not used by write_tab1 and read_tab1
     expr_list = tab1_cont_fields.children[:-2]
-    cn = ('C1', 'C2', 'L1', 'L2', 'table')
-    if 'table_name' in get_child_names(tab1_line_node):
-        tblname_expr = get_child(tab1_line_node, 'table_name')
-        expr_list.append(tblname_expr)
-        tblvarname = get_varname(tblname_expr)
-    else:
-        expr_list.append('table')
-        tblvarname = 'table'
+    cn = ('C1', 'C2', 'L1', 'L2')
     main_ret = map_record_helper(expr_list, cn, tab1_dic, datadic, loop_vars, inverse)
     # add the table dictionary to the main dictionary
-    new_tblname = tblvarname if not inverse else 'table'
-    main_ret[new_tblname] = tbl_ret
+    if tblvarname is not None:
+        new_tblname = tblvarname if not inverse else 'table'
+        main_ret[new_tblname] = tbl_ret
+    else:
+        if inverse:
+            main_ret['table'] = tbl_ret
+        else:
+            main_ret.update(tbl_ret)
     return main_ret
 
 def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=False,

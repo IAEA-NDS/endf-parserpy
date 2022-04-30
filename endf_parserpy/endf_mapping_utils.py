@@ -1,15 +1,16 @@
-from .tree_utils import is_tree, get_name, get_value
+from .tree_utils import is_tree, get_name, get_value, is_token
 import re
 
 def get_varname(expr):
-    for ch in expr.children:
-        if is_tree(ch):
+    if is_tree(expr):
+        for ch in expr.children:
             varname = get_varname(ch)
             if varname is not None:
                 return varname
-        elif get_name(ch) in 'VARNAME':
-            return get_value(ch)
-    return None
+    if is_token(expr) and get_name(expr) == 'VARNAME':
+        return get_value(expr)
+    else:
+        return None
 
 def get_indexvars(expr):
     idxvars = []

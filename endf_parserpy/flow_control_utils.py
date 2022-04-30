@@ -14,14 +14,18 @@ def eval_expr_with_var(expr, datadic, loop_vars):
             datadic = datadic['__up']
         if varname not in datadic:
             raise ValueError(f'variable {varname} not found in datadic')
-        indexvar = get_indexvars(expr)
-        if indexvar is None:
+        indexvars = get_indexvars(expr)
+        if indexvars is None:
             return v[0] + v[1] * datadic[varname]
         else:
-            if indexvar not in loop_vars:
-                raise ValueError(f'index variable {indexvar} not found in loop_vars')
-            idx = loop_vars[indexvar]
-            return v[0] + v[1] * datadic[varname][indexvar]
+            curdic = datadic[varname]
+            for i, idxvar in enumerate(indexvars):
+                idx = loop_vars[idxvar]
+                if i < len(idxvars)-1:
+                    curdic = curdic[idx]
+            idx = loop_vars[idxvars[-1]]
+            varval = curdic[idx]
+            return v[0] + v[1] * varval
     else:
         return v[0]
 

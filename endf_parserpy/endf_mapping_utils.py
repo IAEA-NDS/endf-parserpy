@@ -1,11 +1,33 @@
 from .tree_utils import is_tree, get_name, get_value, is_token
+from .logging_utils import write_info
 import re
 
-def open_section():
-    pass
+def open_section(extvarname, datadic, loop_vars):
+    varname = get_varname(extvarname)
+    indexvars = get_indexvars(extvarname)
+    curdatadic = datadic
+    datadic.setdefault(varname, {})
+    datadic = datadic[varname]
+    idcsstr_list = []
+    if indexvars is not None:
+        for idxvar in indexvars:
+            idx = loop_vars[idxvar]
+            idcsstr_list.append(str(idx))
+            datadic.setdefault(idx, {})
+            datadic = datadic[idx]
+    # provide a pointer so that functions
+    # can look for variable names in the outer scope
+    datadic['__up'] = curdatadic
+    write_info(f'Open section {varname}[' + ','.join(idcsstr_list) + ']')
+    return datadic
 
-def close_section():
-    pass
+def close_section(extvarname, datadic):
+    varname = get_varname(extvarname)
+    write_info(f'Close section {varname}')
+    curdatadic = datadic
+    datadic = datadic['__up']
+    del curdatadic['__up']
+    return datadic
 
 def get_varname(expr):
     if is_tree(expr):

@@ -4,7 +4,7 @@ from lark import Lark
 from .tree_utils import is_tree, get_name, get_child, get_child_value
 from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_tab1_dic, map_list_dic)
-from .endf_mapping_utils import get_varname, get_indexvars
+from .endf_mapping_utils import get_varname, get_indexvars, open_section, close_section
 from .flow_control_utils import cycle_for_loop, evaluate_if_statement, should_proceed
 
 from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
@@ -139,27 +139,11 @@ class BasicEndfParser():
         varname2 = get_varname(section_tail)
         if varname != varname2:
             raise ValueError('The section name in the tail does not correspond to the one in the head')
-        indexvars = get_indexvars(section_head)
-        curdatadic = self.datadic
-        self.datadic.setdefault(varname, {})
-        self.datadic = self.datadic[varname]
-        idcsstr_list = []
-        if indexvars is not None:
-            for idxvar in indexvars:
-                idx = self.loop_vars[idxvar]
-                idcsstr_list.append(str(idx))
-                self.datadic.setdefault(idx, {})
-                self.datadic = self.datadic[idx]
+
+        self.datadic = open_section(section_head, self.datadic, self.loop_vars)
         section_body = get_child(tree, 'section_body')
-        # provide a pointer so that functions
-        # can look for variable names in the outer scope
-        self.datadic['__up'] = curdatadic
-        write_info(f'Open section {varname}[' + ','.join(idcsstr_list) + ']')
         self.run_instruction(section_body)
-        write_info(f'Close section {varname}[' + ','.join(idcsstr_list) + ']')
-        # restore the pointer to the current datadic after section_body processed
-        del self.datadic['__up']
-        self.datadic = curdatadic
+        self.datadic = close_section(section_head, self.datadic)
 
     def process_for_loop(self, tree):
         return cycle_for_loop(tree, self.run_instruction, self.datadic, self.loop_vars)

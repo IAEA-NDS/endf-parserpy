@@ -176,10 +176,41 @@ def write_list(dic, with_ctrl=True):
     lines += body_lines
     return lines
 
-def read_tab1(lines, ofs=0, with_ctrl=True):
+def read_tab2(lines, ofs=0, with_ctrl=True):
     ofs = skip_blank_lines(lines, ofs)
     startline = lines[ofs]
     dic, ofs = read_cont(lines, ofs)
+    vals, ofs = read_endf_numbers(lines, 2*dic['N1'], ofs, to_int=True)
+    NBT = vals[::2]
+    INT = vals[1::2]
+    dic['table'] = {'NBT': NBT, 'INT': INT}
+    if with_ctrl:
+        ctrl = read_ctrl(startline)
+        dic.update(ctrl)
+    return dic, ofs
+
+def write_tab2(dic, with_ctrl=True):
+    dic = dic.copy()
+    tbl_dic = dic['table']
+    NBT = tbl_dic['NBT']
+    INT = tbl_dic['INT']
+    if len(NBT) != len(INT):
+        raise ValueError('NBT and INT must be of same length')
+    dic.update({'N1': len(NBT)})
+    lines = write_cont(dic, with_ctrl)
+    vals = [None]*(2*len(NBT))
+    vals[::2] = NBT
+    vals[1::2] = INT
+    tbl_lines = write_endf_numbers(vals, to_int=True)
+    if with_ctrl:
+        ctrl = write_ctrl(dic)
+        tbl_lines = [t + ctrl for t in tbl_lines]
+    return lines + tbl_lines
+
+def read_tab1(lines, ofs=0, with_ctrl=True):
+    ofs = skip_blank_lines(lines, ofs)
+    startline = lines[ofs]
+    dic, ofs = read_cont(lines, ofs, with_ctrl)
     tbl_dic, ofs = read_tab1_body_lines(lines, ofs, dic['N1'], dic['N2'])
     dic['table'] = tbl_dic
     if with_ctrl:
@@ -192,7 +223,7 @@ def write_tab1(dic, with_ctrl=True):
     tbl_dic = dic['table']
     dic.update({'N1': len(tbl_dic['NBT']),
                 'N2': len(tbl_dic['X'])})
-    lines = write_cont(dic, with_ctrl=True)
+    lines = write_cont(dic, with_ctrl)
     tbl_lines = write_tab1_body_lines(
             tbl_dic['NBT'], tbl_dic['INT'],
             tbl_dic['X'], tbl_dic['Y'])

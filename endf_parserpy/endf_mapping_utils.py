@@ -29,6 +29,28 @@ def close_section(extvarname, datadic):
     del curdatadic['__up']
     return datadic
 
+def get_varval(expr, datadic, loop_vars):
+    name = get_name(expr)
+    if name not in ('VARNAME', 'extvarname'):
+        raise TypeError(f'node must be either of type VARNAME or extvarname but is {name}')
+    varname = get_varname(expr)
+    idxvars = get_indexvars(expr)
+    while varname not in datadic and '__up' in datadic:
+        datadic = datadic['__up']
+    if varname not in datadic:
+        raise IndexError(f'variable {varname} not found')
+    if idxvars is None:
+        return datadic[varname]
+    else:
+        curdic = datadic[varname]
+        for i, idxvar in enumerate(idxvars):
+            idx = loop_vars[idxvar]
+            if i < len(idxvars)-1:
+                curdic = curdic[idx]
+        idx = loop_vars[idxvar[-1]]
+        val = curdic[idx]
+        return val
+
 def get_varname(expr):
     if is_tree(expr):
         for ch in expr.children:
@@ -67,12 +89,17 @@ def varvalue_expr_conversion(vv, val, inverse):
     else:
         return vv[0] + val*vv[1]
 
-def eval_expr(expr):
+def eval_expr(expr, datadic=None, loop_vars=None):
     name = get_name(expr)
     # reminder: VARNAME is is a string of letters and number, e.g., foo1
     #           extvarname can contain an index specification, e.g., foo1[i]
     if name in ('VARNAME', 'extvarname'):
-        return (0, 1)
+        if datadic is None:
+            return (0, 1)
+        else:
+            # if datadic is given, we substitute the variable name by its value
+            val = get_varval(expr, datadic, loop_vars)
+            return (val, 0)
     elif name == 'NUMBER':
         # if it was an integer, we preserve this quality
         vstr = expr.value
@@ -82,12 +109,12 @@ def eval_expr(expr):
             v = float(expr.value)
         return (v, 0)
     elif name == 'minusexpr':
-        v = eval_expr(expr.children[0])
+        v = eval_expr(expr.children[0], datadic, loop_vars)
         return (-v[0], -v[1])
     elif name in ('addition', 'subtraction',
                 'multiplication', 'division'):
-        v1 = eval_expr(expr.children[0])
-        v2 = eval_expr(expr.children[1])
+        v1 = eval_expr(expr.children[0], datadic, loop_vars)
+        v2 = eval_expr(expr.children[1], datadic, loop_vars)
         if name == 'multiplication':
             assert v1[1] == 0 or v2[1] == 0
             if v1[1] == 0:
@@ -115,5 +142,5 @@ def eval_expr(expr):
             return (v1[0]-v2[0], v1[1]-v2[1])
     else:
         assert len(expr.children) == 1
-        return eval_expr(expr.children[0])
+        return eval_expr(expr.children[0], datadic, loop_vars)
 

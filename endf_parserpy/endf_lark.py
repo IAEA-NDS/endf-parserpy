@@ -9,7 +9,7 @@ r"""
 %ignore " "
 
 code_token: (endf_line | for_loop | if_statement | section | COMMENT_LINE | NEWLINE)*
-endf_line : list_line | head_line | cont_line | tab1_line
+endf_line : list_line | head_line | cont_line | tab1_line | tab2_line
             | text_line | dir_line  | send_line | dummy_line
 
 // section to define namespace for variables
@@ -52,6 +52,12 @@ tab1_fields : tab1_cont_fields "/" tab1_def
 tab1_cont_fields : expr "," expr "," expr "," expr "," expr "," expr
 tab1_def : extvarname "/" extvarname
 table_name : extvarname
+
+// TAB2 record
+tab2_line : "[" ctrl_spec "/" tab2_fields "]" "TAB2" ("(" table_name ")")? NEWLINE*
+tab2_fields : tab2_cont_fields "/" tab2_def
+tab2_cont_fields : expr "," expr "," expr "," expr "," expr "," expr
+tab2_def : extvarname
 
 // LIST record
 list_line : "[" ctrl_spec "/" list_fields "/"  list_body  "]" "LIST" ("(" list_name ")")? NEWLINE*

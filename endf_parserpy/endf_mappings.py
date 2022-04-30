@@ -152,6 +152,36 @@ def map_dir_dic(dir_line_node, dir_dic={}, datadic={}, loop_vars={}, inverse=Fal
     cn = ('L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, dir_dic, datadic, loop_vars, inverse)
 
+def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, inverse=False):
+    check_ctrl_spec(tab2_line_node, tab2_dic, datadic, inverse)
+    tab2_fields = get_child(tab2_line_node, 'tab2_fields')
+    tab2_cont_fields = get_child(tab2_fields, 'tab2_cont_fields')
+    # tab2_def_fields contains the name of the Z variable
+    # we don't need it because the following TAB1/LIST records
+    # contain the name of this variable at position of C2
+    tab2_def_fields = get_child(tab2_fields, 'tab2_def').children
+    tab2_name_node = get_child(tab2_line_node, 'table_name', nofail=True)
+    # open section if desired
+    if tab2_name_node is not None:
+        datadic = open_section(tab2_name_node, datadic, loop_vars)
+    # deal with the mapping of the variable names in the table first
+    cn = ('NBT', 'INT')
+    tab2_def_fields = get_child(tab2_fields, 'tab2_def').children
+    expr_list = ['NBT', 'INT']
+    tbl_dic = {} if inverse else tab2_dic['table']
+    tbl_ret = map_record_helper(expr_list, cn, tbl_dic, datadic, loop_vars, inverse)
+    # close section if desired
+    if tab2_name_node is not None:
+        datadic = close_section(tab2_name_node, datadic)
+    # we remove NR because we can infer it from the length of the NBT array
+    # we keep NZ because is contains the number of following TAB1/LIST records
+    expr_list = tab2_cont_fields.children[:-2] + tab2_cont_fields.children[-1:]
+    cn = ('C1', 'C2', 'L1', 'L2','N2')
+    main_ret = map_record_helper(expr_list, cn, tab2_dic, datadic, loop_vars, inverse)
+    if inverse:
+        main_ret['table'] = tbl_ret
+    return main_ret
+
 def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=False):
     check_ctrl_spec(tab1_line_node, tab1_dic, datadic, inverse)
     tab1_fields = get_child(tab1_line_node, 'tab1_fields')

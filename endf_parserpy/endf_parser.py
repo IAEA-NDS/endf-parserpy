@@ -3,13 +3,13 @@ from copy import deepcopy
 from lark import Lark
 from .tree_utils import is_tree, get_name, get_child, get_child_value
 from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
-        map_dir_dic, map_tab1_dic, map_list_dic)
+        map_dir_dic, map_tab1_dic, map_tab2_dic, map_list_dic)
 from .endf_mapping_utils import get_varname, get_indexvars, open_section, close_section
 from .flow_control_utils import cycle_for_loop, evaluate_if_statement, should_proceed
 
 from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         write_head, read_head, read_text, write_text,
-        read_dir, write_dir, read_tab1, write_tab1,
+        read_dir, write_dir, read_tab1, write_tab1, read_tab2, write_tab2,
         read_send, write_send, write_fend, write_mend, write_tend,
         read_list, write_list, split_sections)
 
@@ -40,6 +40,7 @@ class BasicEndfParser():
         endf_actions['text_line'] = self.process_text_line
         endf_actions['dir_line'] = self.process_dir_line
         endf_actions['tab1_line'] = self.process_tab1_line
+        endf_actions['tab2_line'] = self.process_tab2_line
         endf_actions['list_line'] = self.process_list_line
         endf_actions['send_line'] = self.process_send_line
         self.endf_actions = endf_actions
@@ -110,6 +111,18 @@ class BasicEndfParser():
             tab1_dic = map_tab1_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
             tab1_dic.update(get_ctrl(self.datadic))
             newlines = write_tab1(tab1_dic, with_ctrl=True)
+            self.lines += newlines
+
+    def process_tab2_line(self, tree):
+        if self.rwmode == 'read':
+            self.loop_vars['__ofs'] = self.ofs
+            write_info('Reading a TAB2 record', self.ofs)
+            tab2_dic, self.ofs = read_tab2(self.lines, self.ofs)
+            map_tab2_dic(tree, tab2_dic, self.datadic, self.loop_vars)
+        else:
+            tab2_dic = map_tab2_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
+            tab2_dic.update(get_ctrl(self.datadic))
+            newlines = write_tab2(tab2_dic, with_ctrl=True)
             self.lines += newlines
 
     def process_list_line(self, tree):

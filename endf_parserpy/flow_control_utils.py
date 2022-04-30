@@ -21,9 +21,9 @@ def eval_expr_with_var(expr, datadic, loop_vars):
             curdic = datadic[varname]
             for i, idxvar in enumerate(indexvars):
                 idx = loop_vars[idxvar]
-                if i < len(idxvars)-1:
+                if i < len(indexvars)-1:
                     curdic = curdic[idx]
-            idx = loop_vars[idxvars[-1]]
+            idx = loop_vars[indexvars[-1]]
             varval = curdic[idx]
             return v[0] + v[1] * varval
     else:
@@ -37,8 +37,8 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
     # determine range for loop counter
     start_expr = get_child(for_head, 'for_start')
     stop_expr = get_child(for_head, 'for_stop')
-    start = eval_expr_with_var(start_expr, datadic, loop_vars)
-    stop = eval_expr_with_var(stop_expr, datadic, loop_vars)
+    start = eval_expr(start_expr, datadic, loop_vars)[0]
+    stop = eval_expr(stop_expr, datadic, loop_vars)[0]
     if float(start) != int(start):
         raise ValueError('Loop start index must evaluate to an integer')
     if float(stop) != int(stop):
@@ -61,8 +61,8 @@ def eval_if_condition(if_condition, datadic, loop_vars):
     left_expr = if_condition.children[0]
     cmpop = get_child_value(if_condition, 'IF_RELATION')
     right_expr = if_condition.children[2]
-    left_val = eval_expr_with_var(left_expr, datadic, loop_vars)
-    right_val = eval_expr_with_var(right_expr, datadic, loop_vars)
+    left_val = eval_expr(left_expr, datadic, loop_vars)[0]
+    right_val = eval_expr(right_expr, datadic, loop_vars)[0]
     if ((cmpop == ">" and left_val > right_val) or
         (cmpop == "<" and left_val < right_val) or
         (cmpop =="<=" and left_val <= right_val) or

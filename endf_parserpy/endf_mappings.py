@@ -3,7 +3,8 @@ import re
 from .tree_utils import (is_token, is_tree, get_name, get_value,
         get_child, get_child_names, get_child_value)
 from .flow_control_utils import cycle_for_loop
-from .endf_mapping_utils import get_varname, get_indexvars, eval_expr, varvalue_expr_conversion
+from .endf_mapping_utils import (get_varname, get_indexvars, eval_expr,
+        varvalue_expr_conversion, open_section, close_section)
 
 def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
     ctrl_spec = get_child(record_line_node, 'ctrl_spec')
@@ -191,19 +192,6 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=
 
 def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=False,
                  run_instruction=None):
-    # important to know whether we should map into a subdictionary or directly into datadic
-    list_name_node = get_child(list_line_node, 'list_name', nofail=True)
-    list_name = get_varname(list_name_node) if list_name_node is not None else None
-    # static variables for the recursive function
-    sandbox_dic = datadic
-    if list_name is not None:
-        if inverse:
-            sandbox_dic = sandbox_dic[list_name]
-        else:
-            sandbox_dic.setdefault(list_name, {})
-            sandbox_dic = sandbox_dic[list_name]
-        sandbox_dic['__up'] = datadic
-
     val_idx = 0
     # we embed recurisve helper function here so that
     # it can see the variables list_dic, datadic and loop_vars.
@@ -211,7 +199,6 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
     def parse_list_body_node(node):
         nonlocal val_idx
         nonlocal list_dic
-        nonlocal sandbox_dic
         node_type = get_name(node)
 
         if node_type == 'expr':
@@ -219,9 +206,9 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
             # of assigning a value of the list body to the appropriate variable in datadic
             if not inverse:
                 vals = list_dic['vals']
-                map_record_helper([node], ('val',), {'val': vals[val_idx]}, sandbox_dic, loop_vars, inverse)
+                map_record_helper([node], ('val',), {'val': vals[val_idx]}, datadic, loop_vars, inverse)
             else:
-                list_val = map_record_helper([node], ('val',), {}, sandbox_dic, loop_vars, inverse)
+                list_val = map_record_helper([node], ('val',), {}, datadic, loop_vars, inverse)
                 list_dic.setdefault('vals', [])
                 list_dic['vals'].append(list_val['val'])
 
@@ -245,25 +232,25 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2', 'vals')
     map_record_helper(expr_list, cn, list_dic, datadic, loop_vars, inverse)
 
+    # enter subsection if demanded
+    list_name_node = get_child(list_line_node, 'list_name', nofail=True)
+    if list_name_node is not None:
+        datadic = open_section(list_name_node, datadic, loop_vars)
     # parse the list body
     list_body_node = get_child(list_line_node, 'list_body')
     parse_list_body_node(list_body_node)
-
+    # close subsection if opened
+    if list_name_node is not None:
+        datadic = close_section(list_name_node, datadic)
     # if a list name was given, the hidden variable __up
     # to the enclosing dictionary was created in this
     # section and we remove it afterwards
-    if list_name is not None:
-        del sandbox_dic['__up']
 
     if val_idx < len(list_dic['vals']):
         raise ValueError('Not all values in the list_body were consumed and ' +
                          'associated with variables in datadic')
-    if not inverse:
-        if list_name is not None:
-            datadic[list_name] = sandbox_dic
-        else:
-            datadic.update(sandbox_dic)
-        return datadic
-    else:
+    if inverse:
         return list_dic
+    else:
+        return datadic
 

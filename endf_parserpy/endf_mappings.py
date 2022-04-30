@@ -157,37 +157,27 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=
     tab1_fields = get_child(tab1_line_node, 'tab1_fields')
     tab1_cont_fields = get_child(tab1_fields, 'tab1_cont_fields')
     tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
-    if 'table_name' in get_child_names(tab1_line_node):
-        tblname_expr = get_child(tab1_line_node, 'table_name')
-        tblvarname = get_varname(tblname_expr)
-    else:
-        tblvarname = None
+    tab1_name_node = get_child(tab1_line_node, 'table_name', nofail=True)
+
+    # open section if desired
+    if tab1_name_node is not None:
+        datadic = open_section(tab1_name_node, datadic, loop_vars)
     # deal with the mapping of the variable names in the table first
     cn = ('NBT', 'INT', 'X', 'Y')
     tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
     expr_list = ['NBT', 'INT'] + list(tab1_def_fields)
-    if not inverse:
-        tbl_datadic = {}
-        tbl_dic = tab1_dic['table']
-    else:
-        tbl_datadic = datadic if tblvarname is None else datadic[tblvarname]
-        tbl_dic = {}
-    tbl_ret = map_record_helper(expr_list, cn, tbl_dic, tbl_datadic,
-                                loop_vars, inverse)
+    tbl_dic = {} if inverse else tab1_dic['table']
+    tbl_ret = map_record_helper(expr_list, cn, tbl_dic, datadic, loop_vars, inverse)
+    # close section if desired
+    if tab1_name_node is not None:
+        datadic = close_section(tab1_name_node, datadic)
     # we remove NR and NP (last two elements) because redundant information
     # and not used by write_tab1 and read_tab1
     expr_list = tab1_cont_fields.children[:-2]
     cn = ('C1', 'C2', 'L1', 'L2')
     main_ret = map_record_helper(expr_list, cn, tab1_dic, datadic, loop_vars, inverse)
-    # add the table dictionary to the main dictionary
-    if tblvarname is not None:
-        new_tblname = tblvarname if not inverse else 'table'
-        main_ret[new_tblname] = tbl_ret
-    else:
-        if inverse:
-            main_ret['table'] = tbl_ret
-        else:
-            main_ret.update(tbl_ret)
+    if inverse:
+        main_ret['table'] = tbl_ret
     return main_ret
 
 def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=False,

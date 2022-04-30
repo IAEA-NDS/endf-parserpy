@@ -3,31 +3,6 @@ from .tree_utils import (get_child, get_child_value, get_name,
 from .endf_mapping_utils import get_varname, get_indexvars, eval_expr
 from .logging_utils import write_info
 
-def eval_expr_with_var(expr, datadic, loop_vars):
-    v = eval_expr(expr)
-    # check if variable in expression
-    if v[1] != 0:
-        varname = get_varname(expr)
-        # if we don't find the variable in the current
-        # scope, we scan the enclosing scopes
-        while not varname in datadic and '__up' in datadic:
-            datadic = datadic['__up']
-        if varname not in datadic:
-            raise ValueError(f'variable {varname} not found in datadic')
-        indexvars = get_indexvars(expr)
-        if indexvars is None:
-            return v[0] + v[1] * datadic[varname]
-        else:
-            curdic = datadic[varname]
-            for i, idxvar in enumerate(indexvars):
-                idx = loop_vars[idxvar]
-                if i < len(indexvars)-1:
-                    curdic = curdic[idx]
-            idx = loop_vars[indexvars[-1]]
-            varval = curdic[idx]
-            return v[0] + v[1] * varval
-    else:
-        return v[0]
 
 def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
                    loop_name='for_loop', head_name='for_head',  body_name='for_body'):
@@ -115,7 +90,7 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     lookahead = 0
     if lookahead_option:
         lookahead_expr = get_child(lookahead_option, 'expr')
-        lookahead = eval_expr_with_var(lookahead_expr, datadic, loop_vars)
+        lookahead = eval_expr(lookahead_expr, datadic, loop_vars)[0]
         if int(lookahead) != lookahead:
             raise ValueError( 'lookahead argument must evaluate to an integer' +
                              f'(got {lookahead})')

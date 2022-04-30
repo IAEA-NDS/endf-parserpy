@@ -58,6 +58,18 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     indexvars_list = tuple(get_indexvars_tmp(t) for t in expr_list)
     expr_vvs = tuple((eval_expr_tmp(t) for i, t in enumerate(expr_list)))
     zipit = zip(basekeys, varnames, indexvars_list, expr_vvs)
+    # TODO: Need to refactor the error message stuff
+    def create_variable_exists_error_msg(varname, prev_val, cur_val):
+        return ('If the same variable appears in several record specifications ' +
+                'in the ENDF recipe, the corresponding values ' +
+                'in the ENDF file must be so that the variable evaluates to the ' +
+               f'same value. This is not the case for {varname} which previously ' +
+               f'was determined to be {prev_val} but in the present ' +
+               f'record would be determined to be {cur_val}. Either the ENDF recipe ' +
+                'is wrong or the ENDF file contains inconsistent data. Note that ' +
+               f'{varname} may be an array, in which case this statement would ' +
+                'apply to one of the variables in that array')
+
     if not inverse:
         for sourcekey, targetkey, idxvars, expr_vv in zipit:
             # if the record specification contains a value,
@@ -74,14 +86,11 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
             else:
                 val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
                 if idxvars is None:
-                    if targetkey in datadic and datadic[targetkey] != val:
-                        raise ValueError( 'If the same variable appears in several record specifications ' +
-                                          'in the ENDF recipe, the corresponding values ' +
-                                          'in the ENDF file must be so that the variable evaluates to the ' +
-                                         f'same value. This is not the case for {targetkey} which previously ' +
-                                         f'was determined to be {datadic[targetkey]} but in the present ' +
-                                         f'record would be determined to be {val}. Either the ENDF recipe ' +
-                                          'is wrong or the ENDF file contains inconsistent data.')
+                    if targetkey in datadic:
+                        prev_val = datadic[targetkey]
+                        if prev_val != val:
+                            raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
+
                     datadic[targetkey] = val
                 else:
                     # loop through indexvars, and initialize
@@ -94,6 +103,11 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                             curdic.setdefault(idx, {})
                             curdic = curdic[idx]
                     idx = loop_vars[idxvars[-1]]
+                    if idx in curdic:
+                        prev_val = curdic[idx]
+                        if prev_val != val:
+                            raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
+
                     curdic[idx] = val
 
         # we write out logging info the first time we encounter a variable

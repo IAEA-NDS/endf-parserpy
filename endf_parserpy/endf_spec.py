@@ -123,30 +123,28 @@ if LTT==3 and LI==0:
     endfor
     # higher range represented by probability distribution
     [MAT, 4, MT/ 0.0, 0.0, 0, 0, NR, NE2/ Eint ]TAB2 (ang_int)
-    for i=NE1 to NE1+NE2-1:  # NE1+NE2-140  #NE1+130:
+    for i=NE1 to NE1+NE2-1:
         [MAT, 4, MT/ T,  E[i] , LT, 0, NR, NP/ mu / f ]TAB1 (angtable[i])
     endfor
 endif
 SEND
 """
 
-
-# TODO: remove after successful development
-spec_dic.setdefault(99, {})
-spec_dic[99] = \
+spec_dic.setdefault(6, {})
+spec_dic[6] = \
 """
-[MAT,99, MT/ ZA, AWR, 0, 0, 0, 0] HEAD
-for i=1 to 1:
-    (testsec[i])
-        [MAT,99, MT/ A, B, C, D, E, F /
-           {{U[j,k]}{j=1 to 3}}{k=1 to 3}, bla
-        ]LIST
-    (/testsec[i])
+[MAT, 6, MT/ ZA, AWR, JP, LCT, NK, 0]HEAD
+for i=1 to NK:
+    (subsection[i])
+        [MAT, 6, MT/ ZAP, AWP, LIP, LAW, NR, NP/ Eint / yi]TAB1 (tmp)
+        if LAW == 1:
+            [MAT, 6, MT/ 0.0, 0.0, LANG, LEP, NR, NE/ Eint ]TAB2
+            for j=1 to NE:
+                [MAT, 6, MT/ 0.0, E[j] , ND, NA, NW[j], NEP[j]/
+                             {Ep[j,k], {b[m,j,k]}{m=0 to NA}}{k=1 to NEP[j]} ]LIST
+            endfor
+        endif
+    (/subsection[i])
 endfor
-"""
-
-spec_dic.setdefault(98, {})
-spec_dic[98] = \
-"""
-[MAT,98, MT/ ZA*3, 5*ZA, 5+6*6/6-11, 0, 0, 0] HEAD
+SEND
 """

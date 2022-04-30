@@ -1,6 +1,12 @@
 from .tree_utils import is_tree, get_name, get_value, is_token
 import re
 
+def open_section():
+    pass
+
+def close_section():
+    pass
+
 def get_varname(expr):
     if is_tree(expr):
         for ch in expr.children:

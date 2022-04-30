@@ -59,7 +59,7 @@ for i=1 to NIS:
                 for m=1 to NLS:
                 (spingroup[m])
                     [MAT, 2,151/AWRI,APL, L, 0, 6*NRS, NRS/
-                    {ER[k] , AJ[k] , GN[k], GG[k] , GFA[k],  GFB[k]}{k=1 to NRS} ]LIST
+                    {ER[k] , AJ[k] , GN[k], GG[k] , GFA[k],  GFB[k]}{k=1 to NRS} ]LIST (blabla[i])
                 (/spingroup[m])
                 endfor
             endif

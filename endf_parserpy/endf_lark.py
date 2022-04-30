@@ -57,7 +57,7 @@ table_name : VARNAME
 list_line : "[" ctrl_spec "/" list_fields "/"  list_body  "]" "LIST" ("(" list_name ")")? NEWLINE*
 list_fields : expr "," expr "," expr "," expr "," expr "," expr
 list_body : (expr | list_loop | "," | NEWLINE)+
-list_name : VARNAME
+list_name : extvarname
 
 // LIST loop
 list_loop : "{" list_body "}" "{" list_for_head "}"

@@ -18,7 +18,6 @@ section_head : "(" extvarname ")"
 section_body : code_token*
 section_tail : "(/" extvarname ")"
 
-
 // control numbers
 ctrl_spec : MAT_SPEC "," MF_SPEC "," MT_SPEC
 MAT_SPEC : "MAT" | INT
@@ -77,12 +76,17 @@ for_stop :   expr
 // IF statement
 if_statement : "if" if_head (lookahead_option)? ":" if_body "endif"
 lookahead_option : "[" "lookahead" "=" expr "]"
-if_head : if_condition ((IF_AND if_condition)* | (IF_OR if_condition))
+if_head : disjunction
 if_condition : expr IF_RELATION expr
 IF_RELATION  : ">" | "<" | "!=" | "==" | ">=" | "<="
 IF_AND : "and"
 IF_OR : "or"
 if_body : (code_token | NEWLINE)*
+// the solution in the answer at https://stackoverflow.com/questions/63493679/backus-naur-form-with-boolean-algebra-problem-with-brackets-and-parse-tree
+// was helpful and modified to treat conjunction, disjunction and bracketed expressions
+disjunction : disjunction "or" conjunction | conjunction
+conjunction : conjunction "and" comparison | comparison
+comparison : if_condition | "(" disjunction ")"
 
 // arithmetic expression
 // adopted from: http://marvin.cs.uidaho.edu/Teaching/CS445/grammar.pdf (3.3)

@@ -73,6 +73,39 @@ def eval_if_condition(if_condition, datadic, loop_vars):
     else:
         return False
 
+def determine_truthvalue(node, datadic, loop_vars):
+    name = get_name(node)
+    if name == 'if_condition':
+        return eval_if_condition(node, datadic, loop_vars)
+    elif name == 'comparison':
+        if len(node.children) != 1:
+            raise ValueError('Exactly one child expected from "comparison" node')
+        ch = node.children[0]
+        if get_name(ch) not in ('if_condition', 'disjunction'):
+            raise ValueError('Child node must be either "if_condition" or "disjunction"')
+        return determine_truthvalue(ch, datadic, loop_vars)
+    elif name == 'conjunction':
+        conj = get_child(node, 'conjunction', nofail=True)
+        comp = get_child(node, 'comparison')
+        comp_truthval = determine_truthvalue(comp, datadic, loop_vars)
+        if conj is not None:
+            conj_truthval = determine_truthvalue(conj, datadic, loop_vars)
+            return (conj_truthval and comp_truthval)
+        else:
+            return comp_truthval
+    elif name == 'disjunction':
+        disj = get_child(node, 'disjunction', nofail=True)
+        conj = get_child(node, 'conjunction')
+        conj_truthval = determine_truthvalue(conj, datadic, loop_vars)
+        if disj is not None:
+            disj_truthval = determine_truthvalue(disj, datadic, loop_vars)
+            return (disj_truthval or conj_truthval)
+        else:
+            return conj_truthval
+    else:
+        raise TypeError(f'Unsupported node type {name} encountered ' +
+                         'while parsing boolean expression')
+
 def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
                           dump_state, restore_state):
     assert tree.data == 'if_statement'
@@ -105,23 +138,9 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
 
     # evaluate the condition (with variables in datadic potentially
     # affected by the lookahead)
-    opnames = list(get_child_names(if_head))
-    if 'IF_AND' in opnames and 'IF_OR' in opnames:
-        raise TypeError('"or" and "and" cannot be mixed in if-statement')
-    if 'IF_AND' in opnames:
-        truthval = True
-        for ch in if_head.children:
-            if get_name(ch) == 'if_condition':
-                truthval = truthval and eval_if_condition(ch, datadic, loop_vars)
-    elif 'IF_OR' in opnames:
-        truthval = False
-        for ch in if_head.children:
-            if get_name(ch) == 'if_condition':
-                truthval = truthval or eval_if_condition(ch, datadic, loop_vars)
-    else:
-        ch = get_child(if_head, 'if_condition')
-        truthval = eval_if_condition(ch, datadic, loop_vars)
-
+    write_info('Evaluate if head ' + reconstruct_tree_str(if_head))
+    disj = get_child(if_head, 'disjunction')
+    truthval = determine_truthvalue(disj, datadic, loop_vars)
     if truthval:
         write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')
         if lookahead_option:

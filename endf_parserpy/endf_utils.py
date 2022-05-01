@@ -2,10 +2,21 @@ from .fortran_utils import (float2fortstr, fortstr2float,
         read_fort_floats, write_fort_floats)
 
 
-def read_ctrl(line):
-    return {'MAT': int(line[66:70]),
-            'MF' : int(line[70:72]),
-            'MT' : int(line[72:75])}
+def read_ctrl(line, nofail=False):
+    if nofail:
+        try:
+            mat = int(line[66:70])
+            mf = int(line[70:72])
+            mt = int(line[72:75])
+        except:
+            mat = 0
+            mf = 0
+            mt = 0
+    else:
+        mat = int(line[66:70])
+        mf = int(line[70:72])
+        mt = int(line[72:75])
+    return {'MAT': mat, 'MF': mf, 'MT': mt}
 
 def write_ctrl(dic, ns=None):
     nsstr = '' if not ns else str(ns).rjust(5)
@@ -295,7 +306,7 @@ def split_sections(lines):
     for line in lines:
         if is_blank_line(line):
             continue
-        dic = read_ctrl(line)
+        dic = read_ctrl(line, nofail=True)
         mf = dic['MF']
         mt = dic['MT']
         # end markers (SEND, MEND, FEND, TEND) ignored

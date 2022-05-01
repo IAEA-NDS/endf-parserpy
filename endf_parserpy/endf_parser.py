@@ -229,6 +229,12 @@ class BasicEndfParser():
             return None
 
     def parse(self, lines):
+        # lines should be a list of lines.
+        # if it is a string, we assume that the
+        # string indicates a file name.
+        if isinstance(lines, str):
+            with open(lines, 'r') as f:
+                lines = f.readlines()
         tree_dic = self.tree_dic
         mfmt_dic = split_sections(lines)
         for mf in mfmt_dic:

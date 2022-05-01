@@ -165,3 +165,65 @@ for i=1 to NK:
 endfor
 SEND
 """
+
+spec_dic.setdefault(12, {})
+spec_dic[12] = """
+# Photon Production Multiplicities (12.2.1, p. 194)
+if LO == 1 [lookahead=1]:
+    [MAT, 12, MT/ ZA, AWR, LO, 0, NK, 0]HEAD
+    if NK > 1:
+        [MAT, 12, MT/ 0.0, 0.0, 0, 0, NR, NP/ Eint / Y] TAB1
+    endif
+    for k=1 to NK:
+        [MAT, 12, MT/ Eg[k] , ES[k], LP, LF, NR, NP/ Eint / y[k] ] TAB1
+    endfor
+endif
+# Transition Probability Arrays (12.2.2, p. 196)
+if LO == 2 [lookahead=1]:
+    [MAT, 12, MT/ ZA, AWR, LO, LG, NS, 0]HEAD
+    # TODO: implement
+endif
+SEND
+"""
+
+spec_dic.setdefault(14, {})
+spec_dic[14] = """
+# FILE 14: Photon Angular Distributions (Chap. 14, 203)
+# Isotropic distributions (14.2.1, p. 205)
+if LI == 1 [lookahead=1]:
+    [MAT, 14, MT/ ZA, AWR, LI, 0, NK, 0]HEAD
+endif
+# Anisotropic distribution with Legendre Coefficients Representation (14.2.2, p. 205)
+if LI == 0 and LTT == 1 [lookahead=1]:
+    [MAT, 14, MT/ ZA, AWR, LI, LTT, NK, NI]HEAD
+    # TODO: implement
+endif
+# Anisotropic distribution with Tabulated Angular Distributions
+if LI == 0 and LTT == 2 [lookahead=1]:
+    [MAT, 14, MT/ ZA, AWR, LI, LTT, NK, NI] HEAD
+    # TODO: implement
+endif
+SEND
+"""
+
+spec_dic.setdefault(15, {})
+spec_dic[15] = """
+# FILE 15: Continuous Photon Energy Spectra
+[MAT, 15, MT/ ZA, AWR, 0, 0, NC, 0] HEAD
+for j=1 to NC:
+    (subsection[j])
+        # ATTENTION: This if must be inside subsection
+        #            otherwise LF variable will not be
+        #            in scope for the evaluation of the
+        #            if statement.
+        if LF == 1 [lookahead=1]:
+            [MAT, 15, MT/ 0.0, 0.0, 0, LF, NR, NP/ Eint / p] TAB1 (rtfm_tab1)
+            [MAT, 15, MT/ 0.0, 0.0, 0, 0, NR, NE/ Eint ] TAB2
+            for k=1 to NE:
+                [MAT, 15, MT/ 0.0, E[k] , 0, 0, NR, NP / Egamma / g] TAB1 (rtfm1_tab[k])
+            endfor
+        endif
+    (/subsection[j])
+endfor
+SEND
+"""

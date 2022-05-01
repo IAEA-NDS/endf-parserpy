@@ -22,12 +22,18 @@ def write_ctrl(dic, ns=None):
     nsstr = '' if not ns else str(ns).rjust(5)
     return '{:>4}{:>2}{:>3}'.format( dic['MAT'], dic['MF'], dic['MT']) + nsstr
 
-def get_ctrl(dic):
+def get_ctrl(dic, nofail=False):
     while 'MAT' not in dic and '__up' in dic:
         dic = dic['__up']
-    return {'MAT': dic['MAT'],
-            'MF' : dic['MF'],
-            'MT' : dic['MT']}
+    if nofail:
+        mat = 0 if 'MAT' not in dic else dic['MAT']
+        mf = 0 if 'MF' not in dic else dic['MF']
+        mt = 0 if 'MT' not in dic else dic['MT']
+    else:
+        mat = dic['MAT']
+        mf = dic['MF']
+        mt = dic['MT']
+    return {'MAT': mat, 'MF': mf, 'MT': mt}
 
 def read_text(lines, ofs=0, with_ctrl=True):
     ofs = skip_blank_lines(lines, ofs)

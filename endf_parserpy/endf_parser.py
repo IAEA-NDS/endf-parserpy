@@ -202,8 +202,22 @@ class BasicEndfParser():
         self.ofs = 0
 
     def dump_parser_state(self):
+        # NOTE: We have to protect the __up
+        # pointer against deepcopy to ensure
+        # that we can go back to the enclosing
+        # dictionary and not a copy thereof
+        # which is problematic for the if statement
+        # with lookahead.
+        if '__up' in self.datadic:
+            updic = self.datadic['__up']
+            del self.datadic['__up']
+            datadic_copy = deepcopy(self.datadic)
+            datadic_copy['__up'] = updic
+        else:
+            datadic_copy = deepcopy(self.datadic)
+
         return {'loop_vars': deepcopy(self.loop_vars),
-                'datadic' : deepcopy(self.datadic),
+                'datadic' : datadic_copy,
                 'lines' : deepcopy(self.lines),
                 'rwmode' : self.rwmode,
                 'ofs' : self.ofs}
@@ -288,8 +302,10 @@ class BasicEndfParser():
                     # MF/MT section, it will be preserved as a
                     # list of strings in the parse step
                     # and we output that unchanged
-                    curlines = endf_dic[mf][mt]
-                    lines.extend(endf_dic[mf][mt])
+                    curlines = endf_dic[mf][mt].copy()
+                    # except that we remove newlines that screw it up
+                    curlines = [t.replace('\n','').replace('\r','') for t in curlines]
+                    lines.extend(curlines)
                     # update the MAT, MF, MT number
                     self.datadic = read_ctrl(lines[-1])
                     # add the SEND record in between the MT subections

@@ -1,3 +1,4 @@
+import traceback
 from .tree_utils import (get_child, get_child_value, get_name,
         get_child_names, reconstruct_tree_str)
 from .endf_mapping_utils import get_varname, get_indexvars, eval_expr
@@ -34,11 +35,13 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
 def eval_if_condition(if_condition, datadic, loop_vars):
     if len(if_condition.children) != 3:
         raise IndexError('if_condition must have three children')
+    write_info('Dealing with the if_condition ' + reconstruct_tree_str(if_condition))
     left_expr = if_condition.children[0]
     cmpop = get_child_value(if_condition, 'IF_RELATION')
     right_expr = if_condition.children[2]
     left_val = eval_expr(left_expr, datadic, loop_vars)[0]
     right_val = eval_expr(right_expr, datadic, loop_vars)[0]
+    write_info(f'Left side evaluates to {left_val} and right side to {right_val}')
     if ((cmpop == ">" and left_val > right_val) or
         (cmpop == "<" and left_val < right_val) or
         (cmpop =="<=" and left_val <= right_val) or
@@ -96,7 +99,10 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
             raise ValueError( 'lookahead argument must evaluate to an integer' +
                              f'(got {lookahead})')
         lookahead = int(lookahead)
+
         if '__lookahead' in loop_vars:
+            # NOTE: This error message will not appear because
+            #       the lookahead is performed in a try clause.
             raise ValueError('Nested if statements with several ' +
                              'lookahead options are not allowed')
 
@@ -108,7 +114,10 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
             tree_handler(if_body)
         except:
             # we accept parsing failure
-            # during lookahead
+            # during lookahead, but print
+            # the traceback for diagnostics
+            write_info('Showing the stacktrace due to failure in lookahead...')
+            traceback.print_exc()
             pass
         del(loop_vars['__lookahead'])
 
@@ -123,6 +132,8 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
         #       to assign the value False if any variable name
         #       in the if statement was not found but otherwise
         #       let this function fail.
+        write_info('Showing the stacktrace due to failure in determination of if condition...')
+        traceback.print_exc()
         truthval = False
     if truthval:
         write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')

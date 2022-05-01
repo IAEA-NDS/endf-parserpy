@@ -238,6 +238,11 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
         if node_type == 'expr':
             if not inverse:
                 vals = list_dic['vals']
+                numvals = len(vals)
+                if val_idx >= numvals:
+                    raise IndexError(f'All {numvals} values in the list body present in the ENDF file ' +
+                                      'have already been consumed. ' +
+                                      'You may check the index specifications of your list body. ')
                 # maybe a bit hacky and clunky, but the method can do the job
                 # of assigning a value of the list body to the appropriate variable in datadic
                 map_record_helper([node], ('val',), {'val': vals[val_idx]}, datadic, loop_vars, inverse)

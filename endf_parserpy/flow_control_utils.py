@@ -21,7 +21,8 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
     start = int(start)
     stop = int(stop)
     for_body = get_child(tree, body_name)
-    assert varname not in loop_vars
+    if varname in loop_vars:
+        raise ValueError(f'The loop variable {varname} is already in use for another loop')
     write_info(f'Enter for loop (type {loop_name}) ' + reconstruct_tree_str(for_head))
     for i in range(start, stop+1):
         loop_vars[varname] = i
@@ -115,7 +116,14 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     # affected by the lookahead)
     write_info('Evaluate if head ' + reconstruct_tree_str(if_head))
     disj = get_child(if_head, 'disjunction')
-    truthval = determine_truthvalue(disj, datadic, loop_vars)
+    try:
+        truthval = determine_truthvalue(disj, datadic, loop_vars)
+    except:
+        # TODO: Improve the error handling. Ideally, we only want
+        #       to assign the value False if any variable name
+        #       in the if statement was not found but otherwise
+        #       let this function fail.
+        truthval = False
     if truthval:
         write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')
         if lookahead_option:

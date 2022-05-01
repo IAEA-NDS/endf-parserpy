@@ -140,8 +140,25 @@ for i=1 to NK:
         if LAW == 1:
             [MAT, 6, MT/ 0.0, 0.0, LANG, LEP, NR, NE/ Eint ]TAB2
             for j=1 to NE:
-                [MAT, 6, MT/ 0.0, E[j] , ND, NA, NW[j], NEP[j]/
-                             {Ep[j,k], {b[m,j,k]}{m=0 to NA}}{k=1 to NEP[j]} ]LIST
+                [MAT, 6, MT/ 0.0, E[j] , ND[j], NA[j], NW[j], NEP[j]/
+                             {Ep[j,k], {b[m,j,k]}{m=0 to NA[j]}}{k=1 to NEP[j]} ]LIST
+            endfor
+        endif
+        # Discrete Two-Body Scattering
+        if LAW == 2:
+            [MAT, 6, MT/ 0.0, 0.0, 0, 0, NR, NE/ Eint ]TAB2
+            for j=1 to NE:
+                [MAT, 6, MT/ 0.0, E[j], LANG, 0, NLW[j], NL[j] / {A[j,l]}{l=1 to NLW[j]} ]LIST
+            endfor
+        endif
+        # Laboratory Angle-Energy Law (LAW=7) (manual 6.2.9, p. 146)
+        if LAW == 7:
+            [MAT, 6, MT/ 0.0, 0.0, 0, 0, NR, NE / E]TAB2 (E_interpol)
+            for j=1 to NE:
+                [MAT, 6, MT/ 0.0, E[j], 0, 0, NRM, NMU[j] / mu ]TAB2 (mu_interpol)
+                for k=1 to NMU[j]:
+                    [MAT, 6, MT/ 0.0, mu[k] , 0, 0, NRP[k], NEP[k]/ Ep / f ]TAB1 (table[j,k])
+                endfor
             endfor
         endif
     (/subsection[i])

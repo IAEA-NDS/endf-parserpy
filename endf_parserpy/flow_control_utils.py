@@ -28,7 +28,11 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
     for i in range(start, stop+1):
         loop_vars[varname] = i
         tree_handler(for_body)
-    del(loop_vars[varname])
+    # if we don't enter the loop, then
+    # the loop variable will not be set
+    # and consequently we don't have to delete it
+    if start <= stop:
+        del(loop_vars[varname])
     write_info(f'Leave for loop (type {loop_name}) ' + reconstruct_tree_str(for_head))
 
 

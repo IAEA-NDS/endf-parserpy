@@ -113,6 +113,14 @@ spec_dic[4] = \
 [MAT, 4, MT/ ZA, AWR, 0, LTT, 0, 0]HEAD
 [MAT, 4, MT/ 0.0, AWR, LI, LCT, 0, 0]CONT
 
+# Legendre coefficients
+if LTT == 1 and LI == 0:
+    [MAT, 4, MT/ 0.0, 0.0, 0, 0, NR, NE/ Eint ]TAB2
+    for i=1 to NE:
+        [MAT, 4, MT/ T, E[i] , LT, 0, NL[i], 0/ {a[i,l]}{l=1 to NL[i]} ]LIST
+    endfor
+endif
+
 # Angular distributions over two energy ranges.
 if LTT==3 and LI==0:
     # lower range given by Legendre coefficients
@@ -181,7 +189,15 @@ endif
 # Transition Probability Arrays (12.2.2, p. 196)
 if LO == 2 [lookahead=1]:
     [MAT, 12, MT/ ZA, AWR, LO, LG, NS, 0]HEAD
-    # TODO: implement
+    if LG == 1:
+        [MAT, 12, MT/ ES_NS , 0.0, LP, 0, 2*NT, NT/
+                      {ES[i], TP[i]}{i=1 to NT} ]LIST
+    endif
+    if LG == 2:
+        # TODO: (LG+1)*NT instead of 3*NT does not work at the moment
+        [MAT, 12, MT/ ES_NS , 0.0, LP, 0, 3*NT, NT/
+                      {ES[i], TP[i], GP[i]}{i=1 to NT} ]LIST
+    endif
 endif
 SEND
 """

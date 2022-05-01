@@ -236,10 +236,10 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
         node_type = get_name(node)
 
         if node_type == 'expr':
-            # maybe a bit hacky and clunky, but the method can do the job
-            # of assigning a value of the list body to the appropriate variable in datadic
             if not inverse:
                 vals = list_dic['vals']
+                # maybe a bit hacky and clunky, but the method can do the job
+                # of assigning a value of the list body to the appropriate variable in datadic
                 map_record_helper([node], ('val',), {'val': vals[val_idx]}, datadic, loop_vars, inverse)
             else:
                 list_val = map_record_helper([node], ('val',), {}, datadic, loop_vars, inverse)
@@ -276,9 +276,6 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
     # close subsection if opened
     if list_name_node is not None:
         datadic = close_section(list_name_node, datadic)
-    # if a list name was given, the hidden variable __up
-    # to the enclosing dictionary was created in this
-    # section and we remove it afterwards
 
     if val_idx < len(list_dic['vals']):
         raise ValueError('Not all values in the list_body were consumed and ' +

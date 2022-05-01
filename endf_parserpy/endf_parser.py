@@ -269,10 +269,11 @@ class BasicEndfParser():
                     curlines.append(curline_send)
                     lines.extend(curlines)
                     # NOTE: the SEND record is part of the recipe
-                    # so was added by the parser in
-                    # process_send_line method so no need to
-                    # add it here on contrast to the non-parsed
-                    # branch below.
+                    # and therefore will be added by the parser in
+                    # process_send_line method. Hence there is no
+                    # need to add it here, in contrast to the
+                    # branch of the if-statement below to deal
+                    # with non-parsable MF/MF sections.
                 else:
                     # nothing is parsed here, but in the spirit of
                     # defensive coding, we reset the parser nevertheless

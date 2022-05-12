@@ -1,7 +1,7 @@
 from .logging_utils import logging, abbreviate_valstr, should_skip_logging_info
 import re
 from .tree_utils import (is_token, is_tree, get_name, get_value,
-        get_child, get_child_names, get_child_value)
+        get_child, get_child_names, get_child_value, search_name)
 from .flow_control_utils import cycle_for_loop
 from .endf_mapping_utils import (get_varname, get_indexvars, eval_expr,
         varvalue_expr_conversion, open_section, close_section)
@@ -57,7 +57,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     varnames = tuple((get_varname_tmp(t) for t in expr_list))
     indexvars_list = tuple(get_indexvars_tmp(t) for t in expr_list)
     expr_vvs = tuple((eval_expr_tmp(t) for i, t in enumerate(expr_list)))
-    zipit = zip(basekeys, varnames, indexvars_list, expr_vvs)
+    zipit = zip(basekeys, varnames, indexvars_list, expr_vvs, expr_list)
     # TODO: Need to refactor the error message stuff
     def create_variable_exists_error_msg(varname, prev_val, cur_val):
         return ('If the same variable appears in several record specifications ' +
@@ -71,7 +71,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                 'apply to one of the variables in that array')
 
     if not inverse:
-        for sourcekey, targetkey, idxvars, expr_vv in zipit:
+        for sourcekey, targetkey, idxvars, expr_vv, curexpr in zipit:
             # if the record specification contains a value,
             # hence targetkey is None, we check if the value
             # in the ENDF file is equal to that value and
@@ -81,8 +81,18 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
             # in the ENDF recipe.
             if targetkey is None:
                 assert expr_vv[1] == 0
-                if record_dic[sourcekey] != expr_vv[0]:
-                    raise ValueError(f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}')
+                # if we have a DESIRED_NUMBER in the expression,
+                # we expect a certain number but we do not require it.
+                # with only NUMBER in the expression, any mismatch between
+                # our expectation and the number in the ENDF file will yield
+                # an error.
+                contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
+                value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
+                msg = f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}'
+                if not contains_desired_number and value_mismatch_occurred:
+                    raise ValueError(msg)
+                else:
+                    logging.warning(msg)
             else:
                 val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
                 if idxvars is None:
@@ -119,7 +129,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
         return datadic
     # inverse transform
     else:
-        for sourcekey, targetkey, idxvars, expr_vv in zipit:
+        for sourcekey, targetkey, idxvars, expr_vv, _ in zipit:
             if targetkey is None:
                 assert expr_vv[1] == 0
                 record_dic[sourcekey] = expr_vv[0]

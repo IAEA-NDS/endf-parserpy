@@ -44,6 +44,15 @@ def get_child_value_by_pos(tree, pos):
             return str(ch[pos])
     return None
 
+def search_name(tree, name):
+    if get_name(tree) == name:
+        return True
+    elif is_tree(tree):
+        for curchild in tree.children:
+            if search_name(curchild, name):
+                return True
+    return False
+
 def reconstruct_tree_str(tree):
     if is_tree(tree):
         curstr = ''

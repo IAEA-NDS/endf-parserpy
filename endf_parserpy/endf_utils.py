@@ -13,9 +13,13 @@ def read_ctrl(line, nofail=False):
             mf = 0
             mt = 0
     else:
-        mat = int(line[66:70])
-        mf = int(line[70:72])
-        mt = int(line[72:75])
+        # blank fields are interpreted as zero
+        matstr = line[66:70].strip()
+        mfstr = line[70:72].strip()
+        mtstr = line[72:75].strip()
+        mat = int(matstr) if matstr != '' else 0
+        mf = int(mfstr) if mfstr != '' else 0
+        mt = int(mtstr) if mtstr != '' else 0
     return {'MAT': mat, 'MF': mf, 'MT': mt}
 
 def write_ctrl(dic, ns=None):

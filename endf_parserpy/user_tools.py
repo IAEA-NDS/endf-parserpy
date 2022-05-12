@@ -29,3 +29,11 @@ def list_unparsed_sections(dic):
                 unparsed.append((mf,mt))
     return tuple(unparsed)
 
+def list_parsed_sections(dic):
+    parsed = []
+    for mf, mfsec in dic.items():
+        for mt, mtsec in mfsec.items():
+            if isinstance(mtsec, dict):
+                parsed.append((mf, mt))
+    return tuple(parsed)
+

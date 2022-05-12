@@ -88,8 +88,8 @@ class ExtEndfParser(BasicEndfParser):
         # the value will be updated accordingly below
         if not should_skip_mf1mt451 and has_mf1mt451sec:
             endf_dic[1][451]['NXC'] = 0
-        # we only use the base parser to split the lines
-        # and put them into the nested dictionary, so that
+        # we use the base parser only to split the lines
+        # and put them into the nested endf_dic so that
         # we can replace MF1/MT451 with the updated dictionary
         # and write out everything again
         lines = super().write(endf_dic, exclude, include, zero_as_blank)

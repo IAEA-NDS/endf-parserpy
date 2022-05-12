@@ -1,4 +1,5 @@
 from .logging_utils import logging, write_info
+from os.path import exists as file_exists
 from copy import deepcopy
 from lark import Lark
 from .tree_utils import is_tree, get_name, get_child, get_child_value
@@ -257,12 +258,6 @@ class BasicEndfParser():
         return False
 
     def parse(self, lines, exclude=None, include=None):
-        # lines should be a list of lines.
-        # if it is a string, we assume that the
-        # string indicates a file name.
-        if isinstance(lines, str):
-            with open(lines, 'r') as f:
-                lines = f.readlines()
         tree_dic = self.tree_dic
         mfmt_dic = split_sections(lines)
         for mf in mfmt_dic:
@@ -282,17 +277,19 @@ class BasicEndfParser():
                     mfmt_dic[mf][mt] = self.datadic
         return mfmt_dic
 
-    def write(self, endf_dic, mf_list=None, mt_list=None):
+    def write(self, endf_dic, exclude=None, include=None):
         self.reset_parser_state(rwmode='write', datadic={})
         tree_dic = self.tree_dic
         lines = []
         for mf in sorted(endf_dic):
+            some_mf_output = False
             for mt in sorted(endf_dic[mf]):
-                if ((mf_list is not None and mf not in mf_list) or
-                    (mt_list is not None and mt not in mt_list)):
+                should_skip = self.should_skip_section(mf, mt, exclude, include)
+                if should_skip:
                     continue
                 cur_tree = self.get_responsible_tree(tree_dic, mf, mt)
-                if cur_tree is not None:
+                is_parsed = isinstance(endf_dic[mf][mt], dict)
+                if cur_tree is not None and is_parsed:
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode='write', datadic=datadic)
                     self.run_instruction(cur_tree)
@@ -325,9 +322,28 @@ class BasicEndfParser():
                     self.datadic = read_ctrl(lines[-1])
                     # add the SEND record in between the MT subections
                     lines.extend(write_send(self.datadic, with_ctrl=True, with_ns=True))
-            lines.extend(write_fend(self.datadic, with_ctrl=True, with_ns=True))
+                some_mf_output = True
+            if some_mf_output:
+                lines.extend(write_fend(self.datadic, with_ctrl=True, with_ns=True))
 
         lines.extend(write_mend(with_ctrl=True, with_ns=True))
         lines.extend(write_tend(with_ctrl=True, with_ns=True))
         return lines
+
+    def parsefile(self, filename, exclude=None, include=None):
+        with open(filename, 'r') as fin:
+            lines = fin.readlines()
+        return self.parse(lines, exclude, include)
+
+    def writefile(self, filename, endf_dic,
+                        exclude=None, include=None, overwrite=False):
+        if file_exists(filename) and not overwrite:
+            raise FileExistsError(f'file {filename} already exists. '
+                                   'Change overwrite option to True if you '
+                                   'really want to overwrite this file.')
+        else:
+            lines = self.write(endf_dic, exclude, include)
+            with open(filename, 'w') as fout:
+                fout.write('\n'.join(lines))
+            return lines
 

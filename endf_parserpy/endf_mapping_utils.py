@@ -100,13 +100,16 @@ def eval_expr(expr, datadic=None, loop_vars=None):
             # if datadic is given, we substitute the variable name by its value
             val = get_varval(expr, datadic, loop_vars)
             return (val, 0)
-    elif name == 'NUMBER':
-        # if it was an integer, we preserve this quality
+    elif name == 'NUMBER' or name == 'DESIRED_NUMBER':
         vstr = expr.value
+        # a desired number is suffixed by a question mark
+        # so we strip that away before proceeding
+        vstr = vstr.rstrip('?')
+        # if it was an integer, we preserve this quality
         if re.match('^ *[0-9]+ *$', vstr):
-            v = int(expr.value)
+            v = int(vstr)
         else:
-            v = float(expr.value)
+            v = float(vstr)
         return (v, 0)
     elif name == 'minusexpr':
         v = eval_expr(expr.children[0], datadic, loop_vars)

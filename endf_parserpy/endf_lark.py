@@ -98,7 +98,7 @@ comparison : if_condition | "(" disjunction ")"
 // adopted from: http://marvin.cs.uidaho.edu/Teaching/CS445/grammar.pdf (3.3)
 expr : addition | subtraction | addpart
 addpart : multiplication | division | mulpart
-mulpart : minusexpr | extvarname | NUMBER | bracketexpr
+mulpart : minusexpr | extvarname | NUMBER | DESIRED_NUMBER | bracketexpr
 
 multiplication : addpart "*" mulpart
 division : addpart "/" mulpart
@@ -112,6 +112,10 @@ bracketexpr : "(" expr ")"
 extvarname : VARNAME ("[" INDEXVAR ("," INDEXVAR)* "]")?
 VARNAME : CNAME
 INDEXVAR : CNAME
+
+// special number symbol indicating that
+// a specific number is expected but it may be different in practice
+DESIRED_NUMBER : NUMBER "?"
 
 // possible field values
 CFIELD: CNAME | "0.0"

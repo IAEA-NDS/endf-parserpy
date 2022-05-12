@@ -79,9 +79,9 @@ class ExtEndfParser(BasicEndfParser):
         mt451['NCx'] = NCx
         mt451['MOD'] = MOD
         # finally, update the counter NXC
-        mt451['NXC'] = len(mt451['MFx'])
+        mt451['NXC'] = numsecs
 
-    def write(self, endf_dic, exclude=None, include=None):
+    def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
         should_skip_mf1mt451 = self.should_skip_section(1, 451, exclude, include)
         has_mf1mt451sec = 1 in endf_dic and 451 in endf_dic[1]
         # we provide a dummy NXC item in case it does not exist.
@@ -92,13 +92,13 @@ class ExtEndfParser(BasicEndfParser):
         # and put them into the nested dictionary, so that
         # we can replace MF1/MT451 with the updated dictionary
         # and write out everything again
-        lines = super().write(endf_dic, exclude, include)
+        lines = super().write(endf_dic, exclude, include, zero_as_blank)
         # afterwards we update the dictionary and
         # write out once again but with updated dictionary
         if not should_skip_mf1mt451 and has_mf1mt451sec:
             self.update_dictionary(endf_dic, lines)
             endf_dic2 = self.parse(lines, include=[])
             endf_dic2[1][451] = endf_dic[1][451]
-            lines = super().write(endf_dic2, exclude, include)
+            lines = super().write(endf_dic2, exclude, include, zero_as_blank)
         return lines
 

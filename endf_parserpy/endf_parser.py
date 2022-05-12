@@ -147,7 +147,8 @@ class BasicEndfParser():
         if self.rwmode == 'read':
             read_send(self.lines, self.ofs)
         else:
-            newlines = write_send(self.datadic, with_ctrl=True)
+            newlines = write_send(self.datadic, with_ctrl=True,
+                                  zero_as_blank=self.zero_as_blank)
             self.lines += newlines
 
     def process_section(self, tree):
@@ -282,7 +283,8 @@ class BasicEndfParser():
                     mfmt_dic[mf][mt] = self.datadic
         return mfmt_dic
 
-    def write(self, endf_dic, exclude=None, include=None):
+    def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
+        self.zero_as_blank = zero_as_blank
         self.reset_parser_state(rwmode='write', datadic={})
         tree_dic = self.tree_dic
         lines = []
@@ -336,15 +338,18 @@ class BasicEndfParser():
                     # add the SEND record in between the MT subections
                     # if it was not a tape head record (mf=0)
                     if mf != 0:
-                        lines.extend(write_send(self.datadic, with_ctrl=True, with_ns=True))
+                        lines.extend(write_send(self.datadic, with_ctrl=True, with_ns=True,
+                                                zero_as_blank=zero_as_blank))
                 some_mf_output = True
             # we output the file end (fend) record only if something has been written
             # to this mf section and it is not the tape head (mf=0)
             if some_mf_output and mf != 0 :
-                lines.extend(write_fend(self.datadic, with_ctrl=True, with_ns=True))
+                lines.extend(write_fend(self.datadic, with_ctrl=True, with_ns=True,
+                                        zero_as_blank=zero_as_blank))
 
-        lines.extend(write_mend(with_ctrl=True, with_ns=True))
-        lines.extend(write_tend(with_ctrl=True, with_ns=True))
+        lines.extend(write_mend(with_ctrl=True, with_ns=True, zero_as_blank=zero_as_blank))
+        lines.extend(write_tend(with_ctrl=True, with_ns=True, zero_as_blank=zero_as_blank))
+        del self.zero_as_blank
         return lines
 
     def parsefile(self, filename, exclude=None, include=None):
@@ -352,14 +357,14 @@ class BasicEndfParser():
             lines = fin.readlines()
         return self.parse(lines, exclude, include)
 
-    def writefile(self, filename, endf_dic,
-                        exclude=None, include=None, overwrite=False):
+    def writefile(self, filename, endf_dic, exclude=None, include=None,
+                        zero_as_blank=False, overwrite=False):
         if file_exists(filename) and not overwrite:
             raise FileExistsError(f'file {filename} already exists. '
                                    'Change overwrite option to True if you '
                                    'really want to overwrite this file.')
         else:
-            lines = self.write(endf_dic, exclude, include)
+            lines = self.write(endf_dic, exclude, include, zero_as_blank)
             with open(filename, 'w') as fout:
                 fout.write('\n'.join(lines))
             return lines

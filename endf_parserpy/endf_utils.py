@@ -99,6 +99,17 @@ def write_cont(dic, with_ctrl=True):
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
+def prepare_zerostr_fields(zero_as_blank):
+    zerostr = ' '*11 if zero_as_blank else float2fortstr(0)
+    zerostr2 = ' '*11 if zero_as_blank else '0'.rjust(11)
+    C1 = zerostr
+    C2 = zerostr
+    L1 = zerostr2
+    L2 = zerostr2
+    N1 = zerostr2
+    N2 = zerostr2
+    return C1, C2, L1, L2, N1, N2
+
 def read_send(lines, ofs=0, with_ctrl=True):
     ofs = skip_blank_lines(lines, ofs)
     dic, ofs = read_cont(lines, ofs, with_ctrl)
@@ -109,26 +120,16 @@ def read_send(lines, ofs=0, with_ctrl=True):
            raise ValueError('Not a Section End (SEND) record')
     return dic, ofs
 
-def write_send(dic, with_ctrl=True, with_ns=True):
-    C1 = float2fortstr(0)
-    C2 = float2fortstr(0)
-    L1 = '0'.rjust(11)
-    L2 = '0'.rjust(11)
-    N1 = '0'.rjust(11)
-    N2 = '0'.rjust(11)
+def write_send(dic, with_ctrl=True, with_ns=True, zero_as_blank=False):
+    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank)
     ctrl_dic = get_ctrl(dic)
     ctrl_dic['MT'] = 0
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
     NS = '99999' if with_ns else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
 
-def write_fend(dic, with_ctrl=True, with_ns=True):
-    C1 = float2fortstr(0)
-    C2 = float2fortstr(0)
-    L1 = '0'.rjust(11)
-    L2 = '0'.rjust(11)
-    N1 = '0'.rjust(11)
-    N2 = '0'.rjust(11)
+def write_fend(dic, with_ctrl=True, with_ns=True, zero_as_blank=False):
+    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank)
     ctrl_dic = get_ctrl(dic)
     ctrl_dic['MF'] = 0
     ctrl_dic['MT'] = 0
@@ -136,25 +137,15 @@ def write_fend(dic, with_ctrl=True, with_ns=True):
     NS = '0'.rjust(5) if with_ns else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
 
-def write_mend(dic=None, with_ctrl=True, with_ns=True):
-    C1 = float2fortstr(0)
-    C2 = float2fortstr(0)
-    L1 = '0'.rjust(11)
-    L2 = '0'.rjust(11)
-    N1 = '0'.rjust(11)
-    N2 = '0'.rjust(11)
+def write_mend(dic=None, with_ctrl=True, with_ns=True, zero_as_blank=False):
+    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank)
     ctrl_dic = {'MAT': 0, 'MF': 0, 'MT': 0}
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
     NS = '0'.rjust(5) if with_ns else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
 
-def write_tend(dic=None, with_ctrl=True, with_ns=True):
-    C1 = float2fortstr(0)
-    C2 = float2fortstr(0)
-    L1 = '0'.rjust(11)
-    L2 = '0'.rjust(11)
-    N1 = '0'.rjust(11)
-    N2 = '0'.rjust(11)
+def write_tend(dic=None, with_ctrl=True, with_ns=True, zero_as_blank=False):
+    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank)
     ctrl_dic = {'MAT': -1, 'MF': 0, 'MT': 0}
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
     NS = '0'.rjust(5) if with_ns else ''

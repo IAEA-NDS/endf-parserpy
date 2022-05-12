@@ -242,7 +242,21 @@ class BasicEndfParser():
         else:
             return None
 
-    def parse(self, lines):
+    def should_skip_section(self, mf, mt, exclude=None, include=None):
+        if exclude is None:
+            if include is not None:
+                if (mf not in include and
+                    (mf, mt) not in include):
+                    return True
+        # exclude not None
+        else:
+            if mf in exclude:
+                return True
+            elif (mf, mt) in exclude:
+                return True
+        return False
+
+    def parse(self, lines, exclude=None, include=None):
         # lines should be a list of lines.
         # if it is a string, we assume that the
         # string indicates a file name.
@@ -258,7 +272,8 @@ class BasicEndfParser():
                 write_info(f'Parsing subsection MF/MT {mf}/{mt}')
                 curlines = mfmt_dic[mf][mt]
                 cur_tree = self.get_responsible_tree(tree_dic, mf, mt)
-                if cur_tree is not None:
+                should_skip = self.should_skip_section(mf, mt, exclude, include)
+                if cur_tree is not None and not should_skip:
                     # we add the SEND line so that parsing fails
                     # if the MT section cannot be completely parsed
                     curlines += write_send(curmat, with_ctrl=True)

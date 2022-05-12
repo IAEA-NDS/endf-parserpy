@@ -35,10 +35,10 @@ class ExtEndfParser(BasicEndfParser):
     def update_dictionary(self, endf_dic, lines=None):
         if not lines:
             lines = self.write(endf_dic)
-        mfdic = split_sections(lines)
         # determine the lengths of the sections
         # the checks for mf=0 and mt=0 are here
         # to not consider the tape head as a section
+        mfdic = split_sections(lines)
         countdic = {}
         numsecs = 0
         for mf, mfsec in mfdic.items():

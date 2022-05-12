@@ -49,7 +49,7 @@ def read_text(lines, ofs=0, with_ctrl=True):
     return dic, ofs+1
 
 def write_text(dic, with_ctrl=True):
-    TEXT = dic['HL']
+    TEXT = dic['HL'].ljust(66)
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [TEXT + CTRL]
 

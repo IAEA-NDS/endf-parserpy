@@ -316,7 +316,11 @@ def split_sections(lines):
         mf = dic['MF']
         mt = dic['MT']
         # end markers (SEND, MEND, FEND, TEND) ignored
-        if mf != 0 and mt != 0:
+        # but: if the dictionary is empty and we get
+        # mf=0 and mt=0, we assume it is the tape head
+        # line and store it
+        if ((mf != 0 and mt != 0) or
+                (mf == 0 and mt == 0 and not mfdic)):
             mfdic.setdefault(mf, {})
             mtdic = mfdic[mf]
             mt = dic['MT']

@@ -1,5 +1,11 @@
 spec_dic = {}
 
+spec_dic.setdefault(0, {})
+spec_dic[0][0] = \
+"""
+[MAT, 0, 0/ TAPEDESCR]TEXT
+"""
+
 spec_dic.setdefault(1, {})
 spec_dic[1][451] = \
 """

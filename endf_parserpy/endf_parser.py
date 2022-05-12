@@ -58,6 +58,11 @@ class BasicEndfParser():
             # write_info('Reading a TEXT record', self.ofs)
             text_dic, self.ofs = read_text(self.lines, self.ofs, with_ctrl=True)
             map_text_dic(tree, text_dic, self.datadic, self.loop_vars)
+            # this line adds MAT, MF, MT to the dictionary.
+            # this line is introduced here to deal with the tape head (mf=0, mt=0)
+            # which does not contain a head record as first item, which is the
+            # only other place that adds this information.
+            self.datadic.update(get_ctrl(text_dic))
         else:
             text_dic = map_text_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
             text_dic.update(get_ctrl(self.datadic))
@@ -293,11 +298,19 @@ class BasicEndfParser():
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode='write', datadic=datadic)
                     self.run_instruction(cur_tree)
-                    # the NS number is already part of the last line
-                    curline_send = self.lines[-1]
-                    # add the NS number to the other lines
+                    # add the NS number to the lines except last one
+                    # because the SEND (=section end) record already
+                    # contains it
                     curlines = [l + str(i).rjust(5)
                                 for i, l in enumerate(self.lines[:-1], 1)]
+                    # prepare the SEND (=section end) line
+                    curline_send = self.lines[-1]
+                    # in the case of tape head, which only is one line
+                    # curline_send contains the tape head line and
+                    # we need to append NS=0
+                    if mf == 0:
+                        curline_send += '0'.rjust(5)
+                    # add the send line to the output
                     curlines.append(curline_send)
                     lines.extend(curlines)
                     # NOTE: the SEND record is part of the recipe
@@ -321,9 +334,13 @@ class BasicEndfParser():
                     # update the MAT, MF, MT number
                     self.datadic = read_ctrl(lines[-1])
                     # add the SEND record in between the MT subections
-                    lines.extend(write_send(self.datadic, with_ctrl=True, with_ns=True))
+                    # if it was not a tape head record (mf=0)
+                    if mf != 0:
+                        lines.extend(write_send(self.datadic, with_ctrl=True, with_ns=True))
                 some_mf_output = True
-            if some_mf_output:
+            # we output the file end (fend) record only if something has been written
+            # to this mf section and it is not the tape head (mf=0)
+            if some_mf_output and mf != 0 :
                 lines.extend(write_fend(self.datadic, with_ctrl=True, with_ns=True))
 
         lines.extend(write_mend(with_ctrl=True, with_ns=True))

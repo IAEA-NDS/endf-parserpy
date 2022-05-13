@@ -1,11 +1,42 @@
 from .endf_parser import BasicEndfParser
 from .endf_utils import split_sections, read_ctrl
+import re
 
 
 class ExtEndfParser(BasicEndfParser):
 
     def __init__(self):
         super().__init__()
+
+    def set_library(self, endf_dic, libtype):
+        mt451 = endf_dic[1][451]
+        if libtype == 'ENDF/B-VII.0':
+            mt451['NLIB'] = 0
+            mt451['NVER'] = 7
+            mt451['LREL'] = 0
+            txt = 'ENDF/B-VII'
+        elif libtype == 'ENDF/B-VII.1':
+            mt451['NLIB'] = 0
+            mt451['NVER'] = 7
+            mt451['LREL'] = 1
+            txt = 'ENDF/B-VII'
+        elif libtype == 'ENDF/B-VIII.0':
+            mt451['NLIB'] = 0
+            mt451['NVER'] = 8
+            mt451['LREL'] = 0
+            txt = 'ENDF/B-VIII'
+        else:
+            raise TypeError('Unknown library type')
+        # update the human readable library specification
+        if 'DESCRIPTION' not in mt451:
+            raise ValueError('No description in MF1/MT451 found')
+        descr = mt451['DESCRIPTION']
+        if 3 not in descr:
+            raise IndexError('No third line found in description')
+        if not re.match('---- *[A-Z][^ ]+', descr[3]):
+            raise ValueError('Signature of line three is wrong')
+        new_descr_line = ('----' + txt).ljust(22) + descr[3][22:]
+        descr[3] = new_descr_line
 
     def get_description(self, endf_dic):
         descr_dic = endf_dic[1][451]['DESCRIPTION']

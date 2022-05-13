@@ -89,10 +89,11 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                 contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
                 value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
                 msg = f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}'
-                if not contains_desired_number and value_mismatch_occurred:
-                    raise ValueError(msg)
-                else:
-                    logging.warning(msg)
+                if value_mismatch_occurred:
+                    if contains_desired_number:
+                        logging.warning(msg)
+                    else:
+                        raise ValueError(msg)
             else:
                 val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
                 if idxvars is None:

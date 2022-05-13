@@ -14,17 +14,22 @@ class ExtEndfParser(BasicEndfParser):
             mt451['NLIB'] = 0
             mt451['NVER'] = 7
             mt451['LREL'] = 0
-            txt = 'ENDF/B-VII'
+            txt = 'ENDF/B-VII.0'
         elif libtype == 'ENDF/B-VII.1':
             mt451['NLIB'] = 0
             mt451['NVER'] = 7
             mt451['LREL'] = 1
-            txt = 'ENDF/B-VII'
+            txt = 'ENDF/B-VII.1'
         elif libtype == 'ENDF/B-VIII.0':
             mt451['NLIB'] = 0
             mt451['NVER'] = 8
             mt451['LREL'] = 0
-            txt = 'ENDF/B-VIII'
+            txt = 'ENDF/B-VIII.0'
+        elif libtype == 'FENDL-3.2':
+            mt451['NLIB'] = 33
+            mt451['NVER'] = 3
+            mt451['LREL'] = 2
+            txt = 'FENDL-3.2'
         else:
             raise TypeError('Unknown library type')
         # update the human readable library specification

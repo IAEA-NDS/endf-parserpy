@@ -293,9 +293,11 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
     if list_name_node is not None:
         datadic = close_section(list_name_node, datadic)
 
-    if val_idx < len(list_dic['vals']):
-        raise ValueError('Not all values in the list_body were consumed and ' +
-                         'associated with variables in datadic')
+    numels_in_list = len(list_dic['vals'])
+    if val_idx < numels_in_list:
+        raise ValueError(f'Not all values in the list_body were consumed and '
+                          'associated with variables in datadic '
+                         f'(read {val_idx} out of {numels_in_list})')
     if inverse:
         return list_dic
     else:

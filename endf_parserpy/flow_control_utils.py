@@ -24,7 +24,8 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
     for_body = get_child(tree, body_name)
     if varname in loop_vars:
         raise ValueError(f'The loop variable {varname} is already in use for another loop')
-    write_info(f'Enter for loop (type {loop_name}) ' + reconstruct_tree_str(for_head))
+    write_info(f'Enter for loop (type {loop_name}) ' + reconstruct_tree_str(for_head) +
+               f' (for_start: {start} and for_stop {stop})')
     for i in range(start, stop+1):
         loop_vars[varname] = i
         tree_handler(for_body)
@@ -33,8 +34,8 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
     # and consequently we don't have to delete it
     if start <= stop:
         del(loop_vars[varname])
-    write_info(f'Leave for loop (type {loop_name}) ' + reconstruct_tree_str(for_head))
-
+    write_info(f'Leave for loop (type {loop_name}) ' + reconstruct_tree_str(for_head) +
+               f' (for_start: {start} and for_stop: {stop})')
 
 def eval_if_condition(if_condition, datadic, loop_vars):
     if len(if_condition.children) != 3:

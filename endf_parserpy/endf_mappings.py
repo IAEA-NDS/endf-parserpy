@@ -264,13 +264,31 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
 
             val_idx += 1
             return
-        if node_type == 'list_loop':
+
+        # sometimes the expectation is that within a list body (list in LIST record)
+        # a line must be padded with zeros until the end before a new subrecord
+        # starts on the next line
+        elif node_type == 'LINEPADDING':
+            num_skip_elems = (6 - val_idx % 6) % 6
+            if not inverse:
+                # we do nothing here because we only need to skip some
+                # elements, what we do afterwards
+                pass
+            else:
+                list_dic['vals'].extend([0.0]*num_skip_elems)
+            # skip over the elements
+            val_idx = val_idx + num_skip_elems
+            return
+
+        elif node_type == 'list_loop':
             cycle_for_loop(node, parse_list_body_node, datadic, loop_vars,
                            loop_name='list_loop', head_name='list_for_head',
                            body_name='list_body')
+
         elif is_tree(node) and node_type == 'list_body':
             for child in node.children:
                 parse_list_body_node(child)
+
         # we are fine with a new line
         elif node_type == 'NEWLINE':
             return

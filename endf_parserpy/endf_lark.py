@@ -62,8 +62,9 @@ tab2_def : extvarname
 // LIST record
 list_line : "[" ctrl_spec "/" list_fields "/"  list_body  "]" "LIST" ("(" list_name ")")? NEWLINE*
 list_fields : expr "," expr "," expr "," expr "," expr "," expr
-list_body : (expr | list_loop | "," | NEWLINE)+
+list_body : (expr | list_loop | LINEPADDING | "," | NEWLINE)+
 list_name : extvarname
+LINEPADDING : "PADLINE"
 
 // LIST loop
 list_loop : "{" list_body "}" "{" list_for_head "}"

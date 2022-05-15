@@ -57,7 +57,7 @@ for i=1 to NIS:
                     [MAT,2,151/ AJ, PJ, KBK, KPS, 6*NCH, NCH /
                     {PPI[l] , L[l] , SCH[l] , BND [l] , APE[l] , APT[l]}{l=1 to NCH} ]LIST
                     [MAT,2,151/ 0.0, 0.0, 0, NRS, 6*NX, NX /
-                    {ER[n], {GAM[m,n]}{m=1 to NCH}}{n=1 to NRS} ]LIST
+                    {ER[n], {GAM[m,n]}{m=1 to NCH} PADLINE}{n=1 to NRS} ]LIST
                 (/spingroup[k])
                 endfor
             endif

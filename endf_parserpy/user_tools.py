@@ -21,6 +21,15 @@ def locate(dic, varname, as_string=False):
         locations = ['/'.join(str(s) for s in loc) for loc in locations]
     return tuple(locations)
 
+def get_endf_values(dic, locations):
+    values = []
+    for loc in locations:
+        curdic = dic
+        for locpart in loc[:-1]:
+            curdic = curdic[locpart]
+        values.append(curdic[loc[-1]])
+    return tuple(values)
+
 def list_unparsed_sections(dic):
     unparsed = []
     for mf, mfsec in dic.items():

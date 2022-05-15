@@ -1,12 +1,23 @@
 ENDF_RECIPE_MF2_MT151 = """
 
 [MAT, 2,151/ ZA, AWR, 0, 0, NIS, 0]HEAD
+
 for i=1 to NIS:
 (isotope[i])
     [MAT, 2,151/ ZAI, ABN, 0, LFW, NER, 0]CONT
     for j=1 to NER:
     (range[j])
         [MAT, 2,151/ EL, EH, LRU, LRF, NRO, NAPS]CONT
+
+        # Special case without resonance parameters and
+        # only scatterin radius given (Chap 2.1. p.63)
+        if NIS==1 and ZAI==ZA and ABN==1 and LFW==0 and NER==1:
+            if LRU==0 and LRF==0 and NRO==0 and NAPS==0:
+                if NLS==0 [lookahead=1]:
+                    [MAT, 2,151/ SPI, AP, 0, 0, NLS, 0]CONT
+                endif
+            endif
+        endif
 
         # Resolved resonance data
         if LRU==1:
@@ -54,7 +65,23 @@ for i=1 to NIS:
 
         # Unresolved resonance data
         if LRU==2:
-            if LFW == 0 and LRF==2:
+
+            # Case A (see Chap 2.3, p. 76)
+            if LFW==0 and LRF==1:
+                if NRO != 0:
+                    [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint /AP]TAB1
+                endif
+                [MAT, 2,151/ SPI, AP, LSSF, 0, NLS, 0] CONT
+                for p=1 to NLS:
+                (l_group[p])
+                    [MAT, 2,151/AWRI, 0.0, L, 0, 6*NJS, NJS/
+                    {D[m], AJ[m], AMUN[m], GN0[m], GG[m], 0.0}{m=1 to NJS}] LIST
+                (/l_group[p])
+                endfor
+            endif
+
+            # Case C (see Chap 2.3, p. 77)
+            if (LFW==0 or LFW==1) and LRF==2:
                 if NRO != 0:
                     [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint /AP ] TAB1
                 endif

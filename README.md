@@ -57,16 +57,16 @@ demonstrate how this package can be used.
 A simple example is also provided here to get you
 started.
 ```
-from endf_parserpy.end_parser import BasicEndfParser
-from endf_parserpy.user_tools import locat, get_endf_values
+from endf_parserpy.endf_parser import BasicEndfParser
+from endf_parserpy.user_tools import locate, get_endf_values
 parser = BasicEndfParser() 
-endf_file = '../testdata/n_2925_29-Cu-63.endf'
+endf_file = 'testdata/n_2925_29-Cu-63.endf'
 endf_dic = parser.parsefile(endf_file)
 # locate all variables with name AWR
 locations = locate(endf_dic, 'AWR')
-values = get_endf_values(endf_dic, locs)
+values = get_endf_values(endf_dic, locations)
 # write back the ENDF file
-parser.writefile(endf_file + '.writeback')
+parser.writefile(endf_file + '.writeback', endf_dic)
 ```
 
 ## Legal note

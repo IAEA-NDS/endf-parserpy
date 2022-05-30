@@ -1,3 +1,12 @@
+**Important disclaimer**:
+The development of this package is at an early stage
+and it has not been thoroughly tested and lacks
+documentation. It is not ready for production and the
+likelihood that it will fail on an ENDF file is quite high.
+It has nevertheless been made public in its current state
+so that interested persons can track its progress and
+make contributions.
+
 # endf-parserpy
 
 This package can read the content of an 
@@ -21,16 +30,8 @@ to parse ENDF recipe files whose content closely
 resembles the ENDF format specifications available
 in the ENDF formats manual. The capability of this
 package to read and write ENDF files can therefore  be extended by
-adding ENDF recipe files.
-
-The development of this package is at an early stage
-and it has not been thoroughly tested yet. Documentation
-and capabilities will be gradually extended.
-Be aware that for some MF/MT sections the recipe
-files are still missing or incomplete, in which
-case the parser will fail. To see which MF/MT
-sections have already been implemented, inspect the
-[recipe files](https://github.com/iaea-nds/endf-parserpy/tree/main/endf_parserpy/endf_recipes).
+adding ENDF recipe files. The already implemented recipe files
+can be inspected [here](https://github.com/iaea-nds/endf-parserpy/tree/main/endf_parserpy/endf_recipes).
 
 ## Installation
 

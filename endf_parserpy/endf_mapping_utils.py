@@ -1,3 +1,14 @@
+############################################################
+#
+# Author(s):       Georg Schnabel
+# Email:           g.schnabel@iaea.org
+# Creation date:   2022/05/30
+# Last modified:   2022/05/30
+# License:         MIT
+# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+#
+############################################################
+
 from .tree_utils import is_tree, get_name, get_value, is_token
 from .logging_utils import write_info
 import re

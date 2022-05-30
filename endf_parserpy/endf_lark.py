@@ -1,3 +1,14 @@
+############################################################
+#
+# Author(s):       Georg Schnabel
+# Email:           g.schnabel@iaea.org
+# Creation date:   2022/05/30
+# Last modified:   2022/05/30
+# License:         MIT
+# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+#
+############################################################
+
 endf_recipe_grammar = \
 r"""
 %import common.DIGIT

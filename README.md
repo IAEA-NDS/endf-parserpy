@@ -38,7 +38,7 @@ can be inspected [here](https://github.com/iaea-nds/endf-parserpy/tree/main/endf
 Assuming that `git` is installed, you can clone the
 repository by executing the command:
 ```
-git clone https://github.com/endf-parserpy.git
+git clone https://github.com/iaea-nds/endf-parserpy.git
 ```
 Afterwards, to use this package in a Python script
 file, add the following lines to the beginning of your

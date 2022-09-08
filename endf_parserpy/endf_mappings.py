@@ -16,6 +16,7 @@ from .tree_utils import (is_token, is_tree, get_name, get_value,
 from .flow_control_utils import cycle_for_loop
 from .endf_mapping_utils import (get_varname, get_indexvars, eval_expr,
         varvalue_expr_conversion, open_section, close_section)
+import numpy as np
 
 def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
     ctrl_spec = get_child(record_line_node, 'ctrl_spec')
@@ -110,7 +111,10 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                 if idxvars is None:
                     if targetkey in datadic:
                         prev_val = datadic[targetkey]
-                        if prev_val != val:
+                        # NOTE: some files may contain small inconsistencies
+                        # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
+                        # we tolerate such small inconsistencies.
+                        if not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5):
                             raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
 
                     datadic[targetkey] = val
@@ -127,7 +131,10 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                     idx = loop_vars[idxvars[-1]]
                     if idx in curdic:
                         prev_val = curdic[idx]
-                        if prev_val != val:
+                        # NOTE: some files may contain small inconsistencies
+                        # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
+                        # we tolerate such small inconsistencies.
+                        if not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5):
                             raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
 
                     curdic[idx] = val

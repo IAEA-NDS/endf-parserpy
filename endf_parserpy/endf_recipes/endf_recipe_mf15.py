@@ -21,7 +21,7 @@ for j=1 to NC:
         #            if statement.
         if LF == 1 [lookahead=1]:
             [MAT, 15, MT/ 0.0, 0.0, 0, LF, NR, NP/ Eint / p] TAB1 (rtfm_tab1)
-            [MAT, 15, MT/ 0.0, 0.0, 0, 0, NR, NE/ Eint ] TAB2
+            [MAT, 15, MT/ 0.0, 0.0, 0, 0?, NR, NE/ Eint ] TAB2
             for k=1 to NE:
                 [MAT, 15, MT/ 0.0, E[k] , 0, 0, NR, NP / Egamma / g] TAB1 (rtfm1_tab[k])
             endfor

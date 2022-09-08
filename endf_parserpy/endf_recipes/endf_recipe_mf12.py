@@ -18,7 +18,7 @@ if LO == 1 [lookahead=1]:
         [MAT, 12, MT/ 0.0, 0.0, 0, 0, NR, NP/ Eint / Y] TAB1
     endif
     for k=1 to NK:
-        [MAT, 12, MT/ Eg[k] , ES[k], LP, LF[k], NR, NP/ Eint / y ] TAB1 (table[k])
+        [MAT, 12, MT/ Eg[k] , ES[k], LP[k], LF[k], NR, NP/ Eint / y ] TAB1 (table[k])
     endfor
 endif
 # Transition Probability Arrays (12.2.2, p. 196)

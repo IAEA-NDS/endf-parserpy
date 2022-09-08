@@ -22,6 +22,14 @@ if LTT == 1 and LI == 0:
     endfor
 endif
 
+# Tabulated probability distributions
+if LTT==2 and LI==0:
+    [MAT, 4, MT/ 0.0, 0.0, 0, 0, NR, NE/ Eint ]TAB2 (energy_table)
+    for i=1 to NE:
+        [MAT, 4, MT/ T, E[i] , LT, 0, NR, NP/ mu / f]TAB1 (angtable[i])
+    endfor
+endif
+
 # Angular distributions over two energy ranges.
 if LTT==3 and LI==0:
     # lower range given by Legendre coefficients

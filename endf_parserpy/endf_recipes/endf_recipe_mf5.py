@@ -25,8 +25,8 @@ for k=1 to NK:
         # General Evaporation Spectrum (LF=5)
         if LF==5 [lookahead=1]:
             [MAT, 5, MT/ U, 0.0, 0, LF, NR, NP/ E / p ]TAB1 (p_table) 
-            [MAT, 5, MT/ 0.0, 0.0, 0, 0, NR, NE/ E / theta] TAB1 (theta_table) 
-            [MAT, 5, MT/ 0.0, 0.0, 0, 0, NR, NF/ x / g ]TAB1 (g_table)
+            [MAT, 5, MT/ 0.0, 0.0, 0?, 0?, NR, NE/ E / theta] TAB1 (theta_table)
+            [MAT, 5, MT/ 0.0, 0.0, 0?, 0?, NR, NF/ x / g ]TAB1 (g_table)
         endif
         # Simple Maxwellian Fission Spectrum (LF=7)
         if LF==7 [lookahead=1]:

@@ -6,7 +6,7 @@ from endf_parserpy.user_tools import (locate, get_endf_values,
         list_unparsed_sections, list_parsed_sections)
 
 parser = BasicEndfParser()
-endf_file = '../testdata/n_2925_29-Cu-63.endf'
+endf_file = '../tests/testdata/n_2925_29-Cu-63.endf'
 endf_dic = parser.parsefile(endf_file)
 
 # list the MF sections present in the ENDF file

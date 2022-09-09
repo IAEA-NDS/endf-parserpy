@@ -11,7 +11,7 @@
 
 ENDF_RECIPE_MF6 = """
 
-[MAT, 6, MT/ ZA, AWR, JP, LCT, NK, 0]HEAD
+[MAT, 6, MT/ ZA, AWR, JP, LCT, NK, 0?]HEAD
 for i=1 to NK:
     (subsection[i])
         [MAT, 6, MT/ ZAP, AWP, LIP, LAW, NR, NP/ Eint / yi]TAB1 (tmp)

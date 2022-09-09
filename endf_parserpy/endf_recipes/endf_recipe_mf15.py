@@ -12,7 +12,7 @@
 ENDF_RECIPE_MF15 = """
 
 # FILE 15: Continuous Photon Energy Spectra
-[MAT, 15, MT/ ZA, AWR, 0, 0, NC, 0] HEAD
+[MAT, 15, MT/ ZA, AWR, 0, 0?, NC, 0] HEAD
 for j=1 to NC:
     (subsection[j])
         # ATTENTION: This if must be inside subsection

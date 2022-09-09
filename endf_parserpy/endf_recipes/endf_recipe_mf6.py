@@ -29,6 +29,10 @@ for i=1 to NK:
                 [MAT, 6, MT/ 0.0, E[j], LANG, 0, NLW[j], NL[j] / {A[j,l]}{l=1 to NLW[j]} ]LIST
             endfor
         endif
+        # N-body Phase-Space distribution (LAW=6) (manual 6.2.7, p. 136)
+        if LAW == 6:
+            [MAT, 6, MT/ APSX, 0.0, 0, 0, 0, NPSX]CONT
+        endif
         # Laboratory Angle-Energy Law (LAW=7) (manual 6.2.9, p. 146)
         if LAW == 7:
             [MAT, 6, MT/ 0.0, 0.0, 0, 0, NR, NE / E]TAB2 (E_interpol)

@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "endf-parserpy"
+version = "0.1.0"
+description = "A package to read and write ENDF files'"
+authors = ["Georg Schnabel"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+lark = "^1.1.2"
+numpy = "^1.23.2"
+pandas = "^1.4.4"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.1.3"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

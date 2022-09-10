@@ -22,7 +22,7 @@ endif
 if NO==1:
     for k=1 to NS:
         (subsection[k])
-            [MAT, 8, MT/ ZAP, ELFS, LMF, LFS, 0, 0] CONT
+            [MAT, 8, MT/ ZAP, ELFS, LMF, LFS, 0, 0?] CONT
         (/subsection[k])
     endfor
 endif

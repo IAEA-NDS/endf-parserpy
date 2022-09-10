@@ -257,8 +257,9 @@ class BasicEndfParser():
                 return tree_dic[mf]
             elif mt in tree_dic[mf] and is_tree(tree_dic[mf][mt]):
                 return tree_dic[mf][mt]
-        else:
-            return None
+            elif (-1) in tree_dic[mf] and is_tree(tree_dic[mf][-1]):
+                return tree_dic[mf][-1]
+        return None
 
     def should_skip_section(self, mf, mt, exclude=None, include=None):
         if exclude is None:

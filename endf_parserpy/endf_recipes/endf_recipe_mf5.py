@@ -16,7 +16,7 @@ for k=1 to NK:
     (contribution[k])
         # Arbitrary Tabulated Function (LF=1)
         if LF==1 [lookahead=1]:
-            [MAT, 5, MT/ 0.0, 0.0, 0, LF, NR, NP/ E / p ]TAB1 (p_table)
+            [MAT, 5, MT/ 0.0?, 0.0, 0, LF, NR, NP/ E / p ]TAB1 (p_table)
             [MAT, 5, MT/ 0.0, 0.0, 0, 0, NR, NE / E ]TAB2 (E_interp)
             for l=1 to NE:
                 [MAT, 5, MT/ 0.0, E[l], 0, 0?, NR, NF/ Eout / g ]TAB1 (spectrum[l])

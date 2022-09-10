@@ -81,6 +81,9 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                 'is wrong or the ENDF file contains inconsistent data. Note that ' +
                f'{varname} may be an array, in which case this statement would ' +
                 'apply to one of the variables in that array')
+    def create_variable_wrong_value_error_msg(realval, expval, sourcekey):
+        return (f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}. '
+                f'The value was encountered in a source field named {sourcekey}')
 
     if not inverse:
         for sourcekey, targetkey, idxvars, expr_vv, curexpr in zipit:
@@ -100,7 +103,9 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                 # an error.
                 contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
                 value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
-                msg = f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}'
+                #msg = f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}'
+                msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
+                                                            expr_vv[0], sourcekey)
                 if value_mismatch_occurred:
                     if contains_desired_number:
                         logging.warning(msg)

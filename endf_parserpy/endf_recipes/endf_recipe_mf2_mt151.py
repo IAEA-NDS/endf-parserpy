@@ -106,7 +106,7 @@ for i=1 to NIS:
                 [MAT, 2,151/ SPI, AP, LSSF, 0, NLS, 0]CONT
                 for p=1 to NLS:
                 (l_group[p])
-                    [MAT, 2,151/ AWRI, 0.0, L, 0, NJS, 0]CONT
+                    [MAT, 2,151/ AWRI, 0.0, L, 0, NJS, 0?]CONT
                     for n=1 to NJS:
                     (subsec[n])
                         [MAT, 2,151/ AJ, 0.0, INT, 0, 6*NE+6, NE/

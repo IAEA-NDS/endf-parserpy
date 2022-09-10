@@ -42,7 +42,7 @@ for i=1 to NIS:
                     [MAT, 2,151/ SPI, 0.0, 0, 0, NLS, 0]CONT
                 endif
                 if NRO==0 or (NAPS!=0 and NAPS!=1):
-                    [MAT, 2,151/ SPI, AP, 0, 0, NLS, 0]CONT
+                    [MAT, 2,151/ SPI, AP, 0?, 0, NLS, 0?]CONT
                 endif
 
                 for m=1 to NLS:

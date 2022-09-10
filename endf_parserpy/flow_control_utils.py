@@ -109,6 +109,7 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
     lookahead = 0
     if lookahead_option:
+        write_info('Start lookahead for if head ' + reconstruct_tree_str(if_head))
         lookahead_expr = get_child(lookahead_option, 'expr')
         lookahead = eval_expr(lookahead_expr, datadic, loop_vars)[0]
         if int(lookahead) != lookahead:

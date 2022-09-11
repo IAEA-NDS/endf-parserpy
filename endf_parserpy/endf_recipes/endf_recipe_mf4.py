@@ -16,10 +16,10 @@ ENDF_RECIPE_MF4 = """
 # fact that only for LTT==3 and LI==0 we expect
 # the variable NM in in the last spot
 if LTT==3 and LI==0 [lookahead=1]:
-    [MAT, 4, MT/ 0.0, AWR, LI, LCT, 0, NM]CONT
+    [MAT, 4, MT/ 0.0, AWR?, LI, LCT, 0, NM]CONT
 endif
 if LTT!=3 or LI!=0 [lookahead=1]:
-    [MAT, 4, MT/ 0.0, AWR, LI, LCT, 0, 0]CONT
+    [MAT, 4, MT/ 0.0, AWR?, LI, LCT, 0, 0]CONT
 endif
 
 # Legendre coefficients

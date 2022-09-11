@@ -156,6 +156,7 @@ class BasicEndfParser():
 
     def process_send_line(self, tree):
         if self.rwmode == 'read':
+            logging.info('HAHAHHAHAHA: ' + self.lines[self.ofs]) # debug
             read_send(self.lines, self.ofs)
         else:
             newlines = write_send(self.datadic, with_ctrl=True,

@@ -119,6 +119,25 @@ for i=1 to NIS:
                 endfor
             endif
 
+            # Case B (see Chap 2.3, p. 77)
+            if LFW==1 and LRF==1:
+                [MAT, 2,151/ SPI, AP, LSSF, 0, NE, NLS /
+                                {ES[p]}{p=1 to NE} ] LIST
+
+                for p=1 to NLS:
+                (j_group[p])
+                    [MAT, 2,151/ AWRI, 0.0, L, 0, NJS, 0?]CONT
+                    for n=1 to NJS:
+                    (subsec[n])
+                        [MAT, 2,151/ 0.0, 0.0, L, MUF, NE+6, 0/
+                            D, AJ, AMUN, GN0, GG, 0.0,
+                            {GF[m]}{m=1 to NE} ] LIST
+                    (/subsec[n])
+                    endfor
+                (/j_group[p])
+                endfor
+            endif
+
             # Case C (see Chap 2.3, p. 77)
             if (LFW==0 or LFW==1) and LRF==2:
                 if NRO != 0:

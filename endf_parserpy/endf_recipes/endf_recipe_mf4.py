@@ -17,8 +17,7 @@ ENDF_RECIPE_MF4 = """
 # the variable NM in in the last spot
 if LTT==3 and LI==0 [lookahead=1]:
     [MAT, 4, MT/ 0.0, AWR?, LI, LCT, 0, NM]CONT
-endif
-if LTT!=3 or LI!=0 [lookahead=1]:
+else:
     [MAT, 4, MT/ 0.0, AWR?, LI, LCT, 0, 0]CONT
 endif
 
@@ -28,18 +27,16 @@ if LTT == 1 and LI == 0:
     for i=1 to NE:
         [MAT, 4, MT/ T, E[i] , LT, 0, NL[i], 0/ {a[i,l]}{l=1 to NL[i]} ]LIST
     endfor
-endif
 
 # Tabulated probability distributions
-if LTT==2 and LI==0:
+elif LTT==2 and LI==0:
     [MAT, 4, MT/ 0.0, 0.0, 0, 0, NR, NE/ Eint ]TAB2 (energy_table)
     for i=1 to NE:
         [MAT, 4, MT/ T, E[i] , LT, 0, NR, NP/ mu / f]TAB1 (angtable[i])
     endfor
-endif
 
 # Angular distributions over two energy ranges.
-if LTT==3 and LI==0:
+elif LTT==3 and LI==0:
     # lower range given by Legendre coefficients
     [MAT, 4, MT/ 0.0, 0.0, 0, 0, NR, NE1/ Eint ]TAB2 (leg_int)
     for i=1 to NE1:

@@ -18,8 +18,8 @@ if NO==0:
             { HL[l] , RTYP[l], ZAN[l] , BR[l] , END[l], CT[l] }{l=1 to ND} ] LIST
         (/subsection[k])
     endfor
-endif
-if NO==1:
+
+elif NO==1:
     for k=1 to NS:
         (subsection[k])
             [MAT, 8, MT/ ZAP, ELFS, LMF, LFS, 0, 0?] CONT

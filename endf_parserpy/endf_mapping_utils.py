@@ -44,8 +44,17 @@ def get_varval(expr, datadic, loop_vars):
     name = get_name(expr)
     if name not in ('VARNAME', 'extvarname'):
         raise TypeError(f'node must be either of type VARNAME or extvarname but is {name}')
+
     varname = get_varname(expr)
     idxvars = get_indexvars(expr)
+
+    if loop_vars is not None:
+        if varname in datadic and varname in loop_vars:
+            raise IndexError(f'the variable {varname} is both a loop variable and '
+                              'a record variable, which is forbidden, check the recipe')
+        if varname in loop_vars:
+            return loop_vars[varname]
+
     while varname not in datadic and '__up' in datadic:
         datadic = datadic['__up']
     if varname not in datadic:

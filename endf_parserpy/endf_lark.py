@@ -110,7 +110,7 @@ comparison : if_condition | "(" disjunction ")"
 // adopted from: http://marvin.cs.uidaho.edu/Teaching/CS445/grammar.pdf (3.3)
 expr : addition | subtraction | addpart
 addpart : multiplication | division | mulpart
-mulpart : minusexpr | extvarname | NUMBER | DESIRED_NUMBER | bracketexpr
+mulpart : minusexpr | extvarname | inconsistent_varspec | NUMBER | DESIRED_NUMBER | bracketexpr
 
 multiplication : addpart "*" mulpart
 division : addpart "/" mulpart
@@ -128,6 +128,11 @@ INDEXVAR : CNAME
 // special number symbol indicating that
 // a specific number is expected but it may be different in practice
 DESIRED_NUMBER : NUMBER "?"
+
+// special variable symbol indicating
+// that if the value of the variable in the current record
+// is permitted to be inconsistent with a previously read value
+inconsistent_varspec : extvarname "?"
 
 // possible field values
 CFIELD: CNAME | "0.0"

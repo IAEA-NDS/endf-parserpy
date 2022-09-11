@@ -112,6 +112,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                     else:
                         raise ValueError(msg)
             else:
+                inconsistency_allowed = is_tree(curexpr) and search_name(curexpr, 'inconsistent_varspec')
                 val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
                 if idxvars is None:
                     if targetkey in datadic:
@@ -119,10 +120,11 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                         # NOTE: some files may contain small inconsistencies
                         # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
                         # we tolerate such small inconsistencies.
-                        if not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5):
+                        if (not inconsistency_allowed and
+                            not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)):
                             raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
-
-                    datadic[targetkey] = val
+                    else:
+                        datadic[targetkey] = val
                 else:
                     # loop through indexvars, and initialize
                     # nested dictionaries with the indicies as keys
@@ -139,10 +141,11 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                         # NOTE: some files may contain small inconsistencies
                         # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
                         # we tolerate such small inconsistencies.
-                        if not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5):
+                        if (not inconsistency_allowed and
+                            not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)):
                             raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
-
-                    curdic[idx] = val
+                    else:
+                        curdic[idx] = val
 
         # we write out logging info the first time we encounter a variable
         tmp = tuple(v for v in varnames if v is not None)

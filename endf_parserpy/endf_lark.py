@@ -19,7 +19,7 @@ r"""
 %import common.NUMBER
 %ignore " "
 
-code_token: (endf_line | for_loop | if_statement | section | COMMENT_LINE | NEWLINE)*
+code_token: (endf_line | for_loop | if_clause | section | COMMENT_LINE | NEWLINE)*
 endf_line : list_line | head_line | cont_line | tab1_line | tab2_line
             | text_line | dir_line  | send_line | dummy_line
 
@@ -92,7 +92,11 @@ for_start :  expr
 for_stop :   expr
 
 // IF statement
-if_statement : "if" if_head (lookahead_option)? ":" if_body "endif"
+if_clause : if_statement elif_statement* else_statement? "endif"
+if_statement : "if" if_head (lookahead_option)? ":" if_body
+elif_statement : "elif" if_head (lookahead_option)? ":" if_body
+else_statement : "else:" if_body
+
 lookahead_option : "[" "lookahead" "=" expr "]"
 if_head : disjunction
 if_condition : expr IF_RELATION expr

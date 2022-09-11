@@ -17,7 +17,7 @@ from .tree_utils import is_tree, get_name, get_child, get_child_value
 from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_tab1_dic, map_tab2_dic, map_list_dic)
 from .endf_mapping_utils import get_varname, get_indexvars, open_section, close_section
-from .flow_control_utils import cycle_for_loop, evaluate_if_statement, should_proceed
+from .flow_control_utils import cycle_for_loop, evaluate_if_clause, should_proceed
 
 from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         write_head, read_head, read_text, write_text,
@@ -59,7 +59,7 @@ class BasicEndfParser():
         # program flow
         flow_actions = {}
         flow_actions['for_loop'] = self.process_for_loop
-        flow_actions['if_statement'] = self.process_if_statement
+        flow_actions['if_clause'] = self.process_if_clause
         flow_actions['section'] = self.process_section
         self.flow_actions = flow_actions
 
@@ -156,7 +156,6 @@ class BasicEndfParser():
 
     def process_send_line(self, tree):
         if self.rwmode == 'read':
-            logging.info('HAHAHHAHAHA: ' + self.lines[self.ofs]) # debug
             read_send(self.lines, self.ofs)
         else:
             newlines = write_send(self.datadic, with_ctrl=True,
@@ -180,8 +179,8 @@ class BasicEndfParser():
     def process_for_loop(self, tree):
         return cycle_for_loop(tree, self.run_instruction, self.datadic, self.loop_vars)
 
-    def process_if_statement(self, tree):
-        evaluate_if_statement(tree, self.run_instruction,
+    def process_if_clause(self, tree):
+        evaluate_if_clause(tree, self.run_instruction,
                               self.datadic, self.loop_vars,
                               dump_state = self.dump_parser_state,
                               restore_state = self.restore_parser_state)

@@ -101,9 +101,33 @@ def determine_truthvalue(node, datadic, loop_vars):
         raise TypeError(f'Unsupported node type {name} encountered ' +
                          'while parsing boolean expression')
 
+
+def evaluate_if_clause(tree, tree_handler, datadic, loop_vars,
+                       dump_state, restore_state):
+    chnames = get_child_names(tree)
+    assert chnames[0] == 'if_statement'
+    truthval = evaluate_if_statement(tree.children[0], tree_handler, datadic, loop_vars,
+                                     dump_state, restore_state)
+    if truthval is True:
+        return
+    else:
+        elif_tree_list = [t for t in tree.children if get_name(t) == 'elif_statement']
+        for elif_tree in elif_tree_list:
+            truthval = evaluate_if_statement(elif_tree, tree_handler, datadic, loop_vars,
+                                             dump_state, restore_state)
+            if truthval is True:
+                return
+
+        if 'else_statement' in chnames:
+            else_tree = get_child(tree, 'else_statement')
+            if_body = get_child(else_tree, 'if_body')
+            tree_handler(if_body)
+            return
+
+
 def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
                           dump_state, restore_state):
-    assert tree.data == 'if_statement'
+    assert tree.data in ('if_statement', 'elif_statement', 'else_statement')
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')
     lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
@@ -162,6 +186,9 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
         if lookahead_option:
             restore_state(parser_state)
         write_info('Skip if body because if condition ' + reconstruct_tree_str(if_head) + ' is false')
+
+    return truthval
+
 
 def should_proceed(tree, datadic, loop_vars, action_type):
     if action_type == 'endf_action':

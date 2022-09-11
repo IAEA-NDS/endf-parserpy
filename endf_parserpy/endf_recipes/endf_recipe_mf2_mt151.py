@@ -110,7 +110,14 @@ for i=1 to NIS:
                 if NRO != 0:
                     [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint /AP ] TAB1
                 endif
-                [MAT, 2,151/ SPI, AP, LSSF, 0, NLS, 0]CONT
+
+                if NRO!=0 and (NAPS==0 or NAPS==1):
+                    [MAT, 2,151/ SPI, 0.0, LSSF, 0, NLS, 0]CONT
+                endif
+                if NRO==0 or (NAPS!=0 and NAPS!=1):
+                    [MAT, 2,151/ SPI, AP, LSSF, 0, NLS, 0]CONT
+                endif
+
                 for p=1 to NLS:
                 (l_group[p])
                     [MAT, 2,151/ AWRI, 0.0, L, 0, NJS, 0?]CONT

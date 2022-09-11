@@ -74,8 +74,15 @@ for i=1 to NIS:
                 (spingroup[k])
                     [MAT,2,151/ AJ, PJ, KBK, KPS, 6*NCH, NCH /
                     {PPI[l] , L[l] , SCH[l] , BND [l] , APE[l] , APT[l]}{l=1 to NCH} ]LIST
-                    [MAT,2,151/ 0.0, 0.0, 0, NRS, 6*NX, NX /
-                    {ER[n], {GAM[m,n]}{m=1 to NCH} PADLINE}{n=1 to NRS} ]LIST
+                    if NRS > 0 [lookahead=1]:
+                        [MAT,2,151/ 0.0, 0.0, 0, NRS, 6*NX, NX /
+                            {ER[n], {GAM[m,n]}{m=1 to NCH} PADLINE}{n=1 to NRS} ]LIST
+                    endif
+                    # no resonances in the spin group
+                    if NRS==0 and NX==1 [lookahead=1]:
+                        [MAT,2,151/ 0.0, 0.0, 0, NRS, 6*NX, NX /
+                            {0.0}{m=1 to 6}]LIST
+                    endif
                 (/spingroup[k])
                 endfor
             endif

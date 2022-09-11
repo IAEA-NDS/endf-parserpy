@@ -32,6 +32,7 @@ for i=1 to NIS:
 
         # Resolved resonance data
         if LRU==1:
+
             # Single level Breit-Wigner (SLBW) or Multi level Breit-Wigner (MLBW)
             if LRF==1 or LRF==2:
                 if NRO != 0:
@@ -40,8 +41,7 @@ for i=1 to NIS:
 
                 if NRO!=0 and (NAPS==0 or NAPS==1):
                     [MAT, 2,151/ SPI, 0.0, 0, 0, NLS, 0]CONT
-                endif
-                if NRO==0 or (NAPS!=0 and NAPS!=1):
+                else:
                     [MAT, 2,151/ SPI, AP, 0?, 0, NLS, 0?]CONT
                 endif
 
@@ -51,9 +51,9 @@ for i=1 to NIS:
                     {ER[k], AJ[k], GT[k], GN[k], GG[k], GF[k]}{k=1 to NRS} ]LIST
                 (/spingroup[m])
                 endfor
-            endif
+
             # R-matrix Reich-Moore multi level parameters
-            if LRF==3:
+            elif LRF==3:
                 if NRO != 0:
                     [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint / AP]TAB1
                 endif
@@ -71,8 +71,8 @@ for i=1 to NIS:
                     {ER[k] , AJ[k] , GN[k], GG[k] , GFA[k],  GFB[k]}{k=1 to NRS} ]LIST
                 (/spingroup[m])
                 endfor
-            endif
-            if LRF==7:
+
+            elif LRF==7:
                 [MAT,2,151/ 0.0, 0.0, IFG, KRM, NJS, KRL ]CONT
                 [MAT,2,151/0.0, 0.0, NPP, 0, 12*NPP, 2*NPP /
                     {MA[k] , MB[k], ZA[k] , ZB[k] , IA[k] , IB[k] ,
@@ -93,10 +93,9 @@ for i=1 to NIS:
                 (/spingroup[k])
                 endfor
             endif
-        endif
 
         # Unresolved resonance data
-        if LRU==2:
+        elif LRU==2:
 
             # Case A (see Chap 2.3, p. 76)
             if LFW==0 and LRF==1:
@@ -117,10 +116,9 @@ for i=1 to NIS:
                     {D[m], AJ[m], AMUN[m], GN0[m], GG[m], 0.0}{m=1 to NJS}] LIST
                 (/l_group[p])
                 endfor
-            endif
 
             # Case B (see Chap 2.3, p. 77)
-            if LFW==1 and LRF==1:
+            elif LFW==1 and LRF==1:
                 [MAT, 2,151/ SPI, AP, LSSF, 0, NE, NLS /
                                 {ES[p]}{p=1 to NE} ] LIST
 
@@ -136,10 +134,9 @@ for i=1 to NIS:
                     endfor
                 (/j_group[p])
                 endfor
-            endif
 
             # Case C (see Chap 2.3, p. 77)
-            if (LFW==0 or LFW==1) and LRF==2:
+            elif (LFW==0 or LFW==1) and LRF==2:
                 if NRO != 0:
                     [MAT, 2,151/ 0.0, 0.0, 0, 0, NR, NP/ Eint /AP ] TAB1
                 endif

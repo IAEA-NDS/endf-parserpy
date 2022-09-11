@@ -60,8 +60,7 @@ for i=1 to NIS:
 
                 if NRO!=0 and (NAPS==0 or NAPS==1):
                     [MAT, 2,151/ SPI, 0.0, LAD, 0, NLS, NLSC]CONT
-                endif
-                if NRO==0 or (NAPS!=0 and NAPS!=1):
+                else:
                     [MAT, 2,151/ SPI, AP, LAD, 0, NLS, NLSC]CONT
                 endif
 
@@ -105,8 +104,7 @@ for i=1 to NIS:
 
                 if NRO!=0 and (NAPS==0 or NAPS==1):
                     [MAT, 2,151/ SPI, 0.0, LSSF, 0, NLS, 0] CONT
-                endif
-                if NRO==0 or (NAPS!=0 and NAPS!=1):
+                else:
                     [MAT, 2,151/ SPI, AP, LSSF, 0, NLS, 0] CONT
                 endif
 
@@ -143,8 +141,7 @@ for i=1 to NIS:
 
                 if NRO!=0 and (NAPS==0 or NAPS==1):
                     [MAT, 2,151/ SPI, 0.0, LSSF, 0, NLS, 0]CONT
-                endif
-                if NRO==0 or (NAPS!=0 and NAPS!=1):
+                else:
                     [MAT, 2,151/ SPI, AP, LSSF, 0, NLS, 0]CONT
                 endif
 

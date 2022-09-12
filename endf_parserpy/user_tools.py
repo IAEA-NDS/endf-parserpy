@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2022/09/12
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -56,4 +56,25 @@ def list_parsed_sections(dic):
             if isinstance(mtsec, dict):
                 parsed.append((mf, mt))
     return tuple(parsed)
+
+def sanitize_fieldname_types(dic):
+    if not isinstance(dic, dict):
+        raise TypeError('please provide dictionary')
+    keys = tuple(dic.keys())
+    for key in keys:
+        try:
+            intkey = int(key)
+        except:
+            intkey = None
+        if intkey is not None:
+            if intkey in dic:
+                raise IndexError('integer version of key already exists, something wrong')
+            cont = dic[key]
+            dic[intkey] = cont
+            del dic[key]
+    # recurse into sub-dictionaries
+    keys = tuple(dic.keys())
+    for key in keys:
+        if isinstance(dic[key], dict):
+            sanitize_fieldname_types(dic[key])
 

@@ -6,7 +6,7 @@ def pytest_addoption(parser):
     parser.addoption("--endffile", action="store", default=None)
     parser.addoption("--ignore_zero_mismatch", action="store", default='true')
     parser.addoption("--fuzzy_matching", action="store", default='true')
-    parser.addoption("--blank_as_zero", action="store", default='false')
+    parser.addoption("--blank_as_zero", action="store", default='true')
 
 
 def pytest_generate_tests(metafunc):

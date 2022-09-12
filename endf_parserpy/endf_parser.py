@@ -31,7 +31,7 @@ logging.basicConfig(level=logging.INFO)
 class BasicEndfParser():
 
     def __init__(self, ignore_zero_mismatch=True, fuzzy_matching=True,
-                       blank_as_zero=False, log_lookahead_traceback=True):
+                       blank_as_zero=True, log_lookahead_traceback=True):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         from .endf_lark import endf_recipe_grammar

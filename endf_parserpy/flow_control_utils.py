@@ -160,9 +160,8 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
             # during lookahead, but print
             # the traceback for diagnostics
             if log_lookahead_traceback:
-                write_info('Showing the stacktrace due to failure in lookahead...')
-            traceback.print_exc()
-            pass
+                write_info('Printing the stacktrace due to failure in lookahead...')
+                traceback.print_exc()
         del(loop_vars['__lookahead'])
 
     # evaluate the condition (with variables in datadic potentially
@@ -171,14 +170,19 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     disj = get_child(if_head, 'disjunction')
     try:
         truthval = determine_truthvalue(disj, datadic, loop_vars)
-    except:
+    except Exception as exc:
         # TODO: Improve the error handling. Ideally, we only want
         #       to assign the value False if any variable name
         #       in the if statement was not found but otherwise
         #       let this function fail.
-        if log_lookahead_traceback:
-            write_info('Showing the stacktrace due to failure in determination of if condition...')
+        if lookahead_option:
+            if log_lookahead_traceback:
+                write_info('Printing the stacktrace due to failure in determination of if condition after lookahead...')
+                traceback.print_exc()
+        else:
             traceback.print_exc()
+            raise exc
+
         truthval = False
     if truthval:
         write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')

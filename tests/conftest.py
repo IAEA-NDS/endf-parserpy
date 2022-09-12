@@ -5,6 +5,7 @@ def pytest_addoption(parser):
     parser.addoption("--endfdir", action="store", default="testdata")
     parser.addoption("--endffile", action="store", default=None)
     parser.addoption("--ignore_zero_mismatch", action="store", default='true')
+    parser.addoption("--fuzzy_matching", action="store", default='true')
 
 
 def pytest_generate_tests(metafunc):
@@ -23,3 +24,7 @@ def pytest_generate_tests(metafunc):
     argval = metafunc.config.option.ignore_zero_mismatch.lower().strip()
     argval = True if argval == 'true' else False
     metafunc.parametrize("ignore_zero_mismatch", [argval], scope="module")
+
+    argval = metafunc.config.option.fuzzy_matching.lower().strip()
+    argval = True if argval == 'true' else False
+    metafunc.parametrize("fuzzy_matching", [argval], scope="module")

@@ -33,7 +33,7 @@ def test_endf_read_write_read_roundtrip_preserves_content(endf_file, tmp_path, m
     # with include=tuple() sections are not parsed but taken verbatim as string
     raw_endf = myBasicEndfParser.parsefile(endf_file, include=tuple())
     raw_endf2 = myBasicEndfParser.parsefile(outfile, include=tuple())
-    compare_objects(raw_endf, raw_endf2, strlen_only=True)
+    compare_objects(raw_endf, raw_endf2, strlen_only=True, do_rstrip=True)
 
 
 def test_endf_json_endf_roundtrip_preserves_content(endf_file, tmp_path, myBasicEndfParser):

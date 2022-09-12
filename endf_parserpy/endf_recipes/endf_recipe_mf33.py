@@ -38,7 +38,7 @@ if MTL == 0:
         for m=1 to NI:
             (ni_subsection[m])
                 if LB>=0 and LB<=4 [lookahead=1]:
-                    [MAT,33,MT/ 0.0?, 0.0?, LT, LB, 2*NP, NP/
+                    [MAT,33,MT/ 0.0, 0.0, LT, LB, 2*NP, NP/
                         {Ek[k] , Fk[k]}{k=1 to (NP-LT)}
                         {El[k] , Fl[k]}{k=1 to LT} ]LIST
 

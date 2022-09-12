@@ -42,7 +42,7 @@ for i=1 to NIS:
                 if NRO!=0 and (NAPS==0 or NAPS==1):
                     [MAT, 2,151/ SPI, 0.0, 0, 0, NLS, 0]CONT
                 else:
-                    [MAT, 2,151/ SPI, AP, 0?, 0, NLS, 0?]CONT
+                    [MAT, 2,151/ SPI, AP, 0, 0, NLS, 0]CONT
                 endif
 
                 for m=1 to NLS:
@@ -122,7 +122,7 @@ for i=1 to NIS:
 
                 for p=1 to NLS:
                 (j_group[p])
-                    [MAT, 2,151/ AWRI, 0.0, L, 0, NJS, 0?]CONT
+                    [MAT, 2,151/ AWRI, 0.0, L, 0, NJS, 0]CONT
                     for n=1 to NJS:
                     (subsec[n])
                         [MAT, 2,151/ 0.0, 0.0, L, MUF, NE+6, 0/
@@ -147,7 +147,7 @@ for i=1 to NIS:
 
                 for p=1 to NLS:
                 (l_group[p])
-                    [MAT, 2,151/ AWRI, 0.0, L, 0, NJS, 0?]CONT
+                    [MAT, 2,151/ AWRI, 0.0, L, 0, NJS, 0]CONT
                     for n=1 to NJS:
                     (subsec[n])
                         [MAT, 2,151/ AJ, 0.0, INT, 0, 6*NE+6, NE/

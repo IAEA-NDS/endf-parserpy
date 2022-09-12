@@ -16,17 +16,17 @@ for k=1 to NK:
     (contribution[k])
         # Arbitrary Tabulated Function (LF=1)
         if LF==1 [lookahead=1]:
-            [MAT, 5, MT/ 0.0?, 0.0, 0, LF, NR, NP/ E / p ]TAB1 (p_table)
+            [MAT, 5, MT/ 0.0, 0.0, 0, LF, NR, NP/ E / p ]TAB1 (p_table)
             [MAT, 5, MT/ 0.0, 0.0, 0, 0, NR, NE / E ]TAB2 (E_interp)
             for l=1 to NE:
-                [MAT, 5, MT/ 0.0, E[l], 0, 0?, NR, NF/ Eout / g ]TAB1 (spectrum[l])
+                [MAT, 5, MT/ 0.0, E[l], 0, 0, NR, NF/ Eout / g ]TAB1 (spectrum[l])
             endfor
 
         # General Evaporation Spectrum (LF=5)
         elif LF==5 [lookahead=1]:
             [MAT, 5, MT/ U, 0.0, 0, LF, NR, NP/ E / p ]TAB1 (p_table) 
-            [MAT, 5, MT/ 0.0, 0.0, 0?, 0?, NR, NE/ E / theta] TAB1 (theta_table)
-            [MAT, 5, MT/ 0.0, 0.0, 0?, 0?, NR, NF/ x / g ]TAB1 (g_table)
+            [MAT, 5, MT/ 0.0, 0.0, 0, 0, NR, NE/ E / theta] TAB1 (theta_table)
+            [MAT, 5, MT/ 0.0, 0.0, 0, 0, NR, NF/ x / g ]TAB1 (g_table)
 
         # Simple Maxwellian Fission Spectrum (LF=7)
         elif LF==7 [lookahead=1]:

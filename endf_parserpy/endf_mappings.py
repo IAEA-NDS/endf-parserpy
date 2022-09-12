@@ -39,6 +39,9 @@ def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
 
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inverse, parse_opts=None):
     parse_opts = parse_opts if parse_opts is not None else {}
+    fuzzy_matching = parse_opts.get('fuzzy_matching', False)
+    ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
+
     # these internal functions are hacks to allow for default names for some fields:
     # some fields in the ENDF language specification are optional and then no
     # Tree/Token is created for them but we still need to use their default names
@@ -98,7 +101,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
             if targetkey is None:
                 assert expr_vv[1] == 0
 
-                if not parse_opts.get('ignore_zero_mismatch', False):
+                if not ignore_zero_mismatch:
                     # if we have a DESIRED_NUMBER in the expression,
                     # we expect a certain number but we do not require it.
                     # with only NUMBER in the expression, any mismatch between
@@ -121,7 +124,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                     if targetkey in datadic:
                         prev_val = datadic[targetkey]
                         if not inconsistency_allowed:
-                            if not parse_opts.get('fuzzy_matching', False):
+                            if not fuzzy_matching:
                                 mismatch_occurred = prev_val != val
                             else:
                                 # NOTE: some files may contain small inconsistencies
@@ -149,7 +152,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                         # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
                         # we tolerate such small inconsistencies.
                         if not inconsistency_allowed:
-                            if not parse_opts.get('fuzzy_matching', False):
+                            if not fuzzy_matching:
                                 mismatch_occurred = prev_val != val
                             else:
                                 mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)

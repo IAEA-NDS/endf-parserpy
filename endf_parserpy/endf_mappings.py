@@ -38,6 +38,7 @@ def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
         raise TypeError(f'Expected MT {exp_mt} but encountered {cur_mt}')
 
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inverse, parse_opts=None):
+    parse_opts = parse_opts if parse_opts is not None else {}
     # these internal functions are hacks to allow for default names for some fields:
     # some fields in the ENDF language specification are optional and then no
     # Tree/Token is created for them but we still need to use their default names
@@ -96,21 +97,23 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
             # in the ENDF recipe.
             if targetkey is None:
                 assert expr_vv[1] == 0
-                # if we have a DESIRED_NUMBER in the expression,
-                # we expect a certain number but we do not require it.
-                # with only NUMBER in the expression, any mismatch between
-                # our expectation and the number in the ENDF file will yield
-                # an error.
-                contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
-                value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
-                #msg = f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}'
-                msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
-                                                            expr_vv[0], sourcekey)
-                if value_mismatch_occurred:
-                    if contains_desired_number:
-                        logging.warning(msg)
-                    else:
-                        raise ValueError(msg)
+
+                if not parse_opts.get('ignore_zero_mismatch', False):
+                    # if we have a DESIRED_NUMBER in the expression,
+                    # we expect a certain number but we do not require it.
+                    # with only NUMBER in the expression, any mismatch between
+                    # our expectation and the number in the ENDF file will yield
+                    # an error.
+                    contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
+                    value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
+                    #msg = f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}'
+                    msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
+                                                                expr_vv[0], sourcekey)
+                    if value_mismatch_occurred:
+                        if contains_desired_number:
+                            logging.warning(msg)
+                        else:
+                            raise ValueError(msg)
             else:
                 inconsistency_allowed = is_tree(curexpr) and search_name(curexpr, 'inconsistent_varspec')
                 val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)

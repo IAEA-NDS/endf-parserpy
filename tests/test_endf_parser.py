@@ -29,11 +29,13 @@ def test_endf_read_write_read_roundtrip_preserves_content(endf_file, tmp_path, m
     myBasicEndfParser.writefile(outfile, endf_dic)
     endf_dic2 = myBasicEndfParser.parsefile(outfile)
     compare_objects(endf_dic, endf_dic2, atol=1e-6, rtol=1e-5)
-    # also check if same number of lines of original input and output
-    # with include=tuple() sections are not parsed but taken verbatim as string
+    # also check if same number of lines of original input and output.
+    # with include=tuple() sections are not parsed but taken verbatim as string.
+    # original files sometimes contain additional whitespace at the end of line
+    # or lack the NS line number field so we cut the strings for comparison after 75 characters
     raw_endf = myBasicEndfParser.parsefile(endf_file, include=tuple())
     raw_endf2 = myBasicEndfParser.parsefile(outfile, include=tuple())
-    compare_objects(raw_endf, raw_endf2, strlen_only=True, do_rstrip=True)
+    compare_objects(raw_endf, raw_endf2, strlen_only=True, rstrcut=75)
 
 
 def test_endf_json_endf_roundtrip_preserves_content(endf_file, tmp_path, myBasicEndfParser):

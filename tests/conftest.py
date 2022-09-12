@@ -22,9 +22,9 @@ def pytest_generate_tests(metafunc):
     # to check for the existence of ignore_zero_match in
     # metafunc.config.option
     argval = metafunc.config.option.ignore_zero_mismatch.lower().strip()
-    argval = True if argval == 'true' else False
+    argval = argval == 'true'
     metafunc.parametrize("ignore_zero_mismatch", [argval], scope="module")
 
     argval = metafunc.config.option.fuzzy_matching.lower().strip()
-    argval = True if argval == 'true' else False
+    argval = argval == 'true'
     metafunc.parametrize("fuzzy_matching", [argval], scope="module")

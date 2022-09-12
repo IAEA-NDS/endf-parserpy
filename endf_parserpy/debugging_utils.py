@@ -26,7 +26,8 @@ def smart_is_equal(x, y, atol=1e-8, rtol=1e-6):
         return x == y
 
 
-def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6, strlen_only=False):
+def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6,
+        strlen_only=False, do_rstrip=False):
 
     if type(obj1) != type(obj2):
         raise TypeError('type mismatch found, obj1: {obj1}, obj2: {obj2}')
@@ -41,10 +42,13 @@ def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6, strlen_only=Fa
 
         for key in obj1:
             compare_objects(obj1[key], obj2[key], '.'.join((curpath, str(key))),
-                    atol=atol, rtol=rtol, strlen_only=strlen_only)
+                    atol=atol, rtol=rtol, strlen_only=strlen_only, do_rstrip=do_rstrip)
 
     else:
         if isinstance(obj1, str):
+            if do_rstrip:
+                obj1 = obj1.rstrip()
+                obj2 = obj2.rstrip()
             if strlen_only:
                 if len(obj1) != len(obj2):
                     raise ValueError(f'at path {curpath}: string lengths differ ({obj1} != {obj2})')
@@ -59,7 +63,7 @@ def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6, strlen_only=Fa
 
             for i, (subel1, subel2) in enumerate(zip(obj1, obj2)):
                 compare_objects(subel1, subel2, f'{curpath}[{str(i)}]',
-                        atol=atol, rtol=rtol, strlen_only=strlen_only)
+                        atol=atol, rtol=rtol, strlen_only=strlen_only, do_rstrip=do_rstrip)
         else:
             if not smart_is_equal(obj1, obj2, atol=atol, rtol=rtol):
                 raise ValueError(f'Value mismatch at {curpath} ({obj1} vs {obj2})')

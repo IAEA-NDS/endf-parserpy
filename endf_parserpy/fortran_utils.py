@@ -9,6 +9,12 @@
 #
 ############################################################
 
+def read_fort_int(valstr, blank_as_zero=False):
+    if blank_as_zero and valstr.strip() == '':
+        return 0
+    else:
+        return int(valstr)
+
 def fortstr2float(valstr, blank=None):
     digitchars = tuple(str(i) for i in range(10))
     for i, c in enumerate(valstr):

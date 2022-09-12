@@ -10,7 +10,7 @@
 ############################################################
 
 from .fortran_utils import (float2fortstr, fortstr2float,
-        read_fort_floats, write_fort_floats)
+        read_fort_floats, write_fort_floats, read_fort_int)
 
 
 def read_ctrl(line, nofail=False):
@@ -64,13 +64,13 @@ def write_text(dic, with_ctrl=True):
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [TEXT + CTRL]
 
-def read_dir(lines, ofs=0, with_ctrl=True):
+def read_dir(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
     ofs = skip_blank_lines(lines, ofs)
     line = lines[ofs]
-    dic = {'L1' : int(line[22:33]),
-           'L2' : int(line[33:44]),
-           'N1' : int(line[44:55]),
-           'N2' : int(line[55:66])}
+    dic = {'L1' : read_fort_int(line[22:33], blank_as_zero),
+           'L2' : read_fort_int(line[33:44], blank_as_zero),
+           'N1' : read_fort_int(line[44:55], blank_as_zero),
+           'N2' : read_fort_int(line[55:66], blank_as_zero)}
     if with_ctrl:
         ctrl = read_ctrl(line)
         dic.update(ctrl)
@@ -86,15 +86,15 @@ def write_dir(dic, with_ctrl=True):
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
-def read_cont(lines, ofs=0, with_ctrl=True):
+def read_cont(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
     ofs = skip_blank_lines(lines, ofs)
     line = lines[ofs]
-    dic = {'C1' : fortstr2float(line[0:11]),
-           'C2' : fortstr2float(line[11:22]),
-           'L1' : int(line[22:33]),
-           'L2' : int(line[33:44]),
-           'N1' : int(line[44:55]),
-           'N2' : int(line[55:66])}
+    dic = {'C1' : fortstr2float(line[0:11], blank=0.0 if blank_as_zero else None),
+           'C2' : fortstr2float(line[11:22], blank=0.0 if blank_as_zero else None),
+           'L1' : read_fort_int(line[22:33], blank_as_zero),
+           'L2' : read_fort_int(line[33:44], blank_as_zero),
+           'N1' : read_fort_int(line[44:55], blank_as_zero),
+           'N2' : read_fort_int(line[55:66], blank_as_zero)}
     if with_ctrl:
         ctrl = read_ctrl(line)
         dic.update(ctrl)
@@ -121,9 +121,9 @@ def prepare_zerostr_fields(zero_as_blank):
     N2 = zerostr2
     return C1, C2, L1, L2, N1, N2
 
-def read_send(lines, ofs=0, with_ctrl=True):
+def read_send(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
     ofs = skip_blank_lines(lines, ofs)
-    dic, ofs = read_cont(lines, ofs, with_ctrl)
+    dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero)
     if dic['C1'] != 0 or dic['C2'] != 0 or \
        dic['L1'] != 0 or dic['L2'] != 0 or \
        dic['N1'] != 0 or dic['N2'] != 0 or \
@@ -171,7 +171,7 @@ read_head = read_cont
 
 def read_list(lines, ofs=0, with_ctrl=True, callback=None, blank_as_zero=False):
     ofs = skip_blank_lines(lines, ofs)
-    dic, ofs = read_cont(lines, ofs, with_ctrl)
+    dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero)
     NPL = dic['N1']
     if NPL == 0:
         dic['vals'] = []
@@ -202,7 +202,7 @@ def write_list(dic, with_ctrl=True):
 def read_tab2(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
     ofs = skip_blank_lines(lines, ofs)
     startline = lines[ofs]
-    dic, ofs = read_cont(lines, ofs)
+    dic, ofs = read_cont(lines, ofs, blank_as_zero=blank_as_zero)
     vals, ofs = read_endf_numbers(lines, 2*dic['N1'], ofs, to_int=True,
                                   blank_as_zero=blank_as_zero)
     NBT = vals[::2]
@@ -234,7 +234,7 @@ def write_tab2(dic, with_ctrl=True):
 def read_tab1(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
     ofs = skip_blank_lines(lines, ofs)
     startline = lines[ofs]
-    dic, ofs = read_cont(lines, ofs, with_ctrl)
+    dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero)
     tbl_dic, ofs = read_tab1_body_lines(lines, ofs, dic['N1'], dic['N2'],
             blank_as_zero=blank_as_zero)
     dic['table'] = tbl_dic

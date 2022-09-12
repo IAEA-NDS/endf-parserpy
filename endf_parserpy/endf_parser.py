@@ -31,7 +31,7 @@ logging.basicConfig(level=logging.INFO)
 class BasicEndfParser():
 
     def __init__(self, ignore_zero_mismatch=True, fuzzy_matching=True,
-                       blank_as_zero=False):
+                       blank_as_zero=False, log_lookahead_traceback=True):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         from .endf_lark import endf_recipe_grammar
@@ -66,7 +66,8 @@ class BasicEndfParser():
         self.parse_opts = {
                 'ignore_zero_mismatch': ignore_zero_mismatch,
                 'fuzzy_matching': fuzzy_matching,
-                'blank_as_zero': blank_as_zero
+                'blank_as_zero': blank_as_zero,
+                'log_lookahead_traceback': log_lookahead_traceback
             }
 
     def process_text_line(self, tree):
@@ -90,7 +91,8 @@ class BasicEndfParser():
         if self.rwmode == 'read':
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a HEAD record', self.ofs)
-            cont_dic, self.ofs = read_head(self.lines, self.ofs, with_ctrl=True)
+            cont_dic, self.ofs = read_head(self.lines, self.ofs, with_ctrl=True,
+                    blank_as_zero=self.parse_opts['blank_as_zero'])
             write_info('Content of the HEAD record: ' + str(cont_dic), self.ofs)
             map_head_dic(tree, cont_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
             self.datadic.update(get_ctrl(cont_dic))
@@ -104,7 +106,7 @@ class BasicEndfParser():
         if self.rwmode == 'read':
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a CONT record', self.ofs)
-            cont_dic, self.ofs = read_cont(self.lines, self.ofs)
+            cont_dic, self.ofs = read_cont(self.lines, self.ofs, blank_as_zero=self.parse_opts['blank_as_zero'])
             write_info('Content of the CONT record: ' + str(cont_dic))
             map_cont_dic(tree, cont_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
@@ -116,7 +118,7 @@ class BasicEndfParser():
     def process_dir_line(self, tree):
         if self.rwmode == 'read':
             self.loop_vars['__ofs'] = self.ofs
-            dir_dic, self.ofs = read_dir(self.lines, self.ofs)
+            dir_dic, self.ofs = read_dir(self.lines, self.ofs, blank_as_zero=self.parse_opts['blank_as_zero'])
             map_dir_dic(tree, dir_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
             dir_dic = map_dir_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
@@ -165,7 +167,7 @@ class BasicEndfParser():
 
     def process_send_line(self, tree):
         if self.rwmode == 'read':
-            read_send(self.lines, self.ofs)
+            read_send(self.lines, self.ofs, blank_as_zero=self.parse_opts['blank_as_zero'])
         else:
             newlines = write_send(self.datadic, with_ctrl=True,
                                   zero_as_blank=self.zero_as_blank)
@@ -192,7 +194,8 @@ class BasicEndfParser():
         evaluate_if_clause(tree, self.run_instruction,
                               self.datadic, self.loop_vars,
                               dump_state = self.dump_parser_state,
-                              restore_state = self.restore_parser_state)
+                              restore_state = self.restore_parser_state,
+                              parse_opts=self.parse_opts)
 
     def run_instruction(self, tree):
         if tree.data in self.endf_actions:

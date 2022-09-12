@@ -103,7 +103,7 @@ def determine_truthvalue(node, datadic, loop_vars):
 
 
 def evaluate_if_clause(tree, tree_handler, datadic, loop_vars,
-                       dump_state, restore_state):
+                       dump_state, restore_state, parse_opts=None):
     chnames = get_child_names(tree)
     assert chnames[0] == 'if_statement'
     truthval = evaluate_if_statement(tree.children[0], tree_handler, datadic, loop_vars,
@@ -114,7 +114,7 @@ def evaluate_if_clause(tree, tree_handler, datadic, loop_vars,
         elif_tree_list = [t for t in tree.children if get_name(t) == 'elif_statement']
         for elif_tree in elif_tree_list:
             truthval = evaluate_if_statement(elif_tree, tree_handler, datadic, loop_vars,
-                                             dump_state, restore_state)
+                                             dump_state, restore_state, parse_opts=parse_opts)
             if truthval is True:
                 return
 
@@ -126,7 +126,9 @@ def evaluate_if_clause(tree, tree_handler, datadic, loop_vars,
 
 
 def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
-                          dump_state, restore_state):
+                          dump_state, restore_state, parse_opts=None):
+    parse_opts = parse_opts if parse_opts is not None else {}
+    log_lookahead_traceback = parse_opts.get('log_lookahead_traceback', True)
     assert tree.data in ('if_statement', 'elif_statement', 'else_statement')
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')
@@ -157,7 +159,8 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
             # we accept parsing failure
             # during lookahead, but print
             # the traceback for diagnostics
-            write_info('Showing the stacktrace due to failure in lookahead...')
+            if log_lookahead_traceback:
+                write_info('Showing the stacktrace due to failure in lookahead...')
             traceback.print_exc()
             pass
         del(loop_vars['__lookahead'])
@@ -173,8 +176,9 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
         #       to assign the value False if any variable name
         #       in the if statement was not found but otherwise
         #       let this function fail.
-        write_info('Showing the stacktrace due to failure in determination of if condition...')
-        traceback.print_exc()
+        if log_lookahead_traceback:
+            write_info('Showing the stacktrace due to failure in determination of if condition...')
+            traceback.print_exc()
         truthval = False
     if truthval:
         write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')

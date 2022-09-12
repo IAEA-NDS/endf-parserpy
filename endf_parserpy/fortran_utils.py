@@ -16,6 +16,8 @@ def read_fort_int(valstr, blank_as_zero=False):
         return int(valstr)
 
 def fortstr2float(valstr, blank=None):
+    if valstr.strip() == '' and blank is not None:
+        return blank
     digitchars = tuple(str(i) for i in range(10))
     for i, c in enumerate(valstr):
         if i>0 and (c == '+' or c == '-'):

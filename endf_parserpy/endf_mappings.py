@@ -37,7 +37,7 @@ def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
     if exp_mt != 'MT' and int(exp_mt) != cur_mt:
         raise TypeError(f'Expected MT {exp_mt} but encountered {cur_mt}')
 
-def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inverse):
+def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inverse, parse_opts=None):
     # these internal functions are hacks to allow for default names for some fields:
     # some fields in the ENDF language specification are optional and then no
     # Tree/Token is created for them but we still need to use their default names
@@ -179,31 +179,31 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
         return record_dic
     raise ValueError('Tertium non datur')
 
-def map_text_dic(text_line_node, text_dic={}, datadic={}, loop_vars={}, inverse=False):
+def map_text_dic(text_line_node, text_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(text_line_node, text_dic, datadic, inverse)
     expr_list = get_child(text_line_node, 'text_fields').children
     cn = ('HL',)
-    return map_record_helper(expr_list, cn, text_dic, datadic, loop_vars, inverse)
+    return map_record_helper(expr_list, cn, text_dic, datadic, loop_vars, inverse, parse_opts)
 
-def map_head_dic(head_line_node, head_dic={}, datadic={}, loop_vars={}, inverse=False):
+def map_head_dic(head_line_node, head_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(head_line_node, head_dic, datadic, inverse)
     expr_list = get_child(head_line_node, 'head_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
-    return map_record_helper(expr_list, cn, head_dic, datadic, loop_vars, inverse)
+    return map_record_helper(expr_list, cn, head_dic, datadic, loop_vars, inverse, parse_opts)
 
-def map_cont_dic(cont_line_node, cont_dic={}, datadic={}, loop_vars={}, inverse=False):
+def map_cont_dic(cont_line_node, cont_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(cont_line_node, cont_dic, datadic, inverse)
     expr_list = get_child(cont_line_node, 'cont_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
-    return map_record_helper(expr_list, cn, cont_dic, datadic, loop_vars, inverse)
+    return map_record_helper(expr_list, cn, cont_dic, datadic, loop_vars, inverse, parse_opts)
 
-def map_dir_dic(dir_line_node, dir_dic={}, datadic={}, loop_vars={}, inverse=False):
+def map_dir_dic(dir_line_node, dir_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(dir_line_node, dir_dic, datadic, inverse)
     expr_list = get_child(dir_line_node, 'dir_fields').children
     cn = ('L1', 'L2', 'N1', 'N2')
-    return map_record_helper(expr_list, cn, dir_dic, datadic, loop_vars, inverse)
+    return map_record_helper(expr_list, cn, dir_dic, datadic, loop_vars, inverse, parse_opts)
 
-def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, inverse=False):
+def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(tab2_line_node, tab2_dic, datadic, inverse)
     tab2_fields = get_child(tab2_line_node, 'tab2_fields')
     tab2_cont_fields = get_child(tab2_fields, 'tab2_cont_fields')
@@ -220,7 +220,7 @@ def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, inverse=
     tab2_def_fields = get_child(tab2_fields, 'tab2_def').children
     expr_list = ['NBT', 'INT']
     tbl_dic = {} if inverse else tab2_dic['table']
-    tbl_ret = map_record_helper(expr_list, cn, tbl_dic, datadic, loop_vars, inverse)
+    tbl_ret = map_record_helper(expr_list, cn, tbl_dic, datadic, loop_vars, inverse, parse_opts)
     # close section if desired
     if tab2_name_node is not None:
         datadic = close_section(tab2_name_node, datadic)
@@ -228,12 +228,12 @@ def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, inverse=
     # we keep NZ because is contains the number of following TAB1/LIST records
     expr_list = tab2_cont_fields.children[:-2] + tab2_cont_fields.children[-1:]
     cn = ('C1', 'C2', 'L1', 'L2','N2')
-    main_ret = map_record_helper(expr_list, cn, tab2_dic, datadic, loop_vars, inverse)
+    main_ret = map_record_helper(expr_list, cn, tab2_dic, datadic, loop_vars, inverse, parse_opts)
     if inverse:
         main_ret['table'] = tbl_ret
     return main_ret
 
-def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=False):
+def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(tab1_line_node, tab1_dic, datadic, inverse)
     tab1_fields = get_child(tab1_line_node, 'tab1_fields')
     tab1_cont_fields = get_child(tab1_fields, 'tab1_cont_fields')
@@ -248,7 +248,7 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=
     tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
     expr_list = ['NBT', 'INT'] + list(tab1_def_fields)
     tbl_dic = {} if inverse else tab1_dic['table']
-    tbl_ret = map_record_helper(expr_list, cn, tbl_dic, datadic, loop_vars, inverse)
+    tbl_ret = map_record_helper(expr_list, cn, tbl_dic, datadic, loop_vars, inverse, parse_opts)
     # close section if desired
     if tab1_name_node is not None:
         datadic = close_section(tab1_name_node, datadic)
@@ -256,13 +256,13 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=
     # and not used by write_tab1 and read_tab1
     expr_list = tab1_cont_fields.children[:-2]
     cn = ('C1', 'C2', 'L1', 'L2')
-    main_ret = map_record_helper(expr_list, cn, tab1_dic, datadic, loop_vars, inverse)
+    main_ret = map_record_helper(expr_list, cn, tab1_dic, datadic, loop_vars, inverse, parse_opts)
     if inverse:
         main_ret['table'] = tbl_ret
     return main_ret
 
 def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=False,
-                 run_instruction=None):
+                 run_instruction=None, parse_opts=None):
     val_idx = 0
     # we embed recurisve helper function here so that
     # it can see the variables list_dic, datadic and loop_vars.
@@ -282,9 +282,9 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
                                       'You may check the index specifications of your list body. ')
                 # maybe a bit hacky and clunky, but the method can do the job
                 # of assigning a value of the list body to the appropriate variable in datadic
-                map_record_helper([node], ('val',), {'val': vals[val_idx]}, datadic, loop_vars, inverse)
+                map_record_helper([node], ('val',), {'val': vals[val_idx]}, datadic, loop_vars, inverse, parse_opts)
             else:
-                list_val = map_record_helper([node], ('val',), {}, datadic, loop_vars, inverse)
+                list_val = map_record_helper([node], ('val',), {}, datadic, loop_vars, inverse, parse_opts)
                 list_dic.setdefault('vals', [])
                 list_dic['vals'].append(list_val['val'])
 
@@ -324,7 +324,7 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
     check_ctrl_spec(list_line_node, list_dic, datadic, inverse)
     expr_list = get_child(list_line_node, 'list_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2', 'vals')
-    map_record_helper(expr_list, cn, list_dic, datadic, loop_vars, inverse)
+    map_record_helper(expr_list, cn, list_dic, datadic, loop_vars, inverse, parse_opts)
 
     # enter subsection if demanded
     list_name_node = get_child(list_line_node, 'list_name', nofail=True)

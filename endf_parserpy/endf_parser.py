@@ -62,20 +62,21 @@ class BasicEndfParser():
         flow_actions['if_clause'] = self.process_if_clause
         flow_actions['section'] = self.process_section
         self.flow_actions = flow_actions
+        self.parse_opts = {}
 
     def process_text_line(self, tree):
         if self.rwmode == 'read':
             self.loop_vars['__ofs'] = self.ofs
             # write_info('Reading a TEXT record', self.ofs)
             text_dic, self.ofs = read_text(self.lines, self.ofs, with_ctrl=True)
-            map_text_dic(tree, text_dic, self.datadic, self.loop_vars)
+            map_text_dic(tree, text_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
             # this line adds MAT, MF, MT to the dictionary.
             # this line is introduced here to deal with the tape head (mf=0, mt=0)
             # which does not contain a head record as first item, which is the
             # only other place that adds this information.
             self.datadic.update(get_ctrl(text_dic))
         else:
-            text_dic = map_text_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
+            text_dic = map_text_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             text_dic.update(get_ctrl(self.datadic))
             newlines = write_text(text_dic, with_ctrl=True)
             self.lines += newlines
@@ -86,10 +87,10 @@ class BasicEndfParser():
             write_info('Reading a HEAD record', self.ofs)
             cont_dic, self.ofs = read_head(self.lines, self.ofs, with_ctrl=True)
             write_info('Content of the HEAD record: ' + str(cont_dic), self.ofs)
-            map_head_dic(tree, cont_dic, self.datadic, self.loop_vars)
+            map_head_dic(tree, cont_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
             self.datadic.update(get_ctrl(cont_dic))
         else:
-            head_dic = map_head_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
+            head_dic = map_head_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             head_dic.update(get_ctrl(self.datadic))
             newlines = write_head(head_dic, with_ctrl=True)
             self.lines += newlines
@@ -100,9 +101,9 @@ class BasicEndfParser():
             write_info('Reading a CONT record', self.ofs)
             cont_dic, self.ofs = read_cont(self.lines, self.ofs)
             write_info('Content of the CONT record: ' + str(cont_dic))
-            map_cont_dic(tree, cont_dic, self.datadic, self.loop_vars)
+            map_cont_dic(tree, cont_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
-            cont_dic = map_cont_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
+            cont_dic = map_cont_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             cont_dic.update(get_ctrl(self.datadic))
             newlines = write_cont(cont_dic, with_ctrl=True)
             self.lines += newlines
@@ -111,9 +112,9 @@ class BasicEndfParser():
         if self.rwmode == 'read':
             self.loop_vars['__ofs'] = self.ofs
             dir_dic, self.ofs = read_dir(self.lines, self.ofs)
-            map_dir_dic(tree, dir_dic, self.datadic, self.loop_vars)
+            map_dir_dic(tree, dir_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
-            dir_dic = map_dir_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
+            dir_dic = map_dir_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             dir_dic.update(get_ctrl(self.datadic))
             newlines = write_dir(dir_dic, with_ctrl=True)
             self.lines += newlines
@@ -123,9 +124,9 @@ class BasicEndfParser():
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a TAB1 record', self.ofs)
             tab1_dic, self.ofs = read_tab1(self.lines, self.ofs)
-            map_tab1_dic(tree, tab1_dic, self.datadic, self.loop_vars)
+            map_tab1_dic(tree, tab1_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
-            tab1_dic = map_tab1_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
+            tab1_dic = map_tab1_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             tab1_dic.update(get_ctrl(self.datadic))
             newlines = write_tab1(tab1_dic, with_ctrl=True)
             self.lines += newlines
@@ -135,9 +136,9 @@ class BasicEndfParser():
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a TAB2 record', self.ofs)
             tab2_dic, self.ofs = read_tab2(self.lines, self.ofs)
-            map_tab2_dic(tree, tab2_dic, self.datadic, self.loop_vars)
+            map_tab2_dic(tree, tab2_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
-            tab2_dic = map_tab2_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
+            tab2_dic = map_tab2_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             tab2_dic.update(get_ctrl(self.datadic))
             newlines = write_tab2(tab2_dic, with_ctrl=True)
             self.lines += newlines
@@ -147,9 +148,9 @@ class BasicEndfParser():
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a LIST record', self.ofs)
             list_dic, self.ofs = read_list(self.lines, self.ofs)
-            map_list_dic(tree, list_dic, self.datadic, self.loop_vars)
+            map_list_dic(tree, list_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
-            list_dic = map_list_dic(tree, {}, self.datadic, self.loop_vars, inverse=True)
+            list_dic = map_list_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             list_dic.update(get_ctrl(self.datadic))
             newlines = write_list(list_dic, with_ctrl=True)
             self.lines += newlines

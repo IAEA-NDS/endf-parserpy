@@ -10,7 +10,7 @@
 ############################################################
 
 def fortstr2float(valstr, blank=None):
-    digitchars = (str(i) for i in range(10))
+    digitchars = tuple(str(i) for i in range(10))
     for i, c in enumerate(valstr):
         if i>0 and (c == '+' or c == '-'):
             if valstr[i-1] in digitchars:

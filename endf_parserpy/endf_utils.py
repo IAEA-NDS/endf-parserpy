@@ -169,7 +169,7 @@ def write_tend(dic=None, with_ctrl=True, with_ns=True, zero_as_blank=False):
 write_head = write_cont
 read_head = read_cont
 
-def read_list(lines, ofs=0, with_ctrl=True, callback=None):
+def read_list(lines, ofs=0, with_ctrl=True, callback=None, blank_as_zero=False):
     ofs = skip_blank_lines(lines, ofs)
     dic, ofs = read_cont(lines, ofs, with_ctrl)
     NPL = dic['N1']
@@ -177,7 +177,7 @@ def read_list(lines, ofs=0, with_ctrl=True, callback=None):
         dic['vals'] = []
         ofs += 1
     else:
-        vals, ofs = read_endf_numbers(lines, NPL, ofs)
+        vals, ofs = read_endf_numbers(lines, NPL, ofs, blank_as_zero=blank_as_zero)
         dic['vals'] = vals
     return dic, ofs
 
@@ -199,11 +199,12 @@ def write_list(dic, with_ctrl=True):
     lines += body_lines
     return lines
 
-def read_tab2(lines, ofs=0, with_ctrl=True):
+def read_tab2(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
     ofs = skip_blank_lines(lines, ofs)
     startline = lines[ofs]
     dic, ofs = read_cont(lines, ofs)
-    vals, ofs = read_endf_numbers(lines, 2*dic['N1'], ofs, to_int=True)
+    vals, ofs = read_endf_numbers(lines, 2*dic['N1'], ofs, to_int=True,
+                                  blank_as_zero=blank_as_zero)
     NBT = vals[::2]
     INT = vals[1::2]
     dic['table'] = {'NBT': NBT, 'INT': INT}
@@ -230,11 +231,12 @@ def write_tab2(dic, with_ctrl=True):
         tbl_lines = [t + ctrl for t in tbl_lines]
     return lines + tbl_lines
 
-def read_tab1(lines, ofs=0, with_ctrl=True):
+def read_tab1(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
     ofs = skip_blank_lines(lines, ofs)
     startline = lines[ofs]
     dic, ofs = read_cont(lines, ofs, with_ctrl)
-    tbl_dic, ofs = read_tab1_body_lines(lines, ofs, dic['N1'], dic['N2'])
+    tbl_dic, ofs = read_tab1_body_lines(lines, ofs, dic['N1'], dic['N2'],
+            blank_as_zero=blank_as_zero)
     dic['table'] = tbl_dic
     if with_ctrl:
         ctrl = read_ctrl(startline)
@@ -255,11 +257,13 @@ def write_tab1(dic, with_ctrl=True):
         tbl_lines = [t + ctrl for t in tbl_lines]
     return lines + tbl_lines
 
-def read_tab1_body_lines(lines, ofs, nr, np):
-    vals, ofs = read_endf_numbers(lines, 2*nr, ofs, to_int=True)
+def read_tab1_body_lines(lines, ofs, nr, np, blank_as_zero=False):
+    vals, ofs = read_endf_numbers(lines, 2*nr, ofs, to_int=True,
+                                  blank_as_zero=blank_as_zero)
     NBT = vals[::2]
     INT = vals[1::2]
-    vals, ofs = read_endf_numbers(lines, 2*np, ofs)
+    vals, ofs = read_endf_numbers(lines, 2*np, ofs,
+                                  blank_as_zero=blank_as_zero)
     xvals = vals[::2]
     yvals = vals[1::2]
     return {'NBT': NBT, 'INT': INT, 'X': xvals,'Y':  yvals}, ofs
@@ -277,12 +281,13 @@ def write_tab1_body_lines(NBT, INT, xvals, yvals):
     lines.extend(write_endf_numbers(vals))
     return lines
 
-def read_endf_numbers(lines, num, ofs, to_int=False):
+def read_endf_numbers(lines, num, ofs, to_int=False, blank_as_zero=False):
     vals = []
+    blank_symb = 0. if blank_as_zero else None
     while num > 0:
         l = lines[ofs]
         m = min(6, num)
-        vals += read_fort_floats(l, m)
+        vals += read_fort_floats(l, m, blank=blank_symb)
         num -= 6
         ofs += 1
     if to_int:

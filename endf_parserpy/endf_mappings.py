@@ -120,12 +120,16 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                 if idxvars is None:
                     if targetkey in datadic:
                         prev_val = datadic[targetkey]
-                        # NOTE: some files may contain small inconsistencies
-                        # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
-                        # we tolerate such small inconsistencies.
-                        if (not inconsistency_allowed and
-                            not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)):
-                            raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
+                        if not inconsistency_allowed:
+                            if not parse_opts.get('fuzzy_matching', False):
+                                mismatch_occurred = prev_val != val
+                            else:
+                                # NOTE: some files may contain small inconsistencies
+                                # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
+                                # we tolerate such small inconsistencies.
+                                mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)
+                            if mismatch_occurred:
+                                raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
                     else:
                         datadic[targetkey] = val
                 else:
@@ -144,9 +148,13 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                         # NOTE: some files may contain small inconsistencies
                         # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
                         # we tolerate such small inconsistencies.
-                        if (not inconsistency_allowed and
-                            not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)):
-                            raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
+                        if not inconsistency_allowed:
+                            if not parse_opts.get('fuzzy_matching', False):
+                                mismatch_occurred = prev_val != val
+                            else:
+                                mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)
+                            if mismatch_occurred:
+                                raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
                     else:
                         curdic[idx] = val
 

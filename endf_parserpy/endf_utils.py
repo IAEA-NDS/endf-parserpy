@@ -51,7 +51,6 @@ def get_ctrl(dic, nofail=False):
     return {'MAT': mat, 'MF': mf, 'MT': mt}
 
 def read_text(lines, ofs=0, with_ctrl=True):
-    ofs = skip_blank_lines(lines, ofs)
     line = lines[ofs]
     dic = {'HL': line[0:66]}
     if with_ctrl:
@@ -65,7 +64,6 @@ def write_text(dic, with_ctrl=True):
     return [TEXT + CTRL]
 
 def read_dir(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
-    ofs = skip_blank_lines(lines, ofs)
     line = lines[ofs]
     dic = {'L1' : read_fort_int(line[22:33], blank_as_zero),
            'L2' : read_fort_int(line[33:44], blank_as_zero),
@@ -87,7 +85,6 @@ def write_dir(dic, with_ctrl=True):
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
 def read_cont(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
-    ofs = skip_blank_lines(lines, ofs)
     line = lines[ofs]
     dic = {'C1' : fortstr2float(line[0:11], blank=0.0 if blank_as_zero else None),
            'C2' : fortstr2float(line[11:22], blank=0.0 if blank_as_zero else None),
@@ -122,7 +119,6 @@ def prepare_zerostr_fields(zero_as_blank):
     return C1, C2, L1, L2, N1, N2
 
 def read_send(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
-    ofs = skip_blank_lines(lines, ofs)
     dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero)
     if dic['C1'] != 0 or dic['C2'] != 0 or \
        dic['L1'] != 0 or dic['L2'] != 0 or \
@@ -170,7 +166,6 @@ write_head = write_cont
 read_head = read_cont
 
 def read_list(lines, ofs=0, with_ctrl=True, callback=None, blank_as_zero=False):
-    ofs = skip_blank_lines(lines, ofs)
     dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero)
     NPL = dic['N1']
     if NPL == 0:
@@ -200,7 +195,6 @@ def write_list(dic, with_ctrl=True):
     return lines
 
 def read_tab2(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
-    ofs = skip_blank_lines(lines, ofs)
     startline = lines[ofs]
     dic, ofs = read_cont(lines, ofs, blank_as_zero=blank_as_zero)
     vals, ofs = read_endf_numbers(lines, 2*dic['N1'], ofs, to_int=True,
@@ -232,7 +226,6 @@ def write_tab2(dic, with_ctrl=True):
     return lines + tbl_lines
 
 def read_tab1(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
-    ofs = skip_blank_lines(lines, ofs)
     startline = lines[ofs]
     dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero)
     tbl_dic, ofs = read_tab1_body_lines(lines, ofs, dic['N1'], dic['N2'],

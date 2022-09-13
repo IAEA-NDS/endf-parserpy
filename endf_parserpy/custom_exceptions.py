@@ -38,11 +38,11 @@ class UnconsumedListElementsError(ParserException):
     pass
 
 
-class NotSectionEnd(ParserException):
+class NotSectionEndError(ParserException):
     pass
 
 
-class UnexpectedEndOfInput(ParserException):
+class UnexpectedEndOfInputError(ParserException):
     pass
 
 

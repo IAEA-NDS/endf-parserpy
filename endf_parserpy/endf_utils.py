@@ -11,6 +11,10 @@
 
 from .fortran_utils import (float2fortstr, fortstr2float,
         read_fort_floats, write_fort_floats, read_fort_int)
+from .custom_exceptions import (
+        NotSectionEndError,
+        UnexpectedEndOfInputError,
+    )
 
 
 def read_ctrl(line, nofail=False):
@@ -124,7 +128,7 @@ def read_send(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
        dic['L1'] != 0 or dic['L2'] != 0 or \
        dic['N1'] != 0 or dic['N2'] != 0 or \
        dic['MT'] != 0:
-           raise ValueError('Not a Section End (SEND) record')
+           raise NotSectionEndError('Not a Section End (SEND) record')
     return dic, ofs
 
 def write_send(dic, with_ctrl=True, with_ns=True, zero_as_blank=False):
@@ -308,11 +312,13 @@ def is_blank_line(line):
 
 def skip_blank_lines(lines, ofs):
     if ofs >= len(lines):
-        raise IndexError('expected input but consumed all lines')
+        raise UnexpectedEndOfInputError(
+                'expected input but consumed all lines')
     while is_blank_line(lines[ofs]):
         ofs += 1
         if ofs >= len(lines):
-            raise IndexError('expected input but consumed all lines')
+            raise UnexpectedEndOfInputError(
+                    'expected input but consumed all lines')
     return ofs
 
 def split_sections(lines):

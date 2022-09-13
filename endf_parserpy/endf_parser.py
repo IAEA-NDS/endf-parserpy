@@ -94,6 +94,7 @@ class BasicEndfParser():
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a HEAD record', self.ofs)
+            self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_head(self.lines, self.ofs, with_ctrl=True,
                     blank_as_zero=self.parse_opts['blank_as_zero'])
             write_info('Content of the HEAD record: ' + str(cont_dic), self.ofs)
@@ -110,6 +111,7 @@ class BasicEndfParser():
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a CONT record', self.ofs)
+            self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_cont(self.lines, self.ofs, blank_as_zero=self.parse_opts['blank_as_zero'])
             write_info('Content of the CONT record: ' + str(cont_dic))
             map_cont_dic(tree, cont_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
@@ -123,6 +125,7 @@ class BasicEndfParser():
         if self.rwmode == 'read':
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars['__ofs'] = self.ofs
+            self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             dir_dic, self.ofs = read_dir(self.lines, self.ofs, blank_as_zero=self.parse_opts['blank_as_zero'])
             map_dir_dic(tree, dir_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
@@ -136,6 +139,7 @@ class BasicEndfParser():
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a TAB1 record', self.ofs)
+            self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab1_dic, self.ofs = read_tab1(self.lines, self.ofs,
                     blank_as_zero=self.parse_opts['blank_as_zero'])
             map_tab1_dic(tree, tab1_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
@@ -150,6 +154,7 @@ class BasicEndfParser():
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a TAB2 record', self.ofs)
+            self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab2_dic, self.ofs = read_tab2(self.lines, self.ofs,
                     blank_as_zero=self.parse_opts['blank_as_zero'])
             map_tab2_dic(tree, tab2_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
@@ -164,6 +169,7 @@ class BasicEndfParser():
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a LIST record', self.ofs)
+            self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             list_dic, self.ofs = read_list(self.lines, self.ofs,
                     blank_as_zero=self.parse_opts['blank_as_zero'])
             map_list_dic(tree, list_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
@@ -176,6 +182,7 @@ class BasicEndfParser():
     def process_send_line(self, tree):
         if self.rwmode == 'read':
             self.ofs = skip_blank_lines(self.lines, self.ofs)
+            self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             read_send(self.lines, self.ofs, blank_as_zero=self.parse_opts['blank_as_zero'])
         else:
             newlines = write_send(self.datadic, with_ctrl=True,

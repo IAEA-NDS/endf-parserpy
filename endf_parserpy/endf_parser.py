@@ -36,7 +36,8 @@ class BasicEndfParser():
         # in which ENDF reading recipes are formulated
         from .endf_lark import endf_recipe_grammar
         from .endf_recipes import endf_recipe_dictionary as recipe_dic
-        endf_recipe_grammar_parser= Lark(endf_recipe_grammar, start='code_token')
+        endf_recipe_grammar_parser= Lark(endf_recipe_grammar, start='code_token',
+                                         keep_all_tokens=True)
         tree_dic = {}
         for mf in recipe_dic:
             tree_dic.setdefault(mf, {})

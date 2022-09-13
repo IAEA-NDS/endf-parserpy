@@ -73,9 +73,14 @@ def determine_truthvalue(node, datadic, loop_vars):
     if name == 'if_condition':
         return eval_if_condition(node, datadic, loop_vars)
     elif name == 'comparison':
-        if len(node.children) != 1:
+        # we strip away brackets because the information they
+        # encode has already been considered in the tree generation process,
+        # see grammar rule for "comparison" in endf_lark.py
+        trimmed_children = [ch for ch in node.children
+                                if get_name(ch) not in ('LPAR','RPAR')]
+        if len(trimmed_children) != 1:
             raise ValueError('Exactly one child expected from "comparison" node')
-        ch = node.children[0]
+        ch = trimmed_children[0]
         if get_name(ch) not in ('if_condition', 'disjunction'):
             raise ValueError('Child node must be either "if_condition" or "disjunction"')
         return determine_truthvalue(ch, datadic, loop_vars)

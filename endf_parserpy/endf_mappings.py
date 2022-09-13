@@ -42,6 +42,9 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     fuzzy_matching = parse_opts.get('fuzzy_matching', False)
     ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
 
+    # remove COMMA token because it is not relevant
+    expr_list = [expr for expr in expr_list
+            if not is_token(expr) or get_name(expr) != 'COMMA']
     # these internal functions are hacks to allow for default names for some fields:
     # some fields in the ENDF language specification are optional and then no
     # Tree/Token is created for them but we still need to use their default names
@@ -239,8 +242,9 @@ def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, inverse=
     if tab2_name_node is not None:
         datadic = close_section(tab2_name_node, datadic)
     # we remove NR because we can infer it from the length of the NBT array
-    # we keep NZ because is contains the number of following TAB1/LIST records
-    expr_list = tab2_cont_fields.children[:-2] + tab2_cont_fields.children[-1:]
+    # we keep NZ because it contains the number of following TAB1/LIST records
+    # NOTE: -(2+1) because a comma separates NR and NZ
+    expr_list = tab2_cont_fields.children[:-3] + tab2_cont_fields.children[-1:]
     cn = ('C1', 'C2', 'L1', 'L2','N2')
     main_ret = map_record_helper(expr_list, cn, tab2_dic, datadic, loop_vars, inverse, parse_opts)
     if inverse:
@@ -260,6 +264,8 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=
     # deal with the mapping of the variable names in the table first
     cn = ('NBT', 'INT', 'X', 'Y')
     tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
+    # remove the slash
+    tab1_def_fields = [field for field in tab1_def_fields if get_name(field) != 'SLASH']
     expr_list = ['NBT', 'INT'] + list(tab1_def_fields)
     tbl_dic = {} if inverse else tab1_dic['table']
     tbl_ret = map_record_helper(expr_list, cn, tbl_dic, datadic, loop_vars, inverse, parse_opts)
@@ -267,8 +273,8 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=
     if tab1_name_node is not None:
         datadic = close_section(tab1_name_node, datadic)
     # we remove NR and NP (last two elements) because redundant information
-    # and not used by write_tab1 and read_tab1
-    expr_list = tab1_cont_fields.children[:-2]
+    # and not used by write_tab1 and read_tab1 (2+1 because a comma separates NR and NP)
+    expr_list = tab1_cont_fields.children[:-3]
     cn = ('C1', 'C2', 'L1', 'L2')
     main_ret = map_record_helper(expr_list, cn, tab1_dic, datadic, loop_vars, inverse, parse_opts)
     if inverse:
@@ -329,8 +335,8 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
             for child in node.children:
                 parse_list_body_node(child)
 
-        # we are fine with a new line
-        elif node_type == 'NEWLINE':
+        # we are fine with a new line and a comma
+        elif node_type in ('NEWLINE', 'COMMA'):
             return
         else:
             raise ValueError(f'A node of type {node_type} must not appear in a list_body')

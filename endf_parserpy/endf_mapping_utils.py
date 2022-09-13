@@ -9,7 +9,7 @@
 #
 ############################################################
 
-from .tree_utils import is_tree, get_name, get_value, is_token
+from .tree_utils import is_tree, get_name, get_value, is_token, get_child
 from .logging_utils import write_info
 import re
 
@@ -137,7 +137,8 @@ def eval_expr(expr, datadic=None, loop_vars=None):
     elif name in ('addition', 'subtraction',
                 'multiplication', 'division'):
         v1 = eval_expr(expr.children[0], datadic, loop_vars)
-        v2 = eval_expr(expr.children[1], datadic, loop_vars)
+        # children[1] contains the operator symbol *,/,+,-
+        v2 = eval_expr(expr.children[2], datadic, loop_vars)
         if name == 'multiplication':
             assert v1[1] == 0 or v2[1] == 0
             if v1[1] == 0:
@@ -163,6 +164,9 @@ def eval_expr(expr, datadic=None, loop_vars=None):
             return (v1[0]+v2[0], v1[1]+v2[1])
         elif name == 'subtraction':
             return (v1[0]-v2[0], v1[1]-v2[1])
+    elif name == 'inconsistent_varspec':
+        ch = get_child(expr, 'extvarname')
+        return eval_expr(ch, datadic, loop_vars)
     else:
         assert len(expr.children) == 1
         return eval_expr(expr.children[0], datadic, loop_vars)

@@ -24,7 +24,10 @@ from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         read_dir, write_dir, read_tab1, write_tab1, read_tab2, write_tab2,
         read_send, write_send, write_fend, write_mend, write_tend,
         read_list, write_list, split_sections, skip_blank_lines)
-from .custom_exceptions import InconsistentSectionBracketsError
+from .custom_exceptions import (
+        InconsistentSectionBracketsError,
+        ParserException
+    )
 
 logging.basicConfig(level=logging.INFO)
 
@@ -308,7 +311,7 @@ class BasicEndfParser():
                 return True
         return False
 
-    def parse(self, lines, exclude=None, include=None):
+    def parse(self, lines, exclude=None, include=None, nofail=False):
         tree_dic = self.tree_dic
         mfmt_dic = split_sections(lines)
         for mf in mfmt_dic:
@@ -324,8 +327,15 @@ class BasicEndfParser():
                     # if the MT section cannot be completely parsed
                     curlines += write_send(curmat, with_ctrl=True)
                     self.reset_parser_state(rwmode='read', lines=curlines)
-                    self.run_instruction(cur_tree)
-                    mfmt_dic[mf][mt] = self.datadic
+                    try:
+                        self.run_instruction(cur_tree)
+                        mfmt_dic[mf][mt] = self.datadic
+                    except ParserException as exc:
+                        if not nofail:
+                            logstr = self.logbuffer.display_record_logs()
+                            raise ParserException(
+                                    '\nHere is the parser record log until failure:\n\n' +
+                                    logstr + 'Error message: ' + str(exc))
         return mfmt_dic
 
     def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
@@ -397,10 +407,10 @@ class BasicEndfParser():
         del self.zero_as_blank
         return lines
 
-    def parsefile(self, filename, exclude=None, include=None):
+    def parsefile(self, filename, exclude=None, include=None, nofail=False):
         with open(filename, 'r') as fin:
             lines = fin.readlines()
-        return self.parse(lines, exclude, include)
+        return self.parse(lines, exclude, include, nofail=nofail)
 
     def writefile(self, filename, endf_dic, exclude=None, include=None,
                         zero_as_blank=False, overwrite=False):

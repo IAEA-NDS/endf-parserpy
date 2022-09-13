@@ -9,7 +9,7 @@
 #
 ############################################################
 
-from .logging_utils import logging, write_info
+from .logging_utils import logging, write_info, RingBuffer
 from os.path import exists as file_exists
 from copy import deepcopy
 from lark import Lark

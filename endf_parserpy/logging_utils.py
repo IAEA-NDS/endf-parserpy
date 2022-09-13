@@ -64,3 +64,17 @@ class RingBuffer():
             return self.buffer[self.tail+1:] + self.buffer[:self.tail+1]
         else:
             return self.buffer[:self.tail+1]
+
+    def dump_state(self):
+        return {
+            'capacity': self.capacity,
+            'buffer': self.buffer,
+            'tail': self.tail,
+            'num_enqueued': self.num_enqueued
+        }
+
+    def load_state(self, state_info):
+        self.capacity = state_info['capacity']
+        self.buffer = state_info['buffer']
+        self.tail = state_info['tail']
+        self.num_enqueued = state_info['num_enqueued']

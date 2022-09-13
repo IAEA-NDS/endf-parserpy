@@ -9,7 +9,10 @@
 #
 ############################################################
 
-from .custom_exceptions import InvalidIntegerError
+from .custom_exceptions import (
+        InvalidIntegerError,
+        InvalidFloatError
+    )
 
 
 def read_fort_int(valstr, blank_as_zero=False):
@@ -29,7 +32,10 @@ def fortstr2float(valstr, blank=None):
         if i>0 and (c == '+' or c == '-'):
             if valstr[i-1] in digitchars:
                 return float(valstr[:i] + 'E' + valstr[i:])
-    return float(valstr)
+    try:
+        return float(valstr)
+    except ValueError as valerr:
+        raise InvalidFloatError(valerr)
 
 def float2fortstr(val, width=11):
     av = abs(val)

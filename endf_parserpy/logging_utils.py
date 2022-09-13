@@ -83,6 +83,14 @@ class RingBuffer():
     def save_record_log(self, ofs, line, record_tree):
         self.enqueue({
             'ofs': ofs,
-            'line': line,
+            'line': line.rstrip(),
             'record_spec': reconstruct_tree_str(record_tree)
             })
+
+    def display_record_logs(self):
+        outstr = ''
+        for curentry in self.get_queue():
+            outstr += f'-------- Line {curentry["ofs"]} -----------\n'
+            outstr += 'Template:  {}\n'.format(curentry['record_spec'])
+            outstr += 'Line:     "{}"\n\n'.format(curentry['line'])
+        return outstr

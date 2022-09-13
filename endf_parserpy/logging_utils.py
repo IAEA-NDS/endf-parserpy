@@ -10,6 +10,7 @@
 ############################################################
 
 import logging
+from .tree_utils import reconstruct_tree_str
 
 
 def write_info(message, ofs=None):
@@ -78,3 +79,10 @@ class RingBuffer():
         self.buffer = state_info['buffer']
         self.tail = state_info['tail']
         self.num_enqueued = state_info['num_enqueued']
+
+    def save_record_log(self, ofs, line, record_tree):
+        self.enqueue({
+            'ofs': ofs,
+            'line': line,
+            'record_spec': reconstruct_tree_str(record_tree)
+            })

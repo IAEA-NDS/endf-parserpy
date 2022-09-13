@@ -50,6 +50,10 @@ class InvalidIntegerError(ParserException):
     pass
 
 
+class InvalidFloatError(ParserException):
+    pass
+
+
 class InconsistentSectionBracketsError(ParserException):
     pass
 

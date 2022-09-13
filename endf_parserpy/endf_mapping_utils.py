@@ -168,6 +168,14 @@ def eval_expr(expr, datadic=None, loop_vars=None):
         ch = get_child(expr, 'extvarname')
         return eval_expr(ch, datadic, loop_vars)
     else:
-        assert len(expr.children) == 1
-        return eval_expr(expr.children[0], datadic, loop_vars)
+        # we remove enclosing brackets if present
+        ch_first = expr.children[0]
+        ch_last = expr.children[-1]
+        if (is_token(ch_first) and get_name(ch_first) == 'LPAR' and
+            is_token(ch_last) and get_name(ch_last) == 'RPAR'):
+            trimmed_children = expr.children[1:-1]
+        else:
+            trimmed_children = expr.children
+        assert len(trimmed_children) == 1
+        return eval_expr(trimmed_children[0], datadic, loop_vars)
 

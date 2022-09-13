@@ -45,3 +45,22 @@ def should_skip_logging_info(varnames, datadic):
     else:
         return False
 
+
+class RingBuffer():
+
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.buffer = [None] * capacity
+        self.tail = -1
+        self.num_enqueued = 0
+
+    def enqueue(self, elem):
+        self.tail = (self.tail + 1) % self.capacity
+        self.buffer[self.tail] = elem
+        self.num_enqueued += 1
+
+    def get_queue(self):
+        if (self.num_enqueued > self.capacity):
+            return self.buffer[self.tail+1:] + self.buffer[:self.tail+1]
+        else:
+            return self.buffer[:self.tail+1]

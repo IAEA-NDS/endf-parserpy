@@ -231,6 +231,7 @@ class BasicEndfParser():
         self.lines = lines
         self.rwmode = rwmode
         self.ofs = 0
+        self.logbuffer = RingBuffer(capacity=20)
 
     def dump_parser_state(self):
         # NOTE: We have to protect the __up
@@ -251,7 +252,8 @@ class BasicEndfParser():
                 'datadic' : datadic_copy,
                 'lines' : deepcopy(self.lines),
                 'rwmode' : self.rwmode,
-                'ofs' : self.ofs}
+                'ofs' : self.ofs,
+                'logbuffer_state': self.logbuffer.dump_state()}
 
     def restore_parser_state(self, dump):
         self.loop_vars.clear()
@@ -262,6 +264,7 @@ class BasicEndfParser():
         self.lines.extend(dump['lines'])
         self.rwmode = dump['rwmode']
         self.ofs = dump['ofs']
+        self.logbuffer.load_state(dump['logbuffer_state'])
 
     def get_responsible_tree(self, dic, mf, mt):
         tree_dic = self.tree_dic

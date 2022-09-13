@@ -1,0 +1,62 @@
+############################################################
+#
+# Author(s):       Georg Schnabel
+# Email:           g.schnabel@iaea.org
+# Creation date:   2022/09/13
+# Last modified:   2022/09/13
+# License:         MIT
+# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+#
+############################################################
+
+
+class ParserException(Exception):
+    pass
+
+
+class UnexpectedControlRecordError(ParserException):
+    pass
+
+
+class InconsistentVariableAssignmentError(ParserException):
+    pass
+
+
+class LoopVariableError(ParserException):
+    pass
+
+
+class NumberMismatchError(ParserException):
+    pass
+
+
+class MoreListElementsExpectedError(ParserException):
+    pass
+
+
+class UnconsumedListElementsError(ParserException):
+    pass
+
+
+class NotSectionEnd(ParserException):
+    pass
+
+
+class UnexpectedEndOfInput(ParserException):
+    pass
+
+
+class InvalidIntegerError(ParserException):
+    pass
+
+
+class InconsistentSectionBracketsError(ParserException):
+    pass
+
+
+class VariableNotFoundError(ParserException):
+    pass
+
+
+class VariableInDenominatorError(ParserException):
+    pass

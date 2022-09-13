@@ -11,6 +11,13 @@
 
 from .tree_utils import is_tree, get_name, get_value, is_token, get_child
 from .logging_utils import write_info
+from .custom_exceptions import (
+        VariableInDenominatorError,
+        LoopVariableError,
+        VariableNotFoundError,
+        InvalidIntegerError,
+        VariableInDenominatorError
+    )
 import re
 
 def open_section(extvarname, datadic, loop_vars):
@@ -50,15 +57,16 @@ def get_varval(expr, datadic, loop_vars):
 
     if loop_vars is not None:
         if varname in datadic and varname in loop_vars:
-            raise IndexError(f'the variable {varname} is both a loop variable and '
-                              'a record variable, which is forbidden, check the recipe')
+            raise LoopVariableError(
+                    f'the variable {varname} is both a loop variable and '
+                     'a record variable, which is forbidden, check the recipe')
         if varname in loop_vars:
             return loop_vars[varname]
 
     while varname not in datadic and '__up' in datadic:
         datadic = datadic['__up']
     if varname not in datadic:
-        raise IndexError(f'variable {varname} not found')
+        raise VariableNotFoundError(f'variable {varname} not found')
     if idxvars is None:
         return datadic[varname]
     else:
@@ -102,7 +110,7 @@ def varvalue_expr_conversion(vv, val, inverse):
         # (e.g., for counter fields, L1, L2, N1, N2)
         if isinstance(val, int) and isinstance(vv[0], int) and isinstance(vv[1], int):
             if int(res) != res:
-                raise ValueError(f'fResult should be integer but obtained {res}')
+                raise InvalidIntegerError(f'fResult should be integer but obtained {res}')
             return int(res)
         else:
             return res
@@ -147,8 +155,9 @@ def eval_expr(expr, datadic=None, loop_vars=None):
                 return (v1[0]*v2[0], v1[1]*v2[0])
         elif name == 'division':
             if v2[1] != 0:
-                raise ValueError('A variable name must not appear in the denominator ' +
-                                 'of an expression.')
+                raise VariableInDenominatorError(
+                        'A variable name must not appear in the denominator ' +
+                        'of an expression.')
             vx = v1[0]/v2[0]
             vy = v1[1]/v2[0]
             # divisions of two ints yield by default float in Python

@@ -24,6 +24,7 @@ from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         read_dir, write_dir, read_tab1, write_tab1, read_tab2, write_tab2,
         read_send, write_send, write_fend, write_mend, write_tend,
         read_list, write_list, split_sections, skip_blank_lines)
+from .custom_exceptions import InconsistentSectionBracketsError
 
 logging.basicConfig(level=logging.INFO)
 
@@ -196,7 +197,8 @@ class BasicEndfParser():
         varname = get_varname(section_head)
         varname2 = get_varname(section_tail)
         if varname != varname2:
-            raise ValueError('The section name in the tail does not correspond to the one in the head')
+            raise InconsistentSectionBracketsError(
+                    'The section name in the tail does not correspond to the one in the head')
 
         self.datadic = open_section(section_head, self.datadic, self.loop_vars)
         section_body = get_child(tree, 'section_body')

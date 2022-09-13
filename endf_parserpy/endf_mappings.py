@@ -16,6 +16,13 @@ from .tree_utils import (is_token, is_tree, get_name, get_value,
 from .flow_control_utils import cycle_for_loop
 from .endf_mapping_utils import (get_varname, get_indexvars, eval_expr,
         varvalue_expr_conversion, open_section, close_section)
+from .custom_exceptions import (
+        UnexpectedControlRecordError,
+        NumberMismatchError,
+        InconsistentVariableAssignmentError,
+        MoreListElementsExpectedError,
+        UnconsumedListElementsError
+    )
 import numpy as np
 
 def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
@@ -31,11 +38,14 @@ def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
     exp_mf = get_child_value(ctrl_spec, 'MF_SPEC')
     exp_mt = get_child_value(ctrl_spec, 'MT_SPEC')
     if exp_mat != 'MAT' and int(exp_mat) != cur_mat:
-        raise TypeError(f'Expected MAT {exp_mat} but encountered {cur_mat}')
+        raise UnexpectedControlRecordError(
+                f'Expected MAT {exp_mat} but encountered {cur_mat}')
     if exp_mf != 'MF' and int(exp_mf) != cur_mf:
-        raise TypeError(f'Expected MF {exp_mf} but encountered {cur_mf}')
+        raise UnexpectedControlRecordError(
+                f'Expected MF {exp_mf} but encountered {cur_mf}')
     if exp_mt != 'MT' and int(exp_mt) != cur_mt:
-        raise TypeError(f'Expected MT {exp_mt} but encountered {cur_mt}')
+        raise UnexpectedControlRecordError(
+                f'Expected MT {exp_mt} but encountered {cur_mt}')
 
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inverse, parse_opts=None):
     parse_opts = parse_opts if parse_opts is not None else {}
@@ -119,7 +129,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                         if contains_desired_number:
                             logging.warning(msg)
                         else:
-                            raise ValueError(msg)
+                            raise NumberMismatchError(msg)
             else:
                 inconsistency_allowed = is_tree(curexpr) and search_name(curexpr, 'inconsistent_varspec')
                 val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
@@ -135,7 +145,8 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                                 # we tolerate such small inconsistencies.
                                 mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)
                             if mismatch_occurred:
-                                raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
+                                raise InconsistentVariableAssignmentError(
+                                        create_variable_exists_error_msg(targetkey, prev_val, val))
                     else:
                         datadic[targetkey] = val
                 else:
@@ -160,7 +171,8 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                             else:
                                 mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)
                             if mismatch_occurred:
-                                raise ValueError(create_variable_exists_error_msg(targetkey, prev_val, val))
+                                raise InconsistentVariableAssignmentError(
+                                        create_variable_exists_error_msg(targetkey, prev_val, val))
                     else:
                         curdic[idx] = val
 
@@ -297,9 +309,10 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
                 vals = list_dic['vals']
                 numvals = len(vals)
                 if val_idx >= numvals:
-                    raise IndexError(f'All {numvals} values in the list body present in the ENDF file ' +
-                                      'have already been consumed. ' +
-                                      'You may check the index specifications of your list body. ')
+                    raise MoreListElementsExpectedError(
+                            f'All {numvals} values in the list body present in the ENDF file ' +
+                             'have already been consumed. ' +
+                             'You may check the index specifications of your list body. ')
                 # maybe a bit hacky and clunky, but the method can do the job
                 # of assigning a value of the list body to the appropriate variable in datadic
                 map_record_helper([node], ('val',), {'val': vals[val_idx]}, datadic, loop_vars, inverse, parse_opts)
@@ -359,9 +372,10 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
 
     numels_in_list = len(list_dic['vals'])
     if val_idx < numels_in_list:
-        raise ValueError(f'Not all values in the list_body were consumed and '
-                          'associated with variables in datadic '
-                         f'(read {val_idx} out of {numels_in_list})')
+        raise UnconsumedListElementsError(
+                f'Not all values in the list_body were consumed and '
+                 'associated with variables in datadic '
+                f'(read {val_idx} out of {numels_in_list})')
     if inverse:
         return list_dic
     else:

@@ -9,11 +9,17 @@
 #
 ############################################################
 
+from .custom_exceptions import InvalidIntegerError
+
+
 def read_fort_int(valstr, blank_as_zero=False):
     if blank_as_zero and valstr.strip() == '':
         return 0
     else:
-        return int(valstr)
+        try:
+            return int(valstr)
+        except ValueError as valerr:
+            raise InvalidIntegerError(valerr)
 
 def fortstr2float(valstr, blank=None):
     if valstr.strip() == '' and blank is not None:

@@ -255,7 +255,7 @@ def read_tab1_body_lines(lines, ofs, nr, np, blank_as_zero=False):
                                   blank_as_zero=blank_as_zero)
     NBT = vals[::2]
     INT = vals[1::2]
-    vals, ofs = read_endf_numbers(lines, 2*np, ofs,
+    vals, ofs = read_endf_numbers(lines, 2*np, ofs, to_int=False,
                                   blank_as_zero=blank_as_zero)
     xvals = vals[::2]
     yvals = vals[1::2]
@@ -284,7 +284,11 @@ def read_endf_numbers(lines, num, ofs, to_int=False, blank_as_zero=False):
         num -= 6
         ofs += 1
     if to_int:
-        vals = [int(v) for v in vals]
+        try:
+            vals = [int(v) for v in vals]
+        except ValueError as valerr:
+            pass
+
     return vals, ofs
 
 def write_endf_numbers(vals, to_int=False):

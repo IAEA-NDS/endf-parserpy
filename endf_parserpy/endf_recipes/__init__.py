@@ -5,6 +5,10 @@ from .endf_recipe_mf3 import ENDF_RECIPE_MF3
 from .endf_recipe_mf4 import ENDF_RECIPE_MF4
 from .endf_recipe_mf5 import ENDF_RECIPE_MF5
 from .endf_recipe_mf6 import ENDF_RECIPE_MF6
+from .endf_recipe_mf7 import (
+        ENDF_RECIPE_MF7_MT2,
+        ENDF_RECIPE_MF7_MT4
+    )
 from .endf_recipe_mf8 import ENDF_RECIPE_MF8
 from .endf_recipe_mf8_mt454 import ENDF_RECIPE_MF8_MT454
 from .endf_recipe_mf8_mt457 import ENDF_RECIPE_MF8_MT457
@@ -38,6 +42,8 @@ __defdic(endf_recipe_dictionary, ( 3,    ), ENDF_RECIPE_MF3)
 __defdic(endf_recipe_dictionary, ( 4,    ), ENDF_RECIPE_MF4)
 __defdic(endf_recipe_dictionary, ( 5,    ), ENDF_RECIPE_MF5)
 __defdic(endf_recipe_dictionary, ( 6,    ), ENDF_RECIPE_MF6)
+__defdic(endf_recipe_dictionary, ( 7,   2), ENDF_RECIPE_MF7_MT2)
+__defdic(endf_recipe_dictionary, ( 7,   4), ENDF_RECIPE_MF7_MT4)
 __defdic(endf_recipe_dictionary, ( 8,  -1), ENDF_RECIPE_MF8)
 __defdic(endf_recipe_dictionary, ( 8, 454), ENDF_RECIPE_MF8_MT454)
 __defdic(endf_recipe_dictionary, ( 8, 457), ENDF_RECIPE_MF8_MT457)

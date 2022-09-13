@@ -24,7 +24,8 @@ def get_name(tree):
     if is_tree(tree):
         return str(tree.data)
     else:
-        raise TypeError('argument should have type Token or Tree')
+        raise TypeError(f'argument should have type Token or Tree '
+                        f'but has type {type(tree)}')
 
 def get_value(token):
     return token.value

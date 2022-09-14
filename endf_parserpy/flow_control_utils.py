@@ -89,19 +89,21 @@ def determine_truthvalue(node, datadic, loop_vars):
         conj = get_child(node, 'conjunction', nofail=True)
         comp = get_child(node, 'comparison')
         comp_truthval = determine_truthvalue(comp, datadic, loop_vars)
-        if conj is not None:
+        if comp_truthval and conj is not None:
             conj_truthval = determine_truthvalue(conj, datadic, loop_vars)
-            return (conj_truthval and comp_truthval)
+            return conj_truthval
         else:
+            # this will always be False
             return comp_truthval
     elif name == 'disjunction':
         disj = get_child(node, 'disjunction', nofail=True)
         conj = get_child(node, 'conjunction')
         conj_truthval = determine_truthvalue(conj, datadic, loop_vars)
-        if disj is not None:
+        if not conj_truthval and disj is not None:
             disj_truthval = determine_truthvalue(disj, datadic, loop_vars)
-            return (disj_truthval or conj_truthval)
+            return disj_truthval
         else:
+            # This will be always True
             return conj_truthval
     else:
         raise TypeError(f'Unsupported node type {name} encountered ' +

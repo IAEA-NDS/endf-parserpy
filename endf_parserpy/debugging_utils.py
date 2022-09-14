@@ -15,14 +15,11 @@ import numpy as np
 def smart_is_equal(x, y, atol=1e-8, rtol=1e-6):
     if type(x) != type(y):
         return False
-    try:
-        fx = float(x)
-        fy = float(y)
-        if int(x) == fx and int(y) == fy:
-            return fx == fy
-        else:
-            return np.isclose(x, y, atol=atol, rtol=rtol)
-    except:
+    elif isinstance(x, float):
+        return np.isclose(x, y, atol=atol, rtol=rtol)
+    elif isinstance(x, int):
+        return x == y
+    else:
         return x == y
 
 

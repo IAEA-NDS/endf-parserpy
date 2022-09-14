@@ -7,6 +7,7 @@ def pytest_addoption(parser):
     parser.addoption("--ignore_zero_mismatch", action="store", default='true')
     parser.addoption("--fuzzy_matching", action="store", default='true')
     parser.addoption("--blank_as_zero", action="store", default='true')
+    parser.addoption("--mf", action="store", default=None)
 
 
 def pytest_generate_tests(metafunc):
@@ -33,3 +34,10 @@ def pytest_generate_tests(metafunc):
     argval = metafunc.config.option.blank_as_zero.lower().strip()
     argval = argval == 'true'
     metafunc.parametrize("blank_as_zero", [argval], scope="module")
+
+    # to selectively test MF sections and MF/MT subsections
+    if metafunc.config.option.mf is not None:
+        argval = (int(metafunc.config.option.mf),)
+    else:
+        argval = None
+    metafunc.parametrize("mf_sel", [argval], scope="module")

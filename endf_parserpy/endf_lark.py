@@ -125,9 +125,11 @@ minusexpr: "-" mulpart
 bracketexpr : "(" expr ")"
 
 // allowed variable names (including indices)
-extvarname : VARNAME ("[" INDEXVAR ("," INDEXVAR)* "]")?
+extvarname : VARNAME ("[" indexquant ("," indexquant)* "]")?
 VARNAME : CNAME
 INDEXVAR : CNAME
+INDEXNUM : NUMBER
+indexquant : INDEXVAR | INDEXNUM
 
 // special number symbol indicating that
 // a specific number is expected but it may be different in practice

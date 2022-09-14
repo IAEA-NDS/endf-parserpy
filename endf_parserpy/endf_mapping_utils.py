@@ -9,7 +9,8 @@
 #
 ############################################################
 
-from .tree_utils import is_tree, get_name, get_value, is_token, get_child
+from .tree_utils import (is_tree, get_name, get_value, is_token,
+        get_child, get_value)
 from .logging_utils import write_info
 from .custom_exceptions import (
         VariableInDenominatorError,
@@ -22,14 +23,14 @@ import re
 
 def open_section(extvarname, datadic, loop_vars):
     varname = get_varname(extvarname)
-    indexvars = get_indexvars(extvarname)
+    indexquants = get_indexquants(extvarname)
     curdatadic = datadic
     datadic.setdefault(varname, {})
     datadic = datadic[varname]
     idcsstr_list = []
-    if indexvars is not None:
-        for idxvar in indexvars:
-            idx = loop_vars[idxvar]
+    if indexquants is not None:
+        for idxquant in indexquants:
+            idx = get_indexvalue(idxquant, loop_vars)
             idcsstr_list.append(str(idx))
             datadic.setdefault(idx, {})
             datadic = datadic[idx]
@@ -47,13 +48,29 @@ def close_section(extvarname, datadic):
     del curdatadic['__up']
     return datadic
 
+def get_indexvalue(token, loop_vars):
+    tokname = get_name(token)
+    tokval = get_value(token)
+    if tokname == 'INDEXVAR':
+        return loop_vars[tokval]
+    elif tokname == 'INDEXNUM':
+        try:
+            idx = int(tokval)
+        except ValueError as valerr:
+            raise InvalidIntegerError(
+                    f'Numbers in index specifications must be integer '
+                     'but here we got {tokval}.')
+        return idx
+    else:
+        raise TypeError(f'The token of type {tokname} is not allowed as index specification.')
+
 def get_varval(expr, datadic, loop_vars):
     name = get_name(expr)
     if name not in ('VARNAME', 'extvarname'):
         raise TypeError(f'node must be either of type VARNAME or extvarname but is {name}')
 
     varname = get_varname(expr)
-    idxvars = get_indexvars(expr)
+    idxquants = get_indexquants(expr)
 
     if loop_vars is not None:
         if varname in datadic and varname in loop_vars:
@@ -67,15 +84,15 @@ def get_varval(expr, datadic, loop_vars):
         datadic = datadic['__up']
     if varname not in datadic:
         raise VariableNotFoundError(f'variable {varname} not found')
-    if idxvars is None:
+    if idxquants is None:
         return datadic[varname]
     else:
         curdic = datadic[varname]
-        for i, idxvar in enumerate(idxvars):
-            idx = loop_vars[idxvar]
-            if i < len(idxvars)-1:
+        for i, idxquant in enumerate(idxquants):
+            idx = get_indexvalue(idxquant, loop_vars)
+            if i < len(idxquants)-1:
                 curdic = curdic[idx]
-        idx = loop_vars[idxvar[-1]]
+        idx = get_indexvalue(idxquants[-1], loop_vars)
         val = curdic[idx]
         return val
 
@@ -90,16 +107,16 @@ def get_varname(expr):
     else:
         return None
 
-def get_indexvars(expr):
-    idxvars = []
+def get_indexquants(expr):
+    idxquants = []
     for ch in expr.children:
         if is_tree(ch):
-            varname = get_indexvars(ch)
+            varname = get_indexquants(ch)
             if varname is not None:
-                return varname
-        elif get_name(ch) in 'INDEXVAR':
-            idxvars.append(get_value(ch))
-    return idxvars if len(idxvars) > 0 else None
+                idxquants.extend(varname)
+        elif get_name(ch) in ('INDEXVAR', 'INDEXNUM'):
+            idxquants.append(ch)
+    return idxquants if len(idxquants) > 0 else None
 
 def varvalue_expr_conversion(vv, val, inverse):
     # vv as returned by eval_expr

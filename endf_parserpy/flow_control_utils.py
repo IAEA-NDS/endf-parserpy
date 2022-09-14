@@ -12,7 +12,7 @@
 import traceback
 from .tree_utils import (get_child, get_child_value, get_name,
         get_child_names, reconstruct_tree_str)
-from .endf_mapping_utils import get_varname, get_indexvars, eval_expr
+from .endf_mapping_utils import get_varname, eval_expr
 from .logging_utils import write_info
 
 
@@ -30,6 +30,7 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
         raise ValueError('Loop start index must evaluate to an integer')
     if float(stop) != int(stop):
         raise ValueError('Loop stop index must evaluate to an integer')
+
     start = int(start)
     stop = int(stop)
     for_body = get_child(tree, body_name)

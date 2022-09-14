@@ -14,8 +14,8 @@ import re
 from .tree_utils import (is_token, is_tree, get_name, get_value,
         get_child, get_child_names, get_child_value, search_name)
 from .flow_control_utils import cycle_for_loop
-from .endf_mapping_utils import (get_varname, get_indexvars, eval_expr,
-        varvalue_expr_conversion, open_section, close_section)
+from .endf_mapping_utils import (get_varname, get_indexquants, eval_expr,
+        varvalue_expr_conversion, open_section, close_section, get_indexvalue)
 from .custom_exceptions import (
         UnexpectedControlRecordError,
         NumberMismatchError,
@@ -64,8 +64,8 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
         # the "not is_token(expr)" part is a hack because a Token seems to be regarded
         # as type "str" because isinstance(expr, str) evaluates to tree for a Token
         return expr if isinstance(expr, str) and not is_token(expr)  else get_varname(expr)
-    def get_indexvars_tmp(expr):
-        return None if isinstance(expr, str) else get_indexvars(expr)
+    def get_indexquants_tmp(expr):
+        return None if isinstance(expr, str) else get_indexquants(expr)
     def eval_expr_tmp(expr):
         # this is the same result as returned by eval_expr on an expr with just the variable name
         return eval_expr(expr) if not isinstance(expr, str) else (0, 1)
@@ -84,9 +84,9 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
             return varvalue_expr_conversion(vv, val, inverse)
 
     varnames = tuple((get_varname_tmp(t) for t in expr_list))
-    indexvars_list = tuple(get_indexvars_tmp(t) for t in expr_list)
+    indexquants_list = tuple(get_indexquants_tmp(t) for t in expr_list)
     expr_vvs = tuple((eval_expr_tmp(t) for i, t in enumerate(expr_list)))
-    zipit = zip(basekeys, varnames, indexvars_list, expr_vvs, expr_list)
+    zipit = zip(basekeys, varnames, indexquants_list, expr_vvs, expr_list)
     # TODO: Need to refactor the error message stuff
     def create_variable_exists_error_msg(varname, prev_val, cur_val):
         return ('If the same variable appears in several record specifications ' +
@@ -103,7 +103,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                 f'The value was encountered in a source field named {sourcekey}')
 
     if not inverse:
-        for sourcekey, targetkey, idxvars, expr_vv, curexpr in zipit:
+        for sourcekey, targetkey, idxquants, expr_vv, curexpr in zipit:
             # if the record specification contains a value,
             # hence targetkey is None, we check if the value
             # in the ENDF file is equal to that value and
@@ -133,7 +133,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
             else:
                 inconsistency_allowed = is_tree(curexpr) and search_name(curexpr, 'inconsistent_varspec')
                 val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
-                if idxvars is None:
+                if idxquants is None:
                     if targetkey in datadic:
                         prev_val = datadic[targetkey]
                         if not inconsistency_allowed:
@@ -154,12 +154,12 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                     # nested dictionaries with the indicies as keys
                     datadic.setdefault(targetkey, {})
                     curdic = datadic[targetkey]
-                    for i, idxvar in enumerate(idxvars):
-                        idx = loop_vars[idxvar]
-                        if i < len(idxvars)-1:
+                    for i, idxquant in enumerate(idxquants):
+                        idx = get_indexvalue(idxquant, loop_vars)
+                        if i < len(idxquants)-1:
                             curdic.setdefault(idx, {})
                             curdic = curdic[idx]
-                    idx = loop_vars[idxvars[-1]]
+                    idx = get_indexvalue(idxquants[-1], loop_vars)
                     if idx in curdic:
                         prev_val = curdic[idx]
                         # NOTE: some files may contain small inconsistencies
@@ -185,12 +185,12 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
         return datadic
     # inverse transform
     else:
-        for sourcekey, targetkey, idxvars, expr_vv, _ in zipit:
+        for sourcekey, targetkey, idxquants, expr_vv, _ in zipit:
             if targetkey is None:
                 assert expr_vv[1] == 0
                 record_dic[sourcekey] = expr_vv[0]
             else:
-                if idxvars is None:
+                if idxquants is None:
                     val = datadic[targetkey]
                     finalval = varvalue_expr_conversion_tmp(expr_vv, val, inverse)
                     record_dic[sourcekey] = finalval
@@ -198,11 +198,11 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                     # loop through indexvars to descend
                     # into nested diciontary to retrieve value
                     curdic = datadic[targetkey]
-                    for i, idxvar in enumerate(idxvars):
-                        idx = loop_vars[idxvar]
-                        if i < len(idxvars)-1:
+                    for i, idxquant in enumerate(idxquants):
+                        idx = get_indexvalue(idxquant, loop_vars)
+                        if i < len(idxquants)-1:
                             curdic = curdic[idx]
-                    idx = loop_vars[idxvars[-1]]
+                    idx = get_indexvalue(idxquants[-1], loop_vars)
                     val = curdic[idx]
                     record_dic[sourcekey] = varvalue_expr_conversion_tmp(expr_vv, val, inverse)
         return record_dic

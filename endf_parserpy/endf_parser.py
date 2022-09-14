@@ -16,7 +16,7 @@ from lark import Lark
 from .tree_utils import is_tree, get_name, get_child, get_child_value
 from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_tab1_dic, map_tab2_dic, map_list_dic)
-from .endf_mapping_utils import get_varname, get_indexvars, open_section, close_section
+from .endf_mapping_utils import get_varname, open_section, close_section
 from .flow_control_utils import cycle_for_loop, evaluate_if_clause, should_proceed
 
 from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,

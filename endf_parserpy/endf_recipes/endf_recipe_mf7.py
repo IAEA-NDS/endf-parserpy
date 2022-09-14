@@ -41,27 +41,14 @@ for i=1 to NB:
 endfor
 [MAT, 7, 4 / 0.0, 0.0, 0, 0, NR, NT/ Tint / Teff0 ] TAB1 (teff0_table)
 
-# the for loops are hacks, because directly writing B[7] etc. does not work at the moment :-( 
-if NI >= 7:
-    for q=7 to 7:
-        if B[q] == 0.0: 
-            [MAT, 7, 4 / 0.0, 0.0, 0, 0, NR, NT/ Tint / Teff1 ] TAB1 (teff1_table)
-        endif
-    endfor
+if NI>=7 and B[7]==0:
+    [MAT, 7, 4 / 0.0, 0.0, 0, 0, NR, NT/ Tint / Teff1 ] TAB1 (teff1_table)
 endif
-if NI >= 13:
-    for q=13 to 13:
-        if B[q] == 0.0:
-            [MAT, 7, 4 / 0.0, 0.0, 0, 0, NR, NT/ Tint / Teff2 ] TAB1 (teff2_table)
-        endif
-    endfor
+if NI>=13 and B[13]==0.0:
+    [MAT, 7, 4 / 0.0, 0.0, 0, 0, NR, NT/ Tint / Teff2 ] TAB1 (teff2_table)
 endif
-if NI >= 19:
-    for q=19 to 19:
-        if B[q] == 0.0:
-            [MAT, 7, 4 / 0.0, 0.0, 0, 0, NR, NT/ Tint / Teff3 ] TAB1 (teff3_table)
-        endif
-    endfor
+if NI>=19 and B[19]==0.0:
+    [MAT, 7, 4 / 0.0, 0.0, 0, 0, NR, NT/ Tint / Teff3 ] TAB1 (teff3_table)
 endif
 SEND
 """

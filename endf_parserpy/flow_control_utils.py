@@ -86,25 +86,32 @@ def determine_truthvalue(node, datadic, loop_vars):
             raise ValueError('Child node must be either "if_condition" or "disjunction"')
         return determine_truthvalue(ch, datadic, loop_vars)
     elif name == 'conjunction':
+        # the following code is a bit messy because of the order of
+        # conjunction and comparison in the "conjunction" rule and
+        # that we want to avoid unnecessary evaluations of boolean expressions
         conj = get_child(node, 'conjunction', nofail=True)
         comp = get_child(node, 'comparison')
-        comp_truthval = determine_truthvalue(comp, datadic, loop_vars)
-        if comp_truthval and conj is not None:
+        if conj is not None:
             conj_truthval = determine_truthvalue(conj, datadic, loop_vars)
-            return conj_truthval
-        else:
-            # this will always be False
+            if conj_truthval is False:
+                return False
+        comp_truthval = determine_truthvalue(comp, datadic, loop_vars)
+        if conj is None:
             return comp_truthval
+        else:
+            return conj_truthval and comp_truthval
     elif name == 'disjunction':
         disj = get_child(node, 'disjunction', nofail=True)
         conj = get_child(node, 'conjunction')
-        conj_truthval = determine_truthvalue(conj, datadic, loop_vars)
-        if not conj_truthval and disj is not None:
+        if disj is not None:
             disj_truthval = determine_truthvalue(disj, datadic, loop_vars)
-            return disj_truthval
-        else:
-            # This will be always True
+            if disj_truthval is True:
+                return True
+        conj_truthval = determine_truthvalue(conj, datadic, loop_vars)
+        if disj is None:
             return conj_truthval
+        else:
+            return disj_truthval or conj_truthval
     else:
         raise TypeError(f'Unsupported node type {name} encountered ' +
                          'while parsing boolean expression')

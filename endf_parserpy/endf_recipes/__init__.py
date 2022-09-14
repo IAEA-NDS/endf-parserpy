@@ -21,6 +21,7 @@ from .endf_recipe_mf14 import ENDF_RECIPE_MF14
 from .endf_recipe_mf15 import ENDF_RECIPE_MF15
 from .endf_recipe_mf33 import ENDF_RECIPE_MF33
 from .endf_recipe_mf34 import ENDF_RECIPE_MF34
+from .endf_recipe_mf35 import ENDF_RECIPE_MF35
 
 # helper function to create a nested dictionary
 def __defdic(dic, index, recipe):
@@ -56,4 +57,5 @@ __defdic(endf_recipe_dictionary, (14,    ), ENDF_RECIPE_MF14)
 __defdic(endf_recipe_dictionary, (15,    ), ENDF_RECIPE_MF15)
 __defdic(endf_recipe_dictionary, (33,    ), ENDF_RECIPE_MF33)
 #__defdic(endf_recipe_dictionary, (34,    ), ENDF_RECIPE_MF34)
+__defdic(endf_recipe_dictionary, (35,    ), ENDF_RECIPE_MF35)
 

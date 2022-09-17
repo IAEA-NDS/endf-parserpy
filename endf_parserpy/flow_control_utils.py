@@ -14,6 +14,7 @@ from .tree_utils import (get_child, get_child_value, get_name,
         get_child_names, reconstruct_tree_str)
 from .endf_mapping_utils import get_varname, eval_expr
 from .logging_utils import write_info
+from .custom_exceptions import LoopVariableError
 
 
 def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
@@ -27,15 +28,16 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
     start = eval_expr(start_expr, datadic, loop_vars)[0]
     stop = eval_expr(stop_expr, datadic, loop_vars)[0]
     if float(start) != int(start):
-        raise ValueError('Loop start index must evaluate to an integer')
+        raise LoopVariableError('Loop start index must evaluate to an integer')
     if float(stop) != int(stop):
-        raise ValueError('Loop stop index must evaluate to an integer')
+        raise LoopVariableError('Loop stop index must evaluate to an integer')
 
     start = int(start)
     stop = int(stop)
     for_body = get_child(tree, body_name)
     if varname in loop_vars:
-        raise ValueError(f'The loop variable {varname} is already in use for another loop')
+        raise LoopVariableError(
+                f'The loop variable {varname} is already in use for another loop')
     write_info(f'Enter for loop (type {loop_name}) ' + reconstruct_tree_str(for_head) +
                f' (for_start: {start} and for_stop {stop})')
     for i in range(start, stop+1):

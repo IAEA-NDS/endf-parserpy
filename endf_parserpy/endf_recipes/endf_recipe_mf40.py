@@ -30,8 +30,6 @@ for k=1 to NS:
                             [MAT,40,MT/ 0.0, 0.0, 0, LTY, 0, 0]CONT
                             [MAT,40,MT/ E1, E2, MATS, MTS, 2*NEI+2, NEI/
                                 XMFS,XLFSS, {E[i],WE[i]}{i=1 to NEI} ]LIST
-                        else:
-                            SEND # for debugging
                         endif
                     (/nc_subsubsubsec[j])
                 endfor

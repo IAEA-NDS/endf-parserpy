@@ -1,15 +1,14 @@
 **Important disclaimer**:
 The development of this package is at an early stage
-and it has not been thoroughly tested and lacks
-documentation. It is not ready for production and the
-likelihood that it will fail on an ENDF file is quite high.
-It has nevertheless been made public in its current state
-so that interested persons can track its progress and
-make contributions.
+and lacks documentation. It has been successfully tested
+on neutron-induced reaction data and thermal scattering data
+of several world libraries. If this package fails
+on one of your files, open an issue here or send an email
+to [g.schnabel@iaea.org](mailto:g.schnabel@iaea.org).
 
 # endf-parserpy
 
-This package can read the content of an 
+This package can read the content of an
 ENDF file into a nested dictionary in Python.
 It can also generate an ENDF file from
 such a nested dictionary. By using additional
@@ -22,7 +21,7 @@ material in an ENDF file. You can inspect the
 files available in the `testdata` directory to
 get a better idea of the ENDF format. The technical
 specification of the format is provided in the
-[ENDF formats manual](https://oecd-nea.org/dbdata/data/manual-endf/endf102.pdf).
+[ENDF-6 formats manual].
 
 Noteworthy, this package does not directly read
 and write ENDF files, but implements an interpreter
@@ -35,20 +34,16 @@ can be inspected [here](https://github.com/iaea-nds/endf-parserpy/tree/main/endf
 
 ## Installation
 
-Assuming that `git` is installed, you can clone the
-repository by executing the command:
+We recommend to create a virtual environment for
+this package. For instance, with conda this can be done by
 ```
-git clone https://github.com/iaea-nds/endf-parserpy.git
+conda create -y -n endf-parserpy pip
+conda activate endf-parserpy
 ```
-Afterwards, to use this package in a Python script
-file, add the following lines to the beginning of your
-script:
+To install this package using pip, run
 ```
-import sys
-sys.path.append('<path-containing-endf-parserpy>')
+pip install git+https://github.com/iaea-nds/endf-parserpy.git
 ```
-The `<path-containing-endf-parserpy>` is the path
-that contains the `endf-parserpy` directory.
 
 ## Basic usage
 
@@ -58,15 +53,36 @@ A simple example is also provided here to get you
 started.
 ```
 from endf_parserpy.endf_parser import BasicEndfParser
-from endf_parserpy.user_tools import locate, get_endf_values
-parser = BasicEndfParser() 
+parser = BasicEndfParser()
 endf_file = 'testdata/n_2925_29-Cu-63.endf'
 endf_dic = parser.parsefile(endf_file)
+```
+The variable `endf_dic` contains a nested dictionary that
+exposes all the fields and arrays described in
+the [ENDF-6 formats manual].
+You can explore it by using the `.key()` method, e.g.,
+```
+endf_dic.key()
+# show the fields of MF2
+endf_dic[2].keys()
+# show the fields of MF2/MT151
+endf_dic[2][151].keys()
+# show the fields of MF2/MT151/isotope
+endf_dic[2][151]['isotope'].keys()
+# show fields of first isotope
+endf_dic[2][151]['isotope'][1].keys()
+```
+You can make modifications to these fields and then
+produce a new ENDF file:
+```
+parser.writefile(endf_file + '.writeback', endf_dic)
+```
+
+There are a few user convenience functions available, e.g.,
+```
 # locate all variables with name AWR
 locations = locate(endf_dic, 'AWR')
 values = get_endf_values(endf_dic, locations)
-# write back the ENDF file
-parser.writefile(endf_file + '.writeback', endf_dic)
 ```
 
 ## Legal note
@@ -76,3 +92,4 @@ accompanying license file for more information.
 
 Copyright (c) International Atomic Energy Agency (IAEA)
 
+[ENDF-6 formats manual]: https://oecd-nea.org/dbdata/data/manual-endf/endf102.pdf

@@ -15,17 +15,19 @@ from copy import deepcopy
 from lark import Lark
 from .tree_utils import is_tree, get_name, get_child, get_child_value
 from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
-        map_dir_dic, map_tab1_dic, map_tab2_dic, map_list_dic)
-from .endf_mapping_utils import get_varname, open_section, close_section
+        map_dir_dic, map_intg_dic, map_tab1_dic, map_tab2_dic, map_list_dic)
+from .endf_mapping_utils import (eval_expr_without_unknown_var, get_varname,
+        open_section, close_section)
 from .flow_control_utils import cycle_for_loop, evaluate_if_clause, should_proceed
 
 from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
-        write_head, read_head, read_text, write_text,
+        write_head, read_head, read_text, write_text, read_intg, write_intg,
         read_dir, write_dir, read_tab1, write_tab1, read_tab2, write_tab2,
         read_send, write_send, write_fend, write_mend, write_tend,
         read_list, write_list, split_sections, skip_blank_lines)
 from .custom_exceptions import (
         InconsistentSectionBracketsError,
+        InvalidIntegerError,
         ParserException
     )
 
@@ -57,6 +59,7 @@ class BasicEndfParser():
         endf_actions['cont_line'] = self.process_cont_line
         endf_actions['text_line'] = self.process_text_line
         endf_actions['dir_line'] = self.process_dir_line
+        endf_actions['intg_line'] = self.process_intg_line
         endf_actions['tab1_line'] = self.process_tab1_line
         endf_actions['tab2_line'] = self.process_tab2_line
         endf_actions['list_line'] = self.process_list_line
@@ -136,6 +139,21 @@ class BasicEndfParser():
             dir_dic = map_dir_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             dir_dic.update(get_ctrl(self.datadic))
             newlines = write_dir(dir_dic, with_ctrl=True)
+            self.lines += newlines
+
+    def process_intg_line(self, tree):
+        if self.rwmode == 'read':
+            self.ofs = skip_blank_lines(self.lines, self.ofs)
+            self.loop_vars['__ofs'] = self.ofs
+            self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
+            ndigit = eval_expr_without_unknown_var(get_child(tree, 'ndigit_expr'), self.datadic, self.loop_vars)
+            intg_dic, self.ofs = read_intg(self.lines, self.ofs, ndigit=ndigit, blank_as_zero=self.parse_opts['blank_as_zero'])
+            map_intg_dic(tree, intg_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
+        else:
+            intg_dic = map_intg_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
+            intg_dic.update(get_ctrl(self.datadic))
+            ndigit = eval_expr_without_unknown_var(get_child(tree, 'ndigit_expr'), self.datadic, self.loop_vars)
+            newlines = write_intg(intg_dic, with_ctrl=True, ndigit=ndigit)
             self.lines += newlines
 
     def process_tab1_line(self, tree):

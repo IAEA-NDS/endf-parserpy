@@ -134,6 +134,12 @@ def varvalue_expr_conversion(vv, val, inverse):
     else:
         return vv[0] + val*vv[1]
 
+def eval_expr_without_unknown_var(expr, datadic=None, loop_vars=None):
+    ret = eval_expr(expr, datadic, loop_vars)
+    if ret[1] != 0:
+        raise VariableNotFoundError('Unknown variable in expression')
+    return ret[0]
+
 def eval_expr(expr, datadic=None, loop_vars=None):
     name = get_name(expr)
     # reminder: VARNAME is is a string of letters and number, e.g., foo1

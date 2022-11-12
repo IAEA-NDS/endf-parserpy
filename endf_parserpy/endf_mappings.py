@@ -237,6 +237,12 @@ def map_dir_dic(dir_line_node, dir_dic={}, datadic={}, loop_vars={}, inverse=Fal
     cn = ('L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, dir_dic, datadic, loop_vars, inverse, parse_opts)
 
+def map_intg_dic(intg_line_node, intg_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
+    check_ctrl_spec(intg_line_node, intg_dic, datadic, inverse)
+    expr_list = get_child(intg_line_node, 'intg_fields').children
+    cn = ('II', 'JJ', 'KIJ')
+    return map_record_helper(expr_list, cn, intg_dic, datadic, loop_vars, inverse, parse_opts)
+
 def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(tab2_line_node, tab2_dic, datadic, inverse)
     tab2_fields = get_child(tab2_line_node, 'tab2_fields')

@@ -14,6 +14,7 @@ from .fortran_utils import (float2fortstr, fortstr2float,
 from .custom_exceptions import (
         NotSectionEndError,
         UnexpectedEndOfInputError,
+        InvalidIntegerError
     )
 
 
@@ -87,6 +88,35 @@ def write_dir(dic, with_ctrl=True):
     N2 = str(dic['N2']).rjust(11)
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
+
+def read_intg(lines, ofs=0, with_ctrl=True, blank_as_zero=False, ndigit=None):
+    if ndigit is None:
+        raise ValueError('ndigit must be specified')
+    if int(ndigit) != ndigit:
+        raise InvalidIntegerError('NDIGIT must be integer')
+    elif ndigit < 2 or ndigit > 6:
+        raise InvalidIntegerError('NDIGIT must be between 2 and 6')
+    ndigit = int(ndigit)
+    range_iter = range(11, 65, ndigit+1) if ndigit <= 5 else range(10, 65, ndigit+1)
+    line = lines[ofs]
+    dic = {'II': read_fort_int(line[0:5], blank_as_zero=blank_as_zero),
+           'JJ': read_fort_int(line[5:10], blank_as_zero=blank_as_zero),
+           'KIJ': [read_fort_int(line[i:i+ndigit+1], blank_as_zero=blank_as_zero)
+                   for i in range_iter]}
+    if with_ctrl:
+        ctrl = read_ctrl(line)
+        dic.update(ctrl)
+    return dic, ofs+1
+
+def write_intg(dic, with_ctrl=True, ndigit=None):
+    if not isinstance(ndigit, int):
+        raise ValueError('ndigit must be specified')
+    II = str(dic['II']).rjust(5)
+    JJ = str(dic['JJ']).rjust(5)
+    spacer = '' if ndigit == 6 else ' '
+    KIJ = ''.join([str(c).rjust(ndigit+1) for c in dic['KIJ']])
+    CTRL = write_ctrl(dic) if with_ctrl else ''
+    return [(II + JJ + spacer + KIJ).ljust(66) + CTRL]
 
 def read_cont(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
     line = lines[ofs]

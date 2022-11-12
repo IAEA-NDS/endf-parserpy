@@ -21,7 +21,7 @@ r"""
 
 code_token: (endf_line | for_loop | if_clause | section | COMMENT_LINE | NEWLINE)*
 endf_line : list_line | head_line | cont_line | tab1_line | tab2_line
-            | text_line | dir_line  | send_line | dummy_line
+            | text_line | dir_line | intg_line | send_line | dummy_line
 
 // section to define namespace for variables
 section: section_head section_body section_tail
@@ -56,6 +56,11 @@ cont_fields : expr "," expr "," expr "," expr "," expr "," expr
 // DIR record
 dir_line : "[" ctrl_spec "/" "blank" "," "blank" "," dir_fields "]" "DIR" NEWLINE*
 dir_fields :  expr "," expr "," expr "," expr
+
+// INTG record
+intg_line : "[" ctrl_spec "/" intg_fields "{" ndigit_expr "}" "]" "INTG" NEWLINE*
+intg_fields : expr "," expr "," expr
+ndigit_expr : expr
 
 // TAB1 record
 tab1_line : "[" ctrl_spec "/" tab1_fields "]" "TAB1" ("(" table_name ")")? NEWLINE*

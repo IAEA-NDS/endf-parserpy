@@ -96,6 +96,21 @@ def get_varval(expr, datadic, loop_vars):
         val = curdic[idx]
         return val
 
+def count_unassigned_variables(expr, datadic, loop_vars):
+    if is_tree(expr) and get_name(expr) != 'extvarname':
+        num = 0
+        for ch in expr.children:
+            num += count_unassigned_variables(ch, datadic, loop_vars)
+        return num
+    elif is_tree(expr) or (is_token(expr) and get_name(expr) == 'VARNAME'):
+        try:
+            get_varval(expr, datadic, loop_vars)
+        except VariableNotFoundError:
+            return 1
+        return 0
+    else:
+        return 0
+
 def get_varname(expr):
     if is_tree(expr):
         for ch in expr.children:

@@ -20,6 +20,7 @@ from .custom_exceptions import (
         UnexpectedControlRecordError,
         NumberMismatchError,
         InconsistentVariableAssignmentError,
+        InvalidIntegerError,
         MoreListElementsExpectedError,
         UnconsumedListElementsError
     )
@@ -62,7 +63,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     # [MAT, 3, MT/ QM, QI, 0, LR, NR, NP / E / xs]TAB1 (xstable) is optional
     def get_varname_tmp(expr):
         # the "not is_token(expr)" part is a hack because a Token seems to be regarded
-        # as type "str" because isinstance(expr, str) evaluates to tree for a Token
+        # as type "str" because isinstance(expr, str) evaluates to true for a Token
         return expr if isinstance(expr, str) and not is_token(expr)  else get_varname(expr)
     def get_indexquants_tmp(expr):
         return None if isinstance(expr, str) else get_indexquants(expr)
@@ -132,7 +133,11 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                             raise NumberMismatchError(msg)
             else:
                 inconsistency_allowed = is_tree(curexpr) and search_name(curexpr, 'inconsistent_varspec')
-                val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
+                try:
+                    val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
+                except InvalidIntegerError as pexc:
+                    raise InvalidIntegerError(str(pexc) + f' (variable {targetkey})')
+
                 if idxquants is None:
                     if targetkey in datadic:
                         prev_val = datadic[targetkey]

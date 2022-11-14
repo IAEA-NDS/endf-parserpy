@@ -127,7 +127,7 @@ def varvalue_expr_conversion(vv, val, inverse):
         # (e.g., for counter fields, L1, L2, N1, N2)
         if isinstance(val, int) and isinstance(vv[0], int) and isinstance(vv[1], int):
             if int(res) != res:
-                raise InvalidIntegerError(f'fResult should be integer but obtained {res}')
+                raise InvalidIntegerError(f'Result should be integer but obtained {res}')
             return int(res)
         else:
             return res

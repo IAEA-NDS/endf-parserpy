@@ -86,7 +86,8 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
         varnames = []
         for sourcekey, curexpr in zipit:
             try:
-                expr_vv = eval_expr(curexpr, datadic, loop_vars)
+                expr_vv = eval_expr(curexpr, datadic,
+                                    loop_vars, look_up=False)
             except SeveralUnboundVariablesError:
                 found_unbound = True
                 continue
@@ -205,7 +206,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
     # inverse transform
     else:
         for sourcekey, curexpr in zipit:
-            expr_vv = eval_expr(curexpr, datadic, loop_vars)
+            expr_vv = eval_expr(curexpr, datadic, loop_vars, look_up=False)
             if expr_vv[1] != 0:
                 # TODO: More informative error what variable is missing
                 IndexError('some variable missing in dictionary')

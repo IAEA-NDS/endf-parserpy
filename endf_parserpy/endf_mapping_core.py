@@ -23,53 +23,65 @@ from .tree_utils import (is_token, is_tree, get_name, search_name)
 import numpy as np
 
 
+# these internal functions are hacks to allow for default names for some fields:
+# some fields in the ENDF language specification are optional and then no
+# Tree/Token is created for them but we still need to use their default names
+# in the mapping. For instance, the specification (xstable) after
+# [MAT, 3, MT/ QM, QI, 0, LR, NR, NP / E / xs]TAB1 (xstable) is optional
+
+
+def get_varname_tmp(expr):
+    # the "not is_token(expr)" part is a hack because a Token seems to be regarded
+    # as type "str" because isinstance(expr, str) evaluates to true for a Token
+    return expr if isinstance(expr, str) and not is_token(expr)  else get_varname(expr)
+
+
+def get_indexquants_tmp(expr):
+    return None if isinstance(expr, str) else get_indexquants(expr)
+
+
+def eval_expr_tmp(expr, datadic=None, loop_vars=None):
+    # this is the same result as returned by eval_expr on an expr with just the variable name
+    if not isinstance(expr, str):
+        return eval_expr(expr, datadic, loop_vars)
+    else:
+        return (0, 1)
+
+
+def varvalue_expr_conversion_tmp(vv, val, inverse):
+    # in the case of a tab1, the value of the variable (val) will be a list
+    if isinstance(val, list):
+        return [varvalue_expr_conversion(vv, x, inverse) for x in val]
+    # in the case of a text record, it will be a string, which we return unaltered
+    elif isinstance(val, str):
+        return val
+    # also if it is a dictionary, we return it unaltered
+    elif isinstance(val, dict):
+        return val
+    # otherwise it is a number and we can convert back and forth (e.g., if N/6 in a record specification)
+    else:
+        return varvalue_expr_conversion(vv, val, inverse)
+
+
+# TODO: Need to refactor the error message stuff
+def create_variable_exists_error_msg(varname, prev_val, cur_val):
+    return ('If the same variable appears in several record specifications ' +
+            'in the ENDF recipe, the corresponding values ' +
+            'in the ENDF file must be so that the variable evaluates to the ' +
+           f'same value. This is not the case for {varname} which previously ' +
+           f'was determined to be {prev_val} but in the present ' +
+           f'record would be determined to be {cur_val}. Either the ENDF recipe ' +
+            'is wrong or the ENDF file contains inconsistent data. Note that ' +
+           f'{varname} may be an array, in which case this statement would ' +
+            'apply to one of the variables in that array')
+
+
+def create_variable_wrong_value_error_msg(realval, expval, sourcekey):
+    return (f'Expected {expval} in the ENDF file but got {realval}. '
+            f'The value was encountered in a source field named {sourcekey}')
+
+
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inverse, parse_opts=None):
-    # these internal functions are hacks to allow for default names for some fields:
-    # some fields in the ENDF language specification are optional and then no
-    # Tree/Token is created for them but we still need to use their default names
-    # in the mapping. For instance, the specification (xstable) after
-    # [MAT, 3, MT/ QM, QI, 0, LR, NR, NP / E / xs]TAB1 (xstable) is optional
-    def get_varname_tmp(expr):
-        # the "not is_token(expr)" part is a hack because a Token seems to be regarded
-        # as type "str" because isinstance(expr, str) evaluates to true for a Token
-        return expr if isinstance(expr, str) and not is_token(expr)  else get_varname(expr)
-    def get_indexquants_tmp(expr):
-        return None if isinstance(expr, str) else get_indexquants(expr)
-    def eval_expr_tmp(expr, datadic=None, loop_vars=None):
-        # this is the same result as returned by eval_expr on an expr with just the variable name
-        if not isinstance(expr, str):
-            return eval_expr(expr, datadic, loop_vars)
-        else:
-            return (0, 1)
-    def varvalue_expr_conversion_tmp(vv, val, inverse):
-        # in the case of a tab1, the value of the variable (val) will be a list
-        if isinstance(val, list):
-            return [varvalue_expr_conversion(vv, x, inverse) for x in val]
-        # in the case of a text record, it will be a string, which we return unaltered
-        elif isinstance(val, str):
-            return val
-        # also if it is a dictionary, we return it unaltered
-        elif isinstance(val, dict):
-            return val
-        # otherwise it is a number and we can convert back and forth (e.g., if N/6 in a record specification)
-        else:
-            return varvalue_expr_conversion(vv, val, inverse)
-
-    # TODO: Need to refactor the error message stuff
-    def create_variable_exists_error_msg(varname, prev_val, cur_val):
-        return ('If the same variable appears in several record specifications ' +
-                'in the ENDF recipe, the corresponding values ' +
-                'in the ENDF file must be so that the variable evaluates to the ' +
-               f'same value. This is not the case for {varname} which previously ' +
-               f'was determined to be {prev_val} but in the present ' +
-               f'record would be determined to be {cur_val}. Either the ENDF recipe ' +
-                'is wrong or the ENDF file contains inconsistent data. Note that ' +
-               f'{varname} may be an array, in which case this statement would ' +
-                'apply to one of the variables in that array')
-    def create_variable_wrong_value_error_msg(realval, expval, sourcekey):
-        return (f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}. '
-                f'The value was encountered in a source field named {sourcekey}')
-
 
     def map_recorddic_datadic(basekeys, varnames, indexquants_list,
                               expr_list, inverse, datadic, loop_vars):

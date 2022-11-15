@@ -21,6 +21,8 @@ from .custom_exceptions import (
         VariableInDenominatorError,
         SeveralUnboundVariablesError,
     )
+from .math_utils import (math_add, math_sub,
+        math_mul, math_div, math_neg)
 import re
 
 def open_section(extvarname, datadic, loop_vars):
@@ -146,18 +148,11 @@ def get_indexquants(expr):
 def varvalue_expr_conversion(vv, val, inverse):
     # vv as returned by eval_expr
     if not inverse:
-        res = (val - vv[0]) / vv[1]
-        # if all occuring quantities are integer,
-        # we expect the result to be integer as well
-        # (e.g., for counter fields, L1, L2, N1, N2)
-        if isinstance(val, int) and isinstance(vv[0], int) and isinstance(vv[1], int):
-            if int(res) != res:
-                raise InvalidIntegerError(f'Result should be integer but obtained {res}')
-            return int(res)
-        else:
-            return res
+        # cast_int true means that we convert the result of a
+        # division of two ints to int if possible
+        return math_div(math_sub(val, vv[0]), vv[1], cast_int=True)
     else:
-        return vv[0] + val*vv[1]
+        return math_add(vv[0], math_mul(val, vv[1]))
 
 def eval_expr_without_unknown_var(expr, datadic=None, loop_vars=None):
     ret = eval_expr(expr, datadic, loop_vars)
@@ -195,7 +190,7 @@ def eval_expr(expr, datadic=None, loop_vars=None):
         return (v, 0)
     elif name == 'minusexpr':
         v = eval_expr(expr.children[0], datadic, loop_vars)
-        return (-v[0], -v[1])
+        return (math_neg(v[0]), -v[1])
     elif name in ('addition', 'subtraction',
                 'multiplication', 'division'):
         v1 = eval_expr(expr.children[0], datadic, loop_vars)
@@ -207,29 +202,29 @@ def eval_expr(expr, datadic=None, loop_vars=None):
                         'More than one unassigned variables must not appear ' +
                         'in an expression.')
             if v1[1] == 0:
-                return (v1[0]*v2[0], v1[0]*v2[1])
+                return (math_mul(v1[0], v2[0]),
+                        math_mul(v1[0], v2[1]))
             else:
-                return (v1[0]*v2[0], v1[1]*v2[0])
+                return (math_mul(v1[0], v2[0]),
+                        math_mul(v1[1], v2[0]))
         elif name == 'division':
             if v2[1] != 0:
                 raise VariableInDenominatorError(
                         'A variable name must not appear in the denominator ' +
                         'of an expression.')
-            vx = v1[0]/v2[0]
-            vy = v1[1]/v2[0]
-            # divisions of two ints yield by default float in Python
-            # if the division of two ints evaluate to an integer,
-            # we want to preserve the int type
-            if isinstance(v2[0], int):
-                if isinstance(v1[0], int) and int(vx) == vx:
-                    vx = int(vx)
-                if isinstance(v1[1], int) and int(vy) == vy:
-                    vy = int(vy)
+            vx = math_div(v1[0], v2[0], cast_int=True)
+            vy = math_div(v1[1], v2[0], cast_int=True)
             return (vx, vy)
+        # TODO: addition and subtraction would not fail
+        #       for something like VAR1 + VAR2 with both
+        #       variables unassigned; this would lead to
+        #       wrong assignments upstream
         elif name == 'addition':
-            return (v1[0]+v2[0], v1[1]+v2[1])
+            return (math_add(v1[0], v2[0]),
+                    math_add(v1[1], v2[1]))
         elif name == 'subtraction':
-            return (v1[0]-v2[0], v1[1]-v2[1])
+            return (math_sub(v1[0], v2[0]),
+                    math_sub(v1[1], v2[1]))
     elif name == 'inconsistent_varspec':
         ch = get_child(expr, 'extvarname')
         return eval_expr(ch, datadic, loop_vars)

@@ -56,6 +56,7 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     # remove COMMA token because it is not relevant
     expr_list = [expr for expr in expr_list
             if not is_token(expr) or get_name(expr) != 'COMMA']
+
     # these internal functions are hacks to allow for default names for some fields:
     # some fields in the ENDF language specification are optional and then no
     # Tree/Token is created for them but we still need to use their default names
@@ -67,9 +68,12 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
         return expr if isinstance(expr, str) and not is_token(expr)  else get_varname(expr)
     def get_indexquants_tmp(expr):
         return None if isinstance(expr, str) else get_indexquants(expr)
-    def eval_expr_tmp(expr):
+    def eval_expr_tmp(expr, datadic=None, loop_vars=None):
         # this is the same result as returned by eval_expr on an expr with just the variable name
-        return eval_expr(expr) if not isinstance(expr, str) else (0, 1)
+        if not isinstance(expr, str):
+            return eval_expr(expr, datadic, loop_vars)
+        else:
+            return (0, 1)
     def varvalue_expr_conversion_tmp(vv, val, inverse):
         # in the case of a tab1, the value of the variable (val) will be a list
         if isinstance(val, list):

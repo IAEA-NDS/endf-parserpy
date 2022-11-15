@@ -62,5 +62,13 @@ class VariableNotFoundError(ParserException):
     pass
 
 
+class UnavailableIndexError(ParserException):
+    pass
+
+
 class VariableInDenominatorError(ParserException):
+    pass
+
+
+class SeveralUnboundVariablesError(ParserException):
     pass

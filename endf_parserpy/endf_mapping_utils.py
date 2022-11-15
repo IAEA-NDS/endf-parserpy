@@ -220,9 +220,17 @@ def eval_expr(expr, datadic=None, loop_vars=None):
         #       variables unassigned; this would lead to
         #       wrong assignments upstream
         elif name == 'addition':
+            if v1[1] != 0 and v2[1] != 0:
+                raise SeveralUnboundVariablesError(
+                    'More than one unassigned variable must not appear ' +
+                    'in an expression.')
             return (math_add(v1[0], v2[0]),
                     math_add(v1[1], v2[1]))
         elif name == 'subtraction':
+            if v1[1] != 0 and v2[1] != 0:
+                raise SeveralUnboundVariablesError(
+                        'More than one unassigned variable must not appear ' +
+                        'in an expression.')
             return (math_sub(v1[0], v2[0]),
                     math_sub(v1[1], v2[1]))
     elif name == 'inconsistent_varspec':
@@ -239,4 +247,3 @@ def eval_expr(expr, datadic=None, loop_vars=None):
             trimmed_children = expr.children
         assert len(trimmed_children) == 1
         return eval_expr(trimmed_children[0], datadic, loop_vars)
-

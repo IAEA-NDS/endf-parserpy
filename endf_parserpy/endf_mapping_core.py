@@ -43,10 +43,7 @@ def get_indexquants_tmp(expr):
 
 def eval_expr_tmp(expr, datadic=None, loop_vars=None):
     # this is the same result as returned by eval_expr on an expr with just the variable name
-    if not isinstance(expr, str):
-        return eval_expr(expr, datadic, loop_vars)
-    else:
-        return (0, 1, expr)
+    return eval_expr(expr, datadic, loop_vars)
 
 
 def varvalue_expr_conversion_tmp(vv, val, inverse):

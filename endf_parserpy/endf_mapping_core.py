@@ -14,6 +14,7 @@ from .custom_exceptions import (
         NumberMismatchError,
         InconsistentVariableAssignmentError,
         InvalidIntegerError,
+        SeveralUnboundVariablesError,
     )
 from .endf_mapping_utils import (
         get_varname, get_indexquants, eval_expr,
@@ -88,11 +89,16 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
     fuzzy_matching = parse_opts.get('fuzzy_matching', False)
     ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
     zipit = zip(basekeys, expr_list)
+    found_unbound = False
     if not inverse:
         varnames = []
         for sourcekey, curexpr in zipit:
+            try:
+                expr_vv = eval_expr_tmp(curexpr, datadic, loop_vars)
+            except SeveralUnboundVariablesError:
+                found_unbound = True
+                continue
 
-            expr_vv = eval_expr_tmp(curexpr, datadic, loop_vars)
             targetkey = get_varname_tmp(expr_vv[2])
             varnames.append(targetkey)
             # if the record specification contains a value,
@@ -199,7 +205,11 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
             varvals = tuple(abbreviate_valstr(datadic[v]) for v in tmp)
             logging.info('Variable names in this record: ' + ', '.join([f'{v}: {vv}' for v, vv in zip(tmp, varvals)]))
 
-        return datadic
+        if found_unbound:
+            raise SeveralUnboundVariablesError(
+                    'Found several unbound variables in this line')
+        else:
+            return datadic
     # inverse transform
     else:
         for sourcekey, curexpr in zipit:
@@ -217,5 +227,14 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars,
     expr_list = [expr for expr in expr_list
                  if not is_token(expr) or get_name(expr) != 'COMMA']
 
-    return map_recorddic_datadic(basekeys, record_dic, expr_list, inverse,
-                                 datadic, loop_vars, parse_opts)
+    parse_tries = 3
+    while parse_tries > 0:
+        try:
+            return map_recorddic_datadic(
+                    basekeys, record_dic, expr_list,
+                    inverse, datadic, loop_vars, parse_opts)
+        except SeveralUnboundVariablesError:
+            parse_tries -= 1
+
+    raise SeveralUnboundVariablesError(
+            'Found several unbound variables')

@@ -12,7 +12,9 @@
 import traceback
 from .tree_utils import (get_child, get_child_value, get_name,
         get_child_names, reconstruct_tree_str)
-from .endf_mapping_utils import get_varname, eval_expr
+from .endf_mapping_utils import (
+        get_varname, eval_expr, eval_expr_without_unknown_var
+    )
 from .logging_utils import write_info
 from .custom_exceptions import LoopVariableError
 
@@ -25,8 +27,8 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
     # determine range for loop counter
     start_expr = get_child(for_head, 'for_start')
     stop_expr = get_child(for_head, 'for_stop')
-    start = eval_expr(start_expr, datadic, loop_vars)[0]
-    stop = eval_expr(stop_expr, datadic, loop_vars)[0]
+    start = eval_expr_without_unknown_var(start_expr, datadic, loop_vars)
+    stop = eval_expr_without_unknown_var(stop_expr, datadic, loop_vars)
     if float(start) != int(start):
         raise LoopVariableError('Loop start index must evaluate to an integer')
     if float(stop) != int(stop):
@@ -58,8 +60,8 @@ def eval_if_condition(if_condition, datadic, loop_vars):
     left_expr = if_condition.children[0]
     cmpop = get_child_value(if_condition, 'IF_RELATION')
     right_expr = if_condition.children[2]
-    left_val = eval_expr(left_expr, datadic, loop_vars)[0]
-    right_val = eval_expr(right_expr, datadic, loop_vars)[0]
+    left_val = eval_expr_without_unknown_var(left_expr, datadic, loop_vars)
+    right_val = eval_expr_without_unknown_var(right_expr, datadic, loop_vars)
     write_info(f'Left side evaluates to {left_val} and right side to {right_val}')
     if ((cmpop == ">" and left_val > right_val) or
         (cmpop == "<" and left_val < right_val) or
@@ -154,7 +156,7 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     if lookahead_option:
         write_info('Start lookahead for if head ' + reconstruct_tree_str(if_head))
         lookahead_expr = get_child(lookahead_option, 'expr')
-        lookahead = eval_expr(lookahead_expr, datadic, loop_vars)[0]
+        lookahead = eval_expr_without_unknown_var(lookahead_expr, datadic, loop_vars)
         if int(lookahead) != lookahead:
             raise ValueError( 'lookahead argument must evaluate to an integer' +
                              f'(got {lookahead})')

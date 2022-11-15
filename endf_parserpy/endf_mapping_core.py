@@ -45,7 +45,7 @@ def eval_expr_tmp(expr, datadic=None, loop_vars=None):
     if not isinstance(expr, str):
         return eval_expr(expr, datadic, loop_vars)
     else:
-        return (0, 1)
+        return (0, 1, expr)
 
 
 def varvalue_expr_conversion_tmp(vv, val, inverse):

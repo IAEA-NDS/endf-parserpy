@@ -166,17 +166,17 @@ def eval_expr(expr, datadic=None, loop_vars=None):
     #           extvarname can contain an index specification, e.g., foo1[i]
     if name in ('VARNAME', 'extvarname'):
         if datadic is None:
-            return (0, 1)
+            return (0, 1, expr)
         else:
             # if datadic and variable exists in datadic
             # we substitute the variable name by its value
             try:
                 val = get_varval(expr, datadic, loop_vars)
-                return (val, 0)
+                return (val, 0, None)
             except VariableNotFoundError:
-                return (0, 1)
+                return (0, 1, expr)
             except UnavailableIndexError:
-                return (0, 1)
+                return (0, 1, expr)
     elif name == 'NUMBER' or name == 'DESIRED_NUMBER':
         vstr = expr.value
         # a desired number is suffixed by a question mark
@@ -187,10 +187,10 @@ def eval_expr(expr, datadic=None, loop_vars=None):
             v = int(vstr)
         else:
             v = float(vstr)
-        return (v, 0)
+        return (v, 0, None)
     elif name == 'minusexpr':
         v = eval_expr(expr.children[0], datadic, loop_vars)
-        return (math_neg(v[0]), -v[1])
+        return (math_neg(v[0]), -v[1], v[2])
     elif name in ('addition', 'subtraction',
                 'multiplication', 'division'):
         v1 = eval_expr(expr.children[0], datadic, loop_vars)
@@ -203,10 +203,12 @@ def eval_expr(expr, datadic=None, loop_vars=None):
                         'in an expression.')
             if v1[1] == 0:
                 return (math_mul(v1[0], v2[0]),
-                        math_mul(v1[0], v2[1]))
+                        math_mul(v1[0], v2[1]),
+                        v2[2])
             else:
                 return (math_mul(v1[0], v2[0]),
-                        math_mul(v1[1], v2[0]))
+                        math_mul(v1[1], v2[0]),
+                        v1[2])
         elif name == 'division':
             if v2[1] != 0:
                 raise VariableInDenominatorError(
@@ -214,7 +216,7 @@ def eval_expr(expr, datadic=None, loop_vars=None):
                         'of an expression.')
             vx = math_div(v1[0], v2[0], cast_int=True)
             vy = math_div(v1[1], v2[0], cast_int=True)
-            return (vx, vy)
+            return (vx, vy, v1[2])
         # TODO: addition and subtraction would not fail
         #       for something like VAR1 + VAR2 with both
         #       variables unassigned; this would lead to
@@ -224,15 +226,19 @@ def eval_expr(expr, datadic=None, loop_vars=None):
                 raise SeveralUnboundVariablesError(
                     'More than one unassigned variable must not appear ' +
                     'in an expression.')
+            vexpr = v1[2] if v1[1] != 0 else v2[2]
             return (math_add(v1[0], v2[0]),
-                    math_add(v1[1], v2[1]))
+                    math_add(v1[1], v2[1]),
+                    vexpr)
         elif name == 'subtraction':
             if v1[1] != 0 and v2[1] != 0:
                 raise SeveralUnboundVariablesError(
                         'More than one unassigned variable must not appear ' +
                         'in an expression.')
+            vexpr = v1[2] if v1[1] != 0 else v2[2]
             return (math_sub(v1[0], v2[0]),
-                    math_sub(v1[1], v2[1]))
+                    math_sub(v1[1], v2[1]),
+                    vexpr)
     elif name == 'inconsistent_varspec':
         ch = get_child(expr, 'extvarname')
         return eval_expr(ch, datadic, loop_vars)

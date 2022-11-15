@@ -16,8 +16,10 @@ from .custom_exceptions import (
         VariableInDenominatorError,
         LoopVariableError,
         VariableNotFoundError,
+        UnavailableIndexError,
         InvalidIntegerError,
-        VariableInDenominatorError
+        VariableInDenominatorError,
+        SeveralUnboundVariablesError,
     )
 import re
 
@@ -96,16 +98,16 @@ def get_varval(expr, datadic, loop_vars):
         val = curdic[idx]
         return val
 
-def count_unassigned_variables(expr, datadic, loop_vars):
+def count_unassigned_vars(expr, datadic, loop_vars):
     if is_tree(expr) and get_name(expr) != 'extvarname':
-        num = 0
-        for ch in expr.children:
-            num += count_unassigned_variables(ch, datadic, loop_vars)
-        return num
+        return sum([count_unassigned_vars(ch, datadic, loop_vars)
+                    for ch in expr.children])
     elif is_tree(expr) or (is_token(expr) and get_name(expr) == 'VARNAME'):
         try:
             get_varval(expr, datadic, loop_vars)
         except VariableNotFoundError:
+            return 1
+        except UnavailableIndexError:
             return 1
         return 0
     else:

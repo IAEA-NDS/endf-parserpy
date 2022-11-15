@@ -90,8 +90,9 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
 
     varnames = tuple((get_varname_tmp(t) for t in expr_list))
     indexquants_list = tuple(get_indexquants_tmp(t) for t in expr_list)
-    expr_vvs = tuple((eval_expr_tmp(t) for i, t in enumerate(expr_list)))
-    zipit = zip(basekeys, varnames, indexquants_list, expr_vvs, expr_list)
+
+    zipit = zip(basekeys, varnames, indexquants_list, expr_list)
+
     # TODO: Need to refactor the error message stuff
     def create_variable_exists_error_msg(varname, prev_val, cur_val):
         return ('If the same variable appears in several record specifications ' +
@@ -108,7 +109,9 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                 f'The value was encountered in a source field named {sourcekey}')
 
     if not inverse:
-        for sourcekey, targetkey, idxquants, expr_vv, curexpr in zipit:
+        for sourcekey, targetkey, idxquants, curexpr in zipit:
+
+            expr_vv = eval_expr_tmp(curexpr, datadic, loop_vars)
             # if the record specification contains a value,
             # hence targetkey is None, we check if the value
             # in the ENDF file is equal to that value and
@@ -137,53 +140,73 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
                             raise NumberMismatchError(msg)
             else:
                 inconsistency_allowed = is_tree(curexpr) and search_name(curexpr, 'inconsistent_varspec')
-                try:
-                    val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
-                except InvalidIntegerError as pexc:
-                    raise InvalidIntegerError(str(pexc) + f' (variable {targetkey})')
-
-                if idxquants is None:
-                    if targetkey in datadic:
-                        prev_val = datadic[targetkey]
+                # all variables in the current slot of the record
+                # were already assigned so we just check for consistency
+                if expr_vv[1] == 0:
+                    if record_dic[sourcekey] != expr_vv[0]:
                         if not inconsistency_allowed:
                             if not fuzzy_matching:
-                                mismatch_occurred = prev_val != val
+                                mismatch_occurred = True
                             else:
-                                # NOTE: some files may contain small inconsistencies
-                                # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
-                                # we tolerate such small inconsistencies.
-                                mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)
+                                mismatch_occurred = \
+                                    not np.isclose(record_dic[sourcekey], expr_vv[0],
+                                                   atol=1e-7, rtol=1e-5)
                             if mismatch_occurred:
                                 raise InconsistentVariableAssignmentError(
-                                        create_variable_exists_error_msg(targetkey, prev_val, val))
-                    else:
-                        datadic[targetkey] = val
+                                         'The term with the values of the existing variables ' +
+                                         f'evaluates to a value {expr_vv[0]} that is inconsistent ' +
+                                         f'with the value {record_dic[sourcekey]} in the file ' +
+                                         f'for slot {sourcekey}')
+                # there is still a dangling variable but we can
+                # solve the linear equation given in the slot to obtain its value
                 else:
-                    # loop through indexvars, and initialize
-                    # nested dictionaries with the indicies as keys
-                    datadic.setdefault(targetkey, {})
-                    curdic = datadic[targetkey]
-                    for i, idxquant in enumerate(idxquants):
-                        idx = get_indexvalue(idxquant, loop_vars)
-                        if i < len(idxquants)-1:
-                            curdic.setdefault(idx, {})
-                            curdic = curdic[idx]
-                    idx = get_indexvalue(idxquants[-1], loop_vars)
-                    if idx in curdic:
-                        prev_val = curdic[idx]
-                        # NOTE: some files may contain small inconsistencies
-                        # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
-                        # we tolerate such small inconsistencies.
-                        if not inconsistency_allowed:
-                            if not fuzzy_matching:
-                                mismatch_occurred = prev_val != val
-                            else:
-                                mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)
-                            if mismatch_occurred:
-                                raise InconsistentVariableAssignmentError(
-                                        create_variable_exists_error_msg(targetkey, prev_val, val))
+                    try:
+                        val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
+                    except InvalidIntegerError as pexc:
+                        raise InvalidIntegerError(str(pexc) + f' (variable {targetkey})')
+
+                    if idxquants is None:
+                        if targetkey in datadic:
+                            prev_val = datadic[targetkey]
+                            if not inconsistency_allowed:
+                                if not fuzzy_matching:
+                                    mismatch_occurred = prev_val != val
+                                else:
+                                    # NOTE: some files may contain small inconsistencies
+                                    # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
+                                    # we tolerate such small inconsistencies.
+                                    mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)
+                                if mismatch_occurred:
+                                    raise InconsistentVariableAssignmentError(
+                                            create_variable_exists_error_msg(targetkey, prev_val, val))
+                        else:
+                            datadic[targetkey] = val
                     else:
-                        curdic[idx] = val
+                        # loop through indexvars, and initialize
+                        # nested dictionaries with the indicies as keys
+                        datadic.setdefault(targetkey, {})
+                        curdic = datadic[targetkey]
+                        for i, idxquant in enumerate(idxquants):
+                            idx = get_indexvalue(idxquant, loop_vars)
+                            if i < len(idxquants)-1:
+                                curdic.setdefault(idx, {})
+                                curdic = curdic[idx]
+                        idx = get_indexvalue(idxquants[-1], loop_vars)
+                        if idx in curdic:
+                            prev_val = curdic[idx]
+                            # NOTE: some files may contain small inconsistencies
+                            # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
+                            # we tolerate such small inconsistencies.
+                            if not inconsistency_allowed:
+                                if not fuzzy_matching:
+                                    mismatch_occurred = prev_val != val
+                                else:
+                                    mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)
+                                if mismatch_occurred:
+                                    raise InconsistentVariableAssignmentError(
+                                            create_variable_exists_error_msg(targetkey, prev_val, val))
+                        else:
+                            curdic[idx] = val
 
         # we write out logging info the first time we encounter a variable
         tmp = tuple(v for v in varnames if v is not None)
@@ -194,7 +217,8 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
         return datadic
     # inverse transform
     else:
-        for sourcekey, targetkey, idxquants, expr_vv, _ in zipit:
+        for sourcekey, targetkey, idxquants, curexpr in zipit:
+            expr_vv = eval_expr_tmp(curexpr)
             if targetkey is None:
                 assert expr_vv[1] == 0
                 record_dic[sourcekey] = expr_vv[0]

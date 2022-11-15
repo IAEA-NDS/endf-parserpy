@@ -49,14 +49,6 @@ def check_ctrl_spec(record_line_node, record_dic, datadic, inverse):
                 f'Expected MT {exp_mt} but encountered {cur_mt}')
 
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inverse, parse_opts=None):
-    parse_opts = parse_opts if parse_opts is not None else {}
-    fuzzy_matching = parse_opts.get('fuzzy_matching', False)
-    ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
-
-    # remove COMMA token because it is not relevant
-    expr_list = [expr for expr in expr_list
-            if not is_token(expr) or get_name(expr) != 'COMMA']
-
     # these internal functions are hacks to allow for default names for some fields:
     # some fields in the ENDF language specification are optional and then no
     # Tree/Token is created for them but we still need to use their default names
@@ -88,11 +80,6 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
         else:
             return varvalue_expr_conversion(vv, val, inverse)
 
-    varnames = tuple((get_varname_tmp(t) for t in expr_list))
-    indexquants_list = tuple(get_indexquants_tmp(t) for t in expr_list)
-
-    zipit = zip(basekeys, varnames, indexquants_list, expr_list)
-
     # TODO: Need to refactor the error message stuff
     def create_variable_exists_error_msg(varname, prev_val, cur_val):
         return ('If the same variable appears in several record specifications ' +
@@ -107,6 +94,18 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     def create_variable_wrong_value_error_msg(realval, expval, sourcekey):
         return (f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}. '
                 f'The value was encountered in a source field named {sourcekey}')
+
+    parse_opts = parse_opts if parse_opts is not None else {}
+    fuzzy_matching = parse_opts.get('fuzzy_matching', False)
+    ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
+
+    # remove COMMA token because it is not relevant
+    expr_list = [expr for expr in expr_list
+            if not is_token(expr) or get_name(expr) != 'COMMA']
+
+    varnames = tuple((get_varname_tmp(t) for t in expr_list))
+    indexquants_list = tuple(get_indexquants_tmp(t) for t in expr_list)
+    zipit = zip(basekeys, varnames, indexquants_list, expr_list)
 
     if not inverse:
         for sourcekey, targetkey, idxquants, curexpr in zipit:

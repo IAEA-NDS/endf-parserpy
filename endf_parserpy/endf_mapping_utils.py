@@ -93,9 +93,17 @@ def get_varval(expr, datadic, loop_vars):
         for i, idxquant in enumerate(idxquants):
             idx = get_indexvalue(idxquant, loop_vars)
             if i < len(idxquants)-1:
-                curdic = curdic[idx]
+                try:
+                    curdic = curdic[idx]
+                except Exception:
+                    raise UnavailableIndexError(
+                            f'index {idx} does not exist in array {varname}')
         idx = get_indexvalue(idxquants[-1], loop_vars)
-        val = curdic[idx]
+        try:
+            val = curdic[idx]
+        except Exception:
+            raise UnavailableIndexError(
+                    f'index {idx} does not exist in array {varname}')
         return val
 
 def count_unassigned_vars(expr, datadic, loop_vars):
@@ -165,9 +173,15 @@ def eval_expr(expr, datadic=None, loop_vars=None):
         if datadic is None:
             return (0, 1)
         else:
-            # if datadic is given, we substitute the variable name by its value
-            val = get_varval(expr, datadic, loop_vars)
-            return (val, 0)
+            # if datadic and variable exists in datadic
+            # we substitute the variable name by its value
+            try:
+                val = get_varval(expr, datadic, loop_vars)
+                return (val, 0)
+            except VariableNotFoundError:
+                return (0, 1)
+            except UnavailableIndexError:
+                return (0, 1)
     elif name == 'NUMBER' or name == 'DESIRED_NUMBER':
         vstr = expr.value
         # a desired number is suffixed by a question mark
@@ -188,7 +202,10 @@ def eval_expr(expr, datadic=None, loop_vars=None):
         # children[1] contains the operator symbol *,/,+,-
         v2 = eval_expr(expr.children[2], datadic, loop_vars)
         if name == 'multiplication':
-            assert v1[1] == 0 or v2[1] == 0
+            if v1[1] != 0 and v2[1] != 0:
+                raise SeveralUnboundVariablesError(
+                        'More than one unassigned variables must not appear ' +
+                        'in an expression.')
             if v1[1] == 0:
                 return (v1[0]*v2[0], v1[0]*v2[1])
             else:

@@ -218,26 +218,11 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars, inver
     # inverse transform
     else:
         for sourcekey, targetkey, idxquants, curexpr in zipit:
-            expr_vv = eval_expr_tmp(curexpr)
-            if targetkey is None:
-                assert expr_vv[1] == 0
-                record_dic[sourcekey] = expr_vv[0]
-            else:
-                if idxquants is None:
-                    val = datadic[targetkey]
-                    finalval = varvalue_expr_conversion_tmp(expr_vv, val, inverse)
-                    record_dic[sourcekey] = finalval
-                else:
-                    # loop through indexvars to descend
-                    # into nested diciontary to retrieve value
-                    curdic = datadic[targetkey]
-                    for i, idxquant in enumerate(idxquants):
-                        idx = get_indexvalue(idxquant, loop_vars)
-                        if i < len(idxquants)-1:
-                            curdic = curdic[idx]
-                    idx = get_indexvalue(idxquants[-1], loop_vars)
-                    val = curdic[idx]
-                    record_dic[sourcekey] = varvalue_expr_conversion_tmp(expr_vv, val, inverse)
+            expr_vv = eval_expr_tmp(curexpr, datadic, loop_vars)
+            if expr_vv[1] != 0:
+                # TODO: More informative error what variable is missing
+                IndexError('some variable missing in dictionary')
+            record_dic[sourcekey] = expr_vv[0]
         return record_dic
     raise ValueError('Tertium non datur')
 

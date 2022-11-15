@@ -1,3 +1,13 @@
+############################################################
+#
+# Author(s):       Georg Schnabel
+# Email:           g.schnabel@iaea.org
+# Creation date:   2022/11/15
+# Last modified:   2022/11/15
+# License:         MIT
+# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+#
+############################################################
 from .custom_exceptions import InvalidIntegerError
 
 

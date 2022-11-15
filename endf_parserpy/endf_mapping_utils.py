@@ -69,12 +69,17 @@ def get_indexvalue(token, loop_vars):
         raise TypeError(f'The token of type {tokname} is not allowed as index specification.')
 
 def get_varval(expr, datadic, loop_vars):
-    name = get_name(expr)
-    if name not in ('VARNAME', 'extvarname'):
-        raise TypeError(f'node must be either of type VARNAME or extvarname but is {name}')
-
-    varname = get_varname(expr)
-    idxquants = get_indexquants(expr)
+    name = get_name(expr, nofail=True)
+    if name in ('VARNAME', 'extvarname'):
+        varname = get_varname(expr)
+        idxquants = get_indexquants(expr)
+    elif name is None and isinstance(expr, str):
+        varname = expr
+        idxquants = None
+    else:
+        raise TypeError(f'node must be either of type VARNAME or extvarname ' +
+                        'but is {name} OR it must be at least a string with ' +
+                        'the variable name')
 
     if loop_vars is not None:
         if varname in datadic and varname in loop_vars:
@@ -161,10 +166,11 @@ def eval_expr_without_unknown_var(expr, datadic=None, loop_vars=None):
     return ret[0]
 
 def eval_expr(expr, datadic=None, loop_vars=None):
-    name = get_name(expr)
+    name = get_name(expr, nofail=True)
     # reminder: VARNAME is is a string of letters and number, e.g., foo1
     #           extvarname can contain an index specification, e.g., foo1[i]
-    if name in ('VARNAME', 'extvarname'):
+    if (name in ('VARNAME', 'extvarname') or
+            (name is None and isinstance(expr, str))):
         if datadic is None:
             return (0, 1, expr)
         else:

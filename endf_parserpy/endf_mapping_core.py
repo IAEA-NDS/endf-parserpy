@@ -41,11 +41,6 @@ def get_indexquants_tmp(expr):
     return None if isinstance(expr, str) else get_indexquants(expr)
 
 
-def eval_expr_tmp(expr, datadic=None, loop_vars=None):
-    # this is the same result as returned by eval_expr on an expr with just the variable name
-    return eval_expr(expr, datadic, loop_vars)
-
-
 def varvalue_expr_conversion_tmp(vv, val, inverse):
     # in the case of a tab1, the value of the variable (val) will be a list
     if isinstance(val, list):
@@ -91,7 +86,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
         varnames = []
         for sourcekey, curexpr in zipit:
             try:
-                expr_vv = eval_expr_tmp(curexpr, datadic, loop_vars)
+                expr_vv = eval_expr(curexpr, datadic, loop_vars)
             except SeveralUnboundVariablesError:
                 found_unbound = True
                 continue
@@ -210,7 +205,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
     # inverse transform
     else:
         for sourcekey, curexpr in zipit:
-            expr_vv = eval_expr_tmp(curexpr, datadic, loop_vars)
+            expr_vv = eval_expr(curexpr, datadic, loop_vars)
             if expr_vv[1] != 0:
                 # TODO: More informative error what variable is missing
                 IndexError('some variable missing in dictionary')

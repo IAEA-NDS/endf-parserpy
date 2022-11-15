@@ -68,7 +68,7 @@ def get_indexvalue(token, loop_vars):
     else:
         raise TypeError(f'The token of type {tokname} is not allowed as index specification.')
 
-def get_varval(expr, datadic, loop_vars):
+def get_varval(expr, datadic, loop_vars, look_up=True):
     name = get_name(expr, nofail=True)
     if name in ('VARNAME', 'extvarname'):
         varname = get_varname(expr)
@@ -89,7 +89,8 @@ def get_varval(expr, datadic, loop_vars):
         if varname in loop_vars:
             return loop_vars[varname]
 
-    while varname not in datadic and '__up' in datadic:
+    while (varname not in datadic and
+           '__up' in datadic and look_up):
         datadic = datadic['__up']
     if varname not in datadic:
         raise VariableNotFoundError(f'variable {varname} not found')
@@ -113,13 +114,13 @@ def get_varval(expr, datadic, loop_vars):
                     f'index {idx} does not exist in array {varname}')
         return val
 
-def count_unassigned_vars(expr, datadic, loop_vars):
+def count_unassigned_vars(expr, datadic, loop_vars, look_up=True):
     if is_tree(expr) and get_name(expr) != 'extvarname':
         return sum([count_unassigned_vars(ch, datadic, loop_vars)
                     for ch in expr.children])
     elif is_tree(expr) or (is_token(expr) and get_name(expr) == 'VARNAME'):
         try:
-            get_varval(expr, datadic, loop_vars)
+            get_varval(expr, datadic, loop_vars, look_up)
         except VariableNotFoundError:
             return 1
         except UnavailableIndexError:
@@ -159,13 +160,14 @@ def varvalue_expr_conversion(vv, val, inverse):
     else:
         return math_add(vv[0], math_mul(val, vv[1]))
 
-def eval_expr_without_unknown_var(expr, datadic=None, loop_vars=None):
-    ret = eval_expr(expr, datadic, loop_vars)
+def eval_expr_without_unknown_var(expr, datadic=None,
+                                  loop_vars=None, look_up=True):
+    ret = eval_expr(expr, datadic, loop_vars, look_up)
     if ret[1] != 0:
         raise VariableNotFoundError('Unknown variable in expression')
     return ret[0]
 
-def eval_expr(expr, datadic=None, loop_vars=None):
+def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
     name = get_name(expr, nofail=True)
     # reminder: VARNAME is is a string of letters and number, e.g., foo1
     #           extvarname can contain an index specification, e.g., foo1[i]
@@ -177,7 +179,7 @@ def eval_expr(expr, datadic=None, loop_vars=None):
             # if datadic and variable exists in datadic
             # we substitute the variable name by its value
             try:
-                val = get_varval(expr, datadic, loop_vars)
+                val = get_varval(expr, datadic, loop_vars, look_up)
                 return (val, 0, None)
             except VariableNotFoundError:
                 return (0, 1, expr)

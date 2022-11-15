@@ -84,6 +84,7 @@ def create_variable_wrong_value_error_msg(realval, expval, sourcekey):
 def map_recorddic_datadic(basekeys, record_dic, expr_list,
                           inverse, datadic, loop_vars, parse_opts):
 
+    parse_opts = parse_opts if parse_opts is not None else {}
     fuzzy_matching = parse_opts.get('fuzzy_matching', False)
     ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
     zipit = zip(basekeys, expr_list)
@@ -212,7 +213,6 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
 
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars,
                       inverse, parse_opts=None):
-    parse_opts = parse_opts if parse_opts is not None else {}
     # remove COMMA token because it is not relevant
     expr_list = [expr for expr in expr_list
                  if not is_token(expr) or get_name(expr) != 'COMMA']

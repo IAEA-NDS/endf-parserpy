@@ -18,14 +18,17 @@ def is_token(tree):
 def is_tree(tree):
     return isinstance(tree, Tree)
 
-def get_name(tree):
+def get_name(tree, nofail=False):
     if is_token(tree):
         return str(tree.type)
     if is_tree(tree):
         return str(tree.data)
     else:
-        raise TypeError(f'argument should have type Token or Tree '
-                        f'but has type {type(tree)}')
+        if nofail:
+            return None
+        else:
+            raise TypeError(f'argument should have type Token or Tree '
+                            f'but has type {type(tree)}')
 
 def get_value(token):
     return token.value

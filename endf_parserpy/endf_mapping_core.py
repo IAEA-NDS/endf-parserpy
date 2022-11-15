@@ -81,18 +81,19 @@ def create_variable_wrong_value_error_msg(realval, expval, sourcekey):
             f'The value was encountered in a source field named {sourcekey}')
 
 
-def map_recorddic_datadic(basekeys, record_dic, varnames, indexquants_list,
-                          expr_list, inverse, datadic, loop_vars,
-                          parse_opts):
+def map_recorddic_datadic(basekeys, record_dic, expr_list,
+                          inverse, datadic, loop_vars, parse_opts):
 
     fuzzy_matching = parse_opts.get('fuzzy_matching', False)
     ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
-
-    zipit = zip(basekeys, varnames, indexquants_list, expr_list)
+    zipit = zip(basekeys, expr_list)
     if not inverse:
-        for sourcekey, targetkey, idxquants, curexpr in zipit:
+        varnames = []
+        for sourcekey, curexpr in zipit:
 
             expr_vv = eval_expr_tmp(curexpr, datadic, loop_vars)
+            targetkey = get_varname_tmp(expr_vv[2])
+            varnames.append(targetkey)
             # if the record specification contains a value,
             # hence targetkey is None, we check if the value
             # in the ENDF file is equal to that value and
@@ -147,6 +148,7 @@ def map_recorddic_datadic(basekeys, record_dic, varnames, indexquants_list,
                 except InvalidIntegerError as pexc:
                     raise InvalidIntegerError(str(pexc) + f' (variable {targetkey})')
 
+                idxquants = get_indexquants_tmp(expr_vv[2])
                 if idxquants is None:
                     if targetkey in datadic:
                         prev_val = datadic[targetkey]
@@ -199,7 +201,7 @@ def map_recorddic_datadic(basekeys, record_dic, varnames, indexquants_list,
         return datadic
     # inverse transform
     else:
-        for sourcekey, targetkey, idxquants, curexpr in zipit:
+        for sourcekey, curexpr in zipit:
             expr_vv = eval_expr_tmp(curexpr, datadic, loop_vars)
             if expr_vv[1] != 0:
                 # TODO: More informative error what variable is missing
@@ -215,8 +217,5 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars,
     expr_list = [expr for expr in expr_list
                  if not is_token(expr) or get_name(expr) != 'COMMA']
 
-    varnames = tuple((get_varname_tmp(t) for t in expr_list))
-    indexquants_list = tuple(get_indexquants_tmp(t) for t in expr_list)
-    return map_recorddic_datadic(basekeys, record_dic, varnames,
-                                 indexquants_list, expr_list, inverse,
+    return map_recorddic_datadic(basekeys, record_dic, expr_list, inverse,
                                  datadic, loop_vars, parse_opts)

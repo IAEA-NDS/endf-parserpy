@@ -144,6 +144,8 @@ def get_varname(expr):
     return None
 
 def get_indexquants(expr):
+    if not is_tree(expr):
+        return None
     idxquants = []
     for ch in expr.children:
         if is_tree(ch):

@@ -17,6 +17,7 @@ from .endf_mapping_utils import (
     )
 from .logging_utils import write_info
 from .custom_exceptions import LoopVariableError
+from copy import deepcopy
 
 
 def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
@@ -122,18 +123,18 @@ def determine_truthvalue(node, datadic, loop_vars):
 
 
 def evaluate_if_clause(tree, tree_handler, datadic, loop_vars,
-                       dump_state, restore_state, parse_opts=None):
+                       set_parser_state, get_parser_state, parse_opts=None):
     chnames = get_child_names(tree)
     assert chnames[0] == 'if_statement'
     truthval = evaluate_if_statement(tree.children[0], tree_handler, datadic, loop_vars,
-                                     dump_state, restore_state)
+                                     set_parser_state, get_parser_state)
     if truthval is True:
         return
     else:
         elif_tree_list = [t for t in tree.children if get_name(t) == 'elif_statement']
         for elif_tree in elif_tree_list:
             truthval = evaluate_if_statement(elif_tree, tree_handler, datadic, loop_vars,
-                                             dump_state, restore_state, parse_opts=parse_opts)
+                                             set_parser_state, get_parser_state, parse_opts=parse_opts)
             if truthval is True:
                 return
 
@@ -145,7 +146,7 @@ def evaluate_if_clause(tree, tree_handler, datadic, loop_vars,
 
 
 def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
-                          dump_state, restore_state, parse_opts=None):
+                          set_parser_state, get_parser_state, parse_opts=None):
     parse_opts = parse_opts if parse_opts is not None else {}
     log_lookahead_traceback = parse_opts.get('log_lookahead_traceback', True)
     assert tree.data in ('if_statement', 'elif_statement', 'else_statement')
@@ -170,7 +171,12 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
 
         # we want to save the state of the parser
         # before the lookahead to rewind it afterwards
-        parser_state = dump_state()
+        parser_state = get_parser_state()
+        new_parser_state = deepcopy(parser_state)
+        set_parser_state(new_parser_state)
+        datadic = new_parser_state['datadic']
+        loop_vars = new_parser_state['loop_vars']
+
         loop_vars['__lookahead'] = lookahead
         try:
             tree_handler(if_body)
@@ -206,12 +212,16 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     if truthval:
         write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')
         if lookahead_option:
-            restore_state(parser_state)
+            set_parser_state(parser_state)
+            datadic = parser_state['datadic']
+            loop_vars = parser_state['loop_vars']
         tree_handler(if_body)
         write_info('Leave if body of if condition ' + reconstruct_tree_str(if_head))
     else:
         if lookahead_option:
-            restore_state(parser_state)
+            set_parser_state(parser_state)
+            datadic = parser_state['datadic']
+            loop_vars = parser_state['loop_vars']
         write_info('Skip if body because if condition ' + reconstruct_tree_str(if_head) + ' is false')
 
     return truthval

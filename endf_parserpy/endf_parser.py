@@ -232,10 +232,10 @@ class BasicEndfParser():
 
     def process_if_clause(self, tree):
         evaluate_if_clause(tree, self.run_instruction,
-                              self.datadic, self.loop_vars,
-                              dump_state = self.dump_parser_state,
-                              restore_state = self.restore_parser_state,
-                              parse_opts=self.parse_opts)
+                           self.datadic, self.loop_vars,
+                           set_parser_state=self.set_parser_state,
+                           get_parser_state=self.get_parser_state,
+                           parse_opts=self.parse_opts)
 
     def run_instruction(self, tree):
         if tree.data in self.endf_actions:
@@ -272,38 +272,21 @@ class BasicEndfParser():
         self.ofs = 0
         self.logbuffer = RingBuffer(capacity=20)
 
-    def dump_parser_state(self):
-        # NOTE: We have to protect the __up
-        # pointer against deepcopy to ensure
-        # that we can go back to the enclosing
-        # dictionary and not a copy thereof
-        # which is problematic for the if statement
-        # with lookahead.
-        if '__up' in self.datadic:
-            updic = self.datadic['__up']
-            del self.datadic['__up']
-            datadic_copy = deepcopy(self.datadic)
-            datadic_copy['__up'] = updic
-        else:
-            datadic_copy = deepcopy(self.datadic)
-
-        return {'loop_vars': deepcopy(self.loop_vars),
-                'datadic' : datadic_copy,
-                'lines' : deepcopy(self.lines),
-                'rwmode' : self.rwmode,
-                'ofs' : self.ofs,
+    def get_parser_state(self):
+        return {'loop_vars': self.loop_vars,
+                'datadic': self.datadic,
+                'lines': self.lines,
+                'rwmode': self.rwmode,
+                'ofs': self.ofs,
                 'logbuffer_state': self.logbuffer.dump_state()}
 
-    def restore_parser_state(self, dump):
-        self.loop_vars.clear()
-        self.loop_vars.update(dump['loop_vars'])
-        self.datadic.clear()
-        self.datadic.update(dump['datadic'])
-        self.lines.clear()
-        self.lines.extend(dump['lines'])
-        self.rwmode = dump['rwmode']
-        self.ofs = dump['ofs']
-        self.logbuffer.load_state(dump['logbuffer_state'])
+    def set_parser_state(self, parser_state):
+        self.loop_vars = parser_state['loop_vars']
+        self.datadic = parser_state['datadic']
+        self.lines = parser_state['lines']
+        self.rwmode = parser_state['rwmode']
+        self.ofs = parser_state['ofs']
+        self.logbuffer.load_state(parser_state['logbuffer_state'])
 
     def get_responsible_tree(self, dic, mf, mt):
         tree_dic = self.tree_dic

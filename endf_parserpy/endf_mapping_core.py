@@ -30,9 +30,6 @@ import numpy as np
 # in the mapping. For instance, the specification (xstable) after
 # [MAT, 3, MT/ QM, QI, 0, LR, NR, NP / E / xs]TAB1 (xstable) is optional
 
-def get_indexquants_tmp(expr):
-    return None if isinstance(expr, str) else get_indexquants(expr)
-
 
 def varvalue_expr_conversion_tmp(vv, val, inverse):
     # in the case of a tab1, the value of the variable (val) will be a list
@@ -141,7 +138,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                 except InvalidIntegerError as pexc:
                     raise InvalidIntegerError(str(pexc) + f' (variable {targetkey})')
 
-                idxquants = get_indexquants_tmp(expr_vv[2])
+                idxquants = get_indexquants(expr_vv[2])
                 if idxquants is None:
                     if targetkey in datadic:
                         prev_val = datadic[targetkey]

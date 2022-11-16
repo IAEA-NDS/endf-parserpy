@@ -219,7 +219,8 @@ class BasicEndfParser():
         varname2 = get_varname(section_tail)
         if varname != varname2:
             raise InconsistentSectionBracketsError(
-                    'The section name in the tail does not correspond to the one in the head')
+                    'The section name in the tail does not correspond to ' +
+                    f'the one in the head (`{varname}` vs `{varname2}`)')
 
         self.datadic = open_section(section_head, self.datadic, self.loop_vars)
         section_body = get_child(tree, 'section_body')

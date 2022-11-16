@@ -30,13 +30,6 @@ import numpy as np
 # in the mapping. For instance, the specification (xstable) after
 # [MAT, 3, MT/ QM, QI, 0, LR, NR, NP / E / xs]TAB1 (xstable) is optional
 
-
-def get_varname_tmp(expr):
-    # the "not is_token(expr)" part is a hack because a Token seems to be regarded
-    # as type "str" because isinstance(expr, str) evaluates to true for a Token
-    return expr if isinstance(expr, str) and not is_token(expr)  else get_varname(expr)
-
-
 def get_indexquants_tmp(expr):
     return None if isinstance(expr, str) else get_indexquants(expr)
 
@@ -92,7 +85,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                 found_unbound = True
                 continue
 
-            targetkey = get_varname_tmp(expr_vv[2])
+            targetkey = get_varname(expr_vv[2])
             varnames.append(targetkey)
             # if the record specification contains a value,
             # hence targetkey is None, we check if the value

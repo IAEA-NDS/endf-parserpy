@@ -24,28 +24,6 @@ from .tree_utils import (is_token, is_tree, get_name, search_name)
 import numpy as np
 
 
-# these internal functions are hacks to allow for default names for some fields:
-# some fields in the ENDF language specification are optional and then no
-# Tree/Token is created for them but we still need to use their default names
-# in the mapping. For instance, the specification (xstable) after
-# [MAT, 3, MT/ QM, QI, 0, LR, NR, NP / E / xs]TAB1 (xstable) is optional
-
-
-def varvalue_expr_conversion_tmp(vv, val, inverse):
-    # in the case of a tab1, the value of the variable (val) will be a list
-    if isinstance(val, list):
-        return [varvalue_expr_conversion(vv, x, inverse) for x in val]
-    # in the case of a text record, it will be a string, which we return unaltered
-    elif isinstance(val, str):
-        return val
-    # also if it is a dictionary, we return it unaltered
-    elif isinstance(val, dict):
-        return val
-    # otherwise it is a number and we can convert back and forth (e.g., if N/6 in a record specification)
-    else:
-        return varvalue_expr_conversion(vv, val, inverse)
-
-
 # TODO: Need to refactor the error message stuff
 def create_variable_exists_error_msg(varname, prev_val, cur_val):
     return ('If the same variable appears in several record specifications ' +
@@ -134,7 +112,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
             else:
                 inconsistency_allowed = is_tree(curexpr) and search_name(curexpr, 'inconsistent_varspec')
                 try:
-                    val = varvalue_expr_conversion_tmp(expr_vv, record_dic[sourcekey], inverse)
+                    val = varvalue_expr_conversion(expr_vv, record_dic[sourcekey], inverse)
                 except InvalidIntegerError as pexc:
                     raise InvalidIntegerError(str(pexc) + f' (variable {targetkey})')
 

@@ -80,11 +80,14 @@ class RingBuffer():
         self.tail = state_info['tail']
         self.num_enqueued = state_info['num_enqueued']
 
-    def save_record_log(self, ofs, line, record_tree):
+    def save_record_log(self, ofs, line, record_tree, onlyfirst=False):
+        recon_str = reconstruct_tree_str(record_tree)
+        if onlyfirst:
+            recon_str = recon_str.split('\n')[0]
         self.enqueue({
             'ofs': ofs,
             'line': line.rstrip(),
-            'record_spec': reconstruct_tree_str(record_tree)
+            'record_spec': recon_str
             })
 
     def display_record_logs(self):

@@ -157,8 +157,6 @@ for i=1 to NIS:
                         {D[k], AJ[k], GNO[k], GG[k], GF[k], GX[k]}{k=1 to NJS}]LIST
                 (/l_group[q])
             endfor
-            # TODO: (NPAR*(NPAR+1)) in manual not possible to use at the moment;
-            #       therefore NPAR2=(NPAR*(NPAR+1))
             [MAT,32,151/ 0.0, 0.0, MPAR, 0, (NPAR*(NPAR+1))/2, NPAR/
                 {{RV[p,q]}{q=p to NPAR}}{p=1 to NPAR} ]LIST
         endif

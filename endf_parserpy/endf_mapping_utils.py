@@ -135,10 +135,13 @@ def get_varname(expr):
             varname = get_varname(ch)
             if varname is not None:
                 return varname
-    if is_token(expr) and get_name(expr) == 'VARNAME':
-        return get_value(expr)
-    else:
-        return None
+    elif is_token(expr):
+        if get_name(expr) == 'VARNAME':
+            return get_value(expr)
+    elif isinstance(expr, str):
+        return expr
+
+    return None
 
 def get_indexquants(expr):
     idxquants = []

@@ -234,10 +234,6 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
             vx = math_div(v1[0], v2[0], cast_int=True)
             vy = math_div(v1[1], v2[0], cast_int=True)
             return (vx, vy, v1[2])
-        # TODO: addition and subtraction would not fail
-        #       for something like VAR1 + VAR2 with both
-        #       variables unassigned; this would lead to
-        #       wrong assignments upstream
         elif name == 'addition':
             if v1[1] != 0 and v2[1] != 0:
                 raise SeveralUnboundVariablesError(

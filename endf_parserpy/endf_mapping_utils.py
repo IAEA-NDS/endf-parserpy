@@ -157,6 +157,10 @@ def get_indexquants(expr):
     return idxquants if len(idxquants) > 0 else None
 
 def varvalue_expr_conversion(vv, val, inverse):
+    if vv[0] == 0 and vv[1] == 1:
+        # vv[0] + vv[1]*varval = fieldvalue
+        # so varval == fieldval
+        return val
     # vv as returned by eval_expr
     if not inverse:
         # cast_int true means that we convert the result of a

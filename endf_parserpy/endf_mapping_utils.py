@@ -173,7 +173,9 @@ def eval_expr_without_unknown_var(expr, datadic=None,
                                   loop_vars=None, look_up=True):
     ret = eval_expr(expr, datadic, loop_vars, look_up)
     if ret[1] != 0:
-        raise VariableNotFoundError('Unknown variable in expression')
+        unknown_varname = get_varname(ret[2])
+        raise VariableNotFoundError(
+                f'Unknown variable in expression ({unknown_varname})')
     return ret[0]
 
 def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):

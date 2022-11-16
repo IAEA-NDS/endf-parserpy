@@ -49,9 +49,7 @@ for i=1 to NIS:
             [MAT,32,151/ AWRI, 0.0, 0, 0, NSRS, NLRS]CONT
             for p=1 to NSRS:
                 (nsrs_subsec[p])
-                    # TODO: In the manual N1=NVS+6*NRB; due to limitations
-                    #       in the parser, we replaced by NX for the time being
-                    [MAT,32,151/ 0.0, 0.0, MPAR, 0, NX, NRB/
+                    [MAT,32,151/ 0.0, 0.0, MPAR, 0, 6*NRB+(MPAR*NRB)*(MPAR*NRB+1)/2, NRB/
                         {ER[k], AJ[k], GT[k], GN[k], GG[k], GF[k]}{k=1 to NRB},
                         {{V[m,n]}{n=m to MPAR*NRB}}{m=1 to MPAR*NRB} ] LIST
                 (/nsrs_subsec[p])
@@ -66,9 +64,7 @@ for i=1 to NIS:
             [MAT,32,151/ AWRI, 0.0, 0, 0, NSRS, NLRS]CONT
             for p=1 to NSRS:
                 (nsrs_subsec[p])
-                    # TODO: In the manual N1=NVS+6*NRB; due to limitations
-                    #       in the parser, we replaced by NX for the time being
-                    [MAT,32,151/ 0.0, 0.0, MPAR, 0, NX, NRB/
+                    [MAT,32,151/ 0.0, 0.0, MPAR, 0, 6*NRB+(MPAR*NRB)*(MPAR*NRB+1)/2, NRB/
                         {ER[k], AJ[k], GN[k], GG[k], GFA[k], GFB[k]}{k=1 to NRB},
                         {{V[m,n]}{n=m to MPAR*NRB}}{m=1 to MPAR*NRB} ] LIST
                 (/nsrs_subsec[p])

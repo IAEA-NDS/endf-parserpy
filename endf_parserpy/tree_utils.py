@@ -60,7 +60,7 @@ def get_child_value_by_pos(tree, pos):
     return None
 
 def search_name(tree, name):
-    if get_name(tree) == name:
+    if get_name(tree, nofail=True) == name:
         return True
     elif is_tree(tree):
         for curchild in tree.children:

@@ -132,6 +132,10 @@ def read_cont(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
     return dic, ofs+1
 
 def write_cont(dic, with_ctrl=True):
+    for varname in ('L1', 'L2', 'N1', 'N2'):
+        if not isinstance(dic[varname], int):
+            raise InvalidIntegerError(
+                    f'variable `{varname}` is not of type integer')
     C1 = float2fortstr(dic['C1'])
     C2 = float2fortstr(dic['C2'])
     L1 = str(dic['L1']).rjust(11)

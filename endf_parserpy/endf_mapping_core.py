@@ -72,7 +72,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
             if targetkey is None:
                 assert expr_vv[1] == 0
 
-                if not ignore_zero_mismatch:
+                if not ignore_zero_mismatch or expr_vv[0] != 0:
                     # if we have a DESIRED_NUMBER in the expression,
                     # we expect a certain number but we do not require it.
                     # with only NUMBER in the expression, any mismatch between

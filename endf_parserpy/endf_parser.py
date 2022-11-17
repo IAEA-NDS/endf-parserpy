@@ -249,7 +249,12 @@ class BasicEndfParser():
         else:
             for child in tree.children:
                 if is_tree(child):
-                    self.run_instruction(child)
+                    if should_proceed(tree, self.datadic,
+                                      self.loop_vars,
+                                      action_type='unspecified'):
+                        self.run_instruction(child)
+                    else:
+                        break
 
     def reset_parser_state(self, rwmode='read', lines=None, datadic=None):
         self.loop_vars = {}

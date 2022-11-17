@@ -228,11 +228,9 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
 
 
 def should_proceed(tree, datadic, loop_vars, action_type):
-    if action_type == 'endf_action':
-        if '__lookahead' in loop_vars:
-            if loop_vars['__lookahead'] == 0:
-                return False
-            else:
-                loop_vars['__lookahead'] -= 1
+    if '__lookahead' in loop_vars:
+        if loop_vars['__lookahead'] == 0:
+            return False
+        elif action_type == 'endf_action':
+            loop_vars['__lookahead'] -= 1
     return True
-

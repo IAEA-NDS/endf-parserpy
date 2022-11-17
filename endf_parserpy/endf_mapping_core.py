@@ -79,12 +79,12 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                     # our expectation and the number in the ENDF file will yield
                     # an error.
                     contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
+                    contains_inconsistent_varspec = search_name(curexpr, 'inconsistent_varspec')
                     value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
-                    #msg = f'Expected {expr_vv[0]} in the ENDF file but got {record_dic[sourcekey]}'
                     msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
                                                                 expr_vv[0], sourcekey)
                     if value_mismatch_occurred:
-                        if contains_desired_number:
+                        if contains_desired_number or contains_inconsistent_varspec:
                             logging.warning(msg)
                         else:
                             raise NumberMismatchError(msg)

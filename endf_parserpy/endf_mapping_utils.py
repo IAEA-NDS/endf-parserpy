@@ -206,13 +206,13 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
             v = float(vstr)
         return (v, 0, None)
     elif name == 'minusexpr':
-        v = eval_expr(expr.children[0], datadic, loop_vars)
+        v = eval_expr(expr.children[0], datadic, loop_vars, look_up)
         return (math_neg(v[0]), -v[1], v[2])
     elif name in ('addition', 'subtraction',
                 'multiplication', 'division'):
-        v1 = eval_expr(expr.children[0], datadic, loop_vars)
+        v1 = eval_expr(expr.children[0], datadic, loop_vars, look_up)
         # children[1] contains the operator symbol *,/,+,-
-        v2 = eval_expr(expr.children[2], datadic, loop_vars)
+        v2 = eval_expr(expr.children[2], datadic, loop_vars, look_up)
         if name == 'multiplication':
             if v1[1] != 0 and v2[1] != 0:
                 raise SeveralUnboundVariablesError(
@@ -254,7 +254,7 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
                     vexpr)
     elif name == 'inconsistent_varspec':
         ch = get_child(expr, 'extvarname')
-        return eval_expr(ch, datadic, loop_vars)
+        return eval_expr(ch, datadic, loop_vars, look_up)
     else:
         # we remove enclosing brackets if present
         ch_first = expr.children[0]
@@ -265,4 +265,4 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
         else:
             trimmed_children = expr.children
         assert len(trimmed_children) == 1
-        return eval_expr(trimmed_children[0], datadic, loop_vars)
+        return eval_expr(trimmed_children[0], datadic, loop_vars, look_up)

@@ -14,7 +14,7 @@ ENDF_RECIPE_MF6 = """
 [MAT, 6, MT/ ZA, AWR, JP, LCT, NK, 0]HEAD
 for i=1 to NK:
     (subsection[i])
-        [MAT, 6, MT/ ZAP, AWP, LIP, LAW, NR, NP/ Eint / yi]TAB1 (tmp)
+        [MAT, 6, MT/ ZAP, AWP, LIP, LAW, NR, NP/ Eint / yi]TAB1 (yields)
         if LAW == 1:
             [MAT, 6, MT/ 0.0, 0.0, LANG, LEP, NR, NE/ Eint ]TAB2
             for j=1 to NE:
@@ -37,9 +37,9 @@ for i=1 to NK:
         elif LAW == 7:
             [MAT, 6, MT/ 0.0, 0.0, 0, 0, NR, NE / E]TAB2 (E_interpol)
             for j=1 to NE:
-                [MAT, 6, MT/ 0.0, E[j], 0, 0, NRM, NMU[j] / mu ]TAB2 (mu_interpol)
+                [MAT, 6, MT/ 0.0, E[j], 0, 0, NRM, NMU[j] / mu ]TAB2 (mu_interpol[j])
                 for k=1 to NMU[j]:
-                    [MAT, 6, MT/ 0.0, mu[k] , 0, 0, NRP[k], NEP[k]/ Ep / f ]TAB1 (table[j,k])
+                    [MAT, 6, MT/ 0.0, mu[j,k] , 0, 0, NRP, NEP / Ep / f ]TAB1 (table[j,k])
                 endfor
             endfor
         endif

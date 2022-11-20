@@ -2,6 +2,14 @@ from lark import Lark
 from .endf_lark import endf_recipe_grammar
 from .endf_recipes import endf_recipe_dictionary as recipe_dic
 from .tree_utils import is_tree
+from hashlib import md5
+from appdirs import user_cache_dir
+import os
+import pickle
+
+
+def get_string_hash(inpstr):
+    return md5(inpstr.encode()).hexdigest()
 
 
 def get_recipe_parser(recipe_grammar):
@@ -9,21 +17,38 @@ def get_recipe_parser(recipe_grammar):
                 keep_all_tokens=True)
 
 
-def get_recipe_parsetree(recipe, recipe_parser):
-    return recipe_parser.parse(recipe)
+def get_recipe_parsetree(recipe, recipe_parser, grammar_hash):
+    recipe_hash = get_string_hash(recipe)
+    filename = get_string_hash(grammar_hash + recipe_hash) + '.pkl'
+    cache_dir = user_cache_dir('endf_parserpy', 'gschnabel')
+    os.makedirs(cache_dir, exist_ok=True)
+    filepath = os.path.join(cache_dir, filename)
+    if not os.path.exists(filepath):
+        recipe_parsetree = recipe_parser.parse(recipe)
+        with open(filepath, 'wb') as fw:
+            pickle.dump(recipe_parsetree, fw)
+    else:
+        with open(filepath, 'rb') as fr:
+            recipe_parsetree = pickle.load(fr)
+    return recipe_parsetree
 
 
 def get_recipe_parsetree_dic():
     recipe_parser = get_recipe_parser(endf_recipe_grammar)
+    grammar_hash = get_string_hash(endf_recipe_grammar)
     tree_dic = {}
     for mf in recipe_dic:
         tree_dic.setdefault(mf, {})
         if isinstance(recipe_dic[mf], str):
-            tree_dic[mf] = get_recipe_parsetree(recipe_dic[mf], recipe_parser)
+            tree_dic[mf] = get_recipe_parsetree(recipe_dic[mf],
+                                                recipe_parser,
+                                                grammar_hash)
         else:
             for mt in recipe_dic[mf]:
                 tree_dic[mf][mt] = \
-                        get_recipe_parsetree(recipe_dic[mf][mt], recipe_parser)
+                        get_recipe_parsetree(recipe_dic[mf][mt],
+                                             recipe_parser,
+                                             grammar_hash)
     return tree_dic
 
 

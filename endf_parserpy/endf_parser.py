@@ -12,7 +12,6 @@
 from .logging_utils import logging, write_info, RingBuffer
 from os.path import exists as file_exists
 from copy import deepcopy
-from lark import Lark
 from .tree_utils import is_tree, get_name, get_child, get_child_value
 from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_intg_dic, map_tab1_dic, map_tab2_dic, map_list_dic)
@@ -30,6 +29,8 @@ from .custom_exceptions import (
         InvalidIntegerError,
         ParserException
     )
+from .endf_recipe_utils import get_recipe_parsetree_dic
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -40,19 +41,7 @@ class BasicEndfParser():
                        blank_as_zero=True, log_lookahead_traceback=False):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
-        from .endf_lark import endf_recipe_grammar
-        from .endf_recipes import endf_recipe_dictionary as recipe_dic
-        endf_recipe_grammar_parser= Lark(endf_recipe_grammar, start='code_token',
-                                         keep_all_tokens=True)
-        tree_dic = {}
-        for mf in recipe_dic:
-            tree_dic.setdefault(mf, {})
-            if isinstance(recipe_dic[mf], str):
-                tree_dic[mf] = endf_recipe_grammar_parser.parse(recipe_dic[mf])
-            else:
-                for mt in recipe_dic[mf]:
-                    tree_dic[mf][mt] = endf_recipe_grammar_parser.parse(recipe_dic[mf][mt])
-        self.tree_dic = tree_dic
+        self.tree_dic = get_recipe_parsetree_dic()
         # endf record treatment
         endf_actions = {}
         endf_actions['head_line'] = self.process_head_line

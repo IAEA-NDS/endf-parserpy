@@ -1,6 +1,7 @@
 from lark import Lark
 from .endf_lark import endf_recipe_grammar
 from .endf_recipes import endf_recipe_dictionary as recipe_dic
+from .tree_utils import is_tree
 
 
 def get_recipe_parsetree_dic():
@@ -15,4 +16,16 @@ def get_recipe_parsetree_dic():
             for mt in recipe_dic[mf]:
                 tree_dic[mf][mt] = \
                         endf_recipe_grammar_parser.parse(recipe_dic[mf][mt])
+
     return tree_dic
+
+
+def get_responsible_recipe_parsetree(tree_dic, mf, mt):
+    if mf in tree_dic:
+        if is_tree(tree_dic[mf]):
+            return tree_dic[mf]
+        elif mt in tree_dic[mf] and is_tree(tree_dic[mf][mt]):
+            return tree_dic[mf][mt]
+        elif (-1) in tree_dic[mf] and is_tree(tree_dic[mf][-1]):
+            return tree_dic[mf][-1]
+    return None

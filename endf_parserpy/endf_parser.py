@@ -29,7 +29,10 @@ from .custom_exceptions import (
         InvalidIntegerError,
         ParserException
     )
-from .endf_recipe_utils import get_recipe_parsetree_dic
+from .endf_recipe_utils import (
+        get_recipe_parsetree_dic,
+        get_responsible_recipe_parsetree,
+)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -282,17 +285,6 @@ class BasicEndfParser():
         self.ofs = parser_state['ofs']
         self.logbuffer.load_state(parser_state['logbuffer_state'])
 
-    def get_responsible_tree(self, dic, mf, mt):
-        tree_dic = self.tree_dic
-        if mf in tree_dic:
-            if is_tree(tree_dic[mf]):
-                return tree_dic[mf]
-            elif mt in tree_dic[mf] and is_tree(tree_dic[mf][mt]):
-                return tree_dic[mf][mt]
-            elif (-1) in tree_dic[mf] and is_tree(tree_dic[mf][-1]):
-                return tree_dic[mf][-1]
-        return None
-
     def should_skip_section(self, mf, mt, exclude=None, include=None):
         if exclude is None:
             if include is not None:
@@ -316,7 +308,7 @@ class BasicEndfParser():
                 curmat = read_ctrl(mfmt_dic[mf][mt][0])
                 write_info(f'Parsing subsection MF/MT {mf}/{mt}')
                 curlines = mfmt_dic[mf][mt]
-                cur_tree = self.get_responsible_tree(tree_dic, mf, mt)
+                cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
                 should_skip = self.should_skip_section(mf, mt, exclude, include)
                 if cur_tree is not None and not should_skip:
                     # we add the SEND line so that parsing fails
@@ -345,7 +337,7 @@ class BasicEndfParser():
                 should_skip = self.should_skip_section(mf, mt, exclude, include)
                 if should_skip:
                     continue
-                cur_tree = self.get_responsible_tree(tree_dic, mf, mt)
+                cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
                 is_parsed = isinstance(endf_dic[mf][mt], dict)
                 if cur_tree is not None and is_parsed:
                     datadic = endf_dic[mf][mt]

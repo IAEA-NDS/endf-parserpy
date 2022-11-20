@@ -4,19 +4,26 @@ from .endf_recipes import endf_recipe_dictionary as recipe_dic
 from .tree_utils import is_tree
 
 
+def get_recipe_parser(recipe_grammar):
+    return Lark(recipe_grammar, start='code_token',
+                keep_all_tokens=True)
+
+
+def get_recipe_parsetree(recipe, recipe_parser):
+    return recipe_parser.parse(recipe)
+
+
 def get_recipe_parsetree_dic():
-    endf_recipe_grammar_parser = Lark(endf_recipe_grammar, start='code_token',
-                                      keep_all_tokens=True)
+    recipe_parser = get_recipe_parser(endf_recipe_grammar)
     tree_dic = {}
     for mf in recipe_dic:
         tree_dic.setdefault(mf, {})
         if isinstance(recipe_dic[mf], str):
-            tree_dic[mf] = endf_recipe_grammar_parser.parse(recipe_dic[mf])
+            tree_dic[mf] = get_recipe_parsetree(recipe_dic[mf], recipe_parser)
         else:
             for mt in recipe_dic[mf]:
                 tree_dic[mf][mt] = \
-                        endf_recipe_grammar_parser.parse(recipe_dic[mf][mt])
-
+                        get_recipe_parsetree(recipe_dic[mf][mt], recipe_parser)
     return tree_dic
 
 

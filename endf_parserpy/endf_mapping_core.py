@@ -96,25 +96,6 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                         logging.warning(msg)
                     else:
                         raise NumberMismatchError(msg)
-            # all variables in the current slot of the record
-            # were already assigned so we just check for consistency
-            elif expr_vv[1] == 0:
-                inconsistency_allowed = is_tree(curexpr) and search_name(curexpr, 'inconsistent_varspec')
-                if expr_vv[1] == 0:
-                    if record_dic[sourcekey] != expr_vv[0]:
-                        if not inconsistency_allowed:
-                            if not fuzzy_matching:
-                                mismatch_occurred = True
-                            else:
-                                mismatch_occurred = \
-                                    not np.isclose(record_dic[sourcekey], expr_vv[0],
-                                                   atol=1e-7, rtol=1e-5)
-                            if mismatch_occurred:
-                                raise InconsistentVariableAssignmentError(
-                                         'The term with the values of the existing variables ' +
-                                         f'evaluates to a value {expr_vv[0]} that is inconsistent ' +
-                                         f'with the value {record_dic[sourcekey]} in the file ' +
-                                         f'for slot {sourcekey}')
             # there is still a dangling variable but we can
             # solve the linear equation given in the slot to obtain its value
             else:

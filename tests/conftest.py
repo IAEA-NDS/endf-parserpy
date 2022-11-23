@@ -6,6 +6,7 @@ def pytest_addoption(parser):
     parser.addoption("--endffile", action="store", default=None)
     parser.addoption("--ignore_zero_mismatch", action="store", default='true')
     parser.addoption("--ignore_number_mismatch", action="store", default='false')
+    parser.addoption("--ignore_varspec_mismatch", action="store", default='false')
     parser.addoption("--fuzzy_matching", action="store", default='true')
     parser.addoption("--blank_as_zero", action="store", default='true')
     parser.addoption("--mf", action="store", default=None)
@@ -28,6 +29,10 @@ def pytest_generate_tests(metafunc):
     argval = metafunc.config.option.ignore_number_mismatch.lower().strip()
     argval = argval == 'true'
     metafunc.parametrize("ignore_number_mismatch", [argval], scope="module")
+
+    argval = metafunc.config.option.ignore_varspec_mismatch.lower().strip()
+    argval = argval == 'true'
+    metafunc.parametrize("ignore_varspec_mismatch", [argval], scope="module")
 
     argval = metafunc.config.option.fuzzy_matching.lower().strip()
     argval = argval == 'true'

@@ -49,6 +49,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
     fuzzy_matching = parse_opts.get('fuzzy_matching', False)
     ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
     ignore_number_mismatch = parse_opts.get('ignore_number_mismatch', True)
+    ignore_varspec_mismatch = parse_opts.get('ignore_varspec_mismatch', True)
     zipit = zip(basekeys, expr_list)
     found_unbound = False
     if not inverse:
@@ -81,7 +82,6 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                 # with only NUMBER in the expression, any mismatch between
                 # our expectation and the number in the ENDF file will yield
                 # an error.
-                contains_variables = search_name(curexpr, 'extvarname')
                 contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
                 contains_inconsistent_varspec = search_name(curexpr, 'inconsistent_varspec')
                 value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
@@ -91,6 +91,8 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                     if ignore_zero_mismatch and expr_vv[0] == 0:
                         logging.warning(msg)
                     elif ignore_number_mismatch and contains_desired_number:
+                        logging.warning(msg)
+                    elif ignore_varspec_mismatch and contains_inconsistent_varspec:
                         logging.warning(msg)
                     else:
                         raise NumberMismatchError(msg)

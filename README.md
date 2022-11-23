@@ -1,11 +1,3 @@
-**Important disclaimer**:
-The development of this package is at an early stage
-and lacks documentation. It has been successfully tested
-on neutron-induced reaction data and thermal scattering data
-of several world libraries. If this package fails
-on one of your files, open an issue here or send an email
-to [g.schnabel@iaea.org](mailto:g.schnabel@iaea.org).
-
 # endf-parserpy
 
 This package can read the content of an
@@ -84,6 +76,38 @@ There are a few user convenience functions available, e.g.,
 locations = locate(endf_dic, 'AWR')
 values = get_endf_values(endf_dic, locations)
 ```
+
+## Testing
+
+The development of this package relies on `pytest` to ensure
+the proper implementation of the ENDF-6 recipes. As most of
+the recipes have already been implemented, the testing
+functionality can be also used to validate ENDF-6 formatted
+files. For a convienient workflow, install the Python package
+`poetry`, clone this repository, and create a virtual environment
+with all dependencies:
+```
+pip install poetry
+git clone https://github.com/iaea-nds/endf-parserpy
+cd endf-parserpy
+poetry install
+```
+To start a testing session, change into the directory
+`tests` within the repository directory and run
+```
+poetry shell
+```
+Now you can check if endf-parserpy is able to parse
+ENDF files in a directory `<endfdir>` by executing
+```
+pytest --endfdir=<endfdir> -k test_endf_parserpy_never_fails
+```
+This command will also attempt to read all ENDF files
+with the file ending `.endf` in the specified directory.
+Additional arguments that are available are:
+
+- `--endffile=<endffile>` to only test a single ENDF file within `<endfdir>`.
+- `--ignore_zero_mismatch=false` to ignore non-zero values in the file for fields that should be zero according to the ENDF-6 format.
 
 ## Legal note
 

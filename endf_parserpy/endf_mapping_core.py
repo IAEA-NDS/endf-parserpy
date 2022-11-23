@@ -47,7 +47,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
 
     parse_opts = parse_opts if parse_opts is not None else {}
     fuzzy_matching = parse_opts.get('fuzzy_matching', False)
-    ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
+    ignore_number_mismatch = parse_opts.get('ignore_number_mismatch', True)
     zipit = zip(basekeys, expr_list)
     found_unbound = False
     if not inverse:
@@ -69,25 +69,28 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
             # as the fixed value can be written back during
             # the inverse transform from the record specification
             # in the ENDF recipe.
+            # NOTE: This branch is also entered, if all variables
+            # appearing in an expression have already been read in
+            # before.
             if targetkey is None:
                 assert expr_vv[1] == 0
 
-                if not ignore_zero_mismatch or expr_vv[0] != 0:
-                    # if we have a DESIRED_NUMBER in the expression,
-                    # we expect a certain number but we do not require it.
-                    # with only NUMBER in the expression, any mismatch between
-                    # our expectation and the number in the ENDF file will yield
-                    # an error.
-                    contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
-                    contains_inconsistent_varspec = search_name(curexpr, 'inconsistent_varspec')
-                    value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
-                    msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
-                                                                expr_vv[0], sourcekey)
-                    if value_mismatch_occurred:
-                        if contains_desired_number or contains_inconsistent_varspec:
-                            logging.warning(msg)
-                        else:
-                            raise NumberMismatchError(msg)
+                # if we have a DESIRED_NUMBER in the expression,
+                # we expect a certain number but we do not require it.
+                # with only NUMBER in the expression, any mismatch between
+                # our expectation and the number in the ENDF file will yield
+                # an error.
+                contains_variables = search_name(curexpr, 'extvarname')
+                contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
+                contains_inconsistent_varspec = search_name(curexpr, 'inconsistent_varspec')
+                value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
+                msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
+                                                            expr_vv[0], sourcekey)
+                if value_mismatch_occurred:
+                    if ignore_number_mismatch and contains_desired_number:
+                        logging.warning(msg)
+                    else:
+                        raise NumberMismatchError(msg)
             # all variables in the current slot of the record
             # were already assigned so we just check for consistency
             elif expr_vv[1] == 0:

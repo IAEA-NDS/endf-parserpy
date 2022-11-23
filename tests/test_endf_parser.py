@@ -8,8 +8,8 @@ from endf_parserpy.user_tools import sanitize_fieldname_types
 
 
 @pytest.fixture(scope="module")
-def myBasicEndfParser(ignore_zero_mismatch, fuzzy_matching, blank_as_zero):
-    return BasicEndfParser(ignore_zero_mismatch=ignore_zero_mismatch,
+def myBasicEndfParser(ignore_number_mismatch, fuzzy_matching, blank_as_zero):
+    return BasicEndfParser(ignore_number_mismatch=ignore_number_mismatch,
                            fuzzy_matching=fuzzy_matching,
                            blank_as_zero=blank_as_zero)
 

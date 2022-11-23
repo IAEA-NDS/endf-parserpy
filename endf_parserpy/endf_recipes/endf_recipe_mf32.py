@@ -133,7 +133,7 @@ for i=1 to NIS:
                 (somesec[q])
                     [MAT,32,151/ AJ, PJ, 0, 0, 6*NCH, NCH/
                         {PPI[k], L[k], SCH[k], BND[k], APE[k], APT[k]}{k=1 to NCH} ]LIST
-                    [MAT,32,151/0.0, 0.0, 0, NRSA, 12*NX, NX/
+                    [MAT,32,151/0.0, 0.0, 0, NRSA, 12*NX, NX?/
                         {ER[k], {GAM[p,k]}{p=1 to NCH} PADLINE,
                          DER[k], {DGAM[p,k]}{p=1 to NCH} PADLINE}{k=1 to NRSA} ]LIST
                 (/somesec[q])

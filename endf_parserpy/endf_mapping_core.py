@@ -84,7 +84,12 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                 # an error.
                 contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
                 contains_inconsistent_varspec = search_name(curexpr, 'inconsistent_varspec')
-                value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
+                if not fuzzy_matching:
+                    value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
+                else:
+                    value_mismatch_occurred = \
+                            not np.allclose(record_dic[sourcekey], expr_vv[0],
+                                            atol=1e-7, rtol=1e-5)
                 msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
                                                             expr_vv[0], sourcekey)
                 if value_mismatch_occurred:
@@ -99,7 +104,6 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
             # there is still a dangling variable but we can
             # solve the linear equation given in the slot to obtain its value
             else:
-                inconsistency_allowed = is_tree(curexpr) and search_name(curexpr, 'inconsistent_varspec')
                 try:
                     val = varvalue_expr_conversion(expr_vv, record_dic[sourcekey], inverse)
                 except InvalidIntegerError as pexc:
@@ -107,21 +111,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
 
                 idxquants = get_indexquants(expr_vv[2])
                 if idxquants is None:
-                    if targetkey in datadic:
-                        prev_val = datadic[targetkey]
-                        if not inconsistency_allowed:
-                            if not fuzzy_matching:
-                                mismatch_occurred = prev_val != val
-                            else:
-                                # NOTE: some files may contain small inconsistencies
-                                # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
-                                # we tolerate such small inconsistencies.
-                                mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)
-                            if mismatch_occurred:
-                                raise InconsistentVariableAssignmentError(
-                                        create_variable_exists_error_msg(targetkey, prev_val, val))
-                    else:
-                        datadic[targetkey] = val
+                    datadic[targetkey] = val
                 else:
                     # loop through indexvars, and initialize
                     # nested dictionaries with the indicies as keys
@@ -133,21 +123,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                             curdic.setdefault(idx, {})
                             curdic = curdic[idx]
                     idx = get_indexvalue(idxquants[-1], loop_vars)
-                    if idx in curdic:
-                        prev_val = curdic[idx]
-                        # NOTE: some files may contain small inconsistencies
-                        # which do not matter for all practical purposes, e.g., O-18 in FENDL 3.2.
-                        # we tolerate such small inconsistencies.
-                        if not inconsistency_allowed:
-                            if not fuzzy_matching:
-                                mismatch_occurred = prev_val != val
-                            else:
-                                mismatch_occurred = not np.isclose(prev_val, val, atol=1e-7, rtol=1e-5)
-                            if mismatch_occurred:
-                                raise InconsistentVariableAssignmentError(
-                                        create_variable_exists_error_msg(targetkey, prev_val, val))
-                    else:
-                        curdic[idx] = val
+                    curdic[idx] = val
 
         # we write out logging info the first time we encounter a variable
         tmp = tuple(v for v in varnames if v is not None)

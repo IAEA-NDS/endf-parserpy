@@ -107,7 +107,7 @@ with the file ending `.endf` in the specified directory.
 Additional arguments that are available are:
 
 - `--endffile=<endffile>` to only test a single ENDF file within `<endfdir>`.
-- `--ignore_zero_mismatch=false` to ignore non-zero values in the file for fields that should be zero according to the ENDF-6 format.
+- `--ignore_zero_mismatch=false` to let the conversion fail for non-zero fields in the ENDF file if the ENDF-6 format specifies them to be zero.
 
 ## Legal note
 

@@ -47,6 +47,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
 
     parse_opts = parse_opts if parse_opts is not None else {}
     fuzzy_matching = parse_opts.get('fuzzy_matching', False)
+    ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
     ignore_number_mismatch = parse_opts.get('ignore_number_mismatch', True)
     zipit = zip(basekeys, expr_list)
     found_unbound = False
@@ -87,7 +88,9 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                 msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
                                                             expr_vv[0], sourcekey)
                 if value_mismatch_occurred:
-                    if ignore_number_mismatch and contains_desired_number:
+                    if ignore_zero_mismatch and expr_vv[0] == 0:
+                        logging.warning(msg)
+                    elif ignore_number_mismatch and contains_desired_number:
                         logging.warning(msg)
                     else:
                         raise NumberMismatchError(msg)

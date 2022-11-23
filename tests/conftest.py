@@ -4,7 +4,8 @@ from pathlib import Path
 def pytest_addoption(parser):
     parser.addoption("--endfdir", action="store", default="testdata")
     parser.addoption("--endffile", action="store", default=None)
-    parser.addoption("--ignore_number_mismatch", action="store", default='true')
+    parser.addoption("--ignore_zero_mismatch", action="store", default='true')
+    parser.addoption("--ignore_number_mismatch", action="store", default='false')
     parser.addoption("--fuzzy_matching", action="store", default='true')
     parser.addoption("--blank_as_zero", action="store", default='true')
     parser.addoption("--mf", action="store", default=None)
@@ -19,10 +20,11 @@ def pytest_generate_tests(metafunc):
         else:
             endf_files = endf_dir.glob("*.endf")
         metafunc.parametrize("endf_file", endf_files)
-    # because of default=True for --ignore_number_mismatch above
-    # we know that the option is available and don't need
-    # to check for the existence of ignore_zero_match in
-    # metafunc.config.option
+
+    argval = metafunc.config.option.ignore_zero_mismatch.lower().strip()
+    argval = argval == 'true'
+    metafunc.parametrize("ignore_zero_mismatch", [argval], scope="module")
+
     argval = metafunc.config.option.ignore_number_mismatch.lower().strip()
     argval = argval == 'true'
     metafunc.parametrize("ignore_number_mismatch", [argval], scope="module")

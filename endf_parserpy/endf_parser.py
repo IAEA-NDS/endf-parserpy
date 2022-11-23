@@ -40,8 +40,8 @@ logging.basicConfig(level=logging.INFO)
 
 class BasicEndfParser():
 
-    def __init__(self, ignore_number_mismatch=True, fuzzy_matching=True,
-                       blank_as_zero=True, log_lookahead_traceback=False):
+    def __init__(self, ignore_number_mismatch=False, ignore_zero_mismatch=True,
+                       fuzzy_matching=True, blank_as_zero=True, log_lookahead_traceback=False):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         self.tree_dic = get_recipe_parsetree_dic()
@@ -64,6 +64,7 @@ class BasicEndfParser():
         flow_actions['section'] = self.process_section
         self.flow_actions = flow_actions
         self.parse_opts = {
+                'ignore_zero_mismatch': ignore_zero_mismatch,
                 'ignore_number_mismatch': ignore_number_mismatch,
                 'fuzzy_matching': fuzzy_matching,
                 'blank_as_zero': blank_as_zero,

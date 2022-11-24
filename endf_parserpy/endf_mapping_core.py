@@ -21,7 +21,7 @@ from .endf_mapping_utils import (
         varvalue_expr_conversion, get_indexvalue
     )
 from .tree_utils import (is_token, is_tree, get_name, search_name)
-import numpy as np
+from .math_utils import math_allclose
 
 
 # TODO: Need to refactor the error message stuff
@@ -88,7 +88,7 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                     value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
                 else:
                     value_mismatch_occurred = \
-                            not np.allclose(record_dic[sourcekey], expr_vv[0],
+                            not math_allclose(record_dic[sourcekey], expr_vv[0],
                                             atol=1e-7, rtol=1e-5)
                 msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
                                                             expr_vv[0], sourcekey)

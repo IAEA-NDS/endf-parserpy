@@ -9,14 +9,14 @@
 #
 ############################################################
 
-import numpy as np
+from .math_utils import math_allclose
 
 
 def smart_is_equal(x, y, atol=1e-8, rtol=1e-6):
     if type(x) != type(y):
         return False
     elif isinstance(x, float):
-        return np.isclose(x, y, atol=atol, rtol=rtol)
+        return math_allclose(x, y, atol=atol, rtol=rtol)
     elif isinstance(x, int):
         return x == y
     else:

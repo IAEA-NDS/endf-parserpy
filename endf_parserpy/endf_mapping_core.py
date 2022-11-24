@@ -136,15 +136,18 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
                     'Found several unbound variables in this line')
         else:
             return datadic
-    # inverse transform
-    else:
-        for sourcekey, curexpr in zipit:
-            expr_vv = eval_expr(curexpr, datadic, loop_vars, look_up=False)
-            if expr_vv[1] != 0:
-                # TODO: More informative error what variable is missing
-                IndexError('some variable missing in dictionary')
-            record_dic[sourcekey] = expr_vv[0]
-        return record_dic
+
+
+def map_datadic_to_recorddic(basekeys, record_dic, expr_list,
+                             datadic, loop_vars, parse_opts):
+    zipit = zip(basekeys, expr_list)
+    for sourcekey, curexpr in zipit:
+        expr_vv = eval_expr(curexpr, datadic, loop_vars, look_up=False)
+        if expr_vv[1] != 0:
+            # TODO: More informative error what variable is missing
+            IndexError('some variable missing in dictionary')
+        record_dic[sourcekey] = expr_vv[0]
+    return record_dic
 
 
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars,
@@ -153,14 +156,18 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars,
     expr_list = [expr for expr in expr_list
                  if not is_token(expr) or get_name(expr) != 'COMMA']
 
-    parse_tries = 3
-    while parse_tries > 0:
-        try:
-            return map_recorddic_datadic(
-                    basekeys, record_dic, expr_list,
-                    inverse, datadic, loop_vars, parse_opts)
-        except SeveralUnboundVariablesError:
-            parse_tries -= 1
+    if not inverse:
+        parse_tries = 3
+        while parse_tries > 0:
+            try:
+                return map_recorddic_datadic(
+                        basekeys, record_dic, expr_list,
+                        inverse, datadic, loop_vars, parse_opts)
+            except SeveralUnboundVariablesError:
+                parse_tries -= 1
 
-    raise SeveralUnboundVariablesError(
-            'Found several unbound variables')
+        raise SeveralUnboundVariablesError(
+                'Found several unbound variables')
+    else:
+        return map_datadic_to_recorddic(basekeys, record_dic, expr_list,
+                                        datadic, loop_vars, parse_opts)

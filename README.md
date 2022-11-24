@@ -83,7 +83,7 @@ The development of this package relies on `pytest` to ensure
 the proper implementation of the ENDF-6 recipes. As most of
 the recipes have already been implemented, the testing
 functionality can be also used to validate ENDF-6 formatted
-files. For a convienient workflow, install the Python package
+files. For a convenient workflow, install the Python package
 `poetry`, clone this repository, and create a virtual environment
 with all dependencies:
 ```
@@ -102,12 +102,17 @@ ENDF files in a directory `<endfdir>` by executing
 ```
 pytest --endfdir=<endfdir> -k test_endf_parserpy_never_fails
 ```
-This command will also attempt to read all ENDF files
+This command will read and check all ENDF files
 with the file ending `.endf` in the specified directory.
-Additional arguments that are available are:
+Additional available arguments are:
 
 - `--endffile=<endffile>` to only test a single ENDF file within `<endfdir>`.
+- `--mf=<mfnum>` will restrict parsing to the MF section `<mfnum>`
 - `--ignore_zero_mismatch=false` to let the conversion fail for non-zero fields in the ENDF file if the ENDF-6 format specifies them to be zero.
+- `--ignore_number_mismatch=true` will lead to less strict checking that tolerates any non-zero number in the ENDF file contradicting the expected number
+                                  in the ENDF recipe if the latter number is suffixed by a question mark.
+- `--ignore_varspec_mismatch=true` will lead to less strict checking that tolerates any inconsistent variable specification if the variable name in the
+                              ENDF recipe is suffixed by a question mark.
 
 ## Legal note
 

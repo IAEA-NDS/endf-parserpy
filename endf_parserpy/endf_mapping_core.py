@@ -42,8 +42,8 @@ def create_variable_wrong_value_error_msg(realval, expval, sourcekey):
             f'The value was encountered in a source field named {sourcekey}')
 
 
-def map_recorddic_datadic(basekeys, record_dic, expr_list,
-                          inverse, datadic, loop_vars, parse_opts):
+def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
+                             datadic, loop_vars, parse_opts):
 
     parse_opts = parse_opts if parse_opts is not None else {}
     fuzzy_matching = parse_opts.get('fuzzy_matching', False)
@@ -52,90 +52,90 @@ def map_recorddic_datadic(basekeys, record_dic, expr_list,
     ignore_varspec_mismatch = parse_opts.get('ignore_varspec_mismatch', True)
     zipit = zip(basekeys, expr_list)
     found_unbound = False
-    if not inverse:
-        varnames = []
-        for sourcekey, curexpr in zipit:
-            try:
-                expr_vv = eval_expr(curexpr, datadic,
-                                    loop_vars, look_up=False)
-            except SeveralUnboundVariablesError:
-                found_unbound = True
-                continue
+    varnames = []
+    for sourcekey, curexpr in zipit:
+        try:
+            expr_vv = eval_expr(curexpr, datadic,
+                                loop_vars, look_up=False)
+        except SeveralUnboundVariablesError:
+            found_unbound = True
+            continue
 
-            targetkey = get_varname(expr_vv[2])
-            varnames.append(targetkey)
-            # if the record specification contains a value,
-            # hence targetkey is None, we check if the value
-            # in the ENDF file is equal to that value and
-            # bomb out if not. Except that, we don't do anything else,
-            # as the fixed value can be written back during
-            # the inverse transform from the record specification
-            # in the ENDF recipe.
-            # NOTE: This branch is also entered, if all variables
-            # appearing in an expression have already been read in
-            # before.
-            if targetkey is None:
-                assert expr_vv[1] == 0
+        targetkey = get_varname(expr_vv[2])
+        varnames.append(targetkey)
+        # if the record specification contains a value,
+        # hence targetkey is None, we check if the value
+        # in the ENDF file is equal to that value and
+        # bomb out if not. Except that, we don't do anything else,
+        # as the fixed value can be written back during
+        # the inverse transform from the record specification
+        # in the ENDF recipe.
+        # NOTE: This branch is also entered, if all variables
+        # appearing in an expression have already been read in
+        # before.
+        if targetkey is None:
+            assert expr_vv[1] == 0
 
-                # if we have a DESIRED_NUMBER in the expression,
-                # we expect a certain number but we do not require it.
-                # with only NUMBER in the expression, any mismatch between
-                # our expectation and the number in the ENDF file will yield
-                # an error.
-                contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
-                contains_inconsistent_varspec = search_name(curexpr, 'inconsistent_varspec')
-                if not fuzzy_matching:
-                    value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
-                else:
-                    value_mismatch_occurred = \
-                            not math_allclose(record_dic[sourcekey], expr_vv[0],
-                                            atol=1e-7, rtol=1e-5)
-                msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
-                                                            expr_vv[0], sourcekey)
-                if value_mismatch_occurred:
-                    if ignore_zero_mismatch and expr_vv[0] == 0:
-                        logging.warning(msg)
-                    elif ignore_number_mismatch and contains_desired_number:
-                        logging.warning(msg)
-                    elif ignore_varspec_mismatch and contains_inconsistent_varspec:
-                        logging.warning(msg)
-                    else:
-                        raise NumberMismatchError(msg)
-            # there is still a dangling variable but we can
-            # solve the linear equation given in the slot to obtain its value
+            # if we have a DESIRED_NUMBER in the expression,
+            # we expect a certain number but we do not require it.
+            # with only NUMBER in the expression, any mismatch between
+            # our expectation and the number in the ENDF file will yield
+            # an error.
+            contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
+            contains_inconsistent_varspec = search_name(curexpr, 'inconsistent_varspec')
+            if not fuzzy_matching:
+                value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
             else:
-                try:
-                    val = varvalue_expr_conversion(expr_vv, record_dic[sourcekey], inverse)
-                except InvalidIntegerError as pexc:
-                    raise InvalidIntegerError(str(pexc) + f' (variable {targetkey})')
-
-                idxquants = get_indexquants(expr_vv[2])
-                if idxquants is None:
-                    datadic[targetkey] = val
+                value_mismatch_occurred = \
+                        not math_allclose(record_dic[sourcekey], expr_vv[0],
+                                        atol=1e-7, rtol=1e-5)
+            msg = create_variable_wrong_value_error_msg(record_dic[sourcekey],
+                                                        expr_vv[0], sourcekey)
+            if value_mismatch_occurred:
+                if ignore_zero_mismatch and expr_vv[0] == 0:
+                    logging.warning(msg)
+                elif ignore_number_mismatch and contains_desired_number:
+                    logging.warning(msg)
+                elif ignore_varspec_mismatch and contains_inconsistent_varspec:
+                    logging.warning(msg)
                 else:
-                    # loop through indexvars, and initialize
-                    # nested dictionaries with the indicies as keys
-                    datadic.setdefault(targetkey, {})
-                    curdic = datadic[targetkey]
-                    for i, idxquant in enumerate(idxquants):
-                        idx = get_indexvalue(idxquant, loop_vars)
-                        if i < len(idxquants)-1:
-                            curdic.setdefault(idx, {})
-                            curdic = curdic[idx]
-                    idx = get_indexvalue(idxquants[-1], loop_vars)
-                    curdic[idx] = val
-
-        # we write out logging info the first time we encounter a variable
-        tmp = tuple(v for v in varnames if v is not None)
-        if not should_skip_logging_info(tmp, datadic):
-            varvals = tuple(abbreviate_valstr(datadic[v]) for v in tmp)
-            logging.info('Variable names in this record: ' + ', '.join([f'{v}: {vv}' for v, vv in zip(tmp, varvals)]))
-
-        if found_unbound:
-            raise SeveralUnboundVariablesError(
-                    'Found several unbound variables in this line')
+                    raise NumberMismatchError(msg)
+        # there is still a dangling variable but we can
+        # solve the linear equation given in the slot to obtain its value
         else:
-            return datadic
+            try:
+                val = varvalue_expr_conversion(expr_vv, record_dic[sourcekey],
+                                               inverse=False)
+            except InvalidIntegerError as pexc:
+                raise InvalidIntegerError(str(pexc) + f' (variable {targetkey})')
+
+            idxquants = get_indexquants(expr_vv[2])
+            if idxquants is None:
+                datadic[targetkey] = val
+            else:
+                # loop through indexvars, and initialize
+                # nested dictionaries with the indicies as keys
+                datadic.setdefault(targetkey, {})
+                curdic = datadic[targetkey]
+                for i, idxquant in enumerate(idxquants):
+                    idx = get_indexvalue(idxquant, loop_vars)
+                    if i < len(idxquants)-1:
+                        curdic.setdefault(idx, {})
+                        curdic = curdic[idx]
+                idx = get_indexvalue(idxquants[-1], loop_vars)
+                curdic[idx] = val
+
+    # we write out logging info the first time we encounter a variable
+    tmp = tuple(v for v in varnames if v is not None)
+    if not should_skip_logging_info(tmp, datadic):
+        varvals = tuple(abbreviate_valstr(datadic[v]) for v in tmp)
+        logging.info('Variable names in this record: ' + ', '.join([f'{v}: {vv}' for v, vv in zip(tmp, varvals)]))
+
+    if found_unbound:
+        raise SeveralUnboundVariablesError(
+                'Found several unbound variables in this line')
+    else:
+        return datadic
 
 
 def map_datadic_to_recorddic(basekeys, record_dic, expr_list,
@@ -160,9 +160,9 @@ def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars,
         parse_tries = 3
         while parse_tries > 0:
             try:
-                return map_recorddic_datadic(
+                return map_recorddic_to_datadic(
                         basekeys, record_dic, expr_list,
-                        inverse, datadic, loop_vars, parse_opts)
+                        datadic, loop_vars, parse_opts)
             except SeveralUnboundVariablesError:
                 parse_tries -= 1
 

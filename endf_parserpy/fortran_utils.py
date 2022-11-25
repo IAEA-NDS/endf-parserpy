@@ -24,6 +24,7 @@ def read_fort_int(valstr, blank_as_zero=False):
         except ValueError as valerr:
             raise InvalidIntegerError(valerr)
 
+
 def fortstr2float(valstr, blank=None):
     if valstr.strip() == '' and blank is not None:
         return blank
@@ -59,7 +60,7 @@ def float2basicnumstr(val, width=11, abuse_signpos=False,
     return numstr
 
 
-def float2fortstr(val, width=11):
+def float2expformstr(val, width=11, abuse_signpos=False):
     av = abs(val)
     if av >= 1e-9 and av < 1e10:
         nexp = 1
@@ -69,12 +70,15 @@ def float2fortstr(val, width=11):
         nexp = 1
     else:
         nexp = 3
-    ndec = width - nexp - 4
+    waste_space = 4
+    if abuse_signpos and val > 0:
+        waste_space -= 1
+    ndec = width - nexp - waste_space
     fmtstr = ('{:.' + str(ndec) + 'E}')
     ss = fmtstr.format(val)
     mantissa, exp = ss.split('E')
     expsign = '+'
-    if exp[0] in ('-','+'):
+    if exp[0] in ('-', '+'):
         expsign = exp[0]
         exp = exp[1:]
     exp = exp[:-1].lstrip('0') + exp[-1]
@@ -82,6 +86,19 @@ def float2fortstr(val, width=11):
     numstr = numstr.rjust(width)
     assert len(numstr) == width
     return numstr
+
+
+def float2fortstr(val, width=11, prefer_noexp=False,
+                  skip_intzero=False, abuse_signpos=False):
+    av = abs(val)
+    if prefer_noexp and av >= 1e-2 and av < 1e2:
+        return float2basicnumstr(val, width,
+                                 abuse_signpos=abuse_signpos,
+                                 skip_intzero=skip_intzero)
+    else:
+        return float2expformstr(val, width=11,
+                                abuse_signpos=abuse_signpos)
+
 
 def read_fort_floats(line, n=6, w=11, blank=None):
     assert isinstance(line, str)
@@ -96,8 +113,13 @@ def read_fort_floats(line, n=6, w=11, blank=None):
             vals.append(fortstr2float(line[i:i+w]))
     return vals
 
-def write_fort_floats(vals, w=11):
+
+def write_fort_floats(vals, w=11, prefer_noexp=False,
+                      skip_intzero=False, abuse_signpos=False):
     line = ''
     for i, v in enumerate(vals):
-        line += float2fortstr(v, w)
+        line += float2fortstr(v, w,
+                              prefer_noexp=prefer_noexp,
+                              skip_intzero=skip_intzero,
+                              abuse_signpos=abuse_signpos)
     return line

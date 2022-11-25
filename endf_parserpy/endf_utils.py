@@ -40,7 +40,7 @@ def read_ctrl(line, nofail=False):
 
 def write_ctrl(dic, ns=None):
     nsstr = '' if not ns else str(ns).rjust(5)
-    return '{:>4}{:>2}{:>3}'.format( dic['MAT'], dic['MF'], dic['MT']) + nsstr
+    return '{:>4}{:>2}{:>3}'.format(dic['MAT'], dic['MF'], dic['MT']) + nsstr
 
 def get_ctrl(dic, nofail=False):
     while 'MAT' not in dic and '__up' in dic:
@@ -131,13 +131,13 @@ def read_cont(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
         dic.update(ctrl)
     return dic, ofs+1
 
-def write_cont(dic, with_ctrl=True):
+def write_cont(dic, with_ctrl=True, **write_opts):
     for varname in ('L1', 'L2', 'N1', 'N2'):
         if not isinstance(dic[varname], int):
             raise InvalidIntegerError(
                     f'variable `{varname}` is not of type integer')
-    C1 = float2fortstr(dic['C1'])
-    C2 = float2fortstr(dic['C2'])
+    C1 = float2fortstr(dic['C1'], **write_opts)
+    C2 = float2fortstr(dic['C2'], **write_opts)
     L1 = str(dic['L1']).rjust(11)
     L2 = str(dic['L2']).rjust(11)
     N1 = str(dic['N1']).rjust(11)
@@ -145,8 +145,8 @@ def write_cont(dic, with_ctrl=True):
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
-def prepare_zerostr_fields(zero_as_blank):
-    zerostr = ' '*11 if zero_as_blank else float2fortstr(0)
+def prepare_zerostr_fields(zero_as_blank, **write_opts):
+    zerostr = ' '*11 if zero_as_blank else float2fortstr(0, **write_opts)
     zerostr2 = ' '*11 if zero_as_blank else '0'.rjust(11)
     C1 = zerostr
     C2 = zerostr
@@ -165,16 +165,18 @@ def read_send(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
            raise NotSectionEndError('Not a Section End (SEND) record')
     return dic, ofs
 
-def write_send(dic, with_ctrl=True, with_ns=True, zero_as_blank=False):
-    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank)
+def write_send(dic, with_ctrl=True, with_ns=True,
+               zero_as_blank=False, **write_opts):
+    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank, **write_opts)
     ctrl_dic = get_ctrl(dic)
     ctrl_dic['MT'] = 0
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
     NS = '99999' if with_ns else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
 
-def write_fend(dic, with_ctrl=True, with_ns=True, zero_as_blank=False):
-    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank)
+def write_fend(dic, with_ctrl=True, with_ns=True,
+               zero_as_blank=False, **write_opts):
+    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank, **write_opts)
     ctrl_dic = get_ctrl(dic)
     ctrl_dic['MF'] = 0
     ctrl_dic['MT'] = 0
@@ -182,15 +184,17 @@ def write_fend(dic, with_ctrl=True, with_ns=True, zero_as_blank=False):
     NS = '0'.rjust(5) if with_ns else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
 
-def write_mend(dic=None, with_ctrl=True, with_ns=True, zero_as_blank=False):
-    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank)
+def write_mend(dic=None, with_ctrl=True, with_ns=True,
+               zero_as_blank=False, **write_opts):
+    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank, **write_opts)
     ctrl_dic = {'MAT': 0, 'MF': 0, 'MT': 0}
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
     NS = '0'.rjust(5) if with_ns else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
 
-def write_tend(dic=None, with_ctrl=True, with_ns=True, zero_as_blank=False):
-    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank)
+def write_tend(dic=None, with_ctrl=True, with_ns=True,
+               zero_as_blank=False, **write_opts):
+    C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank, **write_opts)
     ctrl_dic = {'MAT': -1, 'MF': 0, 'MT': 0}
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ''
     NS = '0'.rjust(5) if with_ns else ''
@@ -214,25 +218,27 @@ def read_list(lines, ofs=0, with_ctrl=True, callback=None, blank_as_zero=False):
         dic['vals'] = vals
     return dic, ofs
 
-def write_list(dic, with_ctrl=True):
+def write_list(dic, with_ctrl=True, **write_opts):
     NPL = len(dic['vals'])
     tmpdic = dic.copy()
     tmpdic['N1'] = NPL
-    lines = write_cont(dic, with_ctrl)
+    lines = write_cont(dic, with_ctrl, **write_opts)
     if NPL == 0:
-        body_lines = write_endf_numbers([0.0 for i in range(6)])
+        body_lines = write_endf_numbers([0.0 for i in range(6)],
+                                        **write_opts)
     else:
         ext_vals = dic['vals'].copy()
         if NPL % 6 != 0:
             ext_vals += [0.0 for i in range(6 - NPL % 6)]
-        body_lines = write_endf_numbers(ext_vals)
+        body_lines = write_endf_numbers(ext_vals, **write_opts)
     if with_ctrl:
         ctrl = write_ctrl(dic)
         body_lines = [t + ctrl for t in body_lines]
     lines += body_lines
     return lines
 
-def read_tab2(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
+def read_tab2(lines, ofs=0, with_ctrl=True,
+              blank_as_zero=False, **write_opts):
     startline = lines[ofs]
     dic, ofs = read_cont(lines, ofs, blank_as_zero=blank_as_zero)
     vals, ofs = read_endf_numbers(lines, 2*dic['N1'], ofs, to_int=True,
@@ -245,7 +251,7 @@ def read_tab2(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
         dic.update(ctrl)
     return dic, ofs
 
-def write_tab2(dic, with_ctrl=True):
+def write_tab2(dic, with_ctrl=True, **write_opts):
     dic = dic.copy()
     tbl_dic = dic['table']
     NBT = tbl_dic['NBT']
@@ -253,11 +259,11 @@ def write_tab2(dic, with_ctrl=True):
     if len(NBT) != len(INT):
         raise ValueError('NBT and INT must be of same length')
     dic.update({'N1': len(NBT)})
-    lines = write_cont(dic, with_ctrl)
+    lines = write_cont(dic, with_ctrl, **write_opts)
     vals = [None]*(2*len(NBT))
     vals[::2] = NBT
     vals[1::2] = INT
-    tbl_lines = write_endf_numbers(vals, to_int=True)
+    tbl_lines = write_endf_numbers(vals, to_int=True, **write_opts)
     if with_ctrl:
         ctrl = write_ctrl(dic)
         tbl_lines = [t + ctrl for t in tbl_lines]
@@ -274,15 +280,15 @@ def read_tab1(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
         dic.update(ctrl)
     return dic, ofs
 
-def write_tab1(dic, with_ctrl=True):
+def write_tab1(dic, with_ctrl=True, **write_opts):
     dic = dic.copy()
     tbl_dic = dic['table']
     dic.update({'N1': len(tbl_dic['NBT']),
                 'N2': len(tbl_dic['X'])})
-    lines = write_cont(dic, with_ctrl)
+    lines = write_cont(dic, with_ctrl, **write_opts)
     tbl_lines = write_tab1_body_lines(
             tbl_dic['NBT'], tbl_dic['INT'],
-            tbl_dic['X'], tbl_dic['Y'])
+            tbl_dic['X'], tbl_dic['Y'], **write_opts)
     if with_ctrl:
         ctrl = write_ctrl(dic)
         tbl_lines = [t + ctrl for t in tbl_lines]
@@ -299,17 +305,17 @@ def read_tab1_body_lines(lines, ofs, nr, np, blank_as_zero=False):
     yvals = vals[1::2]
     return {'NBT': NBT, 'INT': INT, 'X': xvals,'Y':  yvals}, ofs
 
-def write_tab1_body_lines(NBT, INT, xvals, yvals):
+def write_tab1_body_lines(NBT, INT, xvals, yvals, **write_opts):
     assert len(NBT) == len(INT)
     assert len(xvals) == len(yvals)
     vals = [None]*(2*len(NBT))
     vals[::2] = NBT
     vals[1::2] = INT
-    lines = write_endf_numbers(vals, to_int=True)
+    lines = write_endf_numbers(vals, to_int=True, **write_opts)
     vals = [None]*(2*len(xvals))
     vals[::2] = xvals
     vals[1::2] = yvals
-    lines.extend(write_endf_numbers(vals))
+    lines.extend(write_endf_numbers(vals, **write_opts))
     return lines
 
 def read_endf_numbers(lines, num, ofs, to_int=False, blank_as_zero=False):
@@ -329,14 +335,14 @@ def read_endf_numbers(lines, num, ofs, to_int=False, blank_as_zero=False):
 
     return vals, ofs
 
-def write_endf_numbers(vals, to_int=False):
+def write_endf_numbers(vals, to_int=False, **write_opts):
     lines = []
     for i in range(0, len(vals), 6):
         m = min(i+6, len(vals))
         if to_int:
             lines.append(''.join([str(v).rjust(11) for v in vals[i:m]]))
         else:
-            lines.append(write_fort_floats(vals[i:m], w=11))
+            lines.append(write_fort_floats(vals[i:m], w=11, **write_opts))
     lines[-1] = lines[-1].ljust(66)
     return lines
 

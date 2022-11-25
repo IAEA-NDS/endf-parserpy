@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2022/11/25
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -26,9 +26,11 @@ def read_fort_int(valstr, blank_as_zero=False):
             raise InvalidIntegerError(valerr)
 
 
-def fortstr2float(valstr, blank=None):
+def fortstr2float(valstr, blank=None, accept_spaces=True):
     if valstr.strip() == '' and blank is not None:
         return blank
+    if accept_spaces:
+        valstr = valstr.replace(' ', '')
     digitchars = tuple(str(i) for i in range(10))
     for i, c in enumerate(valstr):
         if i>0 and (c == '+' or c == '-'):
@@ -128,7 +130,7 @@ def float2fortstr(val, width=11, prefer_noexp=False,
                                 abuse_signpos=abuse_signpos)
 
 
-def read_fort_floats(line, n=6, w=11, blank=None):
+def read_fort_floats(line, n=6, w=11, blank=None, accept_spaces=True):
     assert isinstance(line, str)
     vals = []
     for i in range(0, n*w, w):
@@ -138,7 +140,8 @@ def read_fort_floats(line, n=6, w=11, blank=None):
             else:
                 vals.append(blank)
         else:
-            vals.append(fortstr2float(line[i:i+w]))
+            vals.append(fortstr2float(line[i:i+w],
+                                      accept_spaces=accept_spaces))
     return vals
 
 

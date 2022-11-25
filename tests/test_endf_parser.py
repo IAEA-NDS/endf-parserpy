@@ -34,7 +34,7 @@ def test_endf_read_write_read_roundtrip_preserves_content(endf_file, tmp_path, m
     outfile = tmp_path / os.path.basename(endf_file)
     myBasicEndfParser.writefile(outfile, endf_dic)
     endf_dic2 = myBasicEndfParser.parsefile(outfile, include=mf_sel)
-    compare_objects(endf_dic, endf_dic2, atol=1e-6, rtol=1e-5)
+    compare_objects(endf_dic, endf_dic2, atol=1e-10, rtol=1e-10)
     # also check if same number of lines of original input and output.
     # with include=tuple() sections are not parsed but taken verbatim as string.
     # original files sometimes contain additional whitespace at the end of line
@@ -49,4 +49,4 @@ def test_endf_json_endf_roundtrip_preserves_content(endf_file, tmp_path, myBasic
     jsonstr = json.dumps(endf_dic, ensure_ascii=False)
     endf_dic2 = json.loads(jsonstr)
     sanitize_fieldname_types(endf_dic2)
-    compare_objects(endf_dic, endf_dic2, atol=1e-6, rtol=1e-5)
+    compare_objects(endf_dic, endf_dic2, atol=1e-10, rtol=1e-10)

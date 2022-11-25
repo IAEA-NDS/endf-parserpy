@@ -38,15 +38,24 @@ def fortstr2float(valstr, blank=None):
         raise InvalidFloatError(valerr)
 
 
-def float2basicnumstr(val, width=11, abuse_signpos=False):
-    len_intpart = len(str(abs(int(val))))
+def float2basicnumstr(val, width=11, abuse_signpos=False,
+                      skip_intzero=False):
+    intpart = int(val)
+    len_intpart = len(str(abs(intpart)))
     # -1 due to a minus sign slot
     # -1 due to the decimal point
     waste_space = 2
+    intpos = 1
     if abuse_signpos and val > 0:
         waste_space -= 1
+        intpos = 0
+    should_skip_zero = skip_intzero and intpart == 0
+    if should_skip_zero:
+        width += 1
     floatwidth = width - waste_space - len_intpart
     numstr = f'{{:{width}.{floatwidth}F}}'.format(val)
+    if should_skip_zero:
+        numstr = numstr[:intpos] + numstr[intpos+1:]
     return numstr
 
 

@@ -118,10 +118,14 @@ def write_intg(dic, with_ctrl=True, ndigit=None):
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [(II + JJ + spacer + KIJ).ljust(66) + CTRL]
 
-def read_cont(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
+def read_cont(lines, ofs=0, with_ctrl=True, blank_as_zero=False, **read_opts):
     line = lines[ofs]
-    dic = {'C1' : fortstr2float(line[0:11], blank=0.0 if blank_as_zero else None),
-           'C2' : fortstr2float(line[11:22], blank=0.0 if blank_as_zero else None),
+    dic = {'C1' : fortstr2float(line[0:11],
+                                blank=0.0 if blank_as_zero else None,
+                                **read_opts),
+           'C2' : fortstr2float(line[11:22],
+                                blank=0.0 if blank_as_zero else None,
+                                **read_opts),
            'L1' : read_fort_int(line[22:33], blank_as_zero),
            'L2' : read_fort_int(line[33:44], blank_as_zero),
            'N1' : read_fort_int(line[44:55], blank_as_zero),
@@ -156,8 +160,9 @@ def prepare_zerostr_fields(zero_as_blank, **write_opts):
     N2 = zerostr2
     return C1, C2, L1, L2, N1, N2
 
-def read_send(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
-    dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero)
+def read_send(lines, ofs=0, with_ctrl=True, blank_as_zero=False, **read_opts):
+    dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero,
+                         **read_opts)
     if dic['C1'] != 0 or dic['C2'] != 0 or \
        dic['L1'] != 0 or dic['L2'] != 0 or \
        dic['N1'] != 0 or dic['N2'] != 0 or \
@@ -207,14 +212,18 @@ def write_tend(dic=None, with_ctrl=True, with_ns=True,
 write_head = write_cont
 read_head = read_cont
 
-def read_list(lines, ofs=0, with_ctrl=True, callback=None, blank_as_zero=False):
-    dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero)
+def read_list(lines, ofs=0, with_ctrl=True, callback=None,
+              blank_as_zero=False, **read_opts):
+    dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero,
+                         **read_opts)
     NPL = dic['N1']
     if NPL == 0:
         dic['vals'] = []
         ofs += 1
     else:
-        vals, ofs = read_endf_numbers(lines, NPL, ofs, blank_as_zero=blank_as_zero)
+        vals, ofs = read_endf_numbers(lines, NPL, ofs,
+                                      blank_as_zero=blank_as_zero,
+                                      **read_opts)
         dic['vals'] = vals
     return dic, ofs
 
@@ -238,11 +247,13 @@ def write_list(dic, with_ctrl=True, **write_opts):
     return lines
 
 def read_tab2(lines, ofs=0, with_ctrl=True,
-              blank_as_zero=False, **write_opts):
+              blank_as_zero=False, **read_opts):
     startline = lines[ofs]
-    dic, ofs = read_cont(lines, ofs, blank_as_zero=blank_as_zero)
+    dic, ofs = read_cont(lines, ofs, blank_as_zero=blank_as_zero,
+                         **read_opts)
     vals, ofs = read_endf_numbers(lines, 2*dic['N1'], ofs, to_int=True,
-                                  blank_as_zero=blank_as_zero)
+                                  blank_as_zero=blank_as_zero,
+                                  **read_opts)
     NBT = vals[::2]
     INT = vals[1::2]
     dic['table'] = {'NBT': NBT, 'INT': INT}
@@ -269,11 +280,14 @@ def write_tab2(dic, with_ctrl=True, **write_opts):
         tbl_lines = [t + ctrl for t in tbl_lines]
     return lines + tbl_lines
 
-def read_tab1(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
+def read_tab1(lines, ofs=0, with_ctrl=True, blank_as_zero=False,
+              **read_opts):
     startline = lines[ofs]
-    dic, ofs = read_cont(lines, ofs, with_ctrl, blank_as_zero=blank_as_zero)
+    dic, ofs = read_cont(lines, ofs, with_ctrl,
+                         blank_as_zero=blank_as_zero, **read_opts)
     tbl_dic, ofs = read_tab1_body_lines(lines, ofs, dic['N1'], dic['N2'],
-            blank_as_zero=blank_as_zero)
+                                        blank_as_zero=blank_as_zero,
+                                        **read_opts)
     dic['table'] = tbl_dic
     if with_ctrl:
         ctrl = read_ctrl(startline)
@@ -294,13 +308,16 @@ def write_tab1(dic, with_ctrl=True, **write_opts):
         tbl_lines = [t + ctrl for t in tbl_lines]
     return lines + tbl_lines
 
-def read_tab1_body_lines(lines, ofs, nr, np, blank_as_zero=False):
+def read_tab1_body_lines(lines, ofs, nr, np, blank_as_zero=False,
+                         **read_opts):
     vals, ofs = read_endf_numbers(lines, 2*nr, ofs, to_int=True,
-                                  blank_as_zero=blank_as_zero)
+                                  blank_as_zero=blank_as_zero,
+                                  **read_opts)
     NBT = vals[::2]
     INT = vals[1::2]
     vals, ofs = read_endf_numbers(lines, 2*np, ofs, to_int=False,
-                                  blank_as_zero=blank_as_zero)
+                                  blank_as_zero=blank_as_zero,
+                                  **read_opts)
     xvals = vals[::2]
     yvals = vals[1::2]
     return {'NBT': NBT, 'INT': INT, 'X': xvals,'Y':  yvals}, ofs
@@ -318,13 +335,15 @@ def write_tab1_body_lines(NBT, INT, xvals, yvals, **write_opts):
     lines.extend(write_endf_numbers(vals, **write_opts))
     return lines
 
-def read_endf_numbers(lines, num, ofs, to_int=False, blank_as_zero=False):
+def read_endf_numbers(lines, num, ofs, to_int=False,
+                      blank_as_zero=False, **read_opts):
     vals = []
     blank_symb = 0. if blank_as_zero else None
     while num > 0:
         l = lines[ofs]
         m = min(6, num)
-        vals += read_fort_floats(l, m, blank=blank_symb)
+        vals += read_fort_floats(l, m, blank=blank_symb,
+                                 **read_opts)
         num -= 6
         ofs += 1
     if to_int:

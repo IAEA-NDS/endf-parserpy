@@ -13,6 +13,7 @@ from .custom_exceptions import (
         InvalidIntegerError,
         InvalidFloatError
     )
+from math import log10, floor
 
 
 def read_fort_int(valstr, blank_as_zero=False):
@@ -53,8 +54,16 @@ def float2basicnumstr(val, width=11, abuse_signpos=False,
     should_skip_zero = skip_intzero and intpart == 0
     if should_skip_zero:
         width += 1
+    is_integer = (intpart == val)
+    if is_integer:
+        waste_space -= 1
     floatwidth = width - waste_space - len_intpart
-    numstr = f'{{:{width}.{floatwidth}F}}'.format(val)
+    if floatwidth > 0 and (not is_integer or val == 0):
+        numstr = f'{{:{width}.{floatwidth}f}}'.format(val)
+    elif log10(abs(intpart)) < width:
+        numstr = f'{{:{width}d}}'.format(int(val))
+    else:
+        raise ValueError('cannot represent the number')
     if should_skip_zero:
         numstr = numstr[:intpos] + numstr[intpos+1:]
     return numstr
@@ -70,28 +79,47 @@ def float2expformstr(val, width=11, abuse_signpos=False):
         nexp = 1
     else:
         nexp = 3
-    waste_space = 4
-    if abuse_signpos and val > 0:
-        waste_space -= 1
-    ndec = width - nexp - waste_space
-    fmtstr = ('{:.' + str(ndec) + 'E}')
-    ss = fmtstr.format(val)
-    mantissa, exp = ss.split('E')
-    expsign = '+'
-    if exp[0] in ('-', '+'):
-        expsign = exp[0]
-        exp = exp[1:]
-    exp = exp[:-1].lstrip('0') + exp[-1]
-    numstr = mantissa + expsign + exp
-    numstr = numstr.rjust(width)
-    assert len(numstr) == width
-    return numstr
+    is_pos = val >= 0
+    sign_dec = 0 if abuse_signpos and is_pos else 1
+    exponent = floor(log10(av)) if av != 0 else 0
+    mantissa = abs(val / 10**exponent)
+    is_expo_pos = exponent >= 0
+    absexponent = abs(exponent)
+    mantissa_len = width - 1 - nexp - sign_dec
+    mantissa_str = f'{{:.{mantissa_len-2}f}}'.format(mantissa)
+    exposign_str = '+' if is_expo_pos else '-'
+    exponent_str = f'{{:{nexp}d}}'.format(absexponent)
+    if is_pos:
+        sign_str = '' if abuse_signpos else ' '
+    else:
+        sign_str = '-'
+    return sign_str + mantissa_str + exposign_str + exponent_str
+
+
+def is_noexpform_more_precise(val, width, skip_intzero, abuse_signpos):
+    if val == 0:
+        return True
+    digit_advantage = 2
+    if skip_intzero and abs(int(val)) < 1:
+        digit_advantage += 1
+    expo = log10(abs(val)) if val != 0 else 0
+    if expo < 0:
+        return digit_advantage + expo >= 0
+    else:
+        sign_inc = 1 if val > 0 and abuse_signpos else 0
+        int_inc = 1 if int(val) == val else 0
+        # -1 for decimal point
+        # -1 for sign slot
+        num_digits = width - 2 + sign_inc + int_inc
+        return num_digits > expo
 
 
 def float2fortstr(val, width=11, prefer_noexp=False,
                   skip_intzero=False, abuse_signpos=False):
-    av = abs(val)
-    if prefer_noexp and av >= 1e-2 and av < 1e2:
+    noexp_more_precise = is_noexpform_more_precise(val, width,
+                                                   skip_intzero,
+                                                   abuse_signpos)
+    if prefer_noexp and noexp_more_precise:
         return float2basicnumstr(val, width,
                                  abuse_signpos=abuse_signpos,
                                  skip_intzero=skip_intzero)

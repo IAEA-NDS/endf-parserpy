@@ -10,7 +10,8 @@ from endf_parserpy.user_tools import sanitize_fieldname_types
 @pytest.fixture(scope="module")
 def myBasicEndfParser(ignore_zero_mismatch, ignore_number_mismatch,
                       ignore_varspec_mismatch, fuzzy_matching, blank_as_zero,
-                      abuse_signpos, skip_intzero, prefer_noexp):
+                      abuse_signpos, skip_intzero, prefer_noexp,
+                      accept_spaces):
     return BasicEndfParser(ignore_zero_mismatch=ignore_zero_mismatch,
                            ignore_number_mismatch=ignore_number_mismatch,
                            ignore_varspec_mismatch=ignore_varspec_mismatch,
@@ -18,7 +19,8 @@ def myBasicEndfParser(ignore_zero_mismatch, ignore_number_mismatch,
                            blank_as_zero=blank_as_zero,
                            abuse_signpos=abuse_signpos,
                            skip_intzero=skip_intzero,
-                           prefer_noexp=prefer_noexp)
+                           prefer_noexp=prefer_noexp,
+                           accept_spaces=accept_spaces)
 
 
 def test_endf_parserpy_never_fails(endf_file, myBasicEndfParser, mf_sel):

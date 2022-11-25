@@ -10,10 +10,12 @@ def pytest_addoption(parser):
     parser.addoption("--ignore_varspec_mismatch", action="store", default='false')
     parser.addoption("--fuzzy_matching", action="store", default='true')
     parser.addoption("--blank_as_zero", action="store", default='true')
-    # defaults of writing options chosen to preserve maximal accuracy
+    # defaults writing options chosen to preserve maximal accuracy
     parser.addoption("--abuse_signpos", action="store", default='true')
     parser.addoption("--skip_intzero", action="store", default='true')
     parser.addoption("--prefer_noexp", action="store", default='true')
+    # defaults for reading options
+    parser.addoption("--accept_spaces", action="store", default='true')
 
 
 def pytest_generate_tests(metafunc):
@@ -57,6 +59,10 @@ def pytest_generate_tests(metafunc):
     argval = metafunc.config.option.prefer_noexp.lower().strip()
     argval = argval == 'true'
     metafunc.parametrize("prefer_noexp", [argval], scope="module")
+
+    argval = metafunc.config.option.accept_spaces.lower().strip()
+    argval = argval == 'true'
+    metafunc.parametrize("accept_spaces", [argval], scope="module")
 
     # to selectively test MF sections and MF/MT subsections
     if metafunc.config.option.mf is not None:

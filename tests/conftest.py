@@ -4,6 +4,7 @@ from pathlib import Path
 def pytest_addoption(parser):
     parser.addoption("--endfdir", action="store", default="testdata")
     parser.addoption("--endffile", action="store", default=None)
+    parser.addoption("--mf", action="store", default=None)
     parser.addoption("--ignore_zero_mismatch", action="store", default='true')
     parser.addoption("--ignore_number_mismatch", action="store", default='false')
     parser.addoption("--ignore_varspec_mismatch", action="store", default='false')
@@ -13,7 +14,6 @@ def pytest_addoption(parser):
     parser.addoption("--abuse_signpos", action="store", default='true')
     parser.addoption("--skip_intzero", action="store", default='true')
     parser.addoption("--prefer_noexp", action="store", default='true')
-    parser.addoption("--mf", action="store", default=None)
 
 
 def pytest_generate_tests(metafunc):

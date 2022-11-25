@@ -37,6 +37,19 @@ def fortstr2float(valstr, blank=None):
     except ValueError as valerr:
         raise InvalidFloatError(valerr)
 
+
+def float2basicnumstr(val, width=11, abuse_signpos=False):
+    len_intpart = len(str(abs(int(val))))
+    # -1 due to a minus sign slot
+    # -1 due to the decimal point
+    waste_space = 2
+    if abuse_signpos and val > 0:
+        waste_space -= 1
+    floatwidth = width - waste_space - len_intpart
+    numstr = f'{{:{width}.{floatwidth}F}}'.format(val)
+    return numstr
+
+
 def float2fortstr(val, width=11):
     av = abs(val)
     if av >= 1e-9 and av < 1e10:

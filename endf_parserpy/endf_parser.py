@@ -43,7 +43,8 @@ class BasicEndfParser():
     def __init__(self, ignore_number_mismatch=False, ignore_zero_mismatch=True,
                        ignore_varspec_mismatch=False, fuzzy_matching=True,
                        blank_as_zero=True, log_lookahead_traceback=False,
-                       abuse_signpos=False, skip_intzero=False, prefer_noexp=False):
+                       abuse_signpos=False, skip_intzero=False, prefer_noexp=False,
+                       accept_spaces=True):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         self.tree_dic = get_recipe_parsetree_dic()
@@ -78,6 +79,9 @@ class BasicEndfParser():
                 'skip_intzero': skip_intzero,
                 'prefer_noexp': prefer_noexp
             }
+        self.read_opts = {
+                'accept_spaces': accept_spaces
+            }
 
     def process_text_line(self, tree):
         if self.rwmode == 'read':
@@ -104,7 +108,8 @@ class BasicEndfParser():
             write_info('Reading a HEAD record', self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_head(self.lines, self.ofs, with_ctrl=True,
-                    blank_as_zero=self.parse_opts['blank_as_zero'])
+                    blank_as_zero=self.parse_opts['blank_as_zero'],
+                    **self.read_opts)
             write_info('Content of the HEAD record: ' + str(cont_dic), self.ofs)
             map_head_dic(tree, cont_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
             self.datadic.update(get_ctrl(cont_dic))
@@ -120,7 +125,9 @@ class BasicEndfParser():
             self.loop_vars['__ofs'] = self.ofs
             write_info('Reading a CONT record', self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
-            cont_dic, self.ofs = read_cont(self.lines, self.ofs, blank_as_zero=self.parse_opts['blank_as_zero'])
+            cont_dic, self.ofs = read_cont(self.lines, self.ofs,
+                    blank_as_zero=self.parse_opts['blank_as_zero'],
+                    **self.read_opts)
             write_info('Content of the CONT record: ' + str(cont_dic))
             map_cont_dic(tree, cont_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
@@ -164,7 +171,8 @@ class BasicEndfParser():
             write_info('Reading a TAB1 record', self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab1_dic, self.ofs = read_tab1(self.lines, self.ofs,
-                    blank_as_zero=self.parse_opts['blank_as_zero'])
+                    blank_as_zero=self.parse_opts['blank_as_zero'],
+                    **self.read_opts)
             map_tab1_dic(tree, tab1_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
             tab1_dic = map_tab1_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
@@ -179,7 +187,8 @@ class BasicEndfParser():
             write_info('Reading a TAB2 record', self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab2_dic, self.ofs = read_tab2(self.lines, self.ofs,
-                    blank_as_zero=self.parse_opts['blank_as_zero'])
+                    blank_as_zero=self.parse_opts['blank_as_zero'],
+                    **self.read_opts)
             map_tab2_dic(tree, tab2_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
             tab2_dic = map_tab2_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
@@ -194,7 +203,8 @@ class BasicEndfParser():
             write_info('Reading a LIST record', self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             list_dic, self.ofs = read_list(self.lines, self.ofs,
-                    blank_as_zero=self.parse_opts['blank_as_zero'])
+                    blank_as_zero=self.parse_opts['blank_as_zero'],
+                    **self.read_opts)
             map_list_dic(tree, list_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
             list_dic = map_list_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
@@ -206,7 +216,9 @@ class BasicEndfParser():
         if self.rwmode == 'read':
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
-            read_send(self.lines, self.ofs, blank_as_zero=self.parse_opts['blank_as_zero'])
+            read_send(self.lines, self.ofs,
+                      blank_as_zero=self.parse_opts['blank_as_zero'],
+                      **self.read_opts)
         else:
             newlines = write_send(self.datadic, with_ctrl=True,
                                   zero_as_blank=self.zero_as_blank,

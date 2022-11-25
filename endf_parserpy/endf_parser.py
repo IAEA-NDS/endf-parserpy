@@ -42,7 +42,8 @@ class BasicEndfParser():
 
     def __init__(self, ignore_number_mismatch=False, ignore_zero_mismatch=True,
                        ignore_varspec_mismatch=False, fuzzy_matching=True,
-                       blank_as_zero=True, log_lookahead_traceback=False):
+                       blank_as_zero=True, log_lookahead_traceback=False,
+                       abuse_signpos=False, skip_intzero=False, prefer_noexp=False):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         self.tree_dic = get_recipe_parsetree_dic()
@@ -71,6 +72,11 @@ class BasicEndfParser():
                 'fuzzy_matching': fuzzy_matching,
                 'blank_as_zero': blank_as_zero,
                 'log_lookahead_traceback': log_lookahead_traceback
+            }
+        self.write_opts = {
+                'abuse_signpos': abuse_signpos,
+                'skip_intzero': skip_intzero,
+                'prefer_noexp': prefer_noexp
             }
 
     def process_text_line(self, tree):
@@ -105,7 +111,7 @@ class BasicEndfParser():
         else:
             head_dic = map_head_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             head_dic.update(get_ctrl(self.datadic))
-            newlines = write_head(head_dic, with_ctrl=True)
+            newlines = write_head(head_dic, with_ctrl=True, **self.write_opts)
             self.lines += newlines
 
     def process_cont_line(self, tree):
@@ -120,7 +126,7 @@ class BasicEndfParser():
         else:
             cont_dic = map_cont_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             cont_dic.update(get_ctrl(self.datadic))
-            newlines = write_cont(cont_dic, with_ctrl=True)
+            newlines = write_cont(cont_dic, with_ctrl=True, **self.write_opts)
             self.lines += newlines
 
     def process_dir_line(self, tree):
@@ -163,7 +169,7 @@ class BasicEndfParser():
         else:
             tab1_dic = map_tab1_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             tab1_dic.update(get_ctrl(self.datadic))
-            newlines = write_tab1(tab1_dic, with_ctrl=True)
+            newlines = write_tab1(tab1_dic, with_ctrl=True, **self.write_opts)
             self.lines += newlines
 
     def process_tab2_line(self, tree):
@@ -178,7 +184,7 @@ class BasicEndfParser():
         else:
             tab2_dic = map_tab2_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             tab2_dic.update(get_ctrl(self.datadic))
-            newlines = write_tab2(tab2_dic, with_ctrl=True)
+            newlines = write_tab2(tab2_dic, with_ctrl=True, **self.write_opts)
             self.lines += newlines
 
     def process_list_line(self, tree):
@@ -193,7 +199,7 @@ class BasicEndfParser():
         else:
             list_dic = map_list_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             list_dic.update(get_ctrl(self.datadic))
-            newlines = write_list(list_dic, with_ctrl=True)
+            newlines = write_list(list_dic, with_ctrl=True, **self.write_opts)
             self.lines += newlines
 
     def process_send_line(self, tree):
@@ -203,7 +209,8 @@ class BasicEndfParser():
             read_send(self.lines, self.ofs, blank_as_zero=self.parse_opts['blank_as_zero'])
         else:
             newlines = write_send(self.datadic, with_ctrl=True,
-                                  zero_as_blank=self.zero_as_blank)
+                                  zero_as_blank=self.zero_as_blank,
+                                  **self.write_opts)
             self.lines += newlines
 
     def process_section(self, tree):

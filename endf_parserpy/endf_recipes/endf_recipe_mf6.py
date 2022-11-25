@@ -29,6 +29,14 @@ for i=1 to NK:
                 [MAT, 6, MT/ 0.0, E[j], LANG, 0, NLW[j], NL[j] / {A[j,l]}{l=1 to NLW[j]} ]LIST
             endfor
 
+        # Charged-Particle Elastic Scattering (LAW=5)
+        elif LAW == 5:
+            [MAT, 6, MT/ SPI, 0.0, LIDP, 0, NR, NE / Eint ]TAB2
+            for j=1 to NE:
+                [MAT, 6, MT/ 0.0, E[j] , LTP[j], 0, NW[j], NL[j]/
+                             {A[j,k]}{k=1 to NW[j]} ]LIST
+            endfor
+
         # N-body Phase-Space distribution (LAW=6) (manual 6.2.7, p. 136)
         elif LAW == 6:
             [MAT, 6, MT/ APSX, 0.0, 0, 0, 0, NPSX]CONT

@@ -32,6 +32,7 @@ def locate(dic, varname, as_string=False):
         locations = ['/'.join(str(s) for s in loc) for loc in locations]
     return tuple(locations)
 
+
 def get_endf_values(dic, locations):
     values = []
     for loc in locations:
@@ -41,6 +42,7 @@ def get_endf_values(dic, locations):
         values.append(curdic[loc[-1]])
     return tuple(values)
 
+
 def list_unparsed_sections(dic):
     unparsed = []
     for mf, mfsec in dic.items():
@@ -49,6 +51,7 @@ def list_unparsed_sections(dic):
                 unparsed.append((mf,mt))
     return tuple(unparsed)
 
+
 def list_parsed_sections(dic):
     parsed = []
     for mf, mfsec in dic.items():
@@ -56,6 +59,7 @@ def list_parsed_sections(dic):
             if isinstance(mtsec, dict):
                 parsed.append((mf, mt))
     return tuple(parsed)
+
 
 def sanitize_fieldname_types(dic):
     if not isinstance(dic, dict):
@@ -78,3 +82,29 @@ def sanitize_fieldname_types(dic):
         if isinstance(dic[key], dict):
             sanitize_fieldname_types(dic[key])
 
+
+def enter_section(endf_dic, path):
+    curdic = endf_dic
+    for cur in path.split('/'):
+        if cur.strip() == '':
+            continue
+        elif cur.isdigit():
+            curdic = curdic[int(cur)]
+        else:
+            curdic = curdic[cur]
+    return curdic
+
+
+def show_content(endf_dic, maxlevel=0, prefix='/'):
+    maxlen = max(len(prefix+str(s)) for s in endf_dic.keys())
+    for k, v in endf_dic.items():
+        if isinstance(v, dict):
+            if maxlevel > 0:
+                show_content(v, maxlevel-1,
+                             prefix=prefix+str(k)+'/')
+            else:
+                fp = (prefix + str(k) + ':').ljust(maxlen+2)
+                print(fp + 'subsection or array')
+        else:
+            fp = (prefix + str(k) + ':').ljust(maxlen+2)
+            print(fp + str(v))

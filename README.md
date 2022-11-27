@@ -52,9 +52,9 @@ endf_dic = parser.parsefile(endf_file)
 The variable `endf_dic` contains a nested dictionary that
 exposes all the fields and arrays described in
 the [ENDF-6 formats manual].
-You can explore it by using the `.key()` method, e.g.,
+You can explore it by using the `.keys()` method, e.g.,
 ```
-endf_dic.key()
+endf_dic.keys()
 # show the fields of MF2
 endf_dic[2].keys()
 # show the fields of MF2/MT151

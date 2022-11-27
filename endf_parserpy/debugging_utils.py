@@ -25,7 +25,10 @@ def smart_is_equal(x, y, atol=1e-8, rtol=1e-6):
 
 def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6,
                     strlen_only=False, do_rstrip=False, rstrcut=None,
-                    fail_on_diff=True):
+                    fail_on_diff=True, diff_log=None):
+
+    if diff_log is None:
+        diff_log = []
 
     found_diff = False
 
@@ -35,6 +38,7 @@ def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6,
         if fail_on_diff:
             raise exc(msg)
         else:
+            diff_log.append(msg)
             print(msg)
 
     if type(obj1) != type(obj2):
@@ -59,7 +63,7 @@ def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6,
                                   atol=atol, rtol=rtol,
                                   strlen_only=strlen_only,
                                   do_rstrip=do_rstrip, rstrcut=rstrcut,
-                                  fail_on_diff=fail_on_diff)
+                                  fail_on_diff=fail_on_diff, diff_log=diff_log)
             found_diff = found_diff or not ret
     else:
         if isinstance(obj1, str):
@@ -90,7 +94,8 @@ def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6,
                                       atol=atol, rtol=rtol,
                                       strlen_only=strlen_only,
                                       do_rstrip=do_rstrip, rstrcut=rstrcut,
-                                      fail_on_diff=fail_on_diff)
+                                      fail_on_diff=fail_on_diff,
+                                      diff_log=diff_log)
                 found_diff = found_diff or not ret
         else:
             if not smart_is_equal(obj1, obj2, atol=atol, rtol=rtol):

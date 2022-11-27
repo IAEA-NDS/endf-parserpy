@@ -27,7 +27,7 @@ def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6,
         strlen_only=False, do_rstrip=False, rstrcut=None):
 
     if type(obj1) != type(obj2):
-        raise TypeError('type mismatch found, obj1: {obj1}, obj2: {obj2}')
+        raise TypeError(f'type mismatch found, obj1: {obj1}, obj2: {obj2}')
 
     if isinstance(obj1, dict):
         only_in_obj1 = set(obj1).difference(obj2)

@@ -24,24 +24,43 @@ def smart_is_equal(x, y, atol=1e-8, rtol=1e-6):
 
 
 def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6,
-        strlen_only=False, do_rstrip=False, rstrcut=None):
+                    strlen_only=False, do_rstrip=False, rstrcut=None,
+                    fail_on_diff=True):
+
+    found_diff = False
+
+    def treat_diff(msg, exc):
+        nonlocal found_diff
+        found_diff = True
+        if fail_on_diff:
+            raise exc(msg)
+        else:
+            print(msg)
 
     if type(obj1) != type(obj2):
-        raise TypeError(f'type mismatch found, obj1: {obj1}, obj2: {obj2}')
+        treat_diff(f'type mismatch found, obj1: {obj1}, obj2: {obj2}',
+                   TypeError)
 
     if isinstance(obj1, dict):
         only_in_obj1 = set(obj1).difference(obj2)
         if len(only_in_obj1) > 0:
-            raise IndexError(f'at path {curpath}: only obj1 contains {only_in_obj1}')
+            treat_diff(f'at path {curpath}: only obj1 contains {only_in_obj1}',
+                       IndexError)
+
         only_in_obj2 = set(obj2).difference(obj1)
         if len(only_in_obj2) > 0:
-            raise IndexError(f'at path {curpath}: only obj2 contains {only_in_obj2}')
+            treat_diff(f'at path {curpath}: only obj2 contains {only_in_obj2}',
+                       IndexError)
 
-        for key in obj1:
-            compare_objects(obj1[key], obj2[key], '.'.join((curpath, str(key))),
-                    atol=atol, rtol=rtol, strlen_only=strlen_only,
-                    do_rstrip=do_rstrip, rstrcut=rstrcut)
-
+        common_keys = set(obj1).intersection(set(obj2))
+        for key in common_keys:
+            ret = compare_objects(obj1[key],
+                                  obj2[key], '.'.join((curpath, str(key))),
+                                  atol=atol, rtol=rtol,
+                                  strlen_only=strlen_only,
+                                  do_rstrip=do_rstrip, rstrcut=rstrcut,
+                                  fail_on_diff=fail_on_diff)
+            found_diff = found_diff or not ret
     else:
         if isinstance(obj1, str):
             if do_rstrip:
@@ -52,20 +71,31 @@ def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6,
                 obj2 = obj2[:rstrcut]
             if strlen_only:
                 if len(obj1) != len(obj2):
-                    raise ValueError(f'at path {curpath}: string lengths differ ({obj1} != {obj2})')
+                    treat_diff(f'at path {curpath}: string lengths differ '
+                               f'({obj1} != {obj2})', ValueError)
             elif obj1 != obj2:
-                raise ValueError(f'at path {curpath}: strings differ ({obj1} != {obj2})')
+                treat_diff(f'at path {curpath}: strings differ '
+                           f'({obj1} != {obj2})', ValueError)
 
         elif hasattr(obj1, '__iter__'):
             len_obj1 = len(tuple(obj1))
             len_obj2 = len(tuple(obj2))
             if len_obj1 != len_obj2:
-                raise ValueError(f'Length mismatch at {curpath} ({len_obj1} vs {len_obj2})')
+                treat_diff(f'Length mismatch at {curpath} '
+                           f'({len_obj1} vs {len_obj2})', ValueError)
 
             for i, (subel1, subel2) in enumerate(zip(obj1, obj2)):
-                compare_objects(subel1, subel2, f'{curpath}[{str(i)}]',
-                        atol=atol, rtol=rtol, strlen_only=strlen_only,
-                        do_rstrip=do_rstrip, rstrcut=rstrcut)
+                ret = compare_objects(subel1, subel2,
+                                      f'{curpath}[{str(i)}]',
+                                      atol=atol, rtol=rtol,
+                                      strlen_only=strlen_only,
+                                      do_rstrip=do_rstrip, rstrcut=rstrcut,
+                                      fail_on_diff=fail_on_diff)
+                found_diff = found_diff or not ret
         else:
             if not smart_is_equal(obj1, obj2, atol=atol, rtol=rtol):
-                raise ValueError(f'Value mismatch at {curpath} ({obj1} vs {obj2})')
+                treat_diff(f'Value mismatch at {curpath} '
+                           f'({obj1} vs {obj2})', ValueError)
+
+    # return True if equivalent
+    return (not found_diff)

@@ -322,6 +322,8 @@ class BasicEndfParser():
         return False
 
     def parse(self, lines, exclude=None, include=None, nofail=False):
+        if isinstance(lines, str):
+            lines = lines.split('\n')
         tree_dic = self.tree_dic
         mfmt_dic = split_sections(lines)
         for mf in mfmt_dic:

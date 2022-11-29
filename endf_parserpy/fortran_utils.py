@@ -42,8 +42,10 @@ def fortstr2float(valstr, blank=None, accept_spaces=True):
         raise InvalidFloatError(valerr)
 
 
-def float2basicnumstr(val, width=11, abuse_signpos=False,
-                      skip_intzero=False):
+def float2basicnumstr(val, **write_opts):
+    width = write_opts.get('width', 11)
+    abuse_signpos = write_opts.get('abuse_signpos', False)
+    skip_intzero = write_opts.get('skip_intzero', False)
     intpart = int(val)
     len_intpart = len(str(abs(intpart)))
     is_integer = (intpart == val)
@@ -129,7 +131,7 @@ def float2fortstr(val, width=11, prefer_noexp=False,
                                                    abuse_signpos,
                                                    keep_E)
     if prefer_noexp and noexp_more_precise:
-        return float2basicnumstr(val, width,
+        return float2basicnumstr(val, width=width,
                                  abuse_signpos=abuse_signpos,
                                  skip_intzero=skip_intzero)
     else:

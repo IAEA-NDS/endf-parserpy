@@ -18,21 +18,23 @@ from .custom_exceptions import (
     )
 
 
-def read_ctrl(line, nofail=False):
+def read_ctrl(line, nofail=False, **read_opts):
+    width = read_opts.get('width', 11)
+    ofs = 6*width
     if nofail:
         try:
-            mat = int(line[66:70])
-            mf = int(line[70:72])
-            mt = int(line[72:75])
-        except:
+            mat = int(line[ofs:ofs+4])
+            mf = int(line[ofs+4:ofs+6])
+            mt = int(line[ofs+6:ofs+9])
+        except Exception:
             mat = 0
             mf = 0
             mt = 0
     else:
         # blank fields are interpreted as zero
-        matstr = line[66:70].strip()
-        mfstr = line[70:72].strip()
-        mtstr = line[72:75].strip()
+        matstr = line[ofs:ofs+4].strip()
+        mfstr = line[ofs+4:ofs+6].strip()
+        mtstr = line[ofs+6:ofs+9].strip()
         mat = int(matstr) if matstr != '' else 0
         mf = int(mfstr) if mfstr != '' else 0
         mt = int(mtstr) if mtstr != '' else 0

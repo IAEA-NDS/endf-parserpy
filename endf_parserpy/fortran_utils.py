@@ -107,7 +107,11 @@ def float2expformstr(val, **write_opts):
     return sign_str + mantissa_str + expsymb_str + exposign_str + exponent_str
 
 
-def is_noexpform_more_precise(val, width, skip_intzero, abuse_signpos, keep_E):
+def is_noexpform_more_precise(val, **write_opts):
+    width = write_opts.get('width', 11)
+    skip_intzero = write_opts.get('skip_intzero', False)
+    abuse_signpos = write_opts.get('abuse_signpos', False)
+    keep_E = write_opts.get('keep_E', False)
     if val == 0:
         return True
     digit_advantage = 2
@@ -127,20 +131,13 @@ def is_noexpform_more_precise(val, width, skip_intzero, abuse_signpos, keep_E):
         return num_digits > expo
 
 
-def float2fortstr(val, width=11, prefer_noexp=False,
-                  skip_intzero=False, abuse_signpos=False, keep_E=False):
-    noexp_more_precise = is_noexpform_more_precise(val, width,
-                                                   skip_intzero,
-                                                   abuse_signpos,
-                                                   keep_E)
+def float2fortstr(val, **write_opts):
+    prefer_noexp = write_opts.get('prefer_noexp', False)
+    noexp_more_precise = is_noexpform_more_precise(val, **write_opts)
     if prefer_noexp and noexp_more_precise:
-        return float2basicnumstr(val, width=width,
-                                 abuse_signpos=abuse_signpos,
-                                 skip_intzero=skip_intzero)
+        return float2basicnumstr(val, **write_opts)
     else:
-        return float2expformstr(val, width=11,
-                                abuse_signpos=abuse_signpos,
-                                keep_E=keep_E)
+        return float2expformstr(val, **write_opts)
 
 
 def read_fort_floats(line, n=6, width=11, blank=None, accept_spaces=True):
@@ -158,14 +155,8 @@ def read_fort_floats(line, n=6, width=11, blank=None, accept_spaces=True):
     return vals
 
 
-def write_fort_floats(vals, width=11, prefer_noexp=False,
-                      skip_intzero=False, abuse_signpos=False,
-                      keep_E=False):
+def write_fort_floats(vals, **write_opts):
     line = ''
     for i, v in enumerate(vals):
-        line += float2fortstr(v, width,
-                              prefer_noexp=prefer_noexp,
-                              skip_intzero=skip_intzero,
-                              abuse_signpos=abuse_signpos,
-                              keep_E=keep_E)
+        line += float2fortstr(v, **write_opts)
     return line

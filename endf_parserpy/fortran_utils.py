@@ -46,6 +46,9 @@ def float2basicnumstr(val, width=11, abuse_signpos=False,
                       skip_intzero=False):
     intpart = int(val)
     len_intpart = len(str(abs(intpart)))
+    is_integer = (intpart == val)
+    if is_integer and intpart == 0:
+        return '0'.rjust(width)
     # -1 due to a minus sign slot
     # -1 due to the decimal point
     waste_space = 2
@@ -56,11 +59,10 @@ def float2basicnumstr(val, width=11, abuse_signpos=False,
     should_skip_zero = skip_intzero and intpart == 0
     if should_skip_zero:
         width += 1
-    is_integer = (intpart == val)
     if is_integer:
         waste_space -= 1
     floatwidth = width - waste_space - len_intpart
-    if floatwidth > 0 and (not is_integer or val == 0):
+    if floatwidth > 0 and not is_integer:
         numstr = f'{{:{width}.{floatwidth}f}}'.format(val)
     elif log10(abs(intpart)) < width:
         numstr = f'{{:{width}d}}'.format(int(val))

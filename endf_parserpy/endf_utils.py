@@ -367,14 +367,15 @@ def read_endf_numbers(lines, num, ofs, to_int=False,
     return vals, ofs
 
 def write_endf_numbers(vals, to_int=False, **write_opts):
+    width = write_opts.get('width', 11)
     lines = []
     for i in range(0, len(vals), 6):
         m = min(i+6, len(vals))
         if to_int:
-            lines.append(''.join([str(v).rjust(11) for v in vals[i:m]]))
+            lines.append(''.join([str(v).rjust(width) for v in vals[i:m]]))
         else:
             lines.append(write_fort_floats(vals[i:m], **write_opts))
-    lines[-1] = lines[-1].ljust(66)
+    lines[-1] = lines[-1].ljust(width*6)
     return lines
 
 def is_blank_line(line):

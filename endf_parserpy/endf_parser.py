@@ -89,7 +89,7 @@ class BasicEndfParser():
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars['__ofs'] = self.ofs
             # write_info('Reading a TEXT record', self.ofs)
-            text_dic, self.ofs = read_text(self.lines, self.ofs, with_ctrl=True)
+            text_dic, self.ofs = read_text(self.lines, self.ofs, with_ctrl=True, **self.read_opts)
             map_text_dic(tree, text_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
             # this line adds MAT, MF, MT to the dictionary.
             # this line is introduced here to deal with the tape head (mf=0, mt=0)
@@ -99,7 +99,7 @@ class BasicEndfParser():
         else:
             text_dic = map_text_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             text_dic.update(get_ctrl(self.datadic))
-            newlines = write_text(text_dic, with_ctrl=True)
+            newlines = write_text(text_dic, with_ctrl=True, **self.write_opts)
             self.lines += newlines
 
     def process_head_line(self, tree):
@@ -109,8 +109,7 @@ class BasicEndfParser():
             write_info('Reading a HEAD record', self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_head(self.lines, self.ofs, with_ctrl=True,
-                    blank_as_zero=self.parse_opts['blank_as_zero'],
-                    **self.read_opts)
+                    blank_as_zero=self.parse_opts['blank_as_zero'], **self.read_opts)
             write_info('Content of the HEAD record: ' + str(cont_dic), self.ofs)
             map_head_dic(tree, cont_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
             self.datadic.update(get_ctrl(cont_dic))
@@ -127,8 +126,7 @@ class BasicEndfParser():
             write_info('Reading a CONT record', self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_cont(self.lines, self.ofs,
-                    blank_as_zero=self.parse_opts['blank_as_zero'],
-                    **self.read_opts)
+                    blank_as_zero=self.parse_opts['blank_as_zero'], **self.read_opts)
             write_info('Content of the CONT record: ' + str(cont_dic))
             map_cont_dic(tree, cont_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
@@ -142,12 +140,13 @@ class BasicEndfParser():
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars['__ofs'] = self.ofs
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
-            dir_dic, self.ofs = read_dir(self.lines, self.ofs, blank_as_zero=self.parse_opts['blank_as_zero'])
+            dir_dic, self.ofs = read_dir(self.lines, self.ofs,
+                    blank_as_zero=self.parse_opts['blank_as_zero'], **self.read_opts)
             map_dir_dic(tree, dir_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
             dir_dic = map_dir_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             dir_dic.update(get_ctrl(self.datadic))
-            newlines = write_dir(dir_dic, with_ctrl=True)
+            newlines = write_dir(dir_dic, with_ctrl=True, **self.write_opts)
             self.lines += newlines
 
     def process_intg_line(self, tree):
@@ -156,13 +155,14 @@ class BasicEndfParser():
             self.loop_vars['__ofs'] = self.ofs
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             ndigit = eval_expr_without_unknown_var(get_child(tree, 'ndigit_expr'), self.datadic, self.loop_vars)
-            intg_dic, self.ofs = read_intg(self.lines, self.ofs, ndigit=ndigit, blank_as_zero=self.parse_opts['blank_as_zero'])
+            intg_dic, self.ofs = read_intg(self.lines, self.ofs, ndigit=ndigit,
+                    blank_as_zero=self.parse_opts['blank_as_zero'], **self.read_opts)
             map_intg_dic(tree, intg_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
             intg_dic = map_intg_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
             intg_dic.update(get_ctrl(self.datadic))
             ndigit = eval_expr_without_unknown_var(get_child(tree, 'ndigit_expr'), self.datadic, self.loop_vars)
-            newlines = write_intg(intg_dic, with_ctrl=True, ndigit=ndigit)
+            newlines = write_intg(intg_dic, with_ctrl=True, ndigit=ndigit, **self.write_opts)
             self.lines += newlines
 
     def process_tab1_line(self, tree):
@@ -172,8 +172,7 @@ class BasicEndfParser():
             write_info('Reading a TAB1 record', self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab1_dic, self.ofs = read_tab1(self.lines, self.ofs,
-                    blank_as_zero=self.parse_opts['blank_as_zero'],
-                    **self.read_opts)
+                    blank_as_zero=self.parse_opts['blank_as_zero'], **self.read_opts)
             map_tab1_dic(tree, tab1_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
             tab1_dic = map_tab1_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
@@ -188,8 +187,7 @@ class BasicEndfParser():
             write_info('Reading a TAB2 record', self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab2_dic, self.ofs = read_tab2(self.lines, self.ofs,
-                    blank_as_zero=self.parse_opts['blank_as_zero'],
-                    **self.read_opts)
+                    blank_as_zero=self.parse_opts['blank_as_zero'], **self.read_opts)
             map_tab2_dic(tree, tab2_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
             tab2_dic = map_tab2_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
@@ -204,8 +202,7 @@ class BasicEndfParser():
             write_info('Reading a LIST record', self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             list_dic, self.ofs = read_list(self.lines, self.ofs,
-                    blank_as_zero=self.parse_opts['blank_as_zero'],
-                    **self.read_opts)
+                    blank_as_zero=self.parse_opts['blank_as_zero'], **self.read_opts)
             map_list_dic(tree, list_dic, self.datadic, self.loop_vars, parse_opts=self.parse_opts)
         else:
             list_dic = map_list_dic(tree, {}, self.datadic, self.loop_vars, inverse=True, parse_opts=self.parse_opts)
@@ -218,8 +215,7 @@ class BasicEndfParser():
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             read_send(self.lines, self.ofs,
-                      blank_as_zero=self.parse_opts['blank_as_zero'],
-                      **self.read_opts)
+                      blank_as_zero=self.parse_opts['blank_as_zero'], **self.read_opts)
         else:
             newlines = write_send(self.datadic, with_ctrl=True,
                                   zero_as_blank=self.zero_as_blank,
@@ -326,11 +322,11 @@ class BasicEndfParser():
         if isinstance(lines, str):
             lines = lines.split('\n')
         tree_dic = self.tree_dic
-        mfmt_dic = split_sections(lines)
+        mfmt_dic = split_sections(lines, **self.read_opts)
         for mf in mfmt_dic:
             write_info(f'Parsing section MF{mf}')
             for mt in mfmt_dic[mf]:
-                curmat = read_ctrl(mfmt_dic[mf][mt][0])
+                curmat = read_ctrl(mfmt_dic[mf][mt][0], **self.read_opts)
                 write_info(f'Parsing subsection MF/MT {mf}/{mt}')
                 curlines = mfmt_dic[mf][mt]
                 cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
@@ -338,7 +334,7 @@ class BasicEndfParser():
                 if cur_tree is not None and not should_skip:
                     # we add the SEND line so that parsing fails
                     # if the MT section cannot be completely parsed
-                    curlines += write_send(curmat, with_ctrl=True)
+                    curlines += write_send(curmat, with_ctrl=True, **self.write_opts)
                     self.reset_parser_state(rwmode='read', lines=curlines)
                     try:
                         self.run_instruction(cur_tree)
@@ -402,7 +398,7 @@ class BasicEndfParser():
                     curlines = [t.replace('\n','').replace('\r','') for t in curlines]
                     lines.extend(curlines)
                     # update the MAT, MF, MT number
-                    self.datadic = read_ctrl(lines[-1])
+                    self.datadic = read_ctrl(lines[-1], **self.read_opts)
                     # add the SEND record in between the MT subections
                     # if it was not a tape head record (mf=0)
                     if mf != 0:
@@ -413,10 +409,12 @@ class BasicEndfParser():
             # to this mf section and it is not the tape head (mf=0)
             if some_mf_output and mf != 0 :
                 lines.extend(write_fend(self.datadic, with_ctrl=True, with_ns=True,
-                                        zero_as_blank=zero_as_blank))
+                                        zero_as_blank=zero_as_blank, **self.write_opts))
 
-        lines.extend(write_mend(with_ctrl=True, with_ns=True, zero_as_blank=zero_as_blank))
-        lines.extend(write_tend(with_ctrl=True, with_ns=True, zero_as_blank=zero_as_blank))
+        lines.extend(write_mend(with_ctrl=True, with_ns=True,
+                                zero_as_blank=zero_as_blank, **self.write_opts))
+        lines.extend(write_tend(with_ctrl=True, with_ns=True,
+                                zero_as_blank=zero_as_blank, **self.write_opts))
         del self.zero_as_blank
         return lines
 

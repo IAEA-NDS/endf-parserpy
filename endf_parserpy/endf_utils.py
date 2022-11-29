@@ -270,7 +270,7 @@ def read_tab2(lines, ofs=0, with_ctrl=True,
     INT = vals[1::2]
     dic['table'] = {'NBT': NBT, 'INT': INT}
     if with_ctrl:
-        ctrl = read_ctrl(startline)
+        ctrl = read_ctrl(startline, **read_opts)
         dic.update(ctrl)
     return dic, ofs
 
@@ -302,7 +302,7 @@ def read_tab1(lines, ofs=0, with_ctrl=True, blank_as_zero=False,
                                         **read_opts)
     dic['table'] = tbl_dic
     if with_ctrl:
-        ctrl = read_ctrl(startline)
+        ctrl = read_ctrl(startline, **read_opts)
         dic.update(ctrl)
     return dic, ofs
 

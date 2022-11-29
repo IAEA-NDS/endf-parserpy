@@ -73,12 +73,13 @@ def write_text(dic, with_ctrl=True, **write_opts):
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [TEXT + CTRL]
 
-def read_dir(lines, ofs=0, with_ctrl=True, blank_as_zero=False):
+def read_dir(lines, ofs=0, with_ctrl=True, blank_as_zero=False, **read_opts):
+    width = read_opts.get('width', 11)
     line = lines[ofs]
-    dic = {'L1' : read_fort_int(line[22:33], blank_as_zero),
-           'L2' : read_fort_int(line[33:44], blank_as_zero),
-           'N1' : read_fort_int(line[44:55], blank_as_zero),
-           'N2' : read_fort_int(line[55:66], blank_as_zero)}
+    dic = {'L1' : read_fort_int(line[2*width:3*width], blank_as_zero),
+           'L2' : read_fort_int(line[3*width:4*width], blank_as_zero),
+           'N1' : read_fort_int(line[4*width:5*width], blank_as_zero),
+           'N2' : read_fort_int(line[5*width:6*width], blank_as_zero)}
     if with_ctrl:
         ctrl = read_ctrl(line)
         dic.update(ctrl)

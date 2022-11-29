@@ -393,12 +393,12 @@ def skip_blank_lines(lines, ofs):
                     'expected input but consumed all lines')
     return ofs
 
-def split_sections(lines):
+def split_sections(lines, **read_opts):
     mfdic = {}
     for line in lines:
         if is_blank_line(line):
             continue
-        dic = read_ctrl(line, nofail=True)
+        dic = read_ctrl(line, nofail=True, **read_opts)
         mf = dic['MF']
         mt = dic['MT']
         # end markers (SEND, MEND, FEND, TEND) ignored

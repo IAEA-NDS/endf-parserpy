@@ -44,7 +44,7 @@ class BasicEndfParser():
                        ignore_varspec_mismatch=False, fuzzy_matching=True,
                        blank_as_zero=True, log_lookahead_traceback=False,
                        abuse_signpos=False, skip_intzero=False, prefer_noexp=False,
-                       accept_spaces=True, keep_E=False):
+                       accept_spaces=True, keep_E=False, width=11):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         self.tree_dic = get_recipe_parsetree_dic()
@@ -78,10 +78,12 @@ class BasicEndfParser():
                 'abuse_signpos': abuse_signpos,
                 'skip_intzero': skip_intzero,
                 'prefer_noexp': prefer_noexp,
-                'keep_E': keep_E
+                'keep_E': keep_E,
+                'width': width
             }
         self.read_opts = {
-                'accept_spaces': accept_spaces
+                'accept_spaces': accept_spaces,
+                'width': width
             }
 
     def process_text_line(self, tree):

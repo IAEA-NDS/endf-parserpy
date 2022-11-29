@@ -26,7 +26,8 @@ def read_fort_int(valstr, blank_as_zero=False):
             raise InvalidIntegerError(valerr)
 
 
-def fortstr2float(valstr, blank=None, accept_spaces=True):
+def fortstr2float(valstr, blank=None, **read_opts):
+    accept_spaces = read_opts.get('accept_spaces', True)
     if valstr.strip() == '' and blank is not None:
         return blank
     if accept_spaces:

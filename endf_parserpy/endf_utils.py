@@ -85,13 +85,14 @@ def read_dir(lines, ofs=0, with_ctrl=True, blank_as_zero=False, **read_opts):
         dic.update(ctrl)
     return dic, ofs+1
 
-def write_dir(dic, with_ctrl=True):
-    C1 = ' '*11
-    C2 = ' '*11
-    L1 = str(dic['L1']).rjust(11)
-    L2 = str(dic['L2']).rjust(11)
-    N1 = str(dic['N1']).rjust(11)
-    N2 = str(dic['N2']).rjust(11)
+def write_dir(dic, with_ctrl=True, **write_opts):
+    width = write_opts.get('width', 11)
+    C1 = ' '*width
+    C2 = ' '*width
+    L1 = str(dic['L1']).rjust(width)
+    L2 = str(dic['L2']).rjust(width)
+    N1 = str(dic['N1']).rjust(width)
+    N2 = str(dic['N2']).rjust(width)
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 

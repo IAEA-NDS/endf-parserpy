@@ -75,7 +75,10 @@ def float2basicnumstr(val, **write_opts):
     return numstr
 
 
-def float2expformstr(val, width=11, abuse_signpos=False, keep_E=False):
+def float2expformstr(val, **write_opts):
+    width = write_opts.get('width', 11)
+    abuse_signpos = write_opts.get('abuse_signpos', False)
+    keep_E = write_opts.get('keep_E', False)
     av = abs(val)
     if av >= 1e-9 and av < 1e10:
         nexp = 1

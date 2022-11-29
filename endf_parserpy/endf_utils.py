@@ -115,7 +115,8 @@ def read_intg(lines, ofs=0, with_ctrl=True, blank_as_zero=False, ndigit=None):
         dic.update(ctrl)
     return dic, ofs+1
 
-def write_intg(dic, with_ctrl=True, ndigit=None):
+def write_intg(dic, with_ctrl=True, ndigit=None, **write_opts):
+    width = write_opts.get('width', 11)
     if not isinstance(ndigit, int):
         raise ValueError('ndigit must be specified')
     II = str(dic['II']).rjust(5)
@@ -123,7 +124,7 @@ def write_intg(dic, with_ctrl=True, ndigit=None):
     spacer = '' if ndigit == 6 else ' '
     KIJ = ''.join([str(c).rjust(ndigit+1) for c in dic['KIJ']])
     CTRL = write_ctrl(dic) if with_ctrl else ''
-    return [(II + JJ + spacer + KIJ).ljust(66) + CTRL]
+    return [(II + JJ + spacer + KIJ).ljust(width*6) + CTRL]
 
 def read_cont(lines, ofs=0, with_ctrl=True, blank_as_zero=False, **read_opts):
     line = lines[ofs]

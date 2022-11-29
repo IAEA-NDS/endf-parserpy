@@ -349,20 +349,19 @@ def write_tab1_body_lines(NBT, INT, xvals, yvals, **write_opts):
 
 def read_endf_numbers(lines, num, ofs, to_int=False,
                       blank_as_zero=False, **read_opts):
-    width = read_opts.get('width', 11)
     vals = []
     blank_symb = 0. if blank_as_zero else None
     while num > 0:
         l = lines[ofs]
         m = min(6, num)
-        vals += read_fort_floats(l, m, w=width, blank=blank_symb,
+        vals += read_fort_floats(l, m, blank=blank_symb,
                                  **read_opts)
         num -= 6
         ofs += 1
     if to_int:
         try:
             vals = [int(v) for v in vals]
-        except ValueError as valerr:
+        except ValueError:
             pass
 
     return vals, ofs
@@ -374,7 +373,7 @@ def write_endf_numbers(vals, to_int=False, **write_opts):
         if to_int:
             lines.append(''.join([str(v).rjust(11) for v in vals[i:m]]))
         else:
-            lines.append(write_fort_floats(vals[i:m], w=11, **write_opts))
+            lines.append(write_fort_floats(vals[i:m], **write_opts))
     lines[-1] = lines[-1].ljust(66)
     return lines
 

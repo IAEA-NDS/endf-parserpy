@@ -138,27 +138,27 @@ def float2fortstr(val, width=11, prefer_noexp=False,
                                 keep_E=keep_E)
 
 
-def read_fort_floats(line, n=6, w=11, blank=None, accept_spaces=True):
+def read_fort_floats(line, n=6, width=11, blank=None, accept_spaces=True):
     assert isinstance(line, str)
     vals = []
-    for i in range(0, n*w, w):
-        if line[i:i+w] == ' '*w:
+    for i in range(0, n*width, width):
+        if line[i:i+width] == ' '*width:
             if blank is None:
                 raise ValueError('blank encountered but blank=None')
             else:
                 vals.append(blank)
         else:
-            vals.append(fortstr2float(line[i:i+w],
+            vals.append(fortstr2float(line[i:i+width],
                                       accept_spaces=accept_spaces))
     return vals
 
 
-def write_fort_floats(vals, w=11, prefer_noexp=False,
+def write_fort_floats(vals, width=11, prefer_noexp=False,
                       skip_intzero=False, abuse_signpos=False,
                       keep_E=False):
     line = ''
     for i, v in enumerate(vals):
-        line += float2fortstr(v, w,
+        line += float2fortstr(v, width,
                               prefer_noexp=prefer_noexp,
                               skip_intzero=skip_intzero,
                               abuse_signpos=abuse_signpos,

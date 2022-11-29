@@ -140,7 +140,9 @@ def float2fortstr(val, **write_opts):
         return float2expformstr(val, **write_opts)
 
 
-def read_fort_floats(line, n=6, width=11, blank=None, accept_spaces=True):
+def read_fort_floats(line, n=6, blank=None, **read_opts):
+    accept_spaces = read_opts.get('accept_spaces', True)
+    width = read_opts.get('width', 11)
     assert isinstance(line, str)
     vals = []
     for i in range(0, n*width, width):

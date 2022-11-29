@@ -128,19 +128,20 @@ def write_intg(dic, with_ctrl=True, ndigit=None, **write_opts):
     return [(II + JJ + spacer + KIJ).ljust(width*6) + CTRL]
 
 def read_cont(lines, ofs=0, with_ctrl=True, blank_as_zero=False, **read_opts):
+    width = read_opts.get('width', 11)
     line = lines[ofs]
-    dic = {'C1' : fortstr2float(line[0:11],
+    dic = {'C1' : fortstr2float(line[0:width],
                                 blank=0.0 if blank_as_zero else None,
                                 **read_opts),
-           'C2' : fortstr2float(line[11:22],
+           'C2' : fortstr2float(line[width:2*width],
                                 blank=0.0 if blank_as_zero else None,
                                 **read_opts),
-           'L1' : read_fort_int(line[22:33], blank_as_zero),
-           'L2' : read_fort_int(line[33:44], blank_as_zero),
-           'N1' : read_fort_int(line[44:55], blank_as_zero),
-           'N2' : read_fort_int(line[55:66], blank_as_zero)}
+           'L1' : read_fort_int(line[2*width:3*width], blank_as_zero),
+           'L2' : read_fort_int(line[3*width:4*width], blank_as_zero),
+           'N1' : read_fort_int(line[4*width:5*width], blank_as_zero),
+           'N2' : read_fort_int(line[5*width:6*width], blank_as_zero)}
     if with_ctrl:
-        ctrl = read_ctrl(line)
+        ctrl = read_ctrl(line, **read_opts)
         dic.update(ctrl)
     return dic, ofs+1
 

@@ -146,16 +146,17 @@ def read_cont(lines, ofs=0, with_ctrl=True, blank_as_zero=False, **read_opts):
     return dic, ofs+1
 
 def write_cont(dic, with_ctrl=True, **write_opts):
+    width = write_opts.get('width', 11)
     for varname in ('L1', 'L2', 'N1', 'N2'):
         if not isinstance(dic[varname], int):
             raise InvalidIntegerError(
                     f'variable `{varname}` is not of type integer')
     C1 = float2fortstr(dic['C1'], **write_opts)
     C2 = float2fortstr(dic['C2'], **write_opts)
-    L1 = str(dic['L1']).rjust(11)
-    L2 = str(dic['L2']).rjust(11)
-    N1 = str(dic['N1']).rjust(11)
-    N2 = str(dic['N2']).rjust(11)
+    L1 = str(dic['L1']).rjust(width)
+    L2 = str(dic['L2']).rjust(width)
+    N1 = str(dic['N1']).rjust(width)
+    N2 = str(dic['N2']).rjust(width)
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 

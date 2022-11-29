@@ -71,7 +71,7 @@ def float2basicnumstr(val, width=11, abuse_signpos=False,
     return numstr
 
 
-def float2expformstr(val, width=11, abuse_signpos=False):
+def float2expformstr(val, width=11, abuse_signpos=False, keep_E=False):
     av = abs(val)
     if av >= 1e-9 and av < 1e10:
         nexp = 1
@@ -83,26 +83,30 @@ def float2expformstr(val, width=11, abuse_signpos=False):
         nexp = 3
     is_pos = val >= 0
     sign_dec = 0 if abuse_signpos and is_pos else 1
+    expsymb_dec = 1 if keep_E else 0
     exponent = floor(log10(av)) if av != 0 else 0
     mantissa = abs(val / 10**exponent)
     is_expo_pos = exponent >= 0
     absexponent = abs(exponent)
-    mantissa_len = width - 1 - nexp - sign_dec
+    mantissa_len = width - 1 - nexp - sign_dec - expsymb_dec
     mantissa_str = f'{{:.{mantissa_len-2}f}}'.format(mantissa)
+    expsymb_str = 'E' if keep_E else ''
     exposign_str = '+' if is_expo_pos else '-'
     exponent_str = f'{{:{nexp}d}}'.format(absexponent)
     if is_pos:
         sign_str = '' if abuse_signpos else ' '
     else:
         sign_str = '-'
-    return sign_str + mantissa_str + exposign_str + exponent_str
+    return sign_str + mantissa_str + expsymb_str + exposign_str + exponent_str
 
 
-def is_noexpform_more_precise(val, width, skip_intzero, abuse_signpos):
+def is_noexpform_more_precise(val, width, skip_intzero, abuse_signpos, keep_E):
     if val == 0:
         return True
     digit_advantage = 2
     if skip_intzero and abs(int(val)) < 1:
+        digit_advantage += 1
+    if keep_E:
         digit_advantage += 1
     expo = log10(abs(val)) if val != 0 else 0
     if expo < 0:
@@ -117,17 +121,19 @@ def is_noexpform_more_precise(val, width, skip_intzero, abuse_signpos):
 
 
 def float2fortstr(val, width=11, prefer_noexp=False,
-                  skip_intzero=False, abuse_signpos=False):
+                  skip_intzero=False, abuse_signpos=False, keep_E=False):
     noexp_more_precise = is_noexpform_more_precise(val, width,
                                                    skip_intzero,
-                                                   abuse_signpos)
+                                                   abuse_signpos,
+                                                   keep_E)
     if prefer_noexp and noexp_more_precise:
         return float2basicnumstr(val, width,
                                  abuse_signpos=abuse_signpos,
                                  skip_intzero=skip_intzero)
     else:
         return float2expformstr(val, width=11,
-                                abuse_signpos=abuse_signpos)
+                                abuse_signpos=abuse_signpos,
+                                keep_E=keep_E)
 
 
 def read_fort_floats(line, n=6, w=11, blank=None, accept_spaces=True):
@@ -146,11 +152,13 @@ def read_fort_floats(line, n=6, w=11, blank=None, accept_spaces=True):
 
 
 def write_fort_floats(vals, w=11, prefer_noexp=False,
-                      skip_intzero=False, abuse_signpos=False):
+                      skip_intzero=False, abuse_signpos=False,
+                      keep_E=False):
     line = ''
     for i, v in enumerate(vals):
         line += float2fortstr(v, w,
                               prefer_noexp=prefer_noexp,
                               skip_intzero=skip_intzero,
-                              abuse_signpos=abuse_signpos)
+                              abuse_signpos=abuse_signpos,
+                              keep_E=keep_E)
     return line

@@ -63,7 +63,7 @@ def read_text(lines, ofs=0, with_ctrl=True, **read_opts):
     line = lines[ofs]
     dic = {'HL': line[0:ofs2]}
     if with_ctrl:
-        ctrl = read_ctrl(line)
+        ctrl = read_ctrl(line, **read_opts)
         dic.update(ctrl)
     return dic, ofs+1
 
@@ -81,7 +81,7 @@ def read_dir(lines, ofs=0, with_ctrl=True, blank_as_zero=False, **read_opts):
            'N1' : read_fort_int(line[4*width:5*width], blank_as_zero),
            'N2' : read_fort_int(line[5*width:6*width], blank_as_zero)}
     if with_ctrl:
-        ctrl = read_ctrl(line)
+        ctrl = read_ctrl(line, **read_opts)
         dic.update(ctrl)
     return dic, ofs+1
 
@@ -96,7 +96,8 @@ def write_dir(dic, with_ctrl=True, **write_opts):
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
-def read_intg(lines, ofs=0, with_ctrl=True, blank_as_zero=False, ndigit=None):
+def read_intg(lines, ofs=0, with_ctrl=True, blank_as_zero=False,
+              ndigit=None, **read_opts):
     if ndigit is None:
         raise ValueError('ndigit must be specified')
     if int(ndigit) != ndigit:
@@ -111,7 +112,7 @@ def read_intg(lines, ofs=0, with_ctrl=True, blank_as_zero=False, ndigit=None):
            'KIJ': [read_fort_int(line[i:i+ndigit+1], blank_as_zero=blank_as_zero)
                    for i in range_iter]}
     if with_ctrl:
-        ctrl = read_ctrl(line)
+        ctrl = read_ctrl(line, **read_opts)
         dic.update(ctrl)
     return dic, ofs+1
 

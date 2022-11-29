@@ -57,9 +57,11 @@ def get_ctrl(dic, nofail=False):
         mt = dic['MT']
     return {'MAT': mat, 'MF': mf, 'MT': mt}
 
-def read_text(lines, ofs=0, with_ctrl=True):
+def read_text(lines, ofs=0, with_ctrl=True, **read_opts):
+    width = read_opts.get('width', 11)
+    ofs2 = width * 6
     line = lines[ofs]
-    dic = {'HL': line[0:66]}
+    dic = {'HL': line[0:ofs2]}
     if with_ctrl:
         ctrl = read_ctrl(line)
         dic.update(ctrl)

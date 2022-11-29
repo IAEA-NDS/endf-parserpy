@@ -67,8 +67,9 @@ def read_text(lines, ofs=0, with_ctrl=True, **read_opts):
         dic.update(ctrl)
     return dic, ofs+1
 
-def write_text(dic, with_ctrl=True):
-    TEXT = dic['HL'].ljust(66)
+def write_text(dic, with_ctrl=True, **write_opts):
+    ofs2 = write_opts.get('width', 11) * 6
+    TEXT = dic['HL'].ljust(ofs2)
     CTRL = write_ctrl(dic) if with_ctrl else ''
     return [TEXT + CTRL]
 

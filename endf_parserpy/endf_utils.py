@@ -161,8 +161,9 @@ def write_cont(dic, with_ctrl=True, **write_opts):
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
 def prepare_zerostr_fields(zero_as_blank, **write_opts):
-    zerostr = ' '*11 if zero_as_blank else float2fortstr(0, **write_opts)
-    zerostr2 = ' '*11 if zero_as_blank else '0'.rjust(11)
+    width = write_opts.get('width', 11)
+    zerostr = ' '*width if zero_as_blank else float2fortstr(0, **write_opts)
+    zerostr2 = ' '*width if zero_as_blank else '0'.rjust(width)
     C1 = zerostr
     C2 = zerostr
     L1 = zerostr2

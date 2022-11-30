@@ -45,13 +45,14 @@ def fortstr2float(valstr, blank=None, **read_opts):
 
 def float2basicnumstr(val, **write_opts):
     width = write_opts.get('width', 11)
+    effwidth = width
     abuse_signpos = write_opts.get('abuse_signpos', False)
     skip_intzero = write_opts.get('skip_intzero', False)
     intpart = int(val)
     len_intpart = len(str(abs(intpart)))
     is_integer = (intpart == val)
     if is_integer and intpart == 0:
-        return '0'.rjust(width)
+        return '0'.rjust(effwidth)
     # -1 due to a minus sign slot
     # -1 due to the decimal point
     waste_space = 2
@@ -61,18 +62,20 @@ def float2basicnumstr(val, **write_opts):
         intpos = 0
     should_skip_zero = skip_intzero and intpart == 0
     if should_skip_zero:
-        width += 1
+        effwidth += 1
     if is_integer:
         waste_space -= 1
-    floatwidth = width - waste_space - len_intpart
+    floatwidth = effwidth - waste_space - len_intpart
     if floatwidth > 0 and not is_integer:
-        numstr = f'{{:{width}.{floatwidth}f}}'.format(val)
+        numstr = f'{{:{effwidth}.{floatwidth}f}}'.format(val)
     elif log10(abs(intpart)) < width:
-        numstr = f'{{:{width}d}}'.format(int(val))
+        numstr = f'{{:{effwidth}d}}'.format(int(val))
     else:
         raise ValueError('cannot represent the number')
     if should_skip_zero:
         numstr = numstr[:intpos] + numstr[intpos+1:]
+    if '.' in numstr:
+        numstr = numstr.rstrip('0').rjust(width)
     return numstr
 
 

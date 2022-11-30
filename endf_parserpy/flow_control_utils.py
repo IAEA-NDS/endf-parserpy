@@ -127,7 +127,7 @@ def evaluate_if_clause(tree, tree_handler, datadic, loop_vars,
     chnames = get_child_names(tree)
     assert chnames[0] == 'if_statement'
     truthval = evaluate_if_statement(tree.children[0], tree_handler, datadic, loop_vars,
-                                     set_parser_state, get_parser_state)
+                                     set_parser_state, get_parser_state, parse_opts=parse_opts)
     if truthval is True:
         return
     else:

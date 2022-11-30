@@ -35,9 +35,6 @@ from .endf_recipe_utils import (
 )
 
 
-logging.basicConfig(level=logging.INFO)
-
-
 class BasicEndfParser():
 
     def __init__(self, ignore_number_mismatch=False, ignore_zero_mismatch=True,

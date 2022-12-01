@@ -44,7 +44,7 @@ demonstrate how this package can be used.
 A simple example is also provided here to get you
 started.
 ```
-from endf_parserpy.endf_parser import BasicEndfParser
+from endf_parserpy import BasicEndfParser
 parser = BasicEndfParser()
 endf_file = 'testdata/n_2925_29-Cu-63.endf'
 endf_dic = parser.parsefile(endf_file)
@@ -70,11 +70,96 @@ produce a new ENDF file:
 parser.writefile(endf_file + '.writeback', endf_dic)
 ```
 
+### Precision control for ENDF file output
+
+Some options can be provided to increase the
+precision of outputted ENDF files:
+```
+from endf_parserpy import BasicEndfParser
+parser = BasicEndfParser(prefer_noexp=True,
+    abuse_signpos=True, skip_intzero=True)
+parser.writefile(endfout_filepath)
+```
+
+### Convenience functions
+
 There are a few user convenience functions available, e.g.,
 ```
+from endf_parserpy import (
+    locate, get_endf_values, list_parsed_sections,
+    list_unparsed_sections, show_content)
 # locate all variables with name AWR
 locations = locate(endf_dic, 'AWR')
 values = get_endf_values(endf_dic, locations)
+# show the content of some part of the file
+show_content(endf_dic[1][451])
+# obtain all parsed and unparsed sections
+list_parsed_sections(endf_dic)
+list_unparsed_sections(endf_dic)
+```
+
+### Deleting, substituting, modifying ENDF files
+
+Basic functionality to deal with Python dictionaries
+can be used to achieve these tasks.
+The following example code demonstrates how to
+delete a section:
+```
+from endf_parserpy import BasicEndfParser
+parser = BasicEndfParser()
+endf_dic = parser.parsefile(endf_file)
+# delete MF1/MT451
+del endf_dic[1][451]
+# delete MF3
+del endf_dic[3]
+```
+Substituting a section by one from another
+ENDF file can be done like this:
+```
+from copy import deepcopy
+endf_dic1 = parser.parsefile(endf_filepath1)
+endf_dic2 = parser.parsefile(endf_filepath2)
+endf_dic1[3][1] = deepcopy(endf_dic2[3][1])
+```
+Modifying a number is very easy and can be
+achieved by, e.g.,
+```
+endf_dic[1][451]['AWR'] = 63
+```
+
+### ENDF file comparison
+
+If two files are believed to be equivalent or have only
+minor differences, they can be compared in the following way:
+```
+from endf_parserpy import BasicEndfParser
+from endf_parserpy.debugging_utils import compare_objects
+parser = BasicEndfParser()
+endf_dic1 = parser.parsefile(endf_filepath1)
+endf_dic2 = parser.parsefile(endf_filepath2)
+compare_objects(endf_dic1, endf_dic2, fail_on_diff=False)
+```
+
+### Converting between ENDF and JSON files
+
+Equivalent JSON files can be produced from ENDF files.
+```
+from endf_parserpy import BasicEndfParser
+import json
+parser = BasicEndfParser()
+endf_dic = parser.parsefile(endf_filepath)
+with open('endf_file.json', 'w') as f:
+    json.dump(endf_dic, f, indent=2)
+```
+
+To convert a JSON file back to an ENDF file, you can
+use this code:
+```
+from endf_parserpy.user_tools import sanitize_fieldname_types
+with open('endf_file.json', 'r') as f:
+    endf_dic = json.load(f)
+sanitize_fieldname_types(endf_dic)
+parser.writefile('endf_out.endf', endf_dic)
 ```
 
 ## Testing
@@ -113,6 +198,13 @@ Additional available arguments are:
                                   in the ENDF recipe if the latter number is suffixed by a question mark.
 - `--ignore_varspec_mismatch=true` will lead to less strict checking that tolerates any inconsistent variable specification if the variable name in the
                               ENDF recipe is suffixed by a question mark.
+
+## Acknowledgments
+
+The IAEA consultant Daniel Lopez Aldama helped with his great knowledge
+on the ENDF-6 format to guide through the complexities of the format
+in numerous discussions and also greatly contributed to the
+debugging of the recipe files.
 
 ## Legal note
 

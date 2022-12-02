@@ -432,5 +432,3 @@ class BasicEndfParser():
             lines = self.write(endf_dic, exclude, include, zero_as_blank)
             with open(filename, 'w') as fout:
                 fout.write('\n'.join(lines))
-            return lines
-

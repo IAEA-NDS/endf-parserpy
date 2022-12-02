@@ -108,22 +108,6 @@ parser.insert_description(endf_dic, newinfo, after_line=5)
 parser.writefile('modified_file.endf', endf_dic)
 ```
 
-### Precision control for ENDF file output
-
-Some options can be provided to increase the
-precision of outputted ENDF files by passing
-specific options to the constructor:
-```
-from endf_parserpy import BasicEndfParser
-parser = BasicEndfParser(prefer_noexp=True,
-    abuse_signpos=True, skip_intzero=True)
-parser.writefile('endf_output.endf', endf_dic)
-```
-If you prefer better compatibility for languages
-different from Fortran at the cost of losing
-one digit precision, you can also add
-`keep_E=True` to the argument list.
-
 ### Selective parsing
 
 If one is only interested in specific MF/MT numbers,
@@ -197,19 +181,6 @@ achieved by, e.g.,
 endf_dic[1][451]['AWR'] = 63
 ```
 
-### Comparing ENDF files
-
-If two files are believed to be equivalent or to have only
-minor differences, they can be compared in the following way:
-```
-parser.parsefile('from endf_parserpy import BasicEndfParser
-from endf_parserpy.debugging_utils import compare_objects
-parser = BasicEndfParser()
-endf_dic1 = parser.parsefile('n_2925_29-Cu-63.endf')
-endf_dic2 = parser.parsefile('n_3025_30-Zn-64.endf')
-compare_objects(endf_dic1, endf_dic2, fail_on_diff=False)
-```
-
 ### Converting between ENDF and JSON files
 
 Equivalent JSON files can be produced from ENDF files
@@ -237,6 +208,58 @@ Keys of type integer in Python are converted to type string
 by `json.dump`. The function `sanitize_fieldname_types` restores the
 integer type of the keys after reading from a JSON file and
 before passing them to `parser.writefile`.
+
+### Precision control for ENDF file output
+
+Some options can be provided to increase the
+precision of outputted ENDF files by passing
+specific options to the constructor:
+```
+from endf_parserpy import BasicEndfParser
+parser = BasicEndfParser(prefer_noexp=True,
+    abuse_signpos=True, skip_intzero=True)
+parser.writefile('endf_output.endf', endf_dic)
+```
+If you prefer better compatibility for languages
+different from Fortran at the cost of losing
+one digit precision, you can also add
+`keep_E=True` to the argument list.
+
+### Comparing ENDF files
+
+If two files are believed to be equivalent or to have only
+minor differences, they can be compared in the following way:
+```
+parser.parsefile('from endf_parserpy import BasicEndfParser
+from endf_parserpy.debugging_utils import compare_objects
+parser = BasicEndfParser()
+endf_dic1 = parser.parsefile('n_2925_29-Cu-63.endf')
+endf_dic2 = parser.parsefile('n_3025_30-Zn-64.endf')
+compare_objects(endf_dic1, endf_dic2, fail_on_diff=False)
+```
+
+You can also add the `atol` and `rtol` arguments to the
+`compare_objects` call to control the absolute and relative
+tolerance, respectively, in the comparison of floating point
+numbers. These arguments have the same meaning as for the
+`numpy.isclose` function. The default values are
+`atol=1e-8` and `rtol=1e-6`. You may want to use this function
+to check that you don't lose too much precision in a reading,
+adjustment, writing sequence:
+```
+endf_dic1 = parser.parsefile('n_2925_29-Cu-63.endf')
+# ...
+# introduce some modifications in endf_dic1,
+# e.g., changing numbers, substituting sections
+endf_out = 'modified_n_2925_29-Cu-63.endf'
+parser.writefile(endf_out, endf_dic1)
+endf_dic2 = parser.parsefile(endf_out)
+compare_objects(endf_dic1, endf_di2, fail_on_diff=False)
+```
+If inacceptable differences are detected, you may want
+use the available arguments discussed
+[above](#precision-control-for-endf-file-output) to
+increase the output precision.
 
 ## Testing
 

@@ -24,6 +24,8 @@ package to read and write ENDF files can therefore  be extended by
 adding ENDF recipe files. The already implemented recipe files
 can be inspected [here](https://github.com/iaea-nds/endf-parserpy/tree/main/endf_parserpy/endf_recipes).
 
+[ENDF-6 formats manual]: https://doi.org/10.2172/1425114
+
 ## Installation
 
 We recommend to create a virtual environment for
@@ -37,16 +39,30 @@ To install this package using pip, run
 pip install git+https://github.com/iaea-nds/endf-parserpy.git
 ```
 
+Alternatively, you can download this repository and
+update the `PYTHONPATH` environment variable on the
+command line:
+```
+export PYTHONPATH="<path-of-repository-directory>"
+```
+Make sure that the only two depdendencies of this
+package, the package `lark` and `appdirs` are installed, e.g., by
+```
+pip install lark
+pip install appdirs
+```
+
 ## Basic usage
 
 The `example/` folder contains example scripts to
 demonstrate how this package can be used.
-A simple example is also provided here to get you
-started.
+Two ENDF files are provided in the `tests/testdata`
+directory. Change into this directory if you want
+to run all the following code snippets verbatim.
 ```
 from endf_parserpy import BasicEndfParser
 parser = BasicEndfParser()
-endf_file = 'testdata/n_2925_29-Cu-63.endf'
+endf_file = 'n_2925_29-Cu-63.endf'
 endf_dic = parser.parsefile(endf_file)
 ```
 The variable `endf_dic` contains a nested dictionary that
@@ -70,79 +86,134 @@ produce a new ENDF file:
 parser.writefile(endf_file + '.writeback', endf_dic)
 ```
 
+The following subsections provide short code snippets
+for common operations or interactions with ENDF files.
+
+### Updating description and MT451 dictionary
+
+In case the description in MF1/MT451 or
+any other section were modified in ways that may
+result in a different number of lines in the ENDF file,
+it is better to use the `ExtEndfParser` class.
+In addition to the methods of the `BasicEndfParser`,
+it offers a few convenience methods, e.g.,
+```
+from endf_parserpy import ExtEndfParser
+parser = ExtEndfParser()
+endf_dic = parser.parsefile(endf_file)
+descr = parser.get_description(endf_dic)
+print(descr)
+newinfo = 'We tweaked the data in MF3...\nJust joking!'
+parser.insert_description(endf_dic, newinfo, after_line=5)
+parser.writefile('modified_file.endf', endf_dic)
+```
+
 ### Precision control for ENDF file output
 
 Some options can be provided to increase the
-precision of outputted ENDF files:
+precision of outputted ENDF files by passing
+specific options to the constructor:
 ```
 from endf_parserpy import BasicEndfParser
 parser = BasicEndfParser(prefer_noexp=True,
     abuse_signpos=True, skip_intzero=True)
-parser.writefile(endfout_filepath)
+parser.writefile('endf_output.endf', endf_dic)
 ```
+If you prefer better compatibility for languages
+different from Fortran at the cost of losing
+one digit precision, you can also add
+`keep_E=True` to the argument list.
 
-### Convenience functions
+### Selective parsing
 
-There are a few user convenience functions available, e.g.,
+If one is only interested in specific MF/MT numbers,
+it is possible to include or exclude the desired sections
+to accelerate the parsing process.
+For instance, only including MF1/MT451 and MF3 can be
+done by:
 ```
-from endf_parserpy import (
-    locate, get_endf_values, list_parsed_sections,
-    list_unparsed_sections, show_content)
-# locate all variables with name AWR
-locations = locate(endf_dic, 'AWR')
-values = get_endf_values(endf_dic, locations)
-# show the content of some part of the file
-show_content(endf_dic[1][451])
-# obtain all parsed and unparsed sections
+endf_dic = parser.parsefile('n_2925_29-Cu-63.endf', include=(3, (1,451)))
+```
+All other sections will then only be available as strings. To include a
+single section, use `include=(MF,)` or `include=((MF,MT),)`.
+
+Excluding sections can be done analogously. To parse every section
+except the specified sections use:
+```
+endf_dic = parser.parsefile('n_2925_29-Cu-63.endf', exclude=(3, (1,451)))
+```
+You can always retrieve a list of the parsed and unparsed sections by:
+```
+from endf_parserpy.user_tools import list_parsed_sections, list_unparsed_sections
 list_parsed_sections(endf_dic)
 list_unparsed_sections(endf_dic)
 ```
 
-### Deleting, substituting, modifying ENDF files
+### Convenience functions
+
+There are a few user convenience functions available.
+This code snippet finds all locations where a variable
+of a specific name appears and shows their values:
+```
+from endf_parserpy.user_tools import locate, get_endf_values
+locations = locate(endf_dic, 'AWR')
+values = get_endf_values(endf_dic, locations)
+```
+The following function aims to provide a nicer
+visual representation of the content of a section
+(or any subsection within):
+```
+from endf_parserpy.user_tools import show_content
+show_content(endf_dic[1][451])
+```
+
+### Deleting, substituting, modifying MF/MT sections
 
 Basic functionality to deal with Python dictionaries
-can be used to achieve these tasks.
-The following example code demonstrates how to
-delete a section:
+can be used to delete, substitute or modify sections
+in ENDF files.
+To delete a section, e.g., MF3, you can use
 ```
-from endf_parserpy import BasicEndfParser
-parser = BasicEndfParser()
-endf_dic = parser.parsefile(endf_file)
-# delete MF1/MT451
-del endf_dic[1][451]
-# delete MF3
 del endf_dic[3]
 ```
+To delete a subsection, e.g., MF1/MT451, execute
+```
+del endf_dic[1][451]
+```
+
 Substituting a section by one from another
 ENDF file can be done like this:
 ```
 from copy import deepcopy
-endf_dic1 = parser.parsefile(endf_filepath1)
-endf_dic2 = parser.parsefile(endf_filepath2)
+endf_dic1 = parser.parsefile('n_2925_29-Cu-63.endf')
+endf_dic2 = parser.parsefile('n_3025_30-Zn-64.endf')
 endf_dic1[3][1] = deepcopy(endf_dic2[3][1])
+parser.writefile('replaced.endf', endf_dic1)
 ```
+
 Modifying a number is very easy and can be
 achieved by, e.g.,
 ```
 endf_dic[1][451]['AWR'] = 63
 ```
 
-### ENDF file comparison
+### Comparing ENDF files
 
-If two files are believed to be equivalent or have only
+If two files are believed to be equivalent or to have only
 minor differences, they can be compared in the following way:
 ```
-from endf_parserpy import BasicEndfParser
+parser.parsefile('from endf_parserpy import BasicEndfParser
 from endf_parserpy.debugging_utils import compare_objects
 parser = BasicEndfParser()
-endf_dic1 = parser.parsefile(endf_filepath1)
-endf_dic2 = parser.parsefile(endf_filepath2)
+endf_dic1 = parser.parsefile('n_2925_29-Cu-63.endf')
+endf_dic2 = parser.parsefile('n_3025_30-Zn-64.endf')
 compare_objects(endf_dic1, endf_dic2, fail_on_diff=False)
 ```
 
 ### Converting between ENDF and JSON files
 
-Equivalent JSON files can be produced from ENDF files.
+Equivalent JSON files can be produced from ENDF files
+with this code snippet:
 ```
 from endf_parserpy import BasicEndfParser
 import json
@@ -158,9 +229,14 @@ use this code:
 from endf_parserpy.user_tools import sanitize_fieldname_types
 with open('endf_file.json', 'r') as f:
     endf_dic = json.load(f)
+
 sanitize_fieldname_types(endf_dic)
-parser.writefile('endf_out.endf', endf_dic)
+parser.writefile('endf_out.endf', endf_dic, overwrite=True)
 ```
+Keys of type integer in Python are converted to type string
+by `json.dump`. The function `sanitize_fieldname_types` restores the
+integer type of the keys after reading from a JSON file and
+before passing them to `parser.writefile`.
 
 ## Testing
 

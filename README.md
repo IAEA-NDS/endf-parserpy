@@ -230,7 +230,7 @@ one digit precision, you can also add
 If two files are believed to be equivalent or to have only
 minor differences, they can be compared in the following way:
 ```
-parser.parsefile('from endf_parserpy import BasicEndfParser
+from endf_parserpy import BasicEndfParser
 from endf_parserpy.debugging_utils import compare_objects
 parser = BasicEndfParser()
 endf_dic1 = parser.parsefile('n_2925_29-Cu-63.endf')

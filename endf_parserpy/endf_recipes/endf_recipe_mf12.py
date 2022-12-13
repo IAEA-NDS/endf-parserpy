@@ -28,8 +28,7 @@ elif LO == 2 [lookahead=1]:
         [MAT, 12, MT/ ES_NS , 0.0, LP, 0, 2*NT, NT/
                       {ES[i], TP[i]}{i=1 to NT} ]LIST
     elif LG == 2:
-        # TODO: (LG+1)*NT instead of 3*NT does not work at the moment
-        [MAT, 12, MT/ ES_NS , 0.0, LP, 0, 3*NT, NT/
+        [MAT, 12, MT/ ES_NS , 0.0, LP, 0, (LG+1)*NT, NT/
                       {ES[i], TP[i], GP[i]}{i=1 to NT} ]LIST
     endif
 endif

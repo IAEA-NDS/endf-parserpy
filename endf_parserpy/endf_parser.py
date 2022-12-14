@@ -12,7 +12,8 @@
 from .logging_utils import logging, write_info, RingBuffer
 from os.path import exists as file_exists
 from copy import deepcopy
-from .tree_utils import is_tree, get_name, get_child, get_child_value
+from .tree_utils import (is_tree, get_name, get_child, get_child_value,
+        retrieve_value)
 from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_intg_dic, map_tab1_dic, map_tab2_dic, map_list_dic)
 from .endf_mapping_utils import (eval_expr_without_unknown_var, get_varname,
@@ -27,6 +28,7 @@ from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
 from .custom_exceptions import (
         InconsistentSectionBracketsError,
         InvalidIntegerError,
+        StopException,
         ParserException
     )
 from .endf_recipe_utils import (
@@ -62,6 +64,7 @@ class BasicEndfParser():
         flow_actions['for_loop'] = self.process_for_loop
         flow_actions['if_clause'] = self.process_if_clause
         flow_actions['section'] = self.process_section
+        flow_actions['stop_line'] = self.process_stop_line
         self.flow_actions = flow_actions
         self.parse_opts = {
                 'ignore_zero_mismatch': ignore_zero_mismatch,
@@ -82,6 +85,11 @@ class BasicEndfParser():
                 'accept_spaces': accept_spaces,
                 'width': width
             }
+
+    def process_stop_line(self, tree):
+        stop_message = retrieve_value(tree, 'STOP_MESSAGE')
+        stop_message = stop_message if stop_message is not None else "stop instruction"
+        raise StopException(stop_message)
 
     def process_text_line(self, tree):
         if self.rwmode == 'read':

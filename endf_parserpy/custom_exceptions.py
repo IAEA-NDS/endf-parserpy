@@ -14,6 +14,10 @@ class ParserException(Exception):
     pass
 
 
+class StopException(ParserException):
+    pass
+
+
 class UnexpectedControlRecordError(ParserException):
     pass
 

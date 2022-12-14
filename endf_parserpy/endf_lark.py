@@ -17,11 +17,12 @@ r"""
 %import common.CNAME
 %import common.INT
 %import common.NUMBER
+%import common.ESCAPED_STRING
 %ignore " "
 
 code_token: (endf_line | for_loop | if_clause | section | COMMENT_LINE | NEWLINE)*
 endf_line : list_line | head_line | cont_line | tab1_line | tab2_line
-            | text_line | dir_line | intg_line | send_line | dummy_line
+            | text_line | dir_line | intg_line | send_line | dummy_line | stop_line
 
 // section to define namespace for variables
 section: section_head section_body section_tail
@@ -37,6 +38,11 @@ MT_SPEC : "MT" | INT
 
 // comment line
 COMMENT_LINE : "#" /.*/ NEWLINE
+
+// stop instruction to quit parsing
+stop_line : "stop" "(" escaped_stop_message? ")" NEWLINE*
+escaped_stop_message : "\"" STOP_MESSAGE "\""
+STOP_MESSAGE : /[^"]+/
 
 // DUMMY record (read but not processed)
 dummy_line : "[" ctrl_spec "/" /.*\]/ "DUMMY" NEWLINE*

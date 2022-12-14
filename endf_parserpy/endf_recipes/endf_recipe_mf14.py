@@ -33,7 +33,8 @@ elif LI == 0 and LTT == 1 [lookahead=1]:
 # Anisotropic distribution with Tabulated Angular Distributions
 elif LI == 0 and LTT == 2 [lookahead=1]:
     [MAT, 14, MT/ ZA, AWR, LI, LTT, NK, NI] HEAD
-    # TODO: implement
+    # TODO
+    stop("Case LI=0, LTT=2 not implemented in ENDF recipe for MF14")
 endif
 SEND
 """

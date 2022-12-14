@@ -42,11 +42,13 @@ for k=1 to NK:
         elif LF==11 [lookahead=1]:
             [MAT, 5, MT/ U, 0.0, 0, LF, NR, NP / E / p ]TAB1
             # TODO
+            stop("LF=11 case not implemented in ENDF recipe MF5")
 
         # Energy-Dependent Fission Neutron Spectrum (LF=12)
         elif LF==12 [lookahead=1]:
             [MAT, 5, MT/ 0.0, 0.0, 0, LF, NR, NP/ E / p ]TAB1
             # TODO
+            stop("LF=12 case not implemented in ENDF recipe MF5")
         endif
     (/contribution[k])
 endfor

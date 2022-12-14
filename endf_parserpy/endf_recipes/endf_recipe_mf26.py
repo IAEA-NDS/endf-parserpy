@@ -11,5 +11,6 @@
 
 ENDF_RECIPE_MF26 = """
 
+stop("ENDF recipe for MF26 is not implemented")
 SEND
 """

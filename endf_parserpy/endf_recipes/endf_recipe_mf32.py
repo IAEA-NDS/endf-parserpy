@@ -22,6 +22,7 @@ for i=1 to NIS:
         if NRO != 0:
             [MAT,32,151/ 0.0, 0.0, 0, 0, 0, NI]CONT
             # TODO
+            stop("NRO != 0 branch not implemented in ENDF recipe MF32")
         endif
 
         # LCOMP == 0 cases

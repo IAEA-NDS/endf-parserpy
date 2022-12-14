@@ -68,6 +68,16 @@ def search_name(tree, name):
                 return True
     return False
 
+def retrieve_value(tree, name):
+    if is_token(tree) and get_name(tree) == name:
+        return get_value(tree)
+    elif is_tree(tree):
+        for child in tree.children:
+            ret = retrieve_value(child, name)
+            if ret is not None:
+                return ret
+    return None
+
 def reconstruct_tree_str(tree):
     if is_tree(tree):
         curstr = ''

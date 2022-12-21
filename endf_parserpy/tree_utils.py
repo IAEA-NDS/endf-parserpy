@@ -13,15 +13,15 @@ from lark.tree import Tree
 from lark.lexer import Token
 
 def is_token(tree):
-    return isinstance(tree, Token)
+    return type(tree) == Token
 
 def is_tree(tree):
-    return isinstance(tree, Tree)
+    return type(tree) == Tree
 
 def get_name(tree, nofail=False):
-    if is_token(tree):
+    if type(tree) == Token:
         return str(tree.type)
-    if is_tree(tree):
+    if type(tree) == Tree:
         return str(tree.data)
     else:
         if nofail:
@@ -79,15 +79,14 @@ def retrieve_value(tree, name):
     return None
 
 def reconstruct_tree_str(tree):
-    if is_tree(tree):
+    if type(tree) == Tree:
         curstr = ''
         for child in tree.children:
             curstr += reconstruct_tree_str(child)
             curstr += ' '
         curstr = curstr[:-1]
         return curstr
-    elif is_token(tree):
-        return str(tree)
+    elif type(tree) == Token:
+        return tree.value
     else:
         raise TypeError('neither token nor tree, what nightmare for a bee!')
-

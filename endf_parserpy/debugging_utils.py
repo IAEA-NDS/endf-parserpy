@@ -42,10 +42,11 @@ def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6,
             print(msg)
 
     if type(obj1) != type(obj2):
-        treat_diff(f'type mismatch found, obj1: {obj1}, obj2: {obj2}',
+        treat_diff(f'at path {curpath}: ' +
+                   f'type mismatch found, obj1: {obj1}, obj2: {obj2}',
                    TypeError)
 
-    if isinstance(obj1, dict):
+    elif isinstance(obj1, dict):
         only_in_obj1 = set(obj1).difference(obj2)
         if len(only_in_obj1) > 0:
             treat_diff(f'at path {curpath}: only obj1 contains {only_in_obj1}',

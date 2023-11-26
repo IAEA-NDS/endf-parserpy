@@ -12,7 +12,7 @@ def get_string_hash(inpstr):
 
 
 def get_recipe_parser(recipe_grammar):
-    return Lark(recipe_grammar, start='code_token',
+    return Lark(recipe_grammar, start='endf_recipe',
                 keep_all_tokens=True)
 
 

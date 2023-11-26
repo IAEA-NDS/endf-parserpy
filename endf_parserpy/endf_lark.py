@@ -20,14 +20,15 @@ r"""
 %import common.ESCAPED_STRING
 %ignore " "
 
-code_token: (endf_line | for_loop | if_clause | section | COMMENT_LINE | NEWLINE)*
+endf_recipe : (code_token | NEWLINE)*
+code_token: endf_line | for_loop | if_clause | section | COMMENT_LINE
 endf_line : list_line | head_line | cont_line | tab1_line | tab2_line
             | text_line | dir_line | intg_line | send_line | dummy_line | stop_line
 
 // section to define namespace for variables
 section: section_head section_body section_tail
 section_head : "(" extvarname ")"
-section_body : code_token*
+section_body : NEWLINE (code_token NEWLINE)*
 section_tail : "(/" extvarname ")"
 
 // control numbers
@@ -37,7 +38,7 @@ MF_SPEC :  "MF" | INT
 MT_SPEC : "MT" | INT
 
 // comment line
-COMMENT_LINE : "#" /.*/ NEWLINE
+COMMENT_LINE : "#" /.*/
 
 // stop instruction to quit parsing
 stop_line : "stop" "(" escaped_stop_message? ")" NEWLINE*
@@ -98,7 +99,7 @@ send_line : "SEND" NEWLINE*
 // FOR loop
 for_loop : "for" for_head for_body "endfor"
 for_head : VARNAME "=" for_start "to" for_stop ":"
-for_body : NEWLINE* code_token* NEWLINE*
+for_body : NEWLINE (code_token NEWLINE)*
 for_start :  expr
 for_stop :   expr
 

@@ -16,8 +16,8 @@ import re
 
 class ExtEndfParser(BasicEndfParser):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def set_library(self, endf_dic, libtype):
         mt451 = endf_dic[1][451]

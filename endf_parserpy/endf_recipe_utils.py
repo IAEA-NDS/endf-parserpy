@@ -3,7 +3,6 @@ from .endf_lark import endf_recipe_grammar
 from .endf_recipes import endf_recipe_dictionary as recipe_dic
 from .tree_utils import is_tree
 from hashlib import md5
-from appdirs import user_cache_dir
 import os
 import pickle
 
@@ -17,10 +16,11 @@ def get_recipe_parser(recipe_grammar):
                 keep_all_tokens=True)
 
 
-def get_recipe_parsetree(recipe, recipe_parser, grammar_hash):
+def get_recipe_parsetree(recipe, recipe_parser, grammar_hash, cache_dir):
+    if cache_dir is False:
+        return recipe_parser.parse(recipe)
     recipe_hash = get_string_hash(recipe)
     filename = get_string_hash(grammar_hash + recipe_hash) + '.pkl'
-    cache_dir = user_cache_dir('endf_parserpy', 'gschnabel')
     os.makedirs(cache_dir, exist_ok=True)
     filepath = os.path.join(cache_dir, filename)
     if not os.path.exists(filepath):
@@ -33,7 +33,7 @@ def get_recipe_parsetree(recipe, recipe_parser, grammar_hash):
     return recipe_parsetree
 
 
-def get_recipe_parsetree_dic():
+def get_recipe_parsetree_dic(cache_dir):
     recipe_parser = get_recipe_parser(endf_recipe_grammar)
     grammar_hash = get_string_hash(endf_recipe_grammar)
     tree_dic = {}
@@ -42,13 +42,15 @@ def get_recipe_parsetree_dic():
         if isinstance(recipe_dic[mf], str):
             tree_dic[mf] = get_recipe_parsetree(recipe_dic[mf],
                                                 recipe_parser,
-                                                grammar_hash)
+                                                grammar_hash,
+                                                cache_dir)
         else:
             for mt in recipe_dic[mf]:
                 tree_dic[mf][mt] = \
                         get_recipe_parsetree(recipe_dic[mf][mt],
                                              recipe_parser,
-                                             grammar_hash)
+                                             grammar_hash,
+                                             cache_dir)
     return tree_dic
 
 

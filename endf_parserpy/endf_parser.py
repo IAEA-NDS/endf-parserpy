@@ -10,6 +10,7 @@
 ############################################################
 
 from .logging_utils import logging, write_info, RingBuffer
+from appdirs import user_cache_dir
 from os.path import exists as file_exists
 from copy import deepcopy
 from .tree_utils import (is_tree, get_name, get_child, get_child_value,
@@ -43,10 +44,22 @@ class BasicEndfParser():
                        ignore_varspec_mismatch=False, fuzzy_matching=True,
                        blank_as_zero=True, log_lookahead_traceback=False,
                        abuse_signpos=False, skip_intzero=False, prefer_noexp=False,
-                       accept_spaces=True, keep_E=False, width=11):
+                       accept_spaces=True, keep_E=False, width=11,
+                       cache_dir=None, print_cache_info=True):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
-        self.tree_dic = get_recipe_parsetree_dic()
+        if cache_dir is None:
+            cache_dir = user_cache_dir('endf_parserpy', 'gschnabel')
+            if print_cache_info:
+                print(
+                    f'Compiled ENDF recipes are cached in {cache_dir}\n' +
+                    'Specify `cache_dir=False` to disable the creation ' +
+                    'and use of a cache directory.\n' +
+                    'Alternatively, pass a path as `cache_dir` argument.\n' +
+                    'To suppress this message, specify `print_cache_info=False`.'
+                )
+
+        self.tree_dic = get_recipe_parsetree_dic(cache_dir)
         # endf record treatment
         endf_actions = {}
         endf_actions['head_line'] = self.process_head_line

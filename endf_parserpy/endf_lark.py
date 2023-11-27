@@ -37,6 +37,9 @@ MAT_SPEC : "MAT" | INT
 MF_SPEC :  "MF" | INT
 MT_SPEC : "MT" | INT
 
+// generic record body
+record_fields : expr "," expr "," expr "," expr "," expr "," expr
+
 // comment line
 COMMENT_LINE : "#" /.*/
 
@@ -53,8 +56,7 @@ text_line : "[" ctrl_spec "/" text_fields "]" "TEXT" NEWLINE*
 text_fields : expr
 
 // HEAD and CONT record
-head_or_cont_line : "[" ctrl_spec "/" cont_fields "]" CONT_SUBTYPE NEWLINE*
-cont_fields : expr "," expr "," expr "," expr "," expr "," expr
+head_or_cont_line : "[" ctrl_spec "/" record_fields "]" CONT_SUBTYPE NEWLINE*
 CONT_SUBTYPE : "CONT" | "HEAD"
 
 // DIR record
@@ -68,20 +70,17 @@ ndigit_expr : expr
 
 // TAB1 record
 tab1_line : "[" ctrl_spec "/" tab1_fields "]" "TAB1" ("(" table_name ")")? NEWLINE*
-tab1_fields : tab1_cont_fields "/" tab1_def
-tab1_cont_fields : expr "," expr "," expr "," expr "," expr "," expr
+tab1_fields : record_fields "/" tab1_def
 tab1_def : extvarname "/" extvarname
 table_name : extvarname
 
 // TAB2 record
 tab2_line : "[" ctrl_spec "/" tab2_fields "]" "TAB2" ("(" table_name ")")? NEWLINE*
-tab2_fields : tab2_cont_fields "/" tab2_def
-tab2_cont_fields : expr "," expr "," expr "," expr "," expr "," expr
+tab2_fields : record_fields "/" tab2_def
 tab2_def : extvarname
 
 // LIST record
-list_line : "[" ctrl_spec "/" list_fields "/"  list_body  "]" "LIST" ("(" list_name ")")? NEWLINE*
-list_fields : expr "," expr "," expr "," expr "," expr "," expr
+list_line : "[" ctrl_spec "/" record_fields "/"  list_body  "]" "LIST" ("(" list_name ")")? NEWLINE*
 list_body : (expr | list_loop | LINEPADDING | "," | NEWLINE)+
 list_name : extvarname
 LINEPADDING : "PADLINE"

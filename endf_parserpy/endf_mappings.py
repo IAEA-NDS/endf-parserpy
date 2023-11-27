@@ -52,13 +52,13 @@ def map_text_dic(text_line_node, text_dic={}, datadic={}, loop_vars={}, inverse=
 
 def map_head_dic(head_line_node, head_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(head_line_node, head_dic, datadic, inverse)
-    expr_list = get_child(head_line_node, 'cont_fields').children
+    expr_list = get_child(head_line_node, 'record_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, head_dic, datadic, loop_vars, inverse, parse_opts)
 
 def map_cont_dic(cont_line_node, cont_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(cont_line_node, cont_dic, datadic, inverse)
-    expr_list = get_child(cont_line_node, 'cont_fields').children
+    expr_list = get_child(cont_line_node, 'record_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, cont_dic, datadic, loop_vars, inverse, parse_opts)
 
@@ -77,7 +77,7 @@ def map_intg_dic(intg_line_node, intg_dic={}, datadic={}, loop_vars={}, inverse=
 def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(tab2_line_node, tab2_dic, datadic, inverse)
     tab2_fields = get_child(tab2_line_node, 'tab2_fields')
-    tab2_cont_fields = get_child(tab2_fields, 'tab2_cont_fields')
+    tab2_cont_fields = get_child(tab2_fields, 'record_fields')
     # tab2_def_fields contains the name of the Z variable
     # we don't need it because the following TAB1/LIST records
     # contain the name of this variable at position of C2
@@ -108,7 +108,7 @@ def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, inverse=
 def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(tab1_line_node, tab1_dic, datadic, inverse)
     tab1_fields = get_child(tab1_line_node, 'tab1_fields')
-    tab1_cont_fields = get_child(tab1_fields, 'tab1_cont_fields')
+    tab1_cont_fields = get_child(tab1_fields, 'record_fields')
     tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
     tab1_name_node = get_child(tab1_line_node, 'table_name', nofail=True)
 
@@ -197,7 +197,7 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, inverse=
             raise ValueError(f'A node of type {node_type} must not appear in a list_body')
 
     check_ctrl_spec(list_line_node, list_dic, datadic, inverse)
-    expr_list = get_child(list_line_node, 'list_fields').children
+    expr_list = get_child(list_line_node, 'record_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2', 'vals')
     map_record_helper(expr_list, cn, list_dic, datadic, loop_vars, inverse, parse_opts)
 

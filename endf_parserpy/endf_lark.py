@@ -12,6 +12,7 @@
 endf_recipe_grammar = \
 r"""
 %import common.DIGIT
+%import common.LETTER
 %import common.NEWLINE
 %import common.STRING
 %import common.CNAME
@@ -49,7 +50,8 @@ escaped_stop_message : "\"" STOP_MESSAGE "\""
 STOP_MESSAGE : /[^"]+/
 
 // DUMMY record (read but not processed)
-dummy_line : "[" ctrl_spec "/" /.*\]/ "DUMMY" NEWLINE*
+dummy_line : "[" ctrl_spec "/" dummy_body "]" "DUMMY" NEWLINE*
+dummy_body : (LETTER | DIGIT | " " | ",")
 
 // TEXT record
 text_line : "[" ctrl_spec "/" text_fields "]" "TEXT" NEWLINE*

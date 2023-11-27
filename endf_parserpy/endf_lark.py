@@ -23,15 +23,15 @@ r"""
 
 endf_recipe : (code_token | NEWLINE)*
 code_token: endf_line | for_loop | if_clause | section
-endf_line : list_line | head_or_cont_line | tab1_line | tab2_line
+endf_line : (list_line | head_or_cont_line | tab1_line | tab2_line
             | text_line | dir_line | intg_line | send_line
-            | dummy_line | stop_line | COMMENT_LINE
+            | dummy_line | stop_line | COMMENT_LINE) NEWLINE
 
 // section to define namespace for variables
 section: section_head section_body section_tail
-section_head : "(" extvarname ")"
-section_body : NEWLINE (code_token NEWLINE)*
-section_tail : "(/" extvarname ")"
+section_head : "(" extvarname ")" NEWLINE
+section_body : (code_token | NEWLINE)*
+section_tail : "(/" extvarname ")" NEWLINE
 
 // control numbers
 ctrl_spec : MAT_SPEC "," MF_SPEC "," MT_SPEC
@@ -46,44 +46,44 @@ record_fields : expr "," expr "," expr "," expr "," expr "," expr
 COMMENT_LINE : "#" /.*/
 
 // stop instruction to quit parsing
-stop_line : "stop" "(" escaped_stop_message? ")" NEWLINE*
+stop_line : "stop" "(" escaped_stop_message? ")"
 escaped_stop_message : "\"" STOP_MESSAGE "\""
 STOP_MESSAGE : /[^"]+/
 
 // DUMMY record (read but not processed)
-dummy_line : "[" ctrl_spec "/" dummy_body "]" "DUMMY" NEWLINE*
+dummy_line : "[" ctrl_spec "/" dummy_body "]" "DUMMY"
 dummy_body : (LETTER | DIGIT | " " | ",")
 
 // TEXT record
-text_line : "[" ctrl_spec "/" text_fields "]" "TEXT" NEWLINE*
+text_line : "[" ctrl_spec "/" text_fields "]" "TEXT"
 text_fields : expr
 
 // HEAD and CONT record
-head_or_cont_line : "[" ctrl_spec "/" record_fields "]" CONT_SUBTYPE NEWLINE*
+head_or_cont_line : "[" ctrl_spec "/" record_fields "]" CONT_SUBTYPE
 CONT_SUBTYPE : "CONT" | "HEAD"
 
 // DIR record
-dir_line : "[" ctrl_spec "/" "blank" "," "blank" "," dir_fields "]" "DIR" NEWLINE*
+dir_line : "[" ctrl_spec "/" "blank" "," "blank" "," dir_fields "]" "DIR"
 dir_fields :  expr "," expr "," expr "," expr
 
 // INTG record
-intg_line : "[" ctrl_spec "/" intg_fields "{" ndigit_expr "}" "]" "INTG" NEWLINE*
+intg_line : "[" ctrl_spec "/" intg_fields "{" ndigit_expr "}" "]" "INTG"
 intg_fields : expr "," expr "," expr
 ndigit_expr : expr
 
 // TAB1 record
-tab1_line : "[" ctrl_spec "/" tab1_fields "]" "TAB1" ("(" table_name ")")? NEWLINE*
+tab1_line : "[" ctrl_spec "/" tab1_fields "]" "TAB1" ("(" table_name ")")?
 tab1_fields : record_fields "/" tab1_def
 tab1_def : extvarname "/" extvarname
 table_name : extvarname
 
 // TAB2 record
-tab2_line : "[" ctrl_spec "/" tab2_fields "]" "TAB2" ("(" table_name ")")? NEWLINE*
+tab2_line : "[" ctrl_spec "/" tab2_fields "]" "TAB2" ("(" table_name ")")?
 tab2_fields : record_fields "/" tab2_def
 tab2_def : extvarname
 
 // LIST record
-list_line : "[" ctrl_spec "/" record_fields "/"  list_body  "]" "LIST" ("(" list_name ")")? NEWLINE*
+list_line : "[" ctrl_spec "/" record_fields "/"  list_body  "]" "LIST" ("(" list_name ")")?
 list_body : (expr | list_loop | LINEPADDING | "," | NEWLINE)+
 list_name : extvarname
 LINEPADDING : "PADLINE"
@@ -93,12 +93,12 @@ list_loop : "{" list_body "}" "{" list_for_head "}"
 list_for_head : VARNAME "=" for_start "to" for_stop
 
 // SEND record
-send_line : "SEND" NEWLINE*
+send_line : "SEND"
 
 // FOR loop
-for_loop : "for" for_head for_body "endfor"
+for_loop : "for" for_head for_body "endfor" NEWLINE
 for_head : VARNAME "=" for_start "to" for_stop ":"
-for_body : NEWLINE (code_token NEWLINE)*
+for_body : (code_token | NEWLINE)*
 for_start :  expr
 for_stop :   expr
 
@@ -155,4 +155,3 @@ inconsistent_varspec : extvarname "?"
 CFIELD: CNAME | "0.0"
 IFIELD: CNAME | "0"
 """
-

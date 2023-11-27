@@ -22,7 +22,7 @@ r"""
 
 endf_recipe : (code_token | NEWLINE)*
 code_token: endf_line | for_loop | if_clause | section | COMMENT_LINE
-endf_line : list_line | head_line | cont_line | tab1_line | tab2_line
+endf_line : list_line | head_or_cont_line | tab1_line | tab2_line
             | text_line | dir_line | intg_line | send_line | dummy_line | stop_line
 
 // section to define namespace for variables
@@ -52,13 +52,10 @@ dummy_line : "[" ctrl_spec "/" /.*\]/ "DUMMY" NEWLINE*
 text_line : "[" ctrl_spec "/" text_fields "]" "TEXT" NEWLINE*
 text_fields : expr
 
-// HEAD record
-head_line : "[" ctrl_spec "/" head_fields "]" "HEAD" NEWLINE*
-head_fields : expr "," expr "," expr "," expr "," expr "," expr
-
-// CONT record
-cont_line : "[" ctrl_spec "/" cont_fields "]" "CONT" NEWLINE*
+// HEAD and CONT record
+head_or_cont_line : "[" ctrl_spec "/" cont_fields "]" CONT_SUBTYPE NEWLINE*
 cont_fields : expr "," expr "," expr "," expr "," expr "," expr
+CONT_SUBTYPE : "CONT" | "HEAD"
 
 // DIR record
 dir_line : "[" ctrl_spec "/" "blank" "," "blank" "," dir_fields "]" "DIR" NEWLINE*

@@ -52,7 +52,7 @@ def map_text_dic(text_line_node, text_dic={}, datadic={}, loop_vars={}, inverse=
 
 def map_head_dic(head_line_node, head_dic={}, datadic={}, loop_vars={}, inverse=False, parse_opts=None):
     check_ctrl_spec(head_line_node, head_dic, datadic, inverse)
-    expr_list = get_child(head_line_node, 'head_fields').children
+    expr_list = get_child(head_line_node, 'cont_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, head_dic, datadic, loop_vars, inverse, parse_opts)
 

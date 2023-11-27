@@ -62,8 +62,7 @@ class BasicEndfParser():
         self.tree_dic = get_recipe_parsetree_dic(cache_dir)
         # endf record treatment
         endf_actions = {}
-        endf_actions['head_line'] = self.process_head_line
-        endf_actions['cont_line'] = self.process_cont_line
+        endf_actions['head_or_cont_line'] = self.process_head_or_cont_line
         endf_actions['text_line'] = self.process_text_line
         endf_actions['dir_line'] = self.process_dir_line
         endf_actions['intg_line'] = self.process_intg_line
@@ -121,6 +120,15 @@ class BasicEndfParser():
             text_dic.update(get_ctrl(self.datadic))
             newlines = write_text(text_dic, with_ctrl=True, **self.write_opts)
             self.lines += newlines
+
+    def process_head_or_cont_line(self, tree):
+        line_type = get_child_value(tree, 'CONT_SUBTYPE')
+        if line_type == 'HEAD':
+            self.process_head_line(tree)
+        elif line_type == 'CONT':
+            self.process_cont_line(tree)
+        else:
+            raise TypeError('parser code / grammar mismatch')
 
     def process_head_line(self, tree):
         if self.rwmode == 'read':

@@ -109,7 +109,14 @@ def float2expformstr(val, **write_opts):
         sign_str = '' if abuse_signpos else ' '
     else:
         sign_str = '-'
-    return sign_str + mantissa_str + expsymb_str + exposign_str + exponent_str
+    res_str = sign_str + mantissa_str + expsymb_str + exposign_str + exponent_str
+    if len(res_str) > 11:
+        # special case: we have 9.999999999 in the mantissa, which will
+        #               be rounded to 10.0000000 so we have too many digits.
+        #               Hack: Pass the rounded number again to this function.
+        tmp_str = sign_str + mantissa_str + 'e' + exposign_str + exponent_str
+        res_str = float2expformstr(float(tmp_str))
+    return res_str
 
 
 def count_signif_digits(valstr):

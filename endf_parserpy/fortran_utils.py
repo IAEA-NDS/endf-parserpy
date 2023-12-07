@@ -115,7 +115,7 @@ def float2expformstr(val, **write_opts):
         #               be rounded to 10.0000000 so we have too many digits.
         #               Hack: Pass the rounded number again to this function.
         tmp_str = sign_str + mantissa_str + 'e' + exposign_str + exponent_str
-        res_str = float2expformstr(float(tmp_str))
+        res_str = float2expformstr(float(tmp_str), **write_opts)
     return res_str
 
 

@@ -85,7 +85,11 @@ def sanitize_fieldname_types(dic):
 
 def enter_section(endf_dic, path):
     curdic = endf_dic
-    for cur in path.split('/'):
+    if isinstance(path, str):
+        path_parts = path.split('/')
+    else:
+        path_parts = [str(cur) for cur in path]
+    for cur in path_parts:
         if cur.strip() == '':
             continue
         elif cur.isdigit():

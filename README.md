@@ -15,14 +15,20 @@ get a better idea of the ENDF format. The technical
 specification of the format is provided in the
 [ENDF-6 formats manual].
 
-Noteworthy, this package does not directly read
-and write ENDF files, but implements an interpreter
-to parse ENDF recipe files whose content closely
-resembles the ENDF format specifications available
-in the ENDF formats manual. The capability of this
-package to read and write ENDF files can therefore  be extended by
-adding ENDF recipe files. The already implemented recipe files
+Noteworthy, this package leverages a formal ENDF format
+description, closely following the notation of the
+ENDF-6 formats manual, to read, write and verify ENDF-6 formatted files.
+The capabilities of this package can therefore be extended by
+adding or modifying ENDF recipe files. The already implemented recipe files
 can be inspected [here](https://github.com/iaea-nds/endf-parserpy/tree/main/endf_parserpy/endf_recipes).
+
+A detailed explanation of the formal ENDF description language used
+in the ENDF recipe files is given in the following [arxiv preprint](https://arxiv.org/abs/2312.08249):
+```
+G. Schnabel, D. L. Aldama, R. Capote, "How to explain ENDF-6 to computers: A formal ENDF format description language", arXiv:2312.08249, DOI:10.48550/arXiv.2312.08249
+```
+Please use this reference for citation if you find this package useful.
+
 
 [ENDF-6 formats manual]: https://doi.org/10.2172/1425114
 

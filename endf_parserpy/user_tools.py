@@ -95,16 +95,16 @@ def list_to_path(path):
     return '/'.join([str(x) for x in path])
 
 
-def enter_section(endf_dic, path):
+def enter_section(endf_dic, path, create_missing=False):
     curdic = endf_dic
     path_parts = path_to_list(path)
     for cur in path_parts:
         if cur.strip() == '':
             continue
-        elif cur.isdigit():
-            curdic = curdic[int(cur)]
-        else:
-            curdic = curdic[cur]
+        curkey = int(cur) if cur.isdigit() else cur
+        if curkey not in curdic and create_missing:
+            curdic[curkey] = {}
+        curdic = curdic[curkey]
     return curdic
 
 

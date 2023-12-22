@@ -127,7 +127,8 @@ class EndfVariable:
 
     def __init__(self, path, endf_dict, value=None):
         path_parts = path_to_list(path)
-        parent_dict = enter_section(endf_dict, path_parts[:-1])
+        create_missing = value is not None
+        parent_dict = enter_section(endf_dict, path_parts[:-1], create_missing)
         self._path_parts = path_parts
         self._pardict = parent_dict
         self._varname = path_parts[-1]

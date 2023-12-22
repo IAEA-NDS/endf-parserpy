@@ -121,3 +121,51 @@ def show_content(endf_dic, maxlevel=0, prefix='/'):
         else:
             fp = (prefix + str(k) + ':').ljust(maxlen+2)
             print(fp + str(v))
+
+
+class EndfVariable:
+
+    def __init__(self, path, endf_dict, value=None):
+        path_parts = path_to_list(path)
+        parent_dict = enter_section(endf_dict, path_parts[:-1])
+        self._path_parts = path_parts
+        self._pardict = parent_dict
+        self._varname = path_parts[-1]
+        self._endf_dict = endf_dict
+        if value is not None:
+            self.value = value
+        else:
+            if self._varname not in self._pardict:
+                pathstr = list_to_path(self._path_parts[:-1])
+                raise KeyError(
+                    f'variable `{self._varname}` does not exist at location `{pathstr}`'
+                )
+
+    def __repr__(self):
+        pathstr = list_to_path(self._path_parts + [self._varname])
+        return (f'EndfVariable({pathstr!r}, ' +
+                f'{type(self._endf_dict)} at {hex(id(self._endf_dict))}, ' +
+                f'value={self.value})')
+
+    def __call__(self):
+        return self.value
+
+    @property
+    def name(self):
+        return self._varname
+
+    @property
+    def value(self):
+        return self._pardict[self._varname]
+
+    @value.setter
+    def value(self, value):
+        self._pardict[self._varname] = value
+
+    @property
+    def endf_dict(self):
+        return self._endf_dict
+
+    @property
+    def parent_dict(self):
+        return self._pardict

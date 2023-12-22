@@ -91,6 +91,10 @@ def path_to_list(path):
     return path_parts
 
 
+def list_to_path(path):
+    return '/'.join([str(x) for x in path])
+
+
 def enter_section(endf_dic, path):
     curdic = endf_dic
     path_parts = path_to_list(path)

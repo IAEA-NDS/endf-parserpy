@@ -1,6 +1,5 @@
 from lark import Lark
 from .endf_lark import endf_recipe_grammar
-from .endf_recipes import endf_recipe_dictionary as recipe_dic
 from .tree_utils import is_tree
 from hashlib import md5
 import os
@@ -33,7 +32,7 @@ def get_recipe_parsetree(recipe, recipe_parser, grammar_hash, cache_dir):
     return recipe_parsetree
 
 
-def get_recipe_parsetree_dic(cache_dir):
+def get_recipe_parsetree_dic(recipe_dic, cache_dir):
     recipe_parser = get_recipe_parser(endf_recipe_grammar)
     grammar_hash = get_string_hash(endf_recipe_grammar)
     tree_dic = {}

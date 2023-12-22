@@ -36,6 +36,7 @@ from .endf_recipe_utils import (
         get_recipe_parsetree_dic,
         get_responsible_recipe_parsetree,
 )
+from .endf_recipes import endf_recipe_dictionary
 
 
 class BasicEndfParser():
@@ -45,7 +46,7 @@ class BasicEndfParser():
                        blank_as_zero=True, log_lookahead_traceback=False,
                        abuse_signpos=False, skip_intzero=False, prefer_noexp=False,
                        accept_spaces=True, keep_E=False, width=11,
-                       cache_dir=None, print_cache_info=True):
+                       cache_dir=None, print_cache_info=True, recipes=None):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         if cache_dir is None:
@@ -59,7 +60,9 @@ class BasicEndfParser():
                     'To suppress this message, specify `print_cache_info=False`.'
                 )
 
-        self.tree_dic = get_recipe_parsetree_dic(cache_dir)
+        if recipes is None:
+            recipes = endf_recipe_dictionary
+        self.tree_dic = get_recipe_parsetree_dic(recipes, cache_dir)
         # endf record treatment
         endf_actions = {}
         endf_actions['head_or_cont_line'] = self.process_head_or_cont_line

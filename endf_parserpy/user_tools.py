@@ -93,10 +93,7 @@ def path_to_list(path):
 
 def enter_section(endf_dic, path):
     curdic = endf_dic
-    if isinstance(path, str):
-        path_parts = path.split('/')
-    else:
-        path_parts = [str(cur) for cur in path]
+    path_parts = path_to_list(path)
     for cur in path_parts:
         if cur.strip() == '':
             continue

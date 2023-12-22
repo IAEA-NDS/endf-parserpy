@@ -83,6 +83,14 @@ def sanitize_fieldname_types(dic):
             sanitize_fieldname_types(dic[key])
 
 
+def path_to_list(path):
+    if isinstance(path, str):
+        path_parts = path.split('/')
+    else:
+        path_parts = [str(cur) for cur in path]
+    return path_parts
+
+
 def enter_section(endf_dic, path):
     curdic = endf_dic
     if isinstance(path, str):

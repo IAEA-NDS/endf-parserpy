@@ -9,6 +9,7 @@
 #
 ############################################################
 
+from collections.abc import Mapping
 from .logging_utils import logging, write_info, RingBuffer
 from appdirs import user_cache_dir
 from os.path import exists as file_exists
@@ -390,7 +391,7 @@ class BasicEndfParser():
                 if should_skip:
                     continue
                 cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
-                is_parsed = isinstance(endf_dic[mf][mt], dict)
+                is_parsed = isinstance(endf_dic[mf][mt], Mapping)
                 if cur_tree is not None and is_parsed:
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode='write', datadic=datadic)

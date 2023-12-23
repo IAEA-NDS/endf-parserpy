@@ -92,7 +92,19 @@ def path_to_list(path):
     path_parts = path.split('/')
     path_parts = [cur for cur in path_parts if cur != '']
     path_parts = [int(cur) if cur.isdigit() else cur for cur in path_parts]
-    return path_parts
+    ret = []
+    for el in path_parts:
+        if isinstance(el, str) and '[' in el:
+            if not el.endswith(']'):
+                raise ValueError('missing closing bracket')
+            start = el.index('[') + 1
+            ret.append(el[:start-1])
+            indices_str = el[start:-1].split(',')
+            indices = [int(x) for x in indices_str]
+            ret.extend(indices)
+        else:
+            ret.append(el)
+    return ret
 
 
 def list_to_path(path):

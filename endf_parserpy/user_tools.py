@@ -3,7 +3,6 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/09/12
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -15,6 +14,7 @@ from collections.abc import MutableMapping
 def locate(dic, varname, as_string=False):
     path = []
     locations = []
+
     def recfun(dic):
         nonlocal path
         nonlocal locations
@@ -27,7 +27,7 @@ def locate(dic, varname, as_string=False):
             for key, item in dic.items():
                 if isinstance(item, dict):
                     path.append(key)
-                    recfun(item) 
+                    recfun(item)
                     del path[-1]
         return
     recfun(dic)
@@ -71,7 +71,7 @@ def sanitize_fieldname_types(dic):
     for key in keys:
         try:
             intkey = int(key)
-        except:
+        except Exception:
             intkey = None
         if intkey is not None:
             if intkey in dic:

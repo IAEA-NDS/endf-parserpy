@@ -84,10 +84,11 @@ def sanitize_fieldname_types(dic):
 
 
 def path_to_list(path):
-    if isinstance(path, str):
-        path_parts = path.split('/')
-    else:
-        path_parts = [str(cur) for cur in path]
+    if not isinstance(path, str):
+        return path
+    path_parts = path.split('/')
+    path_parts = [cur for cur in path_parts if cur != '']
+    path_parts = [int(cur) if cur.isdigit() else cur for cur in path_parts]
     return path_parts
 
 
@@ -95,16 +96,15 @@ def list_to_path(path):
     return '/'.join([str(x) for x in path])
 
 
-def enter_section(endf_dic, path, create_missing=False):
+def enter_section(endf_dic, path, create_missing=False, trunc=0):
     curdic = endf_dic
     path_parts = path_to_list(path)
+    if trunc > 0:
+        path_parts = path_parts[:-trunc]
     for cur in path_parts:
-        if cur.strip() == '':
-            continue
-        curkey = int(cur) if cur.isdigit() else cur
-        if curkey not in curdic and create_missing:
-            curdic[curkey] = {}
-        curdic = curdic[curkey]
+        if cur not in curdic and create_missing:
+            curdic[cur] = dict()
+        curdic = curdic[cur]
     return curdic
 
 

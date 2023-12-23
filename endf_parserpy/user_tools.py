@@ -9,6 +9,9 @@
 #
 ############################################################
 
+from collections.abc import MutableMapping
+
+
 def locate(dic, varname, as_string=False):
     path = []
     locations = []
@@ -170,3 +173,64 @@ class EndfVariable:
     @property
     def parent_dict(self):
         return self._pardict
+
+
+class EndfDict(MutableMapping):
+
+    def __init__(self, mapping=None):
+        if mapping is None:
+            self._store = dict()
+        elif isinstance(mapping, MutableMapping):
+            self._store = mapping
+        else:
+            raise TypeError(
+                'exepcted `mapping` to be an instance of MutableMapping'
+            )
+
+    def _get_pardic_and_varname(self, path, create_missing):
+        if isinstance(path, int):
+            return self._store, path
+        if isinstance(path, str) and '/' not in path:
+            if path.isdigit():
+                path = int(path)
+            return self._store, path
+        path_parts = path_to_list(path)
+        pardic = enter_section(self._store, path_parts[:-1], create_missing)
+        varname = path_parts[-1]
+        return pardic, varname
+
+    def __repr__(self):
+        return f'{self._store!r}'
+
+    def __str__(self):
+        return str(self._store)
+
+    def __getitem__(self, key):
+        parent_dict, local_key = self._get_pardic_and_varname(key, False)
+        ret = parent_dict[local_key]
+        if isinstance(ret, MutableMapping) and not isinstance(ret, EndfDict):
+            ret = EndfDict(ret)
+        return ret
+
+    def __setitem__(self, key, value):
+        parent_dict, local_key = self._get_pardic_and_varname(key, True)
+        parent_dict[local_key] = value
+
+    def __delitem__(self, key):
+        parent_dict, local_key = self._get_pardic_and_varname(key)
+        del parent_dict[local_key]
+
+    def __iter__(self):
+        return iter(self._store)
+
+    def __len__(self):
+        return len(self._store)
+
+    def keys(self):
+        return self._store.keys()
+
+    def values(self):
+        return self._store.values()
+
+    def items(self):
+        return self._store.items()

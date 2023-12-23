@@ -218,7 +218,7 @@ class EndfDict(MutableMapping):
         parent_dict[local_key] = value
 
     def __delitem__(self, key):
-        parent_dict, local_key = self._get_pardic_and_varname(key)
+        parent_dict, local_key = self._get_pardic_and_varname(key, False)
         del parent_dict[local_key]
 
     def __iter__(self):

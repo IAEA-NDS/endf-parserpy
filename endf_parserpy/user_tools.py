@@ -226,6 +226,8 @@ class EndfDict(MutableMapping):
         return ret
 
     def __setitem__(self, key, value):
+        if isinstance(value, EndfDict):
+            value = value.unwrap()
         parent_dict, local_key = self._get_pardic_and_varname(key, True)
         parent_dict[local_key] = value
 

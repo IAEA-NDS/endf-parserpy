@@ -250,5 +250,15 @@ class EndfDict(MutableMapping):
     def items(self):
         return self._store.items()
 
-    def unwrap(self):
+    def _recursive_unwrap(self, element):
+        if isinstance(element, MutableMapping):
+            if isinstance(element, EndfDict):
+                element = element.unwrap()
+            for curkey in element:
+                element[curkey] = self._recursive_unwrap(element[curkey])
+        return element
+
+    def unwrap(self, recursive=False):
+        if recursive:
+            self._store = self._recursive_unwrap(self._store)
         return self._store

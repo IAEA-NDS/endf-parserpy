@@ -247,3 +247,6 @@ class EndfDict(MutableMapping):
 
     def items(self):
         return self._store.items()
+
+    def unwrap(self):
+        return self._store

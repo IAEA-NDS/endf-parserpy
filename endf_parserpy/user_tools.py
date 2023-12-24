@@ -205,7 +205,7 @@ class EndfDict(MutableMapping):
     def _get_pardic_and_varname(self, path, create_missing):
         if isinstance(path, int):
             return self._store, path
-        if isinstance(path, str) and '/' not in path:
+        if isinstance(path, str) and '/' not in path and '[' not in path:
             if path.isdigit():
                 path = int(path)
             return self._store, path

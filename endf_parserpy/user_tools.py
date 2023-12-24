@@ -194,6 +194,8 @@ class EndfDict(MutableMapping):
         if mapping is None:
             self._store = dict()
         elif isinstance(mapping, MutableMapping):
+            if isinstance(mapping, EndfDict):
+                mapping = mapping.unwrap()
             self._store = mapping
         else:
             raise TypeError(

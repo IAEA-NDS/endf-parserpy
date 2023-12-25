@@ -8,7 +8,7 @@
 #
 ############################################################
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 
 
 def locate(dic, varname, as_string=False):
@@ -138,6 +138,94 @@ def show_content(endf_dic, maxlevel=0, prefix='/'):
             print(fp + str(v))
 
 
+class EndfPath(Sequence):
+
+    def __init__(self, pathspec):
+        if isinstance(pathspec, int):
+            pathspec = str(pathspec)
+        if isinstance(pathspec, str):
+            pathspec = pathspec.split('/')
+        if not isinstance(pathspec, Sequence):
+            raise TypeError('expected pathspec to be sequence or string')
+        self._path_elements = self._standardize_path_tuple(pathspec)
+
+    def _standardize_path_tuple(self, path_tuple):
+        p = path_tuple
+        p = (str(x) for x in p)
+        p = (x.strip() for x in p)
+        p = (x for x in p if x != '')
+        res = tuple()
+        for t in p:
+            res = res + self._expand_array_notation(t)
+        res = tuple(int(x) if x.isdigit() else x for x in res)
+        self._validate_path(res)
+        return res
+
+    def _expand_array_notation(self, extvarname):
+        t = extvarname
+        if '[' not in t:
+            return (extvarname,)
+        if not t.endswith(']'):
+            raise ValueError(f'invalid path element `{t}`')
+        idx = t.index('[')
+        varname = t[:idx]
+        indices = t[idx+1:-1].split(',')
+        indices = tuple(s.strip() for s in indices)
+        return (varname,) + indices
+
+    def _validate_path(self, path_elements):
+        for el in path_elements:
+            if not isinstance(el, int):
+                if not el.replace('_', '').isalnum() or el[0].isdigit():
+                    raise ValueError(f'invalid path element `{el}`')
+
+    def __str__(self):
+        return '/'.join([str(x) for x in self._path_elements])
+
+    def __repr__(self):
+        return f"EndfPath('{str(self)}')"
+
+    def __getitem__(self, key):
+        return EndfPath(self._path_elements[key])
+
+    def __len__(self, *args, **kwargs):
+        return len(self._path_elements)
+
+    def __add__(self, other):
+        if not isinstance(other, EndfPath):
+            other = EndfPath(other)
+        return EndfPath(self._path_elements + other._path_elements)
+
+    def get(self, dict_like):
+        cur = dict_like
+        for el in self._path_elements:
+            cur = cur[el]
+        return cur
+
+    def set(self, dict_like, value):
+        cur = dict_like
+        for el in self._path_elements[:-1]:
+            cur = cur.setdefault(el, {})
+        if isinstance(value, EndfDict):
+            value = value.unwrap()
+        cur[self._path_elements[-1]] = value
+
+    def exists(self, dict_like):
+        try:
+            self.get(dict_like)
+        except KeyError:
+            return False
+        except TypeError:
+            return False
+        return True
+
+    def remove(self, dict_like):
+        cur = dict_like
+        for el in self._path_elements[:-1]:
+            cur = cur[el]
+        del cur[self._path_elements[-1]]
+
+
 class EndfVariable:
 
     def __init__(self, path, endf_dict, value=None):
@@ -198,7 +286,7 @@ class EndfDict(MutableMapping):
             self._store = mapping
         else:
             raise TypeError(
-                'exepcted `mapping` to be an instance of MutableMapping'
+                'expected `mapping` to be an instance of MutableMapping'
             )
         self._root = self
         self._path = ''

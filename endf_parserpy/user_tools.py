@@ -201,18 +201,21 @@ class EndfDict(MutableMapping):
             raise TypeError(
                 'exepcted `mapping` to be an instance of MutableMapping'
             )
+        self._root = self
+        self._path = ''
 
     def _get_pardic_and_varname(self, path, create_missing):
         if isinstance(path, int):
-            return self._store, path
+            return self._store, path, path
         if isinstance(path, str) and '/' not in path and '[' not in path:
             if path.isdigit():
                 path = int(path)
-            return self._store, path
+            return self._store, path, path
         path_parts = path_to_list(path)
         pardic = enter_section(self._store, path_parts[:-1], create_missing)
         varname = path_parts[-1]
-        return pardic, varname
+        pathstr = list_to_path(path_parts)
+        return pardic, varname, pathstr
 
     def __repr__(self):
         return f'{self._store!r}'
@@ -221,20 +224,22 @@ class EndfDict(MutableMapping):
         return str(self._store)
 
     def __getitem__(self, key):
-        parent_dict, local_key = self._get_pardic_and_varname(key, False)
+        parent_dict, local_key, pathstr = self._get_pardic_and_varname(key, False)
         ret = parent_dict[local_key]
         if isinstance(ret, MutableMapping) and not isinstance(ret, EndfDict):
             ret = EndfDict(ret)
+            ret._root = self._root
+            ret._path = pathstr
         return ret
 
     def __setitem__(self, key, value):
         if isinstance(value, EndfDict):
             value = value.unwrap()
-        parent_dict, local_key = self._get_pardic_and_varname(key, True)
+        parent_dict, local_key, _ = self._get_pardic_and_varname(key, True)
         parent_dict[local_key] = value
 
     def __delitem__(self, key):
-        parent_dict, local_key = self._get_pardic_and_varname(key, False)
+        parent_dict, local_key, _ = self._get_pardic_and_varname(key, False)
         del parent_dict[local_key]
 
     def __iter__(self):
@@ -264,3 +269,11 @@ class EndfDict(MutableMapping):
         if recursive:
             self._store = self._recursive_unwrap(self._store)
         return self._store
+
+    @property
+    def root(self):
+        return self._root
+
+    @property
+    def path(self):
+        return self._path

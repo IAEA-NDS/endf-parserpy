@@ -155,8 +155,7 @@ class EndfVariable:
                 raise KeyError(f'variable `{self._path}` does not exist')
 
     def __repr__(self):
-        pathstr = list_to_path(self._path_parts + [self._varname])
-        return (f'EndfVariable({pathstr!r}, ' +
+        return (f'EndfVariable({self._path!r}, ' +
                 f'{type(self._endf_dict)} at {hex(id(self._endf_dict))}, ' +
                 f'value={self.value})')
 

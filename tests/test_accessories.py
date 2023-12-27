@@ -48,6 +48,24 @@ def test_dict_endfdict_update(testdict, testdict2):
     assert testdict['v'][5] == testdict2['v/5']
 
 
+def test_endfdict_equal(testdict, testdict2):
+    assert testdict == testdict2
+    testdict3 = deepcopy(testdict2)
+    assert testdict2 == testdict3
+    testdict3['x/y'] = 13.
+    assert testdict2 != testdict3
+    testdict3 = deepcopy(testdict2)
+    testdict2['x/a'] = 'abc'
+    testdict3['x/a'] = 'abd'
+    assert testdict2 != testdict3
+    testdict3 = deepcopy(testdict2)
+    testdict2['x'] = (1, 2, 3)
+    testdict3['x'] = (1, 2, 3)
+    assert testdict2 == testdict3
+    testdict3['x'] = (1, 3, 3)
+    assert testdict2 != testdict3
+
+
 def test_endfpath_get_and_set(testdict, testdict2, testpath):
     testpath.set(testdict, 13)
     assert testpath.get(testdict) == 13

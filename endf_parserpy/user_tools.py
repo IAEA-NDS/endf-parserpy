@@ -86,43 +86,6 @@ def sanitize_fieldname_types(dic):
             sanitize_fieldname_types(dic[key])
 
 
-def path_to_list(path):
-    if not isinstance(path, str):
-        return path
-    path_parts = path.split('/')
-    path_parts = [cur for cur in path_parts if cur != '']
-    path_parts = [int(cur) if cur.isdigit() else cur for cur in path_parts]
-    ret = []
-    for el in path_parts:
-        if isinstance(el, str) and '[' in el:
-            if not el.endswith(']'):
-                raise ValueError('missing closing bracket')
-            start = el.index('[') + 1
-            ret.append(el[:start-1])
-            indices_str = el[start:-1].split(',')
-            indices = [int(x) for x in indices_str]
-            ret.extend(indices)
-        else:
-            ret.append(el)
-    return ret
-
-
-def list_to_path(path):
-    return '/'.join([str(x) for x in path])
-
-
-def enter_section(endf_dic, path, create_missing=False, trunc=0):
-    curdic = endf_dic
-    path_parts = path_to_list(path)
-    if trunc > 0:
-        path_parts = path_parts[:-trunc]
-    for cur in path_parts:
-        if cur not in curdic and create_missing:
-            curdic[cur] = dict()
-        curdic = curdic[cur]
-    return curdic
-
-
 def show_content(endf_dic, maxlevel=0, prefix='/'):
     maxlen = max(len(prefix+str(s)) for s in endf_dic.keys())
     for k, v in endf_dic.items():

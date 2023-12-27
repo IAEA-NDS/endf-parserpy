@@ -289,20 +289,7 @@ class EndfDict(MutableMapping):
                 'expected `mapping` to be an instance of MutableMapping'
             )
         self._root = self
-        self._path = ''
-
-    def _get_pardic_and_varname(self, path, create_missing):
-        if isinstance(path, int):
-            return self._store, path, path
-        if isinstance(path, str) and '/' not in path and '[' not in path:
-            if path.isdigit():
-                path = int(path)
-            return self._store, path, path
-        path_parts = path_to_list(path)
-        pardic = enter_section(self._store, path_parts[:-1], create_missing)
-        varname = path_parts[-1]
-        pathstr = list_to_path(path_parts)
-        return pardic, varname, pathstr
+        self._path = EndfPath('')
 
     def __repr__(self):
         return f'{self._store!r}'
@@ -311,23 +298,24 @@ class EndfDict(MutableMapping):
         return str(self._store)
 
     def __getitem__(self, key):
-        parent_dict, local_key, pathstr = self._get_pardic_and_varname(key, False)
-        ret = parent_dict[local_key]
+        endf_path = EndfPath(key)
+        ret = endf_path.get(self._store)
         if isinstance(ret, MutableMapping) and not isinstance(ret, EndfDict):
             ret = EndfDict(ret)
             ret._root = self._root
-            ret._path = pathstr
+            ret._path = endf_path
         return ret
 
     def __setitem__(self, key, value):
         if isinstance(value, EndfDict):
             value = value.unwrap()
-        parent_dict, local_key, _ = self._get_pardic_and_varname(key, True)
-        parent_dict[local_key] = value
+        endf_path = EndfPath(key)
+        endf_path.set(self._store, value)
 
     def __delitem__(self, key):
-        parent_dict, local_key, _ = self._get_pardic_and_varname(key, False)
-        del parent_dict[local_key]
+        if not isinstance(key, EndfPath):
+            endf_path = EndfPath(key)
+        endf_path.remove(self._store)
 
     def __iter__(self):
         return iter(self._store)

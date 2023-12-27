@@ -76,7 +76,13 @@ def test_endfpath_set_type(testdict, testdict2, testpath):
 def test_endfpath_alternative_representations():
     p1 = EndfPath('a/b[1,2]/3')
     p2 = EndfPath('a/b/1/2/3')
+    p3 = EndfPath('a /  b[ 1] / 2/3')
+    p4 = EndfPath('a/b') + EndfPath('1/2/3')
+    p5 = EndfPath('a/  ///b[1,2,3]')
     assert p1 == p2
+    assert p2 == p3
+    assert p3 == p4
+    assert p4 == p5
 
 
 def test_endfvariable_endfdict_assocation(testpath, testdict2):

@@ -28,45 +28,23 @@ def pytest_generate_tests(metafunc):
             endf_files = endf_dir.glob("*.endf")
         metafunc.parametrize("endf_file", endf_files)
 
-    argval = metafunc.config.option.ignore_zero_mismatch.lower().strip()
-    argval = argval == 'true'
-    metafunc.parametrize("ignore_zero_mismatch", [argval], scope="module")
+    parse_opts = (
+        'ignore_zero_mismatch', 'ignore_number_mismatch',
+        'ignore_varspec_mismatch', 'fuzzy_matching', 'blank_as_zero',
+        'abuse_signpos', 'skip_intzero', 'prefer_noexp', 'accept_spaces'
+    )
 
-    argval = metafunc.config.option.ignore_number_mismatch.lower().strip()
-    argval = argval == 'true'
-    metafunc.parametrize("ignore_number_mismatch", [argval], scope="module")
-
-    argval = metafunc.config.option.ignore_varspec_mismatch.lower().strip()
-    argval = argval == 'true'
-    metafunc.parametrize("ignore_varspec_mismatch", [argval], scope="module")
-
-    argval = metafunc.config.option.fuzzy_matching.lower().strip()
-    argval = argval == 'true'
-    metafunc.parametrize("fuzzy_matching", [argval], scope="module")
-
-    argval = metafunc.config.option.blank_as_zero.lower().strip()
-    argval = argval == 'true'
-    metafunc.parametrize("blank_as_zero", [argval], scope="module")
-
-    argval = metafunc.config.option.abuse_signpos.lower().strip()
-    argval = argval == 'true'
-    metafunc.parametrize("abuse_signpos", [argval], scope="module")
-
-    argval = metafunc.config.option.skip_intzero.lower().strip()
-    argval = argval == 'true'
-    metafunc.parametrize("skip_intzero", [argval], scope="module")
-
-    argval = metafunc.config.option.prefer_noexp.lower().strip()
-    argval = argval == 'true'
-    metafunc.parametrize("prefer_noexp", [argval], scope="module")
-
-    argval = metafunc.config.option.accept_spaces.lower().strip()
-    argval = argval == 'true'
-    metafunc.parametrize("accept_spaces", [argval], scope="module")
+    opts = metafunc.config.option
+    for curopt in parse_opts:
+        if curopt in metafunc.fixturenames:
+            argval = opts.__dict__[curopt].lower().strip()
+            argval = argval == 'true'
+            metafunc.parametrize(curopt, [argval], scope="module")
 
     # to selectively test MF sections and MF/MT subsections
-    if metafunc.config.option.mf is not None:
-        argval = (int(metafunc.config.option.mf),)
-    else:
-        argval = None
-    metafunc.parametrize("mf_sel", [argval], scope="module")
+    if 'mf_sel' in metafunc.fixturenames:
+        if metafunc.config.option.mf is not None:
+            argval = (int(metafunc.config.option.mf),)
+        else:
+            argval = None
+        metafunc.parametrize("mf_sel", [argval], scope="module")

@@ -228,19 +228,20 @@ class EndfPath(Sequence):
 
 class EndfVariable:
 
-    def __init__(self, path, endf_dict, value=None):
-        path_parts = path_to_list(path)
-        create_missing = value is not None
-        parent_dict = enter_section(endf_dict, path_parts[:-1], create_missing)
-        self._pardict = parent_dict
-        self._varname = path_parts[-1]
+    def __init__(self, endf_path, endf_dict, value=None):
+        if isinstance(endf_dict, EndfDict):
+            endf_dict = endf_dict.unwrap()
+        if not isinstance(endf_path, EndfPath):
+            endf_path = EndfPath(endf_path)
+        if not endf_path.exists(endf_dict):
+            if value is None:
+                raise KeyError(f'variable `{endf_path}` does not exist')
+            endf_path.set(endf_dict, value)
+
         self._endf_dict = endf_dict
-        self._path = list_to_path(path_parts)
-        if value is not None:
-            self.value = value
-        else:
-            if self._varname not in self._pardict:
-                raise KeyError(f'variable `{self._path}` does not exist')
+        self._path = endf_path
+        self._varname = endf_path[-1]
+        self._parent = endf_path[:-1].get(endf_dict)
 
     def __repr__(self):
         return (f'EndfVariable({self._path!r}, ' +
@@ -256,11 +257,11 @@ class EndfVariable:
 
     @property
     def value(self):
-        return self._pardict[self._varname]
+        return self._varname.get(self._parent)
 
     @value.setter
     def value(self, value):
-        self._pardict[self._varname] = value
+        self._varname.set(self._parent, value)
 
     @property
     def path(self):
@@ -272,7 +273,7 @@ class EndfVariable:
 
     @property
     def parent_dict(self):
-        return self._pardict
+        return self._parent
 
 
 class EndfDict(MutableMapping):

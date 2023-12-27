@@ -1,10 +1,11 @@
 import pytest
+from copy import deepcopy
 from endf_parserpy.accessories import EndfPath, EndfVariable, EndfDict
 
 
 @pytest.fixture(scope='function')
 def testdict():
-    return {'a': {'b': 10, 'c': {'d': 5}}, 3: {}}
+    return {'a': {'b': 10, 'c': {'d': 5}}, 3: {'x': 'abc'}}
 
 
 @pytest.fixture(scope='function')

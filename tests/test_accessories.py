@@ -1,0 +1,82 @@
+import pytest
+from endf_parserpy.accessories import EndfPath, EndfVariable, EndfDict
+
+
+@pytest.fixture(scope='function')
+def testdict():
+    return {'a': {'b': 10, 'c': {'d': 5}}, 3: {}}
+
+
+@pytest.fixture(scope='function')
+def testdict2(testdict):
+    return EndfDict(testdict)
+
+
+@pytest.fixture(scope='function')
+def testpath(testdict):
+    return EndfPath('a/c/d')
+
+
+def test_dict_endfdict_association(testdict, testdict2):
+    assert id(testdict) == id(testdict2.unwrap())
+
+
+def test_endfdict_path_split(testdict2):
+    d1 = testdict2['a/c']
+    d2 = testdict2['a']['c']
+    assert id(d1.unwrap()) == id(d2.unwrap())
+
+
+def test_endfdict_wrap_and_unwrap(testdict, testdict2):
+    testdict2['u'] = {'x': 7}
+    testdict['v'] = {'y': 9}
+    testdict2['w'] = EndfDict({'z': 10})
+    assert type(testdict2['u']) == EndfDict
+    assert type(testdict2['v']) == EndfDict
+    assert type(testdict2['w']) == EndfDict
+    assert type(testdict['u']) == dict
+    assert type(testdict['v']) == dict
+    assert type(testdict['w']) == dict
+
+
+def test_dict_endfdict_update(testdict, testdict2):
+    testdict2 = EndfDict(testdict)
+    testdict2['u/3'] = 25
+    testdict.setdefault('v', {}).setdefault(5, 7)
+    assert testdict['u'][3] == testdict2['u/3']
+    assert testdict['v'][5] == testdict2['v/5']
+
+
+def test_endfpath_get_and_set(testdict, testdict2, testpath):
+    testpath.set(testdict, 13)
+    assert testpath.get(testdict) == 13
+    assert testdict2[str(testpath)] == 13
+
+
+def test_endfpath_get_type(testdict, testdict2, testpath):
+    assert type(testpath[:-1].get(testdict)) == dict
+    assert type(testpath[:-1].get(testdict2)) == EndfDict
+
+
+def test_endfpath_set_type(testdict, testdict2, testpath):
+    d1 = testpath[:-1].get(testdict)
+    d2 = testpath[:-1].get(testdict2)
+    for d, t in zip((d1, d2), (testdict, testdict2)):
+        testpath[:-1].set(t, d)
+        assert type(testpath[:-1].get(testdict)) == dict
+        assert type(testpath[:-1].get(testdict2)) == EndfDict
+
+
+def test_endfpath_alternative_representations():
+    p1 = EndfPath('a/b[1,2]/3')
+    p2 = EndfPath('a/b/1/2/3')
+    assert p1 == p2
+
+
+def test_endfvariable_endfdict_assocation(testpath, testdict2):
+    myvar = EndfVariable(testpath, testdict2)
+    assert myvar.value == testdict2[testpath]
+    myvar.value = 93
+    assert myvar.value == testdict2[testpath]
+    testdict2[testpath] = 98
+    assert myvar.value == testdict2[testpath]

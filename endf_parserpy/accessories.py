@@ -76,6 +76,10 @@ class EndfPath(Sequence):
             other = EndfPath(other)
         return EndfPath(self._path_elements + other._path_elements)
 
+    def __radd__(self, other):
+        other = EndfPath(other)
+        return other.__add__(self)
+
     def get(self, dict_like):
         cur = dict_like
         for el in self._path_elements:

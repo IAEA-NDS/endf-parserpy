@@ -85,6 +85,16 @@ def test_endfpath_alternative_representations():
     assert p4 == p5
 
 
+def test_endfpath_addition():
+    p1 = '1/2/3' + EndfPath('4/5/6')
+    p2 = EndfPath('1/2/3') + '4/5/6'
+    p3 = (1, 2, '3') + EndfPath('4/5/6')
+    p4 = EndfPath('1/2/3/4/5/6')
+    assert p1 == p2
+    assert p2 == p3
+    assert p3 == p4
+
+
 def test_endfvariable_endfdict_assocation(testpath, testdict2):
     myvar = EndfVariable(testpath, testdict2)
     assert myvar.value == testdict2[testpath]

@@ -208,7 +208,7 @@ class EndfDict(MutableMapping):
                 raise IndexError(
                     'there is a cycle in the nested data structure'
                 )
-            # ids.add(id(obj1))
+            ids.add(id(obj1))
             for k in obj1:
                 if not self._recursive_equality_check(obj1[k], obj2[k], ids):
                     return False

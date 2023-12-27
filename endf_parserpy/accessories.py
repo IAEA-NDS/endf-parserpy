@@ -52,6 +52,13 @@ class EndfPath(Sequence):
                 if not el.replace('_', '').isalnum() or el[0].isdigit():
                     raise ValueError(f'invalid path element `{el}`')
 
+    def __eq__(self, other):
+        if isinstance(other, EndfPath):
+            p1 = self._path_elements
+            p2 = other._path_elements
+            return all(x == y for x, y in zip(p1, p2))
+        return False
+
     def __str__(self):
         return '/'.join([str(x) for x in self._path_elements])
 

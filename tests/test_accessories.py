@@ -65,6 +65,12 @@ def test_endfpath_set_type(testdict, testdict2, testpath):
         testpath[:-1].set(t, d)
         assert type(testpath[:-1].get(testdict)) == dict
         assert type(testpath[:-1].get(testdict2)) == EndfDict
+        assert (id(testpath[:-1].get(testdict)) ==
+                id(testpath[:-1].get(testdict2).unwrap()))
+        v = d
+        if isinstance(v, EndfDict):
+            v = v.unwrap()
+        assert id(testpath[:-1].get(testdict)) == id(v)
 
 
 def test_endfpath_alternative_representations():

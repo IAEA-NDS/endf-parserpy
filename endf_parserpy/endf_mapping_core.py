@@ -105,7 +105,7 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
         else:
             try:
                 val = varvalue_expr_conversion(expr_vv, record_dic[sourcekey],
-                                               inverse=False)
+                                               rwmode='read')
             except InvalidIntegerError as pexc:
                 raise InvalidIntegerError(str(pexc) + f' (variable {targetkey})')
 
@@ -151,12 +151,12 @@ def map_datadic_to_recorddic(basekeys, record_dic, expr_list,
 
 
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars,
-                      inverse, parse_opts=None):
+                      rwmode, parse_opts=None):
     # remove COMMA token because it is not relevant
     expr_list = [expr for expr in expr_list
                  if not is_token(expr) or get_name(expr) != 'COMMA']
 
-    if not inverse:
+    if rwmode == 'read':
         parse_tries = 3
         while parse_tries > 0:
             try:

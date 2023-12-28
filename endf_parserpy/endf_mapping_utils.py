@@ -174,13 +174,13 @@ def get_all_extvarnames(expr):
         varlist.extend(get_all_extvarnames(ch))
     return varlist
 
-def varvalue_expr_conversion(vv, val, inverse):
+def varvalue_expr_conversion(vv, val, rwmode):
     if vv[0] == 0 and vv[1] == 1:
         # vv[0] + vv[1]*varval = fieldvalue
         # so varval == fieldval
         return val
     # vv as returned by eval_expr
-    if not inverse:
+    if rwmode == 'read':
         # cast_int true means that we convert the result of a
         # division of two ints to int if possible
         return math_div(math_sub(val, vv[0]), vv[1], cast_int=True)

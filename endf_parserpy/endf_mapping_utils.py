@@ -151,6 +151,29 @@ def get_indexquants(expr):
             idxquants.append(ch)
     return idxquants if len(idxquants) > 0 else None
 
+def get_all_extvarnames(expr):
+    if not is_tree(expr):
+        return []
+    if get_name(expr) == 'extvarname':
+        varname = None
+        indices = []
+        for ch in expr.children:
+            child_name = get_name(ch)
+            if child_name == 'VARNAME':
+                varname = get_value(ch)
+            elif child_name == 'indexquant':
+                assert len(ch.children) == 1
+                indexquant_child = ch.children[0]
+                assert get_name(indexquant_child) in ('INDEXVAR', 'INDEXNUM')
+                indices.append(get_value(indexquant_child))
+            assert varname is not None
+            return [(varname,) + tuple(indices)]
+
+    varlist = []
+    for ch in expr.children:
+        varlist.extend(get_all_extvarnames(ch))
+    return varlist
+
 def varvalue_expr_conversion(vv, val, inverse):
     if vv[0] == 0 and vv[1] == 1:
         # vv[0] + vv[1]*varval = fieldvalue

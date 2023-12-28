@@ -9,6 +9,8 @@
 #
 ############################################################
 
+from lark.tree import Tree
+from lark.lexer import Token
 from .tree_utils import (
         is_tree, get_name, get_child, get_child_value
     )
@@ -89,7 +91,7 @@ def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, inverse=
     # deal with the mapping of the variable names in the table first
     cn = ('NBT', 'INT')
     tab2_def_fields = get_child(tab2_fields, 'tab2_def').children
-    expr_list = ['NBT', 'INT']
+    expr_list = [Token('VARNAME', 'NBT'), Token('VARNAME', 'INT')]
     tbl_dic = {} if inverse else tab2_dic['table']
     tbl_ret = map_record_helper(expr_list, cn, tbl_dic, datadic, loop_vars, inverse, parse_opts)
     # close section if desired
@@ -120,7 +122,7 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, inverse=
     tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
     # remove the slash
     tab1_def_fields = [field for field in tab1_def_fields if get_name(field) != 'SLASH']
-    expr_list = ['NBT', 'INT'] + list(tab1_def_fields)
+    expr_list = [Token('VARNAME', 'NBT'), Token('VARNAME', 'INT')] + list(tab1_def_fields)
     tbl_dic = {} if inverse else tab1_dic['table']
     tbl_ret = map_record_helper(expr_list, cn, tbl_dic, datadic, loop_vars, inverse, parse_opts)
     # close section if desired

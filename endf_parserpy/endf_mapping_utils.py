@@ -73,9 +73,6 @@ def get_varval(expr, datadic, loop_vars, look_up=True):
     if name in ('VARNAME', 'extvarname'):
         varname = get_varname(expr)
         idxquants = get_indexquants(expr)
-    elif name is None and isinstance(expr, str):
-        varname = expr
-        idxquants = None
     else:
         raise TypeError(f'node must be either of type VARNAME or extvarname ' +
                         'but is {name} OR it must be at least a string with ' +
@@ -138,8 +135,6 @@ def get_varname(expr):
     elif is_token(expr):
         if get_name(expr) == 'VARNAME':
             return get_value(expr)
-    elif isinstance(expr, str):
-        return expr
 
     return None
 
@@ -182,8 +177,7 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
     name = get_name(expr, nofail=True)
     # reminder: VARNAME is is a string of letters and number, e.g., foo1
     #           extvarname can contain an index specification, e.g., foo1[i]
-    if (name in ('VARNAME', 'extvarname') or
-            (name is None and isinstance(expr, str))):
+    if (name in ('VARNAME', 'extvarname')):
         if datadic is None:
             return (0, 1, expr)
         else:

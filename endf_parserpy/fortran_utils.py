@@ -141,18 +141,27 @@ def count_signif_digits(valstr):
 def float2fortstr(val, **write_opts):
     width = write_opts.get('width', 11)
     prefer_noexp = write_opts.get('prefer_noexp', False)
-    if prefer_noexp:
-        valstr_basic = float2basicnumstr(val, **write_opts)
     valstr_exp = float2expformstr(val, **write_opts)
-    if prefer_noexp and len(valstr_basic) <= width:
-        num_signif_basic = count_signif_digits(valstr_basic)
-        num_signif_exp = count_signif_digits(valstr_exp)
-        if num_signif_basic >= num_signif_exp:
-            if '.' in valstr_basic:
-                valstr_basic = valstr_basic.rstrip('0').rstrip('.')
-            valstr_basic = valstr_basic.rjust(width)
+    if not prefer_noexp:
+        return valstr_exp
+    valstr_basic = float2basicnumstr(val, **write_opts)
+    if '.' in valstr_basic:
+        valstr_basic = valstr_basic.rstrip('0').rstrip('.')
+    if len(valstr_basic) > width:
+        return valstr_exp
+    num_signif_basic = count_signif_digits(valstr_basic)
+    num_signif_exp = count_signif_digits(valstr_exp)
+    if num_signif_exp > num_signif_basic:
+        return valstr_exp
+    if num_signif_exp == num_signif_basic and len(valstr_basic) == width:
+        delta1 = abs(fortstr2float(valstr_basic) - val)
+        delta2 = abs(fortstr2float(valstr_exp) - val)
+        if delta1 <= delta2:
             return valstr_basic
-    return valstr_exp
+        else:
+            return valstr_exp
+    valstr_basic = valstr_basic.rjust(width)
+    return valstr_basic
 
 
 def read_fort_floats(line, n=6, blank=None, **read_opts):

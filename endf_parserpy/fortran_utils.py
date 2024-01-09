@@ -32,10 +32,9 @@ def fortstr2float(valstr, blank=None, **read_opts):
         return blank
     if accept_spaces:
         valstr = valstr.replace(' ', '')
-    digitchars = tuple(str(i) for i in range(10))
     for i, c in enumerate(valstr):
-        if i>0 and (c == '+' or c == '-'):
-            if valstr[i-1] in digitchars:
+        if i > 0 and (c == '+' or c == '-'):
+            if valstr[i-1].isdigit():
                 return float(valstr[:i] + 'E' + valstr[i:])
     try:
         return float(valstr)

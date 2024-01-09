@@ -146,19 +146,15 @@ def float2fortstr(val, **write_opts):
     valstr_basic = float2basicnumstr(val, **write_opts)
     if '.' in valstr_basic:
         valstr_basic = valstr_basic.rstrip('0').rstrip('.')
+        # next line to deal with case -.00 and .00
+        if valstr_basic in ('+', '-', ''):
+            valstr_basic = '0'
     if len(valstr_basic) > width:
         return valstr_exp
-    num_signif_basic = count_signif_digits(valstr_basic)
-    num_signif_exp = count_signif_digits(valstr_exp)
-    if num_signif_exp > num_signif_basic:
+    delta1 = abs(fortstr2float(valstr_basic) - val)
+    delta2 = abs(fortstr2float(valstr_exp) - val)
+    if delta2 < delta1:
         return valstr_exp
-    if num_signif_exp == num_signif_basic and len(valstr_basic) == width:
-        delta1 = abs(fortstr2float(valstr_basic) - val)
-        delta2 = abs(fortstr2float(valstr_exp) - val)
-        if delta1 <= delta2:
-            return valstr_basic
-        else:
-            return valstr_exp
     valstr_basic = valstr_basic.rjust(width)
     return valstr_basic
 

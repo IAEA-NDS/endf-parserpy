@@ -103,6 +103,10 @@ def map_tab2_dic(tab2_line_node, tab2_dic=None, datadic=None, loop_vars=None, rw
     expr_list = tab2_cont_fields.children[:-3] + tab2_cont_fields.children[-1:]
     cn = ('C1', 'C2', 'L1', 'L2', 'N2')
     main_ret = map_record_helper(expr_list, cn, tab2_dic, datadic, loop_vars, rwmode, parse_opts)
+    # treat parsing of table body as additional action step,
+    # so don't parse list body if lookahead counter exhausted
+    if not should_proceed(datadic, loop_vars, 'endf_action'):
+        return main_ret
     # tab2_def_fields contains the name of the Z variable
     # we don't need it because the following TAB1/LIST records
     # contain the name of this variable at position of C2

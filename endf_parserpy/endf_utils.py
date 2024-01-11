@@ -14,7 +14,9 @@ from .fortran_utils import (float2fortstr, fortstr2float,
 from .custom_exceptions import (
         NotSectionEndError,
         UnexpectedEndOfInputError,
-        InvalidIntegerError
+        InvalidIntegerError,
+        MoreListElementsExpectedError,
+        UnconsumedListElementsError
     )
 
 
@@ -240,9 +242,16 @@ def read_list(lines, ofs=0, with_ctrl=True, callback=None,
     return dic, ofs
 
 def write_list(dic, with_ctrl=True, **write_opts):
-    NPL = len(dic['vals'])
-    tmpdic = dic.copy()
-    tmpdic['N1'] = NPL
+    NPL = dic['N1']
+    num_vals = len(dic['vals'])
+    if NPL < num_vals:
+        raise UnconsumedListElementsError(
+            f'NPL={NPL} (N1 slot) indicates fewer elements than present ({num_vals})'
+        )
+    elif NPL > num_vals:
+        raise MoreListElementsExpectedError(
+            f'NPL={NPL} (N1 slot) indicates more elements than present ({num_vals})'
+        )
     lines = write_cont(dic, with_ctrl, **write_opts)
     if NPL == 0:
         body_lines = write_endf_numbers([0.0 for i in range(6)],

@@ -272,7 +272,9 @@ class BasicEndfParser():
                     'The section name in the tail does not correspond to ' +
                     f'the one in the head (`{varname}` vs `{varname2}`)')
 
-        self.datadic = open_section(section_head, self.datadic, self.loop_vars)
+        create_missing = (self.rwmode == 'read')
+        self.datadic = open_section(section_head, self.datadic,
+                                    self.loop_vars, create_missing)
         section_body = get_child(tree, 'section_body')
         self.run_instruction(section_body)
         self.datadic = close_section(section_head, self.datadic)

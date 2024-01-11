@@ -25,7 +25,7 @@ from .math_utils import (math_add, math_sub,
         math_mul, math_div, math_neg)
 import re
 
-def open_section(extvarname, datadic, loop_vars):
+def open_section(extvarname, datadic, loop_vars, create_missing):
     varname = get_varname(extvarname)
     indexquants = get_indexquants(extvarname)
     curdatadic = datadic
@@ -36,7 +36,8 @@ def open_section(extvarname, datadic, loop_vars):
         for idxquant in indexquants:
             idx = get_indexvalue(idxquant, loop_vars)
             idcsstr_list.append(str(idx))
-            datadic.setdefault(idx, {})
+            if create_missing:
+                datadic.setdefault(idx, {})
             datadic = datadic[idx]
     # provide a pointer so that functions
     # can look for variable names in the outer scope

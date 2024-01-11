@@ -86,7 +86,8 @@ def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, rwmode='
     tab2_name_node = get_child(tab2_line_node, 'table_name', nofail=True)
     # open section if desired
     if tab2_name_node is not None:
-        datadic = open_section(tab2_name_node, datadic, loop_vars)
+        create_missing = (rwmode == 'read')
+        datadic = open_section(tab2_name_node, datadic, loop_vars, create_missing)
     # deal with the mapping of the variable names in the table first
     cn = ('NBT', 'INT')
     tab2_def_fields = get_child(tab2_fields, 'tab2_def').children
@@ -115,7 +116,8 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, rwmode='
 
     # open section if desired
     if tab1_name_node is not None:
-        datadic = open_section(tab1_name_node, datadic, loop_vars)
+        create_missing = (rwmode == 'read')
+        datadic = open_section(tab1_name_node, datadic, loop_vars, create_missing)
     # deal with the mapping of the variable names in the table first
     cn = ('NBT', 'INT', 'X', 'Y')
     tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
@@ -205,7 +207,8 @@ def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, rwmode='
     # enter subsection if demanded
     list_name_node = get_child(list_line_node, 'list_name', nofail=True)
     if list_name_node is not None:
-        datadic = open_section(list_name_node, datadic, loop_vars)
+        create_missing = (rwmode == 'read')
+        datadic = open_section(list_name_node, datadic, loop_vars, create_missing)
     # parse the list body
     list_body_node = get_child(list_line_node, 'list_body')
     parse_list_body_node(list_body_node)

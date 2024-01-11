@@ -45,37 +45,55 @@ def check_ctrl_spec(record_line_node, record_dic, datadic, rwmode):
                 f'Expected MT {exp_mt} but encountered {cur_mt}')
 
 
-def map_text_dic(text_line_node, text_dic={}, datadic={}, loop_vars={}, rwmode='read', parse_opts=None):
+def map_text_dic(text_line_node, text_dic=None, datadic=None, loop_vars=None, rwmode='read', parse_opts=None):
+    text_dic = {} if text_dic is None else text_dic
+    datadic = {} if datadic is None else datadic
+    loop_vars = {} if loop_vars is None else loop_vars
     check_ctrl_spec(text_line_node, text_dic, datadic, rwmode)
     expr_list = get_child(text_line_node, 'text_fields').children
     cn = ('HL',)
     return map_record_helper(expr_list, cn, text_dic, datadic, loop_vars, rwmode, parse_opts)
 
-def map_head_dic(head_line_node, head_dic={}, datadic={}, loop_vars={}, rwmode='read', parse_opts=None):
+def map_head_dic(head_line_node, head_dic=None, datadic=None, loop_vars=None, rwmode='read', parse_opts=None):
+    head_dic = {} if head_dic is None else head_dic
+    datadic = {} if datadic is None else datadic
+    loop_vars = {} if loop_vars is None else loop_vars
     check_ctrl_spec(head_line_node, head_dic, datadic, rwmode)
     expr_list = get_child(head_line_node, 'record_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, head_dic, datadic, loop_vars, rwmode, parse_opts)
 
-def map_cont_dic(cont_line_node, cont_dic={}, datadic={}, loop_vars={}, rwmode='read', parse_opts=None):
+def map_cont_dic(cont_line_node, cont_dic=None, datadic=None, loop_vars=None, rwmode='read', parse_opts=None):
+    cont_dic = {} if cont_dic is None else cont_dic
+    datadic = {} if datadic is None else datadic
+    loop_vars = {} if loop_vars is None else loop_vars
     check_ctrl_spec(cont_line_node, cont_dic, datadic, rwmode)
     expr_list = get_child(cont_line_node, 'record_fields').children
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, cont_dic, datadic, loop_vars, rwmode, parse_opts)
 
-def map_dir_dic(dir_line_node, dir_dic={}, datadic={}, loop_vars={}, rwmode='read', parse_opts=None):
+def map_dir_dic(dir_line_node, dir_dic=None, datadic=None, loop_vars=None, rwmode='read', parse_opts=None):
+    dir_dic = {} if dir_dic is None else dir_dic
+    datadic = {} if datadic is None else datadic
+    loop_vars = {} if loop_vars is None else loop_vars
     check_ctrl_spec(dir_line_node, dir_dic, datadic, rwmode)
     expr_list = get_child(dir_line_node, 'dir_fields').children
     cn = ('L1', 'L2', 'N1', 'N2')
     return map_record_helper(expr_list, cn, dir_dic, datadic, loop_vars, rwmode, parse_opts)
 
-def map_intg_dic(intg_line_node, intg_dic={}, datadic={}, loop_vars={}, rwmode='read', parse_opts=None):
+def map_intg_dic(intg_line_node, intg_dic=None, datadic=None, loop_vars=None, rwmode='read', parse_opts=None):
+    intg_dic = {} if intg_dic is None else intg_dic
+    datadic = {} if datadic is None else datadic
+    loop_vars = {} if loop_vars is None else loop_vars
     check_ctrl_spec(intg_line_node, intg_dic, datadic, rwmode)
     expr_list = get_child(intg_line_node, 'intg_fields').children
     cn = ('II', 'JJ', 'KIJ')
     return map_record_helper(expr_list, cn, intg_dic, datadic, loop_vars, rwmode, parse_opts)
 
-def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, rwmode='read', parse_opts=None):
+def map_tab2_dic(tab2_line_node, tab2_dic=None, datadic=None, loop_vars=None, rwmode='read', parse_opts=None):
+    tab2_dic = {} if tab2_dic is None else tab2_dic
+    datadic = {} if datadic is None else datadic
+    loop_vars = {} if loop_vars is None else loop_vars
     check_ctrl_spec(tab2_line_node, tab2_dic, datadic, rwmode)
     tab2_fields = get_child(tab2_line_node, 'tab2_fields')
     tab2_cont_fields = get_child(tab2_fields, 'record_fields')
@@ -107,7 +125,10 @@ def map_tab2_dic(tab2_line_node, tab2_dic={}, datadic={}, loop_vars={}, rwmode='
         main_ret['table'] = tbl_ret
     return main_ret
 
-def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, rwmode='read', parse_opts=None):
+def map_tab1_dic(tab1_line_node, tab1_dic=None, datadic=None, loop_vars=None, rwmode='read', parse_opts=None):
+    tab1_dic = {} if tab1_dic is None else tab1_dic
+    datadic = {} if datadic is None else datadic
+    loop_vars = {} if loop_vars is None else loop_vars
     check_ctrl_spec(tab1_line_node, tab1_dic, datadic, rwmode)
     tab1_fields = get_child(tab1_line_node, 'tab1_fields')
     tab1_cont_fields = get_child(tab1_fields, 'record_fields')
@@ -138,8 +159,11 @@ def map_tab1_dic(tab1_line_node, tab1_dic={}, datadic={}, loop_vars={}, rwmode='
         main_ret['table'] = tbl_ret
     return main_ret
 
-def map_list_dic(list_line_node, list_dic={}, datadic={}, loop_vars={}, rwmode='read',
+def map_list_dic(list_line_node, list_dic=None, datadic=None, loop_vars=None, rwmode='read',
                  run_instruction=None, parse_opts=None):
+    list_dic = {} if list_dic is None else list_dic
+    datadic = {} if datadic is None else datadic
+    loop_vars = {} if loop_vars is None else loop_vars
     val_idx = 0
     # we embed recurisve helper function here so that
     # it can see the variables list_dic, datadic and loop_vars.

@@ -310,16 +310,6 @@ class BasicEndfParser():
 
     def reset_parser_state(self, rwmode='read', lines=None, datadic=None):
         self.loop_vars = {}
-        # NOTE: default argument datadic={} does not work because
-        #       Python's default arguments are evaluated once when
-        #       the function is defined, not each time the function
-        #       is called, and then changes of a mutable object in the
-        #       function are preserved across function evaluations.
-        # For a nice explanation and further details see:
-        # https://medium.com/nerd-for-tech/how-default-parameters-could-cause-havoc-python-e6cb3d8fefb8
-        # TO CHECK: mutable default arguments have been used elsewhere.
-        #           Better to replace to avoid problems during future
-        #           development.
         datadic = datadic if datadic is not None else {}
         lines = lines if lines is not None else []
         self.loop_vars = {'__ofs': 0}

@@ -97,3 +97,7 @@ class RingBuffer():
             outstr += 'Template:  {}\n'.format(curentry['record_spec'])
             outstr += 'Line:     "{}"\n\n'.format(curentry['line'])
         return outstr
+
+    def get_last_entry(self, key_prefix=''):
+        last_entry = self.buffer[self.tail]
+        return {f'{key_prefix}{k}': v for k, v in last_entry.items()}

@@ -9,7 +9,6 @@
 #
 ############################################################
 
-from lark.tree import Tree
 from lark.lexer import Token
 from .tree_utils import (
         is_tree, get_name, get_child, get_child_value

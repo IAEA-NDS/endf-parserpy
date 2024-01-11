@@ -12,9 +12,7 @@
 import traceback
 from .tree_utils import (get_child, get_child_value, get_name,
         get_child_names, reconstruct_tree_str)
-from .endf_mapping_utils import (
-        get_varname, eval_expr, eval_expr_without_unknown_var
-    )
+from .endf_mapping_utils import eval_expr_without_unknown_var
 from .logging_utils import write_info
 from .custom_exceptions import LoopVariableError
 from copy import deepcopy

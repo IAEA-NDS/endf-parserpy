@@ -10,7 +10,7 @@
 ############################################################
 
 from .endf_parser import BasicEndfParser
-from .endf_utils import split_sections, read_ctrl
+from .endf_utils import split_sections
 import re
 
 

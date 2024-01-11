@@ -12,7 +12,6 @@
 from .logging_utils import logging, abbreviate_valstr, should_skip_logging_info
 from .custom_exceptions import (
         NumberMismatchError,
-        InconsistentVariableAssignmentError,
         InvalidIntegerError,
         SeveralUnboundVariablesError,
     )
@@ -20,7 +19,7 @@ from .endf_mapping_utils import (
         get_varname, get_indexquants, eval_expr,
         varvalue_expr_conversion, get_indexvalue
     )
-from .tree_utils import (is_token, is_tree, get_name, search_name)
+from .tree_utils import (is_token, get_name, search_name)
 from .math_utils import math_allclose
 
 

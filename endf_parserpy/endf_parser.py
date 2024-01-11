@@ -10,11 +10,10 @@
 ############################################################
 
 from collections.abc import Mapping
-from .logging_utils import logging, write_info, RingBuffer
+from .logging_utils import write_info, RingBuffer
 from appdirs import user_cache_dir
 from os.path import exists as file_exists
-from copy import deepcopy
-from .tree_utils import (is_tree, get_name, get_child, get_child_value,
+from .tree_utils import (is_tree, get_child, get_child_value,
         retrieve_value)
 from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_intg_dic, map_tab1_dic, map_tab2_dic, map_list_dic)
@@ -29,7 +28,6 @@ from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         read_list, write_list, split_sections, skip_blank_lines)
 from .custom_exceptions import (
         InconsistentSectionBracketsError,
-        InvalidIntegerError,
         StopException,
         ParserException
     )

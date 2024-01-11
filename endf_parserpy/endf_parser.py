@@ -291,17 +291,17 @@ class BasicEndfParser():
 
     def run_instruction(self, tree):
         if tree.data in self.endf_actions:
-            if should_proceed(tree, self.datadic, self.loop_vars,
+            if should_proceed(self.datadic, self.loop_vars,
                                          action_type='endf_action'):
                 self.endf_actions[tree.data](tree)
         elif tree.data in self.flow_actions:
-            if should_proceed(tree, self.datadic, self.loop_vars,
+            if should_proceed(self.datadic, self.loop_vars,
                                           action_type='flow_action'):
                 self.flow_actions[tree.data](tree)
         else:
             for child in tree.children:
                 if is_tree(child):
-                    if should_proceed(tree, self.datadic,
+                    if should_proceed(self.datadic,
                                       self.loop_vars,
                                       action_type='unspecified'):
                         self.run_instruction(child)

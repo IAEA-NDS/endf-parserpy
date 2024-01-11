@@ -225,7 +225,7 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     return truthval
 
 
-def should_proceed(tree, datadic, loop_vars, action_type):
+def should_proceed(datadic, loop_vars, action_type):
     if '__lookahead' in loop_vars:
         if loop_vars['__lookahead'] == 0:
             return False

@@ -42,6 +42,16 @@ def create_variable_wrong_value_error_msg(realval, expval, sourcekey):
             f'The value was encountered in a source field named {sourcekey}')
 
 
+def log_offending_line(record_dic, logging_method):
+    logfun = getattr(logging, logging_method)
+    if '__record_spec' in record_dic:
+        record_spec = record_dic['__record_spec']
+        logfun('Record specification: ' + record_spec)
+    if '__line' in record_dic:
+        line = record_dic['__line']
+        logfun('Offending line: ' + line)
+
+
 def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
                              datadic, loop_vars, parse_opts):
 
@@ -94,11 +104,15 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
             if value_mismatch_occurred:
                 if ignore_zero_mismatch and expr_vv[0] == 0:
                     logging.warning(msg)
+                    log_offending_line(record_dic, 'warning')
                 elif ignore_number_mismatch and contains_desired_number:
                     logging.warning(msg)
+                    log_offending_line(record_dic, 'warning')
                 elif ignore_varspec_mismatch and contains_inconsistent_varspec:
                     logging.warning(msg)
+                    log_offending_line(record_dic, 'warning')
                 else:
+                    log_offending_line(record_dic, 'error')
                     raise NumberMismatchError(msg)
         # there is still a dangling variable but we can
         # solve the linear equation given in the slot to obtain its value

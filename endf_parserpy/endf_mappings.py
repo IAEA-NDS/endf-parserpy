@@ -134,7 +134,11 @@ def map_tab1_dic(tab1_line_node, tab1_dic=None, datadic=None, loop_vars=None, rw
     tab1_cont_fields = get_child(tab1_fields, 'record_fields')
     tab1_def_fields = get_child(tab1_fields, 'tab1_def').children
     tab1_name_node = get_child(tab1_line_node, 'table_name', nofail=True)
-
+    # we remove NR and NP (last two elements) because redundant information
+    # and not used by write_tab1 and read_tab1 (2+1 because a comma separates NR and NP)
+    expr_list = tab1_cont_fields.children[:-3]
+    cn = ('C1', 'C2', 'L1', 'L2')
+    main_ret = map_record_helper(expr_list, cn, tab1_dic, datadic, loop_vars, rwmode, parse_opts)
     # open section if desired
     if tab1_name_node is not None:
         create_missing = (rwmode == 'read')
@@ -150,11 +154,6 @@ def map_tab1_dic(tab1_line_node, tab1_dic=None, datadic=None, loop_vars=None, rw
     # close section if desired
     if tab1_name_node is not None:
         datadic = close_section(tab1_name_node, datadic)
-    # we remove NR and NP (last two elements) because redundant information
-    # and not used by write_tab1 and read_tab1 (2+1 because a comma separates NR and NP)
-    expr_list = tab1_cont_fields.children[:-3]
-    cn = ('C1', 'C2', 'L1', 'L2')
-    main_ret = map_record_helper(expr_list, cn, tab1_dic, datadic, loop_vars, rwmode, parse_opts)
     if rwmode != 'read':
         main_ret['table'] = tbl_ret
     return main_ret

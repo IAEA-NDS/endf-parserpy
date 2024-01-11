@@ -13,7 +13,7 @@ from lark.lexer import Token
 from .tree_utils import (
         is_tree, get_name, get_child, get_child_value
     )
-from .flow_control_utils import cycle_for_loop
+from .flow_control_utils import cycle_for_loop, should_proceed
 from .endf_mapping_utils import open_section, close_section
 from .custom_exceptions import (
         UnexpectedControlRecordError,
@@ -228,6 +228,14 @@ def map_list_dic(list_line_node, list_dic=None, datadic=None, loop_vars=None, rw
     cn = ('C1', 'C2', 'L1', 'L2', 'N1', 'N2', 'vals')
     map_record_helper(expr_list, cn, list_dic, datadic, loop_vars, rwmode, parse_opts)
 
+    # treat parsing of list_body as additional action step,
+    # so don't parse list body if lookahead counter exhausted
+    if not should_proceed(datadic, loop_vars, 'endf_action'):
+        if rwmode != 'read':
+            return list_dic
+        else:
+            return datadic
+
     # enter subsection if demanded
     list_name_node = get_child(list_line_node, 'list_name', nofail=True)
     if list_name_node is not None:
@@ -250,4 +258,3 @@ def map_list_dic(list_line_node, list_dic=None, datadic=None, loop_vars=None, rw
         return list_dic
     else:
         return datadic
-

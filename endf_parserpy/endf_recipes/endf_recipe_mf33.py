@@ -44,7 +44,8 @@ if MTL == 0:
 
                 elif LB==5 and LS==0 [lookahead=1]:
                     # asymmetric matrix
-                    [MAT,33,MT/ 0.0, 0.0, LS, LB, NE*(NE-1)+1, NE/
+                    NT := NE*(NE-1)+1
+                    [MAT,33,MT/ 0.0, 0.0, LS, LB, NT, NE/
                         {E[k]}{k=1 to NE} {{F[k,kp]}{kp=1 to NE-1}}{k=1 to NE-1} ]LIST
 
                 elif LB==5 and LS==1 [lookahead=1]:

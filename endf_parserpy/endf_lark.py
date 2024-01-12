@@ -25,7 +25,7 @@ endf_recipe : (code_token | NEWLINE)*
 code_token: endf_line | for_loop | if_clause | section
 endf_line : (list_line | head_or_cont_line | tab1_line | tab2_line
             | text_line | dir_line | intg_line | send_line
-            | dummy_line | stop_line | COMMENT_LINE) NEWLINE
+            | stop_line | COMMENT_LINE) NEWLINE
 
 // section to define namespace for variables
 section: section_head section_body section_tail
@@ -49,10 +49,6 @@ COMMENT_LINE : "#" /.*/
 stop_line : "stop" "(" escaped_stop_message? ")"
 escaped_stop_message : "\"" STOP_MESSAGE "\""
 STOP_MESSAGE : /[^"]+/
-
-// DUMMY record (read but not processed)
-dummy_line : "[" ctrl_spec "/" dummy_body "]" "DUMMY"
-dummy_body : (LETTER | DIGIT | " " | ",")
 
 // TEXT record
 text_line : "[" ctrl_spec "/" text_fields "]" "TEXT"

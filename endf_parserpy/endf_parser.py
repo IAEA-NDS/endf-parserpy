@@ -17,10 +17,9 @@ from .tree_utils import (is_tree, get_child, get_child_value,
         retrieve_value)
 from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_intg_dic, map_tab1_dic, map_tab2_dic, map_list_dic)
-from .endf_mapping_utils import (eval_expr_without_unknown_var, get_varname,
-        open_section, close_section)
-from .meta_control_utils import cycle_for_loop, evaluate_if_clause, should_proceed
-
+from .endf_mapping_utils import eval_expr_without_unknown_var, get_varname
+from .meta_control_utils import (cycle_for_loop, evaluate_if_clause,
+        open_section, close_section, should_proceed)
 from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         write_head, read_head, read_text, write_text, read_intg, write_intg,
         read_dir, write_dir, read_tab1, write_tab1, read_tab2, write_tab2,

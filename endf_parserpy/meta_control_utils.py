@@ -12,11 +12,41 @@
 import traceback
 from .tree_utils import (get_child, get_child_value, get_name,
         get_child_names, reconstruct_tree_str)
-from .endf_mapping_utils import eval_expr_without_unknown_var
+from .endf_mapping_utils import (
+    eval_expr_without_unknown_var,
+    get_indexvalue, get_indexquants, get_varname
+)
 from .logging_utils import write_info
 from .custom_exceptions import LoopVariableError
 from copy import deepcopy
 
+def open_section(extvarname, datadic, loop_vars, create_missing):
+    varname = get_varname(extvarname)
+    indexquants = get_indexquants(extvarname)
+    curdatadic = datadic
+    datadic.setdefault(varname, {})
+    datadic = datadic[varname]
+    idcsstr_list = []
+    if indexquants is not None:
+        for idxquant in indexquants:
+            idx = get_indexvalue(idxquant, loop_vars)
+            idcsstr_list.append(str(idx))
+            if create_missing:
+                datadic.setdefault(idx, {})
+            datadic = datadic[idx]
+    # provide a pointer so that functions
+    # can look for variable names in the outer scope
+    datadic['__up'] = curdatadic
+    write_info(f'Open section {varname}[' + ','.join(idcsstr_list) + ']')
+    return datadic
+
+def close_section(extvarname, datadic):
+    varname = get_varname(extvarname)
+    write_info(f'Close section {varname}')
+    curdatadic = datadic
+    datadic = datadic['__up']
+    del curdatadic['__up']
+    return datadic
 
 def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
                    loop_name='for_loop', head_name='for_head',  body_name='for_body'):

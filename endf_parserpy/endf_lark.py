@@ -123,11 +123,12 @@ comparison : if_condition | "(" disjunction ")"
 // arithmetic expression
 // adopted from: http://marvin.cs.uidaho.edu/Teaching/CS445/grammar.pdf (3.3)
 expr : addition | subtraction | addpart
-addpart : multiplication | division | mulpart
+addpart : multiplication | division | modulo | mulpart
 mulpart : minusexpr | extvarname | inconsistent_varspec | NUMBER | DESIRED_NUMBER | bracketexpr
 
 multiplication : addpart "*" mulpart
 division : addpart "/" mulpart
+modulo : addpart "%" mulpart
 addition : expr "+" addpart
 subtraction : expr "-" addpart
 

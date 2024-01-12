@@ -21,13 +21,13 @@ if MTL == 0:
         # definition of NC type subsections
         for m=1 to NC:
             (nc_subsection[m])
-                if LTY==0 [lookahead=1]:
-                    [MAT,33,MT/ 0.0, 0.0, 0, LTY, 0, 0]CONT
+                [MAT,33,MT/ 0.0, 0.0, 0, LTY, 0, 0]CONT
+
+                if LTY==0:
                     [MAT,33,MT/ E1, E2, 0, 0, 2*NCI, NCI/
                         {C[i], XMT[i]}{i=1 to NCI} ]LIST
 
-                elif LTY==1 or LTY==2 or LTY==3 [lookahead=1]:
-                    [MAT,33,MT/ 0.0, 0.0, 0, LTY, 0, 0]CONT
+                elif LTY>=1 and LTY<=3:
                     [MAT,33,MT/ E1, E2, MATS, MTS, 2*NEI+2, NEI/
                         XMFS,XLFSS, {E[i],WE[i]}{i=1 to NEI} ]LIST
                 endif

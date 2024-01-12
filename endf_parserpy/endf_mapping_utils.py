@@ -50,7 +50,7 @@ def substitute_abbreviation(val, datadic, loop_vars, look_up):
     )
     return val
 
-def get_varval(expr, datadic, loop_vars, look_up=True):
+def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
     name = get_name(expr, nofail=True)
     if name in ('VARNAME', 'extvarname'):
         varname = get_varname(expr)
@@ -75,9 +75,12 @@ def get_varval(expr, datadic, loop_vars, look_up=True):
     if varname not in datadic:
         raise VariableNotFoundError(f'variable {varname} not found')
     if idxquants is None:
-        return substitute_abbreviation(
-            datadic[varname], orig_datadic, loop_vars, look_up
-        )
+        if eval_abbrev:
+            return substitute_abbreviation(
+                datadic[varname], orig_datadic, loop_vars, look_up
+            )
+        else:
+            return datadic[varname]
     else:
         curdic = datadic[varname]
         for i, idxquant in enumerate(idxquants):
@@ -94,7 +97,10 @@ def get_varval(expr, datadic, loop_vars, look_up=True):
         except Exception:
             raise UnavailableIndexError(
                     f'index {idx} does not exist in array {varname}')
-        return substitute_abbreviation(val, orig_datadic, loop_vars, look_up)
+        if eval_abbrev:
+            return substitute_abbreviation(val, orig_datadic, loop_vars, look_up)
+        else:
+            return val
 
 def count_unassigned_vars(expr, datadic, loop_vars, look_up=True):
     if is_tree(expr) and get_name(expr) != 'extvarname':
@@ -192,8 +198,11 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
             # if datadic and variable exists in datadic
             # we substitute the variable name by its value
             try:
-                val = get_varval(expr, datadic, loop_vars, look_up)
-                return (val, 0, None)
+                val = get_varval(expr, datadic, loop_vars, look_up, False)
+                if is_tree(val) and get_name(val) == 'expr':
+                    return eval_expr(val, datadic, loop_vars, look_up)
+                else:
+                    return (val, 0, None)
             except VariableNotFoundError:
                 return (0, 1, expr)
             except UnavailableIndexError:

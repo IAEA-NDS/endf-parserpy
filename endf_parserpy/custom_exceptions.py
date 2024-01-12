@@ -76,3 +76,7 @@ class VariableInDenominatorError(ParserException):
 
 class SeveralUnboundVariablesError(ParserException):
     pass
+
+
+class AbbreviationNameCollisionError(ParserException):
+    pass

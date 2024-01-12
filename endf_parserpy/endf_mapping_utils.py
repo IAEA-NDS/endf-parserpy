@@ -18,11 +18,11 @@ from .custom_exceptions import (
         VariableNotFoundError,
         UnavailableIndexError,
         InvalidIntegerError,
-        VariableInDenominatorError,
+        ModuloWithUnboundVariablesError,
         SeveralUnboundVariablesError,
     )
 from .math_utils import (math_add, math_sub,
-        math_mul, math_div, math_neg)
+        math_mul, math_div, math_mod, math_neg)
 import re
 
 def get_indexvalue(token, loop_vars):
@@ -222,7 +222,7 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
         v = eval_expr(expr.children[0], datadic, loop_vars, look_up)
         return (math_neg(v[0]), -v[1], v[2])
     elif name in ('addition', 'subtraction',
-                'multiplication', 'division'):
+                  'multiplication', 'modulo', 'division'):
         v1 = eval_expr(expr.children[0], datadic, loop_vars, look_up)
         # children[1] contains the operator symbol *,/,+,-
         v2 = eval_expr(expr.children[2], datadic, loop_vars, look_up)
@@ -247,6 +247,14 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
             vx = math_div(v1[0], v2[0], cast_int=True)
             vy = math_div(v1[1], v2[0], cast_int=True)
             return (vx, vy, v1[2])
+        elif name == 'modulo':
+            if v1[1] != 0 or v2[1] != 0:
+                raise ModuloWithUnboundVariablesError(
+                    'Both x and y in the operation x % y (modulo) ' +
+                    'must be known values. However, unbound variables' +
+                    'are present in the expressions corresponding to x or y.')
+            vx = math_mod(v1[0], v2[0], cast_int=True)
+            return (vx, 0, None)
         elif name == 'addition':
             if v1[1] != 0 and v2[1] != 0:
                 raise SeveralUnboundVariablesError(

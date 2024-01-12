@@ -41,6 +41,15 @@ def get_indexvalue(token, loop_vars):
     else:
         raise TypeError(f'The token of type {tokname} is not allowed as index specification.')
 
+def substitute_abbreviation(val, datadic, loop_vars, look_up):
+    if not is_tree(val):
+        return val
+    assert get_name(val) == 'expr'
+    val = eval_expr_without_unknown_var(
+        val, datadic, loop_vars, look_up
+    )
+    return val
+
 def get_varval(expr, datadic, loop_vars, look_up=True):
     name = get_name(expr, nofail=True)
     if name in ('VARNAME', 'extvarname'):
@@ -59,13 +68,16 @@ def get_varval(expr, datadic, loop_vars, look_up=True):
         if varname in loop_vars:
             return loop_vars[varname]
 
+    orig_datadic = datadic
     while (varname not in datadic and
            '__up' in datadic and look_up):
         datadic = datadic['__up']
     if varname not in datadic:
         raise VariableNotFoundError(f'variable {varname} not found')
     if idxquants is None:
-        return datadic[varname]
+        return substitute_abbreviation(
+            datadic[varname], orig_datadic, loop_vars, look_up
+        )
     else:
         curdic = datadic[varname]
         for i, idxquant in enumerate(idxquants):
@@ -82,7 +94,7 @@ def get_varval(expr, datadic, loop_vars, look_up=True):
         except Exception:
             raise UnavailableIndexError(
                     f'index {idx} does not exist in array {varname}')
-        return val
+        return substitute_abbreviation(val, orig_datadic, loop_vars, look_up)
 
 def count_unassigned_vars(expr, datadic, loop_vars, look_up=True):
     if is_tree(expr) and get_name(expr) != 'extvarname':

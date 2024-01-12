@@ -49,8 +49,9 @@ if MTL == 0:
 
                 elif LB==5 and LS==1 [lookahead=1]:
                     # symetric matrix
-                        [MAT,33,MT/ 0.0, 0.0, LS, LB, NE*(NE+1)/2, NE/
-                            {E[k]}{k=1 to NE} {{F[k,kp]}{kp=k to NE-1}}{k=1 to NE-1} ]LIST
+                    NT := NE*(NE+1)/2
+                    [MAT,33,MT/ 0.0, 0.0, LS, LB, NT, NE/
+                        {E[k]}{k=1 to NE} {{F[k,kp]}{kp=k to NE-1}}{k=1 to NE-1} ]LIST
 
                 elif LB==6 [lookahead=1]:
                     # NEC = (NT-1)/NER

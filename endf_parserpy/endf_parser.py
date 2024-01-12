@@ -72,13 +72,13 @@ class BasicEndfParser():
         endf_actions['tab2_line'] = self.process_tab2_line
         endf_actions['list_line'] = self.process_list_line
         endf_actions['send_line'] = self.process_send_line
+        endf_actions['stop_line'] = self.process_stop_line
         self.endf_actions = endf_actions
         # program flow
         meta_actions = {}
         meta_actions['for_loop'] = self.process_for_loop
         meta_actions['if_clause'] = self.process_if_clause
         meta_actions['section'] = self.process_section
-        meta_actions['stop_line'] = self.process_stop_line
         self.meta_actions = meta_actions
 
         self.parse_opts = {

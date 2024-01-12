@@ -19,7 +19,8 @@ from .endf_mappings import (map_cont_dic, map_head_dic, map_text_dic,
         map_dir_dic, map_intg_dic, map_tab1_dic, map_tab2_dic, map_list_dic)
 from .endf_mapping_utils import eval_expr_without_unknown_var, get_varname
 from .meta_control_utils import (cycle_for_loop, evaluate_if_clause,
-        open_section, close_section, should_proceed)
+        open_section, close_section, should_proceed,
+        initialize_abbreviations, introduce_abbreviation, finalize_abbreviations)
 from .endf_utils import (read_cont, write_cont, read_ctrl, get_ctrl,
         write_head, read_head, read_text, write_text, read_intg, write_intg,
         read_dir, write_dir, read_tab1, write_tab1, read_tab2, write_tab2,
@@ -78,6 +79,7 @@ class BasicEndfParser():
         meta_actions['for_loop'] = self.process_for_loop
         meta_actions['if_clause'] = self.process_if_clause
         meta_actions['section'] = self.process_section
+        meta_actions['abbreviation'] = self.process_abbreviation
         self.meta_actions = meta_actions
 
         self.parse_opts = {
@@ -276,7 +278,9 @@ class BasicEndfParser():
         self.datadic = open_section(section_head, self.datadic,
                                     self.loop_vars, create_missing)
         section_body = get_child(tree, 'section_body')
+        initialize_abbreviations(self.datadic)
         self.run_instruction(section_body)
+        finalize_abbreviations(self.datadic)
         self.datadic = close_section(section_head, self.datadic)
 
     def process_for_loop(self, tree):
@@ -288,6 +292,9 @@ class BasicEndfParser():
                            set_parser_state=self.set_parser_state,
                            get_parser_state=self.get_parser_state,
                            parse_opts=self.parse_opts)
+
+    def process_abbreviation(self, tree):
+        introduce_abbreviation(tree, self.datadic)
 
     def run_instruction(self, tree):
         if tree.data in self.endf_actions:
@@ -368,7 +375,9 @@ class BasicEndfParser():
                     curlines += write_send(curmat, with_ctrl=True, **self.write_opts)
                     self.reset_parser_state(rwmode='read', lines=curlines)
                     try:
+                        initialize_abbreviations(self.datadic)
                         self.run_instruction(cur_tree)
+                        finalize_abbreviations(self.datadic)
                         mfmt_dic[mf][mt] = self.datadic
                     except ParserException as exc:
                         if not nofail:
@@ -394,7 +403,9 @@ class BasicEndfParser():
                 if cur_tree is not None and is_parsed:
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode='write', datadic=datadic)
+                    initialize_abbreviations(self.datadic)
                     self.run_instruction(cur_tree)
+                    finalize_abbreviations(self.datadic)
                     # add the NS number to the lines except last one
                     # because the SEND (=section end) record already
                     # contains it

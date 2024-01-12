@@ -22,7 +22,7 @@ r"""
 %ignore " "
 
 endf_recipe : (code_token | NEWLINE)*
-code_token: endf_line | for_loop | if_clause | section
+code_token: endf_line | for_loop | if_clause | section | abbreviation
 endf_line : (list_line | head_or_cont_line | tab1_line | tab2_line
             | text_line | dir_line | intg_line | send_line
             | stop_line | COMMENT_LINE) NEWLINE
@@ -49,6 +49,9 @@ COMMENT_LINE : "#" /.*/
 stop_line : "stop" "(" escaped_stop_message? ")"
 escaped_stop_message : "\"" STOP_MESSAGE "\""
 STOP_MESSAGE : /[^"]+/
+
+// abbreviations of expressions to avoid cluttered ENDF record specifications
+abbreviation : VARNAME ":=" expr NEWLINE
 
 // TEXT record
 text_line : "[" ctrl_spec "/" text_fields "]" "TEXT"

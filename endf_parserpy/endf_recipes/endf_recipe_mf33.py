@@ -54,10 +54,10 @@ if MTL == 0:
                         {E[k]}{k=1 to NE} {{F[k,kp]}{kp=k to NE-1}}{k=1 to NE-1} ]LIST
 
                 elif LB==6 [lookahead=1]:
-                    # NEC = (NT-1)/NER
+                    NT := 1 + NER*NEC
                     [MAT,33,MT/ 0.0, 0.0, 0, LB, NT, NER/
-                        {ER[k]}{k=1 to NER} {EC[k]}{k=1 to (NT-1)/NER}
-                        {{F[k,l]}{l=1 to (NT-1)/NER-1}}{k=1 to NER-1} ]LIST
+                        {ER[k]}{k=1 to NER} {EC[k]}{k=1 to NEC}
+                        {{F[k,l]}{l=1 to NEC-1}}{k=1 to NER-1} ]LIST
 
                 elif (LB==8 or LB==9) and LT==0 [lookahead=1]:
                     [MAT,33,MT/ 0.0, 0.0, LT, LB, 2*NP, NP/

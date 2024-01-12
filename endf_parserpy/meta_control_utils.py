@@ -17,8 +17,32 @@ from .endf_mapping_utils import (
     get_indexvalue, get_indexquants, get_varname
 )
 from .logging_utils import write_info
-from .custom_exceptions import LoopVariableError
+from .custom_exceptions import (
+    LoopVariableError, AbbreviationNameCollisionError
+)
 from copy import deepcopy
+
+def initialize_abbreviations(datadic):
+    assert '__abbrevs' not in datadic
+    datadic['__abbrevs'] = set()
+
+def introduce_abbreviation(tree, datadic):
+    abbrevs = datadic.setdefault('__abbrevs', set())
+    varname = get_child_value(tree, 'VARNAME')
+    if varname in datadic:
+        raise AbbreviationNameCollisionError(
+            f'Abbreviation `{varname}` collides with an equally'
+            'named variable or abbreviation defined earlier'
+        )
+    expr = get_child(tree, 'expr')
+    abbrevs.add(varname)
+    datadic[varname] = expr
+
+def finalize_abbreviations(datadic):
+    assert '__abbrevs' in datadic
+    for abbrev in datadic['__abbrevs']:
+        del datadic[abbrev]
+    del datadic['__abbrevs']
 
 def open_section(extvarname, datadic, loop_vars, create_missing):
     varname = get_varname(extvarname)

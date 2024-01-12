@@ -81,6 +81,7 @@ for i=1 to NIS:
                     [MAT,2,151/ AJ, PJ, KBK, KPS, 6*NCH, NCH /
                     {PPI[l] , L[l] , SCH[l] , BND [l] , APE[l] , APT[l]}{l=1 to NCH} ]LIST
                     if NRS > 0 [lookahead=1]:
+                        NX := (1+NCH + (5-NCH) % 6) * NRS / 6
                         [MAT,2,151/ 0.0, 0.0, 0, NRS, 6*NX, NX /
                             {ER[n], {GAM[m,n]}{m=1 to NCH} PADLINE}{n=1 to NRS} ]LIST
                     endif

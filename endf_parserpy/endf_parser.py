@@ -74,12 +74,13 @@ class BasicEndfParser():
         endf_actions['send_line'] = self.process_send_line
         self.endf_actions = endf_actions
         # program flow
-        flow_actions = {}
-        flow_actions['for_loop'] = self.process_for_loop
-        flow_actions['if_clause'] = self.process_if_clause
-        flow_actions['section'] = self.process_section
-        flow_actions['stop_line'] = self.process_stop_line
-        self.flow_actions = flow_actions
+        meta_actions = {}
+        meta_actions['for_loop'] = self.process_for_loop
+        meta_actions['if_clause'] = self.process_if_clause
+        meta_actions['section'] = self.process_section
+        meta_actions['stop_line'] = self.process_stop_line
+        self.meta_actions = meta_actions
+
         self.parse_opts = {
                 'ignore_zero_mismatch': ignore_zero_mismatch,
                 'ignore_number_mismatch': ignore_number_mismatch,
@@ -294,10 +295,10 @@ class BasicEndfParser():
             if should_proceed(self.datadic, self.loop_vars,
                                          action_type='endf_action'):
                 self.endf_actions[tree.data](tree)
-        elif tree.data in self.flow_actions:
+        elif tree.data in self.meta_actions:
             if should_proceed(self.datadic, self.loop_vars,
-                                          action_type='flow_action'):
-                self.flow_actions[tree.data](tree)
+                                          action_type='meta_action'):
+                self.meta_actions[tree.data](tree)
         else:
             for child in tree.children:
                 if is_tree(child):

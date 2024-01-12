@@ -74,6 +74,10 @@ class VariableInDenominatorError(ParserException):
     pass
 
 
+class ModuloWithUnboundVariablesError(ParserException):
+    pass
+
+
 class SeveralUnboundVariablesError(ParserException):
     pass
 

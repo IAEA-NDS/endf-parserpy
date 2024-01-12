@@ -22,10 +22,10 @@ r"""
 %ignore " "
 
 endf_recipe : (code_token | NEWLINE)*
-code_token: endf_line | for_loop | if_clause | section | abbreviation
+code_token: (endf_line | for_loop | if_clause | section |
+            | abbreviation | COMMENT_LINE)
 endf_line : (list_line | head_or_cont_line | tab1_line | tab2_line
-            | text_line | dir_line | intg_line | send_line
-            | stop_line | COMMENT_LINE) NEWLINE
+            | text_line | dir_line | intg_line | send_line | stop_line) NEWLINE
 
 // section to define namespace for variables
 section: section_head section_body section_tail
@@ -43,7 +43,7 @@ MT_SPEC : "MT" | INT
 record_fields : expr "," expr "," expr "," expr "," expr "," expr
 
 // comment line
-COMMENT_LINE : "#" /.*/
+COMMENT_LINE : "#" /.*/ NEWLINE
 
 // stop instruction to quit parsing
 stop_line : "stop" "(" escaped_stop_message? ")"

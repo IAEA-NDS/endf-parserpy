@@ -18,8 +18,7 @@ from .custom_exceptions import (
         VariableNotFoundError,
         UnavailableIndexError,
         InvalidIntegerError,
-        ModuloWithUnboundVariablesError,
-        SeveralUnboundVariablesError,
+        SeveralUnboundVariablesError
     )
 from .math_utils import (math_add, math_sub,
         math_mul, math_div, math_mod, math_neg)
@@ -249,7 +248,7 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
             return (vx, vy, v1[2])
         elif name == 'modulo':
             if v1[1] != 0 or v2[1] != 0:
-                raise ModuloWithUnboundVariablesError(
+                raise SeveralUnboundVariablesError(
                     'Both x and y in the operation x % y (modulo) ' +
                     'must be known values. However, unbound variables' +
                     'are present in the expressions corresponding to x or y.')

@@ -13,7 +13,7 @@ from lark.lexer import Token
 from .tree_utils import (
         is_tree, get_name, get_child, get_child_value
     )
-from .flow_control_utils import cycle_for_loop, should_proceed
+from .meta_control_utils import cycle_for_loop, should_proceed
 from .endf_mapping_utils import open_section, close_section
 from .custom_exceptions import (
         UnexpectedControlRecordError,

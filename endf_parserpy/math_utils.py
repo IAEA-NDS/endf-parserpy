@@ -52,6 +52,18 @@ def math_div(x, y, cast_int=False):
         return res
 
 
+def math_mod(x, y, cast_int=False):
+    res = math_op(x, y, lambda a, b: a % b)
+    if isinstance(x, int) and isinstance(y, int) and cast_int:
+        if int(res) != res:
+            raise InvalidIntegerError(
+                    f'both x and y are int so {x}%{y} must ' +
+                    f'evaluate to integer (got {x%y})')
+        return int(res)
+    else:
+        return res
+
+
 def math_add(x, y):
     return math_op(x, y, lambda a, b: a+b)
 

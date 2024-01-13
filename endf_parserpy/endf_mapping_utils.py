@@ -157,7 +157,7 @@ def get_all_extvarnames(expr):
                 assert get_name(indexquant_child) in ('INDEXVAR', 'INDEXNUM')
                 indices.append(get_value(indexquant_child))
             assert varname is not None
-            return [(varname,) + tuple(indices)]
+            return [(varname, tuple(indices))]
 
     varlist = []
     for ch in expr.children:

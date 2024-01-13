@@ -248,13 +248,10 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     try:
         truthval = determine_truthvalue(disj, datadic, loop_vars)
     except Exception as exc:
-        # TODO: Improve the error handling. Ideally, we only want
-        #       to assign the value False if any variable name
-        #       in the if statement was not found but otherwise
-        #       let this function fail.
         if lookahead_option:
             if log_lookahead_traceback:
-                write_info('Printing the stacktrace due to failure in determination of if condition after lookahead...')
+                write_info('Printing the stacktrace due to failure in ' +
+                           'determination of if condition after lookahead...')
                 traceback.print_exc()
         else:
             traceback.print_exc()

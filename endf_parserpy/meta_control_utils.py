@@ -261,19 +261,17 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
             raise exc
 
         truthval = False
+
+    if lookahead_option:
+        set_parser_state(parser_state)
+        datadic = parser_state['datadic']
+        loop_vars = parser_state['loop_vars']
+
     if truthval:
         write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')
-        if lookahead_option:
-            set_parser_state(parser_state)
-            datadic = parser_state['datadic']
-            loop_vars = parser_state['loop_vars']
         tree_handler(if_body)
         write_info('Leave if body of if condition ' + reconstruct_tree_str(if_head))
     else:
-        if lookahead_option:
-            set_parser_state(parser_state)
-            datadic = parser_state['datadic']
-            loop_vars = parser_state['loop_vars']
         write_info('Skip if body because if condition ' + reconstruct_tree_str(if_head) + ' is false')
 
     return truthval

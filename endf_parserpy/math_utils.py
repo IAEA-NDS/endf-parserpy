@@ -42,14 +42,15 @@ def math_mul(x, y):
 
 def math_div(x, y, cast_int=False):
     res = math_op(x, y, lambda a, b: a/b)
-    if isinstance(x, int) and isinstance(y, int) and cast_int:
+    if isinstance(x, int) and isinstance(y, int):
         if int(res) != res:
-            raise InvalidIntegerError(
-                    f'both x and y are int so {x}/{y} must ' +
-                    f'evaluate to integer (got {x/y})')
+            if cast_int:
+                raise InvalidIntegerError(
+                        f'both x and y are int so {x}/{y} must ' +
+                        f'evaluate to integer (got {x/y})')
+            return res
         return int(res)
-    else:
-        return res
+    return res
 
 
 def math_mod(x, y, cast_int=False):

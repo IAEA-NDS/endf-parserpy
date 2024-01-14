@@ -332,7 +332,8 @@ class BasicEndfParser():
                 'lines': self.lines,
                 'rwmode': self.rwmode,
                 'ofs': self.ofs,
-                'logbuffer_state': self.logbuffer.dump_state()}
+                'logbuffer_state': self.logbuffer.dump_state(),
+                'parse_opts': self.parse_opts}
 
     def set_parser_state(self, parser_state):
         self.loop_vars = parser_state['loop_vars']
@@ -341,6 +342,7 @@ class BasicEndfParser():
         self.rwmode = parser_state['rwmode']
         self.ofs = parser_state['ofs']
         self.logbuffer.load_state(parser_state['logbuffer_state'])
+        self.parse_opts = parser_state['parse_opts']
 
     def should_skip_section(self, mf, mt, exclude=None, include=None):
         if exclude is None:

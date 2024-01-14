@@ -204,43 +204,10 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     assert tree.data in ('if_statement', 'elif_statement', 'else_statement')
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')
-    lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
-    lookahead = 0
-    if lookahead_option:
-        write_info('Start lookahead for if head ' + reconstruct_tree_str(if_head))
-        lookahead_expr = get_child(lookahead_option, 'expr')
-        lookahead = eval_expr_without_unknown_var(lookahead_expr, datadic, loop_vars)
-        if int(lookahead) != lookahead:
-            raise ValueError( 'lookahead argument must evaluate to an integer' +
-                             f'(got {lookahead})')
-        lookahead = int(lookahead)
-
-        if '__lookahead' in loop_vars:
-            # NOTE: This error message will not appear because
-            #       the lookahead is performed in a try clause.
-            raise ValueError('Nested if statements with several ' +
-                             'lookahead options are not allowed')
-
-        # we want to save the state of the parser
-        # before the lookahead to rewind it afterwards
-        parser_state = get_parser_state()
-        new_parser_state = deepcopy(parser_state)
-        set_parser_state(new_parser_state)
-        datadic = new_parser_state['datadic']
-        loop_vars = new_parser_state['loop_vars']
-
-        loop_vars['__lookahead'] = lookahead
-        try:
-            tree_handler(if_body)
-        except:
-            # we accept parsing failure
-            # during lookahead, but print
-            # the traceback for diagnostics
-            if log_lookahead_traceback:
-                write_info('Printing the stacktrace due to failure in lookahead...')
-                traceback.print_exc()
-        del(loop_vars['__lookahead'])
-
+    datadic, loop_vars, orig_parser_state = perform_lookahead(
+        tree, tree_handler, datadic, loop_vars,
+        set_parser_state, get_parser_state, parse_opts
+    )
     # evaluate the condition (with variables in datadic potentially
     # affected by the lookahead)
     write_info('Evaluate if head ' + reconstruct_tree_str(if_head))
@@ -248,7 +215,7 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     try:
         truthval = determine_truthvalue(disj, datadic, loop_vars)
     except Exception as exc:
-        if lookahead_option:
+        if orig_parser_state is not None:
             if log_lookahead_traceback:
                 write_info('Printing the stacktrace due to failure in ' +
                            'determination of if condition after lookahead...')
@@ -259,10 +226,9 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
 
         truthval = False
 
-    if lookahead_option:
-        set_parser_state(parser_state)
-        datadic = parser_state['datadic']
-        loop_vars = parser_state['loop_vars']
+    datadic, loop_vars = undo_lookahead_changes(
+        datadic, loop_vars, orig_parser_state, set_parser_state
+    )
 
     if truthval:
         write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')
@@ -281,3 +247,57 @@ def should_proceed(datadic, loop_vars, action_type):
         elif action_type == 'endf_action':
             loop_vars['__lookahead'] -= 1
     return True
+
+
+def perform_lookahead(tree, tree_handler, datadic, loop_vars,
+                      set_parser_state, get_parser_state,
+                      log_lookahead_traceback):
+    if_head = get_child(tree, 'if_head')
+    if_body = get_child(tree, 'if_body')
+    lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
+    if not lookahead_option:
+        orig_parser_state = None
+        return datadic, loop_vars, orig_parser_state
+    write_info('Start lookahead for if head ' + reconstruct_tree_str(if_head))
+    lookahead_expr = get_child(lookahead_option, 'expr')
+    lookahead = eval_expr_without_unknown_var(lookahead_expr, datadic, loop_vars)
+    if int(lookahead) != lookahead:
+        raise ValueError( 'lookahead argument must evaluate to an integer' +
+                         f'(got {lookahead})')
+    lookahead = int(lookahead)
+
+    if '__lookahead' in loop_vars:
+        # NOTE: This error message will not appear because
+        #       the lookahead is performed in a try clause.
+        raise ValueError('Nested if statements with several ' +
+                         'lookahead options are not allowed')
+
+    # we want to save the state of the parser
+    # before the lookahead to rewind it afterwards
+    orig_parser_state = get_parser_state()
+    new_parser_state = deepcopy(orig_parser_state)
+    set_parser_state(new_parser_state)
+    datadic = new_parser_state['datadic']
+    loop_vars = new_parser_state['loop_vars']
+
+    loop_vars['__lookahead'] = lookahead
+    try:
+        tree_handler(if_body)
+    except Exception:
+        # we accept parsing failure
+        # during lookahead, but print
+        # the traceback for diagnostics
+        if log_lookahead_traceback:
+            write_info('Printing the stacktrace due to failure in lookahead...')
+            traceback.print_exc()
+    del(loop_vars['__lookahead'])
+    return datadic, loop_vars, orig_parser_state
+
+
+def undo_lookahead_changes(datadic, loop_vars, orig_parser_state,
+                           set_parser_state):
+    if orig_parser_state is not None:
+        set_parser_state(orig_parser_state)
+        datadic = orig_parser_state['datadic']
+        loop_vars = orig_parser_state['loop_vars']
+    return datadic, loop_vars

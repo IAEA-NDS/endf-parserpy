@@ -189,8 +189,10 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
                          'while parsing boolean expression')
 
 
-def evaluate_if_clause(tree, datadic, loop_vars,
-                       tree_handler, set_parser_state, get_parser_state):
+def evaluate_if_clause(
+    tree, datadic, loop_vars,
+    tree_handler=None, set_parser_state=None, get_parser_state=None
+):
     if_body = None
     first_if_statement = get_child(tree, 'if_statement')
     truthval = evaluate_if_statement(

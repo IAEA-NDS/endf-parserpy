@@ -286,17 +286,10 @@ def perform_lookahead(tree, tree_handler, datadic, loop_vars,
     set_parser_state(new_parser_state)
     datadic = new_parser_state['datadic']
     loop_vars = new_parser_state['loop_vars']
-
     loop_vars['__lookahead'] = lookahead
-    try:
-        tree_handler(if_body)
-    except Exception:
-        # we accept parsing failure
-        # during lookahead, but print
-        # the traceback for diagnostics
-        if log_lookahead_traceback:
-            write_info('Printing the stacktrace due to failure in lookahead...')
-            traceback.print_exc()
+
+    tree_handler(if_body)
+
     del(loop_vars['__lookahead'])
     return datadic, loop_vars, orig_parser_state
 

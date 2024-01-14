@@ -82,8 +82,11 @@ for i=1 to NIS:
                     [MAT,32,151/ 0.0, 0.0, NJSX, 0, 0, 0]CONT
                     for m=1 to NJSX:
                         (J_pi_group[m])
+                            NX := (1+NCH + (5-NCH) % 6) * NRB / 6
+                            num_zeros := (5-NCH) % 6
                             [MAT,32,151/ 0.0, 0.0, NCH, NRB, 6*NX, NX/
-                                {ER[p], {GAM[q,p]}{q=1 to NCH} PADLINE}{p=1 to NRB} ]LIST
+                                { ER[p], {GAM[q,p]}{q=1 to NCH}
+                                  {0.0}{r=1 to num_zeros} }{p=1 to NRB} ]LIST
                         (/J_pi_group[m])
                     endfor
                     [MAT,32,151/ 0.0, 0.0, 0, 0, N, NPARB/
@@ -134,9 +137,12 @@ for i=1 to NIS:
                 (somesec[q])
                     [MAT,32,151/ AJ, PJ, 0, 0, 6*NCH, NCH/
                         {PPI[k], L[k], SCH[k], BND[k], APE[k], APT[k]}{k=1 to NCH} ]LIST
+                    NX := (2*(NCH+1) + 2*((5-NCH) % 6)) * NRSA / 12
+                    num_zeros := (5-NCH) % 6
                     [MAT,32,151/0.0, 0.0, 0, NRSA, 12*NX, NX?/
-                        {ER[k], {GAM[p,k]}{p=1 to NCH} PADLINE,
-                         DER[k], {DGAM[p,k]}{p=1 to NCH} PADLINE}{k=1 to NRSA} ]LIST
+                        { ER[k], {GAM[p,k]}{p=1 to NCH}, {0.0}{r=1 to num_zeros}
+                          DER[k], {DGAM[p,k]}{p=1 to NCH}, {0.0}{r=1 to num_zeros}
+                        }{k=1 to NRSA} ]LIST
                 (/somesec[q])
             endfor
             [MAT,32,151/ 0.0, 0.0, NDIGIT, NNN, NM, 0 ]CONT

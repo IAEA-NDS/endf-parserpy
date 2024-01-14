@@ -190,18 +190,22 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
 
 
 def evaluate_if_clause(tree, tree_handler, datadic, loop_vars,
-                       set_parser_state, get_parser_state, parse_opts=None):
+                       set_parser_state, get_parser_state):
     chnames = get_child_names(tree)
     assert chnames[0] == 'if_statement'
-    truthval = evaluate_if_statement(tree.children[0], tree_handler, datadic, loop_vars,
-                                     set_parser_state, get_parser_state, parse_opts=parse_opts)
+    truthval = evaluate_if_statement(
+        tree.children[0], tree_handler, datadic, loop_vars,
+        set_parser_state, get_parser_state
+    )
     if truthval is True:
         return
     else:
         elif_tree_list = [t for t in tree.children if get_name(t) == 'elif_statement']
         for elif_tree in elif_tree_list:
-            truthval = evaluate_if_statement(elif_tree, tree_handler, datadic, loop_vars,
-                                             set_parser_state, get_parser_state, parse_opts=parse_opts)
+            truthval = evaluate_if_statement(
+                elif_tree, tree_handler, datadic, loop_vars,
+                set_parser_state, get_parser_state
+            )
             if truthval is True:
                 return
 
@@ -213,8 +217,7 @@ def evaluate_if_clause(tree, tree_handler, datadic, loop_vars,
 
 
 def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
-                          set_parser_state, get_parser_state, parse_opts=None):
-    parse_opts = parse_opts if parse_opts is not None else {}
+                          set_parser_state, get_parser_state):
     assert tree.data in ('if_statement', 'elif_statement', 'else_statement')
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')

@@ -289,8 +289,7 @@ class BasicEndfParser():
         evaluate_if_clause(tree, self.run_instruction,
                            self.datadic, self.loop_vars,
                            set_parser_state=self.set_parser_state,
-                           get_parser_state=self.get_parser_state,
-                           parse_opts=self.parse_opts)
+                           get_parser_state=self.get_parser_state)
 
     def process_abbreviation(self, tree):
         introduce_abbreviation(tree, self.datadic)

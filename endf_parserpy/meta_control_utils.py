@@ -228,7 +228,9 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     write_info('Evaluate if head ' + reconstruct_tree_str(if_head))
     disj = get_child(if_head, 'disjunction')
     try:
-        truthval = determine_truthvalue(disj, datadic, loop_vars)
+        truthval = determine_truthvalue(
+            disj, datadic, loop_vars, missing_as_false=True
+        )
     except Exception as exc:
         if orig_parser_state is not None:
             if log_lookahead_traceback:

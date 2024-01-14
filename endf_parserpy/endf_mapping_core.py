@@ -59,6 +59,7 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
     ignore_zero_mismatch = parse_opts.get('ignore_zero_mismatch', True)
     ignore_number_mismatch = parse_opts.get('ignore_number_mismatch', True)
     ignore_varspec_mismatch = parse_opts.get('ignore_varspec_mismatch', True)
+    ignore_all_mismatches = parse_opts.get('ignore_all_mismatches', False)
     zipit = zip(basekeys, expr_list)
     found_unbound = False
     varnames = []
@@ -110,7 +111,7 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
                 elif ignore_varspec_mismatch and contains_inconsistent_varspec:
                     logging.warning(msg)
                     log_offending_line(record_dic, 'warning')
-                else:
+                elif not ignore_all_mismatches:
                     log_offending_line(record_dic, 'error')
                     raise NumberMismatchError(msg)
         # there is still a dangling variable but we can

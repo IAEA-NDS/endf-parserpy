@@ -276,6 +276,11 @@ def perform_lookahead(tree, tree_handler, datadic, loop_vars,
     # before the lookahead to rewind it afterwards
     orig_parser_state = get_parser_state()
     new_parser_state = deepcopy(orig_parser_state)
+    # less strict parsing in lookahead.
+    # problems will be captured later on (if requested by user)
+    # when if body will be selected and executed
+    new_parse_opts = new_parser_state['parse_opts']
+    new_parse_opts['ignore_all_mismatches'] = True
     set_parser_state(new_parser_state)
     datadic = new_parser_state['datadic']
     loop_vars = new_parser_state['loop_vars']

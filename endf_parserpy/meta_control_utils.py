@@ -270,7 +270,8 @@ def perform_lookahead(tree, tree_handler, datadic, loop_vars,
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')
     lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
-    if not lookahead_option:
+    orig_parser_state = get_parser_state()
+    if not lookahead_option or orig_parser_state['rwmode'] == 'write':
         orig_parser_state = None
         return datadic, loop_vars, orig_parser_state
     write_info('Start lookahead for if head ' + reconstruct_tree_str(if_head))
@@ -289,7 +290,6 @@ def perform_lookahead(tree, tree_handler, datadic, loop_vars,
 
     # we want to save the state of the parser
     # before the lookahead to rewind it afterwards
-    orig_parser_state = get_parser_state()
     new_parser_state = deepcopy(orig_parser_state)
     # less strict parsing in lookahead.
     # problems will be captured later on (if requested by user)

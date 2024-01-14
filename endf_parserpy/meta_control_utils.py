@@ -191,14 +191,14 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
 
 def evaluate_if_clause(tree, datadic, loop_vars,
                        tree_handler, set_parser_state, get_parser_state):
-    chnames = get_child_names(tree)
+    if_body = None
     first_if_statement = get_child(tree, 'if_statement')
     truthval = evaluate_if_statement(
         first_if_statement, datadic, loop_vars,
         tree_handler, set_parser_state, get_parser_state
     )
     if truthval is True:
-        return
+        if_body = get_child(first_if_statement, 'if_body')
     else:
         elif_tree_list = [t for t in tree.children if get_name(t) == 'elif_statement']
         for elif_tree in elif_tree_list:
@@ -207,13 +207,16 @@ def evaluate_if_clause(tree, datadic, loop_vars,
                 tree_handler, set_parser_state, get_parser_state
             )
             if truthval is True:
-                return
+                if_body = get_child(elif_tree, 'if_body')
+                break
 
-        if 'else_statement' in chnames:
-            else_tree = get_child(tree, 'else_statement')
-            if_body = get_child(else_tree, 'if_body')
-            tree_handler(if_body)
-            return
+    if if_body is None and 'else_statement' in get_child_names(tree):
+        else_tree = get_child(tree, 'else_statement')
+        if_body = get_child(else_tree, 'if_body')
+
+    if if_body is not None:
+        tree_handler(if_body)
+    return
 
 
 def evaluate_if_statement(
@@ -222,7 +225,6 @@ def evaluate_if_statement(
 ):
     assert tree.data in ('if_statement', 'elif_statement', 'else_statement')
     if_head = get_child(tree, 'if_head')
-    if_body = get_child(tree, 'if_body')
     lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
     should_perform_lookahead = (
         tree_handler is not None and lookahead_option and
@@ -244,13 +246,6 @@ def evaluate_if_statement(
         datadic, loop_vars = undo_lookahead_changes(
             datadic, loop_vars, orig_parser_state, set_parser_state
         )
-    if truthval:
-        write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')
-        tree_handler(if_body)
-        write_info('Leave if body of if condition ' + reconstruct_tree_str(if_head))
-    else:
-        write_info('Skip if body because if condition ' + reconstruct_tree_str(if_head) + ' is false')
-
     return truthval
 
 

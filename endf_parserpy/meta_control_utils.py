@@ -220,7 +220,7 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     if_body = get_child(tree, 'if_body')
     datadic, loop_vars, orig_parser_state = perform_lookahead(
         tree, tree_handler, datadic, loop_vars,
-        set_parser_state, get_parser_state, parse_opts
+        set_parser_state, get_parser_state
     )
     # evaluate the condition (with variables in datadic potentially
     # affected by the lookahead)
@@ -252,8 +252,7 @@ def should_proceed(datadic, loop_vars, action_type):
 
 
 def perform_lookahead(tree, tree_handler, datadic, loop_vars,
-                      set_parser_state, get_parser_state,
-                      log_lookahead_traceback):
+                      set_parser_state, get_parser_state):
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')
     lookahead_option = get_child(tree, 'lookahead_option', nofail=True)

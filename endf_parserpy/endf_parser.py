@@ -42,8 +42,8 @@ class BasicEndfParser():
 
     def __init__(self, ignore_number_mismatch=False, ignore_zero_mismatch=True,
                        ignore_varspec_mismatch=False, fuzzy_matching=True,
-                       blank_as_zero=True, log_lookahead_traceback=False,
-                       abuse_signpos=False, skip_intzero=False, prefer_noexp=False,
+                       blank_as_zero=True, abuse_signpos=False,
+                       skip_intzero=False, prefer_noexp=False,
                        accept_spaces=True, keep_E=False, width=11,
                        cache_dir=None, print_cache_info=True, recipes=None):
         # obtain the parsing tree for the language
@@ -87,8 +87,7 @@ class BasicEndfParser():
                 'ignore_number_mismatch': ignore_number_mismatch,
                 'ignore_varspec_mismatch': ignore_varspec_mismatch,
                 'fuzzy_matching': fuzzy_matching,
-                'blank_as_zero': blank_as_zero,
-                'log_lookahead_traceback': log_lookahead_traceback
+                'blank_as_zero': blank_as_zero
             }
         self.write_opts = {
                 'abuse_signpos': abuse_signpos,

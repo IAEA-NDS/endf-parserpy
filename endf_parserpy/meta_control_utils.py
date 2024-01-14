@@ -19,7 +19,7 @@ from .endf_mapping_utils import (
 from .logging_utils import write_info
 from .custom_exceptions import (
     LoopVariableError, AbbreviationNameCollisionError,
-    VariableNotFoundError
+    VariableNotFoundError, UnexpectedControlRecordError
 )
 from copy import deepcopy
 
@@ -293,7 +293,10 @@ def perform_lookahead(tree, tree_handler, datadic, loop_vars,
     loop_vars = new_parser_state['loop_vars']
     loop_vars['__lookahead'] = lookahead
 
-    tree_handler(if_body)
+    try:
+        tree_handler(if_body)
+    except UnexpectedControlRecordError:
+        pass
 
     del(loop_vars['__lookahead'])
     return datadic, loop_vars, orig_parser_state

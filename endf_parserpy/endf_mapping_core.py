@@ -60,13 +60,15 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
     ignore_number_mismatch = parse_opts.get('ignore_number_mismatch', True)
     ignore_varspec_mismatch = parse_opts.get('ignore_varspec_mismatch', True)
     ignore_all_mismatches = parse_opts.get('ignore_all_mismatches', False)
+    cast_int = not ignore_all_mismatches
     zipit = zip(basekeys, expr_list)
     found_unbound = False
     varnames = []
     for sourcekey, curexpr in zipit:
         try:
             expr_vv = eval_expr(curexpr, datadic,
-                                loop_vars, look_up=False)
+                                loop_vars, look_up=False,
+                                cast_int=cast_int)
         except SeveralUnboundVariablesError:
             found_unbound = True
             continue
@@ -119,7 +121,7 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
         else:
             try:
                 val = varvalue_expr_conversion(expr_vv, record_dic[sourcekey],
-                                               rwmode='read')
+                                               rwmode='read', cast_int=cast_int)
             except InvalidIntegerError as pexc:
                 raise InvalidIntegerError(str(pexc) + f' (variable {targetkey})')
 
@@ -156,7 +158,8 @@ def map_datadic_to_recorddic(basekeys, record_dic, expr_list,
                              datadic, loop_vars, parse_opts):
     zipit = zip(basekeys, expr_list)
     for sourcekey, curexpr in zipit:
-        expr_vv = eval_expr(curexpr, datadic, loop_vars, look_up=False)
+        expr_vv = eval_expr(curexpr, datadic, loop_vars,
+                            look_up=False, cast_int=False)
         if expr_vv[1] != 0:
             # TODO: More informative error what variable is missing
             IndexError('some variable missing in dictionary')

@@ -194,8 +194,8 @@ def evaluate_if_clause(tree, datadic, loop_vars,
     chnames = get_child_names(tree)
     assert chnames[0] == 'if_statement'
     truthval = evaluate_if_statement(
-        tree.children[0], tree_handler, datadic, loop_vars,
-        set_parser_state, get_parser_state
+        tree.children[0], datadic, loop_vars,
+        tree_handler, set_parser_state, get_parser_state
     )
     if truthval is True:
         return
@@ -203,8 +203,8 @@ def evaluate_if_clause(tree, datadic, loop_vars,
         elif_tree_list = [t for t in tree.children if get_name(t) == 'elif_statement']
         for elif_tree in elif_tree_list:
             truthval = evaluate_if_statement(
-                elif_tree, tree_handler, datadic, loop_vars,
-                set_parser_state, get_parser_state
+                elif_tree, datadic, loop_vars,
+                tree_handler, set_parser_state, get_parser_state
             )
             if truthval is True:
                 return
@@ -216,8 +216,8 @@ def evaluate_if_clause(tree, datadic, loop_vars,
             return
 
 
-def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
-                          set_parser_state, get_parser_state):
+def evaluate_if_statement(tree, datadic, loop_vars,
+                          tree_handler, set_parser_state, get_parser_state):
     assert tree.data in ('if_statement', 'elif_statement', 'else_statement')
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')

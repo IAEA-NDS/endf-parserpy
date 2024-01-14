@@ -18,7 +18,8 @@ from .endf_mapping_utils import (
 )
 from .logging_utils import write_info
 from .custom_exceptions import (
-    LoopVariableError, AbbreviationNameCollisionError
+    LoopVariableError, AbbreviationNameCollisionError,
+    VariableNotFoundError
 )
 from copy import deepcopy
 
@@ -106,15 +107,21 @@ def cycle_for_loop(tree, tree_handler, datadic, loop_vars,
     write_info(f'Leave for loop (type {loop_name}) ' + reconstruct_tree_str(for_head) +
                f' (for_start: {start} and for_stop: {stop})')
 
-def eval_if_condition(if_condition, datadic, loop_vars):
+def eval_if_condition(if_condition, datadic, loop_vars, missing_as_false=False):
     if len(if_condition.children) != 3:
         raise IndexError('if_condition must have three children')
     write_info('Dealing with the if_condition ' + reconstruct_tree_str(if_condition))
     left_expr = if_condition.children[0]
     cmpop = get_child_value(if_condition, 'IF_RELATION')
     right_expr = if_condition.children[2]
-    left_val = eval_expr_without_unknown_var(left_expr, datadic, loop_vars)
-    right_val = eval_expr_without_unknown_var(right_expr, datadic, loop_vars)
+    try:
+        left_val = eval_expr_without_unknown_var(left_expr, datadic, loop_vars)
+        right_val = eval_expr_without_unknown_var(right_expr, datadic, loop_vars)
+    except VariableNotFoundError as exc:
+        if missing_as_false:
+            return False
+        else:
+            raise exc
     write_info(f'Left side evaluates to {left_val} and right side to {right_val}')
     if ((cmpop == ">" and left_val > right_val) or
         (cmpop == "<" and left_val < right_val) or
@@ -126,10 +133,10 @@ def eval_if_condition(if_condition, datadic, loop_vars):
     else:
         return False
 
-def determine_truthvalue(node, datadic, loop_vars):
+def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
     name = get_name(node)
     if name == 'if_condition':
-        return eval_if_condition(node, datadic, loop_vars)
+        return eval_if_condition(node, datadic, loop_vars, missing_as_false)
     elif name == 'comparison':
         # we strip away brackets because the information they
         # encode has already been considered in the tree generation process,
@@ -141,7 +148,7 @@ def determine_truthvalue(node, datadic, loop_vars):
         ch = trimmed_children[0]
         if get_name(ch) not in ('if_condition', 'disjunction'):
             raise ValueError('Child node must be either "if_condition" or "disjunction"')
-        return determine_truthvalue(ch, datadic, loop_vars)
+        return determine_truthvalue(ch, datadic, loop_vars, missing_as_false)
     elif name == 'conjunction':
         # the following code is a bit messy because of the order of
         # conjunction and comparison in the "conjunction" rule and
@@ -149,10 +156,14 @@ def determine_truthvalue(node, datadic, loop_vars):
         conj = get_child(node, 'conjunction', nofail=True)
         comp = get_child(node, 'comparison')
         if conj is not None:
-            conj_truthval = determine_truthvalue(conj, datadic, loop_vars)
+            conj_truthval = determine_truthvalue(
+                conj, datadic, loop_vars, missing_as_false
+            )
             if conj_truthval is False:
                 return False
-        comp_truthval = determine_truthvalue(comp, datadic, loop_vars)
+        comp_truthval = determine_truthvalue(
+            comp, datadic, loop_vars, missing_as_false
+        )
         if conj is None:
             return comp_truthval
         else:
@@ -161,10 +172,14 @@ def determine_truthvalue(node, datadic, loop_vars):
         disj = get_child(node, 'disjunction', nofail=True)
         conj = get_child(node, 'conjunction')
         if disj is not None:
-            disj_truthval = determine_truthvalue(disj, datadic, loop_vars)
+            disj_truthval = determine_truthvalue(
+                disj, datadic, loop_vars, missing_as_false
+            )
             if disj_truthval is True:
                 return True
-        conj_truthval = determine_truthvalue(conj, datadic, loop_vars)
+        conj_truthval = determine_truthvalue(
+            conj, datadic, loop_vars, missing_as_false
+        )
         if disj is None:
             return conj_truthval
         else:

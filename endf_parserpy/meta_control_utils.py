@@ -221,10 +221,16 @@ def evaluate_if_statement(tree, datadic, loop_vars,
     assert tree.data in ('if_statement', 'elif_statement', 'else_statement')
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')
-    datadic, loop_vars, orig_parser_state = perform_lookahead(
-        tree, tree_handler, datadic, loop_vars,
-        set_parser_state, get_parser_state
+    lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
+    should_perform_lookahead = (
+        tree_handler is not None and lookahead_option and
+        get_parser_state()['rwmode'] == 'read'
     )
+    if should_perform_lookahead:
+        datadic, loop_vars, orig_parser_state = perform_lookahead(
+            tree, tree_handler, datadic, loop_vars,
+            set_parser_state, get_parser_state
+        )
     # evaluate the condition (with variables in datadic potentially
     # affected by the lookahead)
     write_info('Evaluate if head ' + reconstruct_tree_str(if_head))
@@ -232,9 +238,10 @@ def evaluate_if_statement(tree, datadic, loop_vars,
     truthval = determine_truthvalue(
         disj, datadic, loop_vars, missing_as_false=True
     )
-    datadic, loop_vars = undo_lookahead_changes(
-        datadic, loop_vars, orig_parser_state, set_parser_state
-    )
+    if should_perform_lookahead:
+        datadic, loop_vars = undo_lookahead_changes(
+            datadic, loop_vars, orig_parser_state, set_parser_state
+        )
     if truthval:
         write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')
         tree_handler(if_body)
@@ -258,12 +265,9 @@ def perform_lookahead(tree, tree_handler, datadic, loop_vars,
                       set_parser_state, get_parser_state):
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')
-    lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
     orig_parser_state = get_parser_state()
-    if not lookahead_option or orig_parser_state['rwmode'] == 'write':
-        orig_parser_state = None
-        return datadic, loop_vars, orig_parser_state
     write_info('Start lookahead for if head ' + reconstruct_tree_str(if_head))
+    lookahead_option = get_child(tree, 'lookahead_option', nofail=True)
     lookahead_expr = get_child(lookahead_option, 'expr')
     lookahead = eval_expr_without_unknown_var(lookahead_expr, datadic, loop_vars)
     if int(lookahead) != lookahead:

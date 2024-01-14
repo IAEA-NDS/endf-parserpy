@@ -215,7 +215,6 @@ def evaluate_if_clause(tree, tree_handler, datadic, loop_vars,
 def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
                           set_parser_state, get_parser_state, parse_opts=None):
     parse_opts = parse_opts if parse_opts is not None else {}
-    log_lookahead_traceback = parse_opts.get('log_lookahead_traceback', True)
     assert tree.data in ('if_statement', 'elif_statement', 'else_statement')
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')

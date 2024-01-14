@@ -286,8 +286,9 @@ class BasicEndfParser():
         return cycle_for_loop(tree, self.run_instruction, self.datadic, self.loop_vars)
 
     def process_if_clause(self, tree):
-        evaluate_if_clause(tree, self.run_instruction,
+        evaluate_if_clause(tree,
                            self.datadic, self.loop_vars,
+                           self.run_instruction,
                            set_parser_state=self.set_parser_state,
                            get_parser_state=self.get_parser_state)
 

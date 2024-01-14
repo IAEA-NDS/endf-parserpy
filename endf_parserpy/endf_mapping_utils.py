@@ -164,7 +164,7 @@ def get_all_extvarnames(expr):
         varlist.extend(get_all_extvarnames(ch))
     return varlist
 
-def varvalue_expr_conversion(vv, val, rwmode):
+def varvalue_expr_conversion(vv, val, rwmode, cast_int=True):
     if vv[0] == 0 and vv[1] == 1:
         # vv[0] + vv[1]*varval = fieldvalue
         # so varval == fieldval
@@ -173,20 +173,20 @@ def varvalue_expr_conversion(vv, val, rwmode):
     if rwmode == 'read':
         # cast_int true means that we convert the result of a
         # division of two ints to int if possible
-        return math_div(math_sub(val, vv[0]), vv[1], cast_int=True)
+        return math_div(math_sub(val, vv[0]), vv[1], cast_int)
     else:
         return math_add(vv[0], math_mul(val, vv[1]))
 
-def eval_expr_without_unknown_var(expr, datadic=None,
-                                  loop_vars=None, look_up=True):
-    ret = eval_expr(expr, datadic, loop_vars, look_up)
+def eval_expr_without_unknown_var(expr, datadic=None, loop_vars=None,
+                                  look_up=True, cast_int=True):
+    ret = eval_expr(expr, datadic, loop_vars, look_up, cast_int)
     if ret[1] != 0:
         unknown_varname = get_varname(ret[2])
         raise VariableNotFoundError(
                 f'Unknown variable in expression ({unknown_varname})')
     return ret[0]
 
-def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
+def eval_expr(expr, datadic=None, loop_vars=None, look_up=True, cast_int=True):
     name = get_name(expr, nofail=True)
     # reminder: VARNAME is is a string of letters and number, e.g., foo1
     #           extvarname can contain an index specification, e.g., foo1[i]
@@ -199,7 +199,9 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
             try:
                 val = get_varval(expr, datadic, loop_vars, look_up, False)
                 if is_tree(val) and get_name(val) == 'expr':
-                    return eval_expr(val, datadic, loop_vars, look_up)
+                    return eval_expr(
+                        val, datadic, loop_vars, look_up, cast_int
+                    )
                 else:
                     return (val, 0, None)
             except VariableNotFoundError:
@@ -218,13 +220,13 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
             v = float(vstr)
         return (v, 0, None)
     elif name == 'minusexpr':
-        v = eval_expr(expr.children[0], datadic, loop_vars, look_up)
+        v = eval_expr(expr.children[0], datadic, loop_vars, look_up, cast_int)
         return (math_neg(v[0]), -v[1], v[2])
     elif name in ('addition', 'subtraction',
                   'multiplication', 'modulo', 'division'):
-        v1 = eval_expr(expr.children[0], datadic, loop_vars, look_up)
+        v1 = eval_expr(expr.children[0], datadic, loop_vars, look_up, cast_int)
         # children[1] contains the operator symbol *,/,+,-
-        v2 = eval_expr(expr.children[2], datadic, loop_vars, look_up)
+        v2 = eval_expr(expr.children[2], datadic, loop_vars, look_up, cast_int)
         if name == 'multiplication':
             if v1[1] != 0 and v2[1] != 0:
                 raise SeveralUnboundVariablesError(
@@ -243,8 +245,8 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
                 raise VariableInDenominatorError(
                         'A variable name must not appear in the denominator ' +
                         'of an expression.')
-            vx = math_div(v1[0], v2[0], cast_int=True)
-            vy = math_div(v1[1], v2[0], cast_int=True)
+            vx = math_div(v1[0], v2[0], cast_int)
+            vy = math_div(v1[1], v2[0], cast_int)
             return (vx, vy, v1[2])
         elif name == 'modulo':
             if v1[1] != 0 or v2[1] != 0:
@@ -252,7 +254,7 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
                     'Both x and y in the operation x % y (modulo) ' +
                     'must be known values. However, unbound variables' +
                     'are present in the expressions corresponding to x or y.')
-            vx = math_mod(v1[0], v2[0], cast_int=True)
+            vx = math_mod(v1[0], v2[0], cast_int)
             return (vx, 0, None)
         elif name == 'addition':
             if v1[1] != 0 and v2[1] != 0:
@@ -274,7 +276,7 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
                     vexpr)
     elif name == 'inconsistent_varspec':
         ch = get_child(expr, 'extvarname')
-        return eval_expr(ch, datadic, loop_vars, look_up)
+        return eval_expr(ch, datadic, loop_vars, look_up, cast_int)
     else:
         # we remove enclosing brackets if present
         ch_first = expr.children[0]
@@ -285,4 +287,6 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True):
         else:
             trimmed_children = expr.children
         assert len(trimmed_children) == 1
-        return eval_expr(trimmed_children[0], datadic, loop_vars, look_up)
+        return eval_expr(
+            trimmed_children[0], datadic, loop_vars, look_up, cast_int
+        )

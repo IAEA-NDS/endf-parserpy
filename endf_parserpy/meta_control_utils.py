@@ -190,8 +190,8 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
 
 
 def evaluate_if_clause(
-    tree, datadic, loop_vars,
-    tree_handler=None, set_parser_state=None, get_parser_state=None
+    tree, datadic, loop_vars, tree_handler=None,
+    set_parser_state=None, get_parser_state=None, eval_body=True
 ):
     if_body = None
     first_if_statement = get_child(tree, 'if_statement')
@@ -216,9 +216,9 @@ def evaluate_if_clause(
         else_tree = get_child(tree, 'else_statement')
         if_body = get_child(else_tree, 'if_body')
 
-    if if_body is not None:
+    if if_body is not None and eval_body:
         tree_handler(if_body)
-    return
+    return if_body
 
 
 def evaluate_if_statement(

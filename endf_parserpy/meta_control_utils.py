@@ -192,9 +192,9 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
 def evaluate_if_clause(tree, datadic, loop_vars,
                        tree_handler, set_parser_state, get_parser_state):
     chnames = get_child_names(tree)
-    assert chnames[0] == 'if_statement'
+    first_if_statement = get_child(tree, 'if_statement')
     truthval = evaluate_if_statement(
-        tree.children[0], datadic, loop_vars,
+        first_if_statement, datadic, loop_vars,
         tree_handler, set_parser_state, get_parser_state
     )
     if truthval is True:

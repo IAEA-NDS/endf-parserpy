@@ -227,26 +227,12 @@ def evaluate_if_statement(tree, tree_handler, datadic, loop_vars,
     # affected by the lookahead)
     write_info('Evaluate if head ' + reconstruct_tree_str(if_head))
     disj = get_child(if_head, 'disjunction')
-    try:
-        truthval = determine_truthvalue(
-            disj, datadic, loop_vars, missing_as_false=True
-        )
-    except Exception as exc:
-        if orig_parser_state is not None:
-            if log_lookahead_traceback:
-                write_info('Printing the stacktrace due to failure in ' +
-                           'determination of if condition after lookahead...')
-                traceback.print_exc()
-        else:
-            traceback.print_exc()
-            raise exc
-
-        truthval = False
-
+    truthval = determine_truthvalue(
+        disj, datadic, loop_vars, missing_as_false=True
+    )
     datadic, loop_vars = undo_lookahead_changes(
         datadic, loop_vars, orig_parser_state, set_parser_state
     )
-
     if truthval:
         write_info('Enter if body because ' + reconstruct_tree_str(if_head) + ' is true')
         tree_handler(if_body)

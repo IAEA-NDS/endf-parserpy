@@ -216,8 +216,10 @@ def evaluate_if_clause(tree, datadic, loop_vars,
             return
 
 
-def evaluate_if_statement(tree, datadic, loop_vars,
-                          tree_handler, set_parser_state, get_parser_state):
+def evaluate_if_statement(
+    tree, datadic, loop_vars, tree_handler=None,
+    set_parser_state=None, get_parser_state=None
+):
     assert tree.data in ('if_statement', 'elif_statement', 'else_statement')
     if_head = get_child(tree, 'if_head')
     if_body = get_child(tree, 'if_body')

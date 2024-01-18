@@ -275,8 +275,6 @@ def perform_lookahead(tree, tree_handler, datadic, loop_vars,
     lookahead = int(lookahead)
 
     if '__lookahead' in loop_vars:
-        # NOTE: This error message will not appear because
-        #       the lookahead is performed in a try clause.
         raise ValueError('Nested if statements with several ' +
                          'lookahead options are not allowed')
 

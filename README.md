@@ -34,29 +34,17 @@ Please use this reference for citation if you find this package useful.
 
 ## Installation
 
-We recommend to create a virtual environment for
-this package. For instance, with conda this can be done by
+This package can be installed via `pip`:
+
 ```
-conda create -y -n endf-parserpy pip
-conda activate endf-parserpy
-```
-To install this package using pip, run
-```
-pip install git+https://github.com/iaea-nds/endf-parserpy.git
+pip install endf-parserpy --upgrade
 ```
 
-Alternatively, you can download this repository and
-update the `PYTHONPATH` environment variable on the
-command line:
-```
-export PYTHONPATH="<path-of-repository-directory>"
-```
-Make sure that the only two depdendencies of this
-package, the package `lark` and `appdirs` are installed, e.g., by
-```
-pip install lark
-pip install appdirs
-```
+The only two dependencies of this package are [lark] and [appdirs].
+
+[lark]: https://github.com/lark-parser/lark
+[appdirs]: https://github.com/ActiveState/appdirs
+
 
 ## Basic usage
 

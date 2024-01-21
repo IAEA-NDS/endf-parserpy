@@ -48,19 +48,20 @@ The only two dependencies of this package are [lark] and [appdirs].
 
 ## Basic usage
 
-The `example/` folder contains example scripts to
-demonstrate how this package can be used.
-Two ENDF files are provided in the `tests/testdata`
-directory. Change into this directory if you want
-to run all the following code snippets verbatim.
+The essential class implemented in this
+package is `BasicEndfParser`. It contains the
+methods `.parsefile` for reading and `.writefile`
+for writing ENDF-6 files.
+The following code snippet demonstrates reading
+an ENDF-6 file:
 ```
 from endf_parserpy import BasicEndfParser
 parser = BasicEndfParser()
 endf_file = 'n_2925_29-Cu-63.endf'
 endf_dic = parser.parsefile(endf_file)
 ```
-The variable `endf_dic` contains a nested dictionary that
-exposes all the fields and arrays described in
+The variable `endf_dic` contains a nested dictionary
+that exposes all the fields and arrays described in
 the [ENDF-6 formats manual].
 You can explore it by using the `.keys()` method, e.g.,
 ```
@@ -77,8 +78,14 @@ endf_dic[2][151]['isotope'][1].keys()
 You can make modifications to these fields and then
 produce a new ENDF file:
 ```
+endf_dic[3][1]['AWR'] = 53.47624
 parser.writefile(endf_file + '.writeback', endf_dic)
 ```
+Please note that the ENDF dictionary (listing all MF/MT
+sections of the file) in MF1/MT451 is not automatically updated.
+To update it according to the effected changes,
+use the `ExtEndfParser` instead of the
+`BasicEndfParser` class (see also next section).
 
 The following subsections provide short code snippets
 for common operations or interactions with ENDF files.
@@ -101,6 +108,51 @@ newinfo = 'We tweaked the data in MF3...\nJust joking!'
 parser.insert_description(endf_dic, newinfo, after_line=5)
 parser.writefile('modified_file.endf', endf_dic)
 ```
+
+The updating of the dictionary in MF1/MT451 can also
+be done without writing a file to disk:
+```
+parser.update_dictionary(endf_dic)
+```
+
+### Convenient syntax to navigate ENDF-6 data
+
+The class `EndfDict` makes access
+to variables in the nested Python dictionaries more
+convenient. Suppose you read ENDF-6 data into the
+variable `endf_dic` (as above). To create a view object
+associated with `endf_dic`, execute
+```
+from endf_parserpy.accessories import EndfDict
+better_endf_dic = EndfDict(endf_dic)
+```
+Now you can use more concise syntax to refer
+to specific variables in the nested dictionary.
+For instance, the following two lines retrieve
+the same piece of information:
+```
+# awr = endf_dic[3][1]['AWR']
+awr = better_endf_dic['3/1/AWR']
+```
+
+Similarly, the following two lines are equivalent to set
+a variable value:
+```
+# endf_dic[2][151]['isotope'][1]['ZAI'] = 26054
+better_endf_dic['2/151/isotope/1/ZAI'] = 26054
+```
+As `better_endf_dic` is a view, any changes to it
+will also be applied to `endf_dic`.
+
+Brackets may also be used in the index and the following
+lines are therefore also equivalent in their effect:
+```
+better_endf_dic['2/151/isotope/1/ZAI'] = 26054
+better_endf_dic['2/151/isotope[1]/ZAI'] = 26054
+```
+Importantly, in such variable assignments,
+intermediate dictionaries will be created as required.
+
 
 ### Selective parsing
 

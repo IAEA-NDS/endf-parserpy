@@ -84,9 +84,9 @@ def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
         curdic = datadic[varname]
         for idxquant in idxquants:
             idx = get_indexvalue(idxquant, loop_vars)
-            try:
+            if idx in curdic:
                 curdic = curdic[idx]
-            except Exception:
+            else:
                 raise UnavailableIndexError(
                         f'index {idx} does not exist in array {varname}')
         val = curdic

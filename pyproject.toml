@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "endf-parserpy"
 version = "0.5.0"
-description = "A package to read and write ENDF files'"
+description = "A package to read and write ENDF files"
 authors = ["Georg Schnabel"]
 license = "MIT"
 readme = "README.md"

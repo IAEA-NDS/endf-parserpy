@@ -82,20 +82,14 @@ def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
             return datadic[varname]
     else:
         curdic = datadic[varname]
-        for i, idxquant in enumerate(idxquants):
+        for idxquant in idxquants:
             idx = get_indexvalue(idxquant, loop_vars)
-            if i < len(idxquants)-1:
-                try:
-                    curdic = curdic[idx]
-                except Exception:
-                    raise UnavailableIndexError(
-                            f'index {idx} does not exist in array {varname}')
-        idx = get_indexvalue(idxquants[-1], loop_vars)
-        try:
-            val = curdic[idx]
-        except Exception:
-            raise UnavailableIndexError(
-                    f'index {idx} does not exist in array {varname}')
+            try:
+                curdic = curdic[idx]
+            except Exception:
+                raise UnavailableIndexError(
+                        f'index {idx} does not exist in array {varname}')
+        val = curdic
         if eval_abbrev:
             return substitute_abbreviation(val, orig_datadic, loop_vars, look_up)
         else:

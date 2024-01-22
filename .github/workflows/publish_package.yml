@@ -28,7 +28,9 @@ jobs:
           pip install poetry
 
       - name: Build the package
-        run: poetry build
+        run: |
+          poetry version $(git describe --tags --abbrev=0)
+          poetry build
 
       - name: Mint token
         id: mint-token
@@ -36,5 +38,4 @@ jobs:
 
       - name: Publish package
         run: |
-          echo "api_token: " '${{ steps.mint-token.outputs.api-token }}'
           poetry publish -u __token__ -p '${{ steps.mint-token.outputs.api-token }}'

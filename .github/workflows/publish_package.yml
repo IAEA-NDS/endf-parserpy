@@ -1,0 +1,40 @@
+name: Publish Python package
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+jobs:
+  test_package:
+    uses: ./.github/workflows/test_package.yml
+
+  build:
+    needs: test_package
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+
+      - name: Build the package
+        run: poetry build
+
+      - name: Mint token
+        id: mint-token
+        uses: tschm/token-mint-action@v1.0.2
+
+      - name: Publish package
+        run: |
+          echo "api_token: " '${{ steps.mint-token.outputs.api-token }}'
+          poetry publish -u __token__ -p '${{ steps.mint-token.outputs.api-token }}'

@@ -36,6 +36,7 @@ from .endf_recipe_utils import (
         get_responsible_recipe_parsetree,
 )
 from .endf_recipes import endf_recipe_dictionary
+from .debugging_utils import TrackingDict
 
 
 class BasicEndfParser():
@@ -45,6 +46,7 @@ class BasicEndfParser():
                        blank_as_zero=True, abuse_signpos=False,
                        skip_intzero=False, prefer_noexp=False,
                        accept_spaces=True, keep_E=False, width=11,
+                       check_arrays=True,
                        cache_dir=None, print_cache_info=True, recipes=None):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
@@ -94,7 +96,8 @@ class BasicEndfParser():
                 'skip_intzero': skip_intzero,
                 'prefer_noexp': prefer_noexp,
                 'keep_E': keep_E,
-                'width': width
+                'width': width,
+                'check_arrays': check_arrays
             }
         self.read_opts = {
                 'accept_spaces': accept_spaces,
@@ -399,6 +402,9 @@ class BasicEndfParser():
     def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
         self.zero_as_blank = zero_as_blank
         self.reset_parser_state(rwmode='write', datadic={})
+        should_check_arrays = self.write_opts['check_arrays']
+        if should_check_arrays:
+            endf_dic = TrackingDict(endf_dic)
         tree_dic = self.tree_dic
         lines = []
         for mf in sorted(endf_dic):
@@ -473,6 +479,8 @@ class BasicEndfParser():
         lines.extend(write_tend(with_ctrl=True, with_ns=True,
                                 zero_as_blank=zero_as_blank, **self.write_opts))
         del self.zero_as_blank
+        if should_check_arrays:
+            endf_dic.verify_complete_retrieval()
         return lines
 
     def parsefile(self, filename, exclude=None, include=None, nofail=False):

@@ -24,7 +24,6 @@ from .custom_exceptions import (
 from copy import deepcopy
 
 def initialize_abbreviations(datadic):
-    assert '__abbrevs' not in datadic
     datadic['__abbrevs'] = set()
 
 def introduce_abbreviation(tree, datadic):

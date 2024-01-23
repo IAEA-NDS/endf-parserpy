@@ -46,7 +46,7 @@ class BasicEndfParser():
                        blank_as_zero=True, abuse_signpos=False,
                        skip_intzero=False, prefer_noexp=False,
                        accept_spaces=True, keep_E=False, width=11,
-                       check_arrays=True,
+                       check_arrays=True, strict_datatypes=False,
                        cache_dir=None, print_cache_info=True, recipes=None):
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
@@ -97,7 +97,8 @@ class BasicEndfParser():
                 'prefer_noexp': prefer_noexp,
                 'keep_E': keep_E,
                 'width': width,
-                'check_arrays': check_arrays
+                'check_arrays': check_arrays,
+                'strict_datatypes': strict_datatypes
             }
         self.read_opts = {
                 'accept_spaces': accept_spaces,

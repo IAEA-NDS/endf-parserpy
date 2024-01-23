@@ -17,6 +17,7 @@ from .custom_exceptions import (
     )
 from .endf_mapping_utils import (
         get_varname, get_indexquants, eval_expr,
+        eval_expr_without_unknown_var,
         varvalue_expr_conversion, get_indexvalue
     )
 from .tree_utils import (is_token, get_name, search_name)
@@ -158,12 +159,10 @@ def map_datadic_to_recorddic(basekeys, record_dic, expr_list,
                              datadic, loop_vars, parse_opts):
     zipit = zip(basekeys, expr_list)
     for sourcekey, curexpr in zipit:
-        expr_vv = eval_expr(curexpr, datadic, loop_vars,
-                            look_up=False, cast_int=False)
-        if expr_vv[1] != 0:
-            # TODO: More informative error what variable is missing
-            IndexError('some variable missing in dictionary')
-        record_dic[sourcekey] = expr_vv[0]
+        val = eval_expr_without_unknown_var(
+            curexpr, datadic, loop_vars, look_up=False, cast_int=False
+        )
+        record_dic[sourcekey] = val
     return record_dic
 
 

@@ -180,7 +180,8 @@ def eval_expr_without_unknown_var(expr, datadic=None, loop_vars=None,
                 f'Unknown variable in expression ({unknown_varname})')
     return ret[0]
 
-def eval_expr(expr, datadic=None, loop_vars=None, look_up=True, cast_int=True):
+def eval_expr(expr, datadic=None, loop_vars=None, look_up=True,
+              cast_int=True, accept_missing=True):
     name = get_name(expr, nofail=True)
     # reminder: VARNAME is is a string of letters and number, e.g., foo1
     #           extvarname can contain an index specification, e.g., foo1[i]
@@ -194,13 +195,18 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True, cast_int=True):
                 val = get_varval(expr, datadic, loop_vars, look_up, False)
                 if is_tree(val) and get_name(val) == 'expr':
                     return eval_expr(
-                        val, datadic, loop_vars, look_up, cast_int
+                        val, datadic, loop_vars, look_up,
+                        cast_int, accept_missing
                     )
                 else:
                     return (val, 0, None)
-            except VariableNotFoundError:
+            except VariableNotFoundError as exc:
+                if not accept_missing:
+                    raise exc
                 return (0, 1, expr)
-            except UnavailableIndexError:
+            except UnavailableIndexError as exc:
+                if not accept_missing:
+                    raise exc
                 return (0, 1, expr)
     elif name == 'NUMBER' or name == 'DESIRED_NUMBER':
         vstr = expr.value
@@ -214,13 +220,16 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True, cast_int=True):
             v = float(vstr)
         return (v, 0, None)
     elif name == 'minusexpr':
-        v = eval_expr(expr.children[0], datadic, loop_vars, look_up, cast_int)
+        v = eval_expr(expr.children[0], datadic, loop_vars, look_up,
+                      cast_int, accept_missing)
         return (math_neg(v[0]), -v[1], v[2])
     elif name in ('addition', 'subtraction',
                   'multiplication', 'modulo', 'division'):
-        v1 = eval_expr(expr.children[0], datadic, loop_vars, look_up, cast_int)
+        v1 = eval_expr(expr.children[0], datadic, loop_vars, look_up,
+                       cast_int, accept_missing)
         # children[1] contains the operator symbol *,/,+,-
-        v2 = eval_expr(expr.children[2], datadic, loop_vars, look_up, cast_int)
+        v2 = eval_expr(expr.children[2], datadic, loop_vars, look_up,
+                       cast_int, accept_missing)
         if name == 'multiplication':
             if v1[1] != 0 and v2[1] != 0:
                 raise SeveralUnboundVariablesError(
@@ -270,7 +279,8 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True, cast_int=True):
                     vexpr)
     elif name == 'inconsistent_varspec':
         ch = get_child(expr, 'extvarname')
-        return eval_expr(ch, datadic, loop_vars, look_up, cast_int)
+        return eval_expr(ch, datadic, loop_vars, look_up,
+                         cast_int, accept_missing)
     else:
         # we remove enclosing brackets if present
         ch_first = expr.children[0]
@@ -282,5 +292,6 @@ def eval_expr(expr, datadic=None, loop_vars=None, look_up=True, cast_int=True):
             trimmed_children = expr.children
         assert len(trimmed_children) == 1
         return eval_expr(
-            trimmed_children[0], datadic, loop_vars, look_up, cast_int
+            trimmed_children[0], datadic, loop_vars, look_up,
+            cast_int, accept_missing
         )

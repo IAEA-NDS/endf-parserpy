@@ -148,6 +148,7 @@ class BasicEndfParser():
             map_head_dic(tree, cont_dic, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
             self.datadic.update(get_ctrl(cont_dic))
         else:
+            self.logbuffer.save_reduced_record_log(tree)
             head_dic = map_head_dic(tree, {}, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
             head_dic.update(get_ctrl(self.datadic))
             newlines = write_head(head_dic, with_ctrl=True, **self.write_opts)
@@ -165,6 +166,7 @@ class BasicEndfParser():
             write_info('Content of the CONT record: ' + str(cont_dic))
             map_cont_dic(tree, cont_dic, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
         else:
+            self.logbuffer.save_reduced_record_log(tree)
             cont_dic = map_cont_dic(tree, {}, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
             cont_dic.update(get_ctrl(self.datadic))
             newlines = write_cont(cont_dic, with_ctrl=True, **self.write_opts)
@@ -180,6 +182,7 @@ class BasicEndfParser():
             dir_dic.update(self.logbuffer.get_last_entry(key_prefix='__'))
             map_dir_dic(tree, dir_dic, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
         else:
+            self.logbuffer.save_reduced_record_log(tree)
             dir_dic = map_dir_dic(tree, {}, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
             dir_dic.update(get_ctrl(self.datadic))
             newlines = write_dir(dir_dic, with_ctrl=True, **self.write_opts)
@@ -196,6 +199,7 @@ class BasicEndfParser():
             intg_dic.update(self.logbuffer.get_last_entry(key_prefix='__'))
             map_intg_dic(tree, intg_dic, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
         else:
+            self.logbuffer.save_reduced_record_log(tree)
             intg_dic = map_intg_dic(tree, {}, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
             intg_dic.update(get_ctrl(self.datadic))
             ndigit = eval_expr_without_unknown_var(get_child(tree, 'ndigit_expr'), self.datadic, self.loop_vars)
@@ -213,6 +217,7 @@ class BasicEndfParser():
             tab1_dic.update(self.logbuffer.get_last_entry(key_prefix='__'))
             map_tab1_dic(tree, tab1_dic, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
         else:
+            self.logbuffer.save_reduced_record_log(tree)
             tab1_dic = map_tab1_dic(tree, {}, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
             tab1_dic.update(get_ctrl(self.datadic))
             newlines = write_tab1(tab1_dic, with_ctrl=True, **self.write_opts)
@@ -229,6 +234,7 @@ class BasicEndfParser():
             tab2_dic.update(self.logbuffer.get_last_entry(key_prefix='__'))
             map_tab2_dic(tree, tab2_dic, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
         else:
+            self.logbuffer.save_reduced_record_log(tree)
             tab2_dic = map_tab2_dic(tree, {}, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
             tab2_dic.update(get_ctrl(self.datadic))
             newlines = write_tab2(tab2_dic, with_ctrl=True, **self.write_opts)
@@ -245,6 +251,7 @@ class BasicEndfParser():
             list_dic.update(self.logbuffer.get_last_entry(key_prefix='__'))
             map_list_dic(tree, list_dic, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
         else:
+            self.logbuffer.save_reduced_record_log(tree)
             list_dic = map_list_dic(tree, {}, self.datadic, self.loop_vars, self.rwmode, parse_opts=self.parse_opts)
             list_dic.update(get_ctrl(self.datadic))
             newlines = write_list(list_dic, with_ctrl=True, **self.write_opts)
@@ -257,6 +264,7 @@ class BasicEndfParser():
             read_send(self.lines, self.ofs,
                       blank_as_zero=self.parse_opts['blank_as_zero'], **self.read_opts)
         else:
+            self.logbuffer.save_reduced_record_log(tree)
             newlines = write_send(self.datadic, with_ctrl=True,
                                   zero_as_blank=self.zero_as_blank,
                                   **self.write_opts)

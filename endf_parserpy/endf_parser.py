@@ -395,7 +395,7 @@ class BasicEndfParser():
                     except ParserException as exc:
                         if not nofail:
                             logstr = self.logbuffer.display_record_logs()
-                            raise ParserException(
+                            raise type(exc)(
                                     '\nHere is the parser record log until failure:\n\n' +
                                     logstr + 'Error message: ' + str(exc))
         return mfmt_dic
@@ -425,7 +425,7 @@ class BasicEndfParser():
                         finalize_abbreviations(self.datadic)
                     except Exception as exc:
                         logstr = self.logbuffer.display_reduced_record_logs()
-                        raise ParserException(
+                        raise type(exc)(
                                 '\nHere is the parser record log until failure:\n\n' +
                                 logstr + 'Error message: ' + str(exc))
                     # add the NS number to the lines except last one

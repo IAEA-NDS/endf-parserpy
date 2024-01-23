@@ -98,6 +98,15 @@ class RingBuffer():
             outstr += 'Line:     "{}"\n\n'.format(curentry['line'])
         return outstr
 
+    def save_reduced_record_log(self, record_tree, onlyfirst=False):
+        self.save_record_log(0, '', record_tree, onlyfirst)
+
+    def display_reduced_record_logs(self):
+        outstr = ''
+        for curentry in self.get_queue():
+            outstr += 'Template:  {}\n'.format(curentry['record_spec'])
+        return outstr
+
     def get_last_entry(self, key_prefix=''):
         last_entry = self.buffer[self.tail]
         return {f'{key_prefix}{k}': v for k, v in last_entry.items()}

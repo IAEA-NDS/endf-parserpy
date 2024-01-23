@@ -151,8 +151,16 @@ def write_cont(dic, with_ctrl=True, **write_opts):
     width = write_opts.get('width', 11)
     for varname in ('L1', 'L2', 'N1', 'N2'):
         if not isinstance(dic[varname], int):
-            raise InvalidIntegerError(
-                    f'variable `{varname}` is not of type integer')
+            strict_datatypes = write_opts.get('strict_datatypes', True)
+            intval = int(dic[varname])
+            floatval = float(dic[varname])
+            if intval != floatval or strict_datatypes:
+                raise InvalidIntegerError(
+                    f'variable in slot `{varname}` is not of type integer '
+                    f'(value = {floatval})'
+                )
+            else:
+                dic[varname] = intval
     C1 = float2fortstr(dic['C1'], **write_opts)
     C2 = float2fortstr(dic['C2'], **write_opts)
     L1 = str(dic['L1']).rjust(width)

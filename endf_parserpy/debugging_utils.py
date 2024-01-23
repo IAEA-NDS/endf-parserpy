@@ -9,6 +9,7 @@
 #
 ############################################################
 
+from collections.abc import MutableMapping
 from .math_utils import math_allclose
 
 
@@ -105,3 +106,58 @@ def compare_objects(obj1, obj2, curpath='', atol=1e-8, rtol=1e-6,
 
     # return True if equivalent
     return (not found_diff)
+
+
+class TrackingDict(MutableMapping):
+
+    def __init__(self, dict_like):
+        self._basedict = dict_like
+        self._trackingdicts = {}
+        self._accessed = set()
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            self._accessed.add(key)
+        retval = self._basedict.__getitem__(key)
+        if isinstance(retval, MutableMapping) and not str(key).startswith('__'):
+            if key not in self._trackingdicts:
+                self._trackingdicts[key] = TrackingDict(retval)
+            retval = self._trackingdicts[key]
+        return retval
+
+    def __setitem__(self, key, value):
+        if key in self._accessed:
+            self._accessed.remove(key)
+        if key in self._trackingdicts:
+            self._trackingdicts.__delitem__(key)
+        return self._basedict.__setitem__(key, value)
+
+    def __delitem__(self, key):
+        if key in self._accessed:
+            self._accessed.__delitem__(key)
+        if key in self._trackingdicts:
+            self._trackingdicts.__delitem__(key)
+        return self._basedict.__delitem__(key)
+
+    def __iter__(self):
+        return self._basedict.__iter__()
+
+    def __len__(self):
+        return self._basedict.__len__()
+
+    def verify_complete_retrieval(self, path=''):
+        if len(self._accessed) > 0:
+            for k in self._basedict:
+                if isinstance(k, int) and k not in self._accessed:
+                    indexpath = path + '/' + str(k)
+                    raise IndexError(
+                        f'The content of {indexpath} was not accessed'
+                    )
+        for k in self._basedict:
+            curval = self.__getitem__(k)
+            if isinstance(curval, TrackingDict):
+                indexpath = path + '/' + str(k)
+                curval.verify_complete_retrieval(indexpath)
+
+    def unwrap(self):
+        return self._basedict

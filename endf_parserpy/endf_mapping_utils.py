@@ -51,13 +51,13 @@ def substitute_abbreviation(val, datadic, loop_vars, look_up):
 
 def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
     name = get_name(expr, nofail=True)
-    if name in ('VARNAME', 'extvarname'):
-        varname = get_varname(expr)
-        idxquants = get_indexquants(expr)
-    else:
-        raise TypeError(f'node must be either of type VARNAME or extvarname ' +
-                        'but is {name} OR it must be at least a string with ' +
+    if name not in ('VARNAME', 'extvarname'):
+        raise TypeError('node must be either of type VARNAME or extvarname ' +
+                        f'but is {name} OR it must be at least a string with ' +
                         'the variable name')
+
+    varname = get_varname(expr)
+    idxquants = get_indexquants(expr)
 
     if loop_vars is not None:
         if varname in datadic and varname in loop_vars:

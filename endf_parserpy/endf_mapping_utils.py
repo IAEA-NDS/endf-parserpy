@@ -173,11 +173,7 @@ def varvalue_expr_conversion(vv, val, rwmode, cast_int=True):
 
 def eval_expr_without_unknown_var(expr, datadic=None, loop_vars=None,
                                   look_up=True, cast_int=True):
-    ret = eval_expr(expr, datadic, loop_vars, look_up, cast_int)
-    if ret[1] != 0:
-        unknown_varname = get_varname(ret[2])
-        raise VariableNotFoundError(
-                f'Unknown variable in expression ({unknown_varname})')
+    ret = eval_expr(expr, datadic, loop_vars, look_up, cast_int, False)
     return ret[0]
 
 def eval_expr(expr, datadic=None, loop_vars=None, look_up=True,

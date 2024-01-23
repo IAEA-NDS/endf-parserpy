@@ -412,9 +412,15 @@ class BasicEndfParser():
                 if cur_tree is not None and is_parsed:
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode='write', datadic=datadic)
-                    initialize_abbreviations(self.datadic)
-                    self.run_instruction(cur_tree)
-                    finalize_abbreviations(self.datadic)
+                    try:
+                        initialize_abbreviations(self.datadic)
+                        self.run_instruction(cur_tree)
+                        finalize_abbreviations(self.datadic)
+                    except Exception as exc:
+                        logstr = self.logbuffer.display_reduced_record_logs()
+                        raise ParserException(
+                                '\nHere is the parser record log until failure:\n\n' +
+                                logstr + 'Error message: ' + str(exc))
                     # add the NS number to the lines except last one
                     # because the SEND (=section end) record already
                     # contains it

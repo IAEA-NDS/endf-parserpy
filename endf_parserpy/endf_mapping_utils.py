@@ -60,6 +60,14 @@ def get_array_value(varname, idxquants, datadic, loop_vars):
                     f'index {idx} does not exist in array {varname}')
     return curdic
 
+def set_array_value(varname, idxquants, value, datadic, loop_vars):
+    curdic = datadic.setdefault(varname, {})
+    for idxquant in idxquants[:-1]:
+        idx = get_indexvalue(idxquant, loop_vars)
+        curdic = curdic.setdefault(idx, {})
+    idx = get_indexvalue(idxquants[-1], loop_vars)
+    curdic[idx] = value
+
 def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
     name = get_name(expr, nofail=True)
     if name not in ('VARNAME', 'extvarname'):

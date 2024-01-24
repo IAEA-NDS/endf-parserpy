@@ -133,11 +133,9 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
                 # nested dictionaries with the indicies as keys
                 datadic.setdefault(targetkey, {})
                 curdic = datadic[targetkey]
-                for i, idxquant in enumerate(idxquants):
+                for idxquant in idxquants[:-1]:
                     idx = get_indexvalue(idxquant, loop_vars)
-                    if i < len(idxquants)-1:
-                        curdic.setdefault(idx, {})
-                        curdic = curdic[idx]
+                    curdic = curdic.setdefault(idx, {})
                 idx = get_indexvalue(idxquants[-1], loop_vars)
                 curdic[idx] = val
 

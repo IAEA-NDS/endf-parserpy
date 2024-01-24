@@ -8,6 +8,7 @@
 #
 ############################################################
 
+
 def locate(dic, varname, as_string=False):
     path = []
     locations = []
@@ -27,9 +28,10 @@ def locate(dic, varname, as_string=False):
                     recfun(item)
                     del path[-1]
         return
+
     recfun(dic)
     if as_string:
-        locations = ['/'.join(str(s) for s in loc) for loc in locations]
+        locations = ["/".join(str(s) for s in loc) for loc in locations]
     return tuple(locations)
 
 
@@ -48,7 +50,7 @@ def list_unparsed_sections(dic):
     for mf, mfsec in dic.items():
         for mt, mtsec in mfsec.items():
             if isinstance(mtsec, list):
-                unparsed.append((mf,mt))
+                unparsed.append((mf, mt))
     return tuple(unparsed)
 
 
@@ -63,7 +65,7 @@ def list_parsed_sections(dic):
 
 def sanitize_fieldname_types(dic):
     if not isinstance(dic, dict):
-        raise TypeError('please provide dictionary')
+        raise TypeError("please provide dictionary")
     keys = tuple(dic.keys())
     for key in keys:
         try:
@@ -72,7 +74,9 @@ def sanitize_fieldname_types(dic):
             intkey = None
         if intkey is not None:
             if intkey in dic:
-                raise IndexError('integer version of key already exists, something wrong')
+                raise IndexError(
+                    "integer version of key already exists, something wrong"
+                )
             cont = dic[key]
             dic[intkey] = cont
             del dic[key]
@@ -83,16 +87,15 @@ def sanitize_fieldname_types(dic):
             sanitize_fieldname_types(dic[key])
 
 
-def show_content(endf_dic, maxlevel=0, prefix='/'):
-    maxlen = max(len(prefix+str(s)) for s in endf_dic.keys())
+def show_content(endf_dic, maxlevel=0, prefix="/"):
+    maxlen = max(len(prefix + str(s)) for s in endf_dic.keys())
     for k, v in endf_dic.items():
         if isinstance(v, dict):
             if maxlevel > 0:
-                show_content(v, maxlevel-1,
-                             prefix=prefix+str(k)+'/')
+                show_content(v, maxlevel - 1, prefix=prefix + str(k) + "/")
             else:
-                fp = (prefix + str(k) + ':').ljust(maxlen+2)
-                print(fp + 'subsection or array')
+                fp = (prefix + str(k) + ":").ljust(maxlen + 2)
+                print(fp + "subsection or array")
         else:
-            fp = (prefix + str(k) + ':').ljust(maxlen+2)
+            fp = (prefix + str(k) + ":").ljust(maxlen + 2)
             print(fp + str(v))

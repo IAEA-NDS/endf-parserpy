@@ -5,17 +5,17 @@ def pytest_addoption(parser):
     parser.addoption("--endfdir", action="store", default="testdata")
     parser.addoption("--endffile", action="store", default=None)
     parser.addoption("--mf", action="store", default=None)
-    parser.addoption("--ignore_zero_mismatch", action="store", default='true')
-    parser.addoption("--ignore_number_mismatch", action="store", default='false')
-    parser.addoption("--ignore_varspec_mismatch", action="store", default='false')
-    parser.addoption("--fuzzy_matching", action="store", default='true')
-    parser.addoption("--blank_as_zero", action="store", default='true')
+    parser.addoption("--ignore_zero_mismatch", action="store", default="true")
+    parser.addoption("--ignore_number_mismatch", action="store", default="false")
+    parser.addoption("--ignore_varspec_mismatch", action="store", default="false")
+    parser.addoption("--fuzzy_matching", action="store", default="true")
+    parser.addoption("--blank_as_zero", action="store", default="true")
     # defaults writing options chosen to preserve maximal accuracy
-    parser.addoption("--abuse_signpos", action="store", default='true')
-    parser.addoption("--skip_intzero", action="store", default='true')
-    parser.addoption("--prefer_noexp", action="store", default='true')
+    parser.addoption("--abuse_signpos", action="store", default="true")
+    parser.addoption("--skip_intzero", action="store", default="true")
+    parser.addoption("--prefer_noexp", action="store", default="true")
     # defaults for reading options
-    parser.addoption("--accept_spaces", action="store", default='true')
+    parser.addoption("--accept_spaces", action="store", default="true")
 
 
 def pytest_generate_tests(metafunc):
@@ -29,20 +29,26 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize("endf_file", endf_files)
 
     parse_opts = (
-        'ignore_zero_mismatch', 'ignore_number_mismatch',
-        'ignore_varspec_mismatch', 'fuzzy_matching', 'blank_as_zero',
-        'abuse_signpos', 'skip_intzero', 'prefer_noexp', 'accept_spaces'
+        "ignore_zero_mismatch",
+        "ignore_number_mismatch",
+        "ignore_varspec_mismatch",
+        "fuzzy_matching",
+        "blank_as_zero",
+        "abuse_signpos",
+        "skip_intzero",
+        "prefer_noexp",
+        "accept_spaces",
     )
 
     opts = metafunc.config.option
     for curopt in parse_opts:
         if curopt in metafunc.fixturenames:
             argval = opts.__dict__[curopt].lower().strip()
-            argval = argval == 'true'
+            argval = argval == "true"
             metafunc.parametrize(curopt, [argval], scope="module")
 
     # to selectively test MF sections and MF/MT subsections
-    if 'mf_sel' in metafunc.fixturenames:
+    if "mf_sel" in metafunc.fixturenames:
         if metafunc.config.option.mf is not None:
             argval = (int(metafunc.config.option.mf),)
         else:

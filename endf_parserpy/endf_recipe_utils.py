@@ -11,23 +11,22 @@ def get_string_hash(inpstr):
 
 
 def get_recipe_parser(recipe_grammar):
-    return Lark(recipe_grammar, start='endf_recipe',
-                keep_all_tokens=True)
+    return Lark(recipe_grammar, start="endf_recipe", keep_all_tokens=True)
 
 
 def get_recipe_parsetree(recipe, recipe_parser, grammar_hash, cache_dir):
     if cache_dir is False:
         return recipe_parser.parse(recipe)
     recipe_hash = get_string_hash(recipe)
-    filename = get_string_hash(grammar_hash + recipe_hash) + '.pkl'
+    filename = get_string_hash(grammar_hash + recipe_hash) + ".pkl"
     os.makedirs(cache_dir, exist_ok=True)
     filepath = os.path.join(cache_dir, filename)
     if not os.path.exists(filepath):
         recipe_parsetree = recipe_parser.parse(recipe)
-        with open(filepath, 'wb') as fw:
+        with open(filepath, "wb") as fw:
             pickle.dump(recipe_parsetree, fw)
     else:
-        with open(filepath, 'rb') as fr:
+        with open(filepath, "rb") as fr:
             recipe_parsetree = pickle.load(fr)
     return recipe_parsetree
 
@@ -39,17 +38,14 @@ def get_recipe_parsetree_dic(recipe_dic, cache_dir):
     for mf in recipe_dic:
         tree_dic.setdefault(mf, {})
         if isinstance(recipe_dic[mf], str):
-            tree_dic[mf] = get_recipe_parsetree(recipe_dic[mf],
-                                                recipe_parser,
-                                                grammar_hash,
-                                                cache_dir)
+            tree_dic[mf] = get_recipe_parsetree(
+                recipe_dic[mf], recipe_parser, grammar_hash, cache_dir
+            )
         else:
             for mt in recipe_dic[mf]:
-                tree_dic[mf][mt] = \
-                        get_recipe_parsetree(recipe_dic[mf][mt],
-                                             recipe_parser,
-                                             grammar_hash,
-                                             cache_dir)
+                tree_dic[mf][mt] = get_recipe_parsetree(
+                    recipe_dic[mf][mt], recipe_parser, grammar_hash, cache_dir
+                )
     return tree_dic
 
 

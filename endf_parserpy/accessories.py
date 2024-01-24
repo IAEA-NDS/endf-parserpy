@@ -12,21 +12,20 @@ from collections.abc import Mapping, MutableMapping, Sequence
 
 
 class EndfPath(Sequence):
-
     def __init__(self, pathspec):
         if isinstance(pathspec, int):
             pathspec = str(pathspec)
         if isinstance(pathspec, str):
-            pathspec = pathspec.split('/')
+            pathspec = pathspec.split("/")
         if not isinstance(pathspec, Sequence):
-            raise TypeError('expected pathspec to be sequence or string')
+            raise TypeError("expected pathspec to be sequence or string")
         self._path_elements = self._standardize_path_tuple(pathspec)
 
     def _standardize_path_tuple(self, path_tuple):
         p = path_tuple
         p = (str(x) for x in p)
         p = (x.strip() for x in p)
-        p = (x for x in p if x != '')
+        p = (x for x in p if x != "")
         res = tuple()
         for t in p:
             res = res + self._expand_array_notation(t)
@@ -36,21 +35,21 @@ class EndfPath(Sequence):
 
     def _expand_array_notation(self, extvarname):
         t = extvarname
-        if '[' not in t:
+        if "[" not in t:
             return (extvarname,)
-        if not t.endswith(']'):
-            raise ValueError(f'invalid path element `{t}`')
-        idx = t.index('[')
+        if not t.endswith("]"):
+            raise ValueError(f"invalid path element `{t}`")
+        idx = t.index("[")
         varname = t[:idx]
-        indices = t[idx+1:-1].split(',')
+        indices = t[idx + 1 : -1].split(",")
         indices = tuple(s.strip() for s in indices)
         return (varname,) + indices
 
     def _validate_path(self, path_elements):
         for el in path_elements:
             if not isinstance(el, int):
-                if not el.replace('_', '').isalnum() or el[0].isdigit():
-                    raise ValueError(f'invalid path element `{el}`')
+                if not el.replace("_", "").isalnum() or el[0].isdigit():
+                    raise ValueError(f"invalid path element `{el}`")
 
     def __eq__(self, other):
         if isinstance(other, EndfPath):
@@ -60,7 +59,7 @@ class EndfPath(Sequence):
         return False
 
     def __str__(self):
-        return '/'.join([str(x) for x in self._path_elements])
+        return "/".join([str(x) for x in self._path_elements])
 
     def __repr__(self):
         return f"EndfPath('{str(self)}')"
@@ -111,7 +110,6 @@ class EndfPath(Sequence):
 
 
 class EndfVariable:
-
     def __init__(self, endf_path, endf_dict, value=None):
         if isinstance(endf_dict, EndfDict):
             endf_dict = endf_dict.unwrap()
@@ -119,7 +117,7 @@ class EndfVariable:
             endf_path = EndfPath(endf_path)
         if not endf_path.exists(endf_dict):
             if value is None:
-                raise KeyError(f'variable `{endf_path}` does not exist')
+                raise KeyError(f"variable `{endf_path}` does not exist")
             endf_path.set(endf_dict, value)
 
         self._endf_dict = endf_dict
@@ -128,9 +126,11 @@ class EndfVariable:
         self._parent = endf_path[:-1].get(endf_dict)
 
     def __repr__(self):
-        return (f'EndfVariable({self._path!r}, ' +
-                f'{type(self._endf_dict)} at {hex(id(self._endf_dict))}, ' +
-                f'value={self.value})')
+        return (
+            f"EndfVariable({self._path!r}, "
+            + f"{type(self._endf_dict)} at {hex(id(self._endf_dict))}, "
+            + f"value={self.value})"
+        )
 
     def __call__(self):
         return self.value
@@ -161,7 +161,6 @@ class EndfVariable:
 
 
 class EndfDict(MutableMapping):
-
     def __init__(self, mapping=None):
         if mapping is None:
             self._store = dict()
@@ -170,14 +169,12 @@ class EndfDict(MutableMapping):
                 mapping = mapping.unwrap()
             self._store = mapping
         else:
-            raise TypeError(
-                'expected `mapping` to be an instance of MutableMapping'
-            )
+            raise TypeError("expected `mapping` to be an instance of MutableMapping")
         self._root = self
-        self._path = EndfPath('')
+        self._path = EndfPath("")
 
     def __repr__(self):
-        return f'{self._store!r}'
+        return f"{self._store!r}"
 
     def __str__(self):
         return str(self._store)
@@ -191,23 +188,18 @@ class EndfDict(MutableMapping):
             if isinstance(obj1, str):
                 return obj1 == obj2
             if id(obj1) in ids:
-                raise IndexError(
-                    'there is a cycle in the nested data structure'
-                )
+                raise IndexError("there is a cycle in the nested data structure")
             ids.add(id(obj1))
             for x, y in zip(obj1, obj2):
                 if not self._recursive_equality_check(x, y, ids):
                     return False
-        elif (isinstance(obj1, Mapping) and
-                isinstance(obj2, Mapping)):
+        elif isinstance(obj1, Mapping) and isinstance(obj2, Mapping):
             if len(obj1) != len(obj2):
                 return False
             if len(set(obj1).intersection(obj2)) != len(obj1):
                 return False
             if id(obj1) in ids:
-                raise IndexError(
-                    'there is a cycle in the nested data structure'
-                )
+                raise IndexError("there is a cycle in the nested data structure")
             ids.add(id(obj1))
             for k in obj1:
                 if not self._recursive_equality_check(obj1[k], obj2[k], ids):

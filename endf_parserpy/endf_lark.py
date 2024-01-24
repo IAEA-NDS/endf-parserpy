@@ -9,8 +9,7 @@
 #
 ############################################################
 
-endf_recipe_grammar = \
-r"""
+endf_recipe_grammar = r"""
 %import common.DIGIT
 %import common.LETTER
 %import common.NEWLINE

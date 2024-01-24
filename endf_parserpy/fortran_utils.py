@@ -9,15 +9,12 @@
 #
 ############################################################
 
-from .custom_exceptions import (
-        InvalidIntegerError,
-        InvalidFloatError
-    )
+from .custom_exceptions import InvalidIntegerError, InvalidFloatError
 from math import log10, floor
 
 
 def read_fort_int(valstr, blank_as_zero=False):
-    if blank_as_zero and valstr.strip() == '':
+    if blank_as_zero and valstr.strip() == "":
         return 0
     else:
         try:
@@ -27,15 +24,15 @@ def read_fort_int(valstr, blank_as_zero=False):
 
 
 def fortstr2float(valstr, blank=None, **read_opts):
-    accept_spaces = read_opts.get('accept_spaces', True)
-    if valstr.strip() == '' and blank is not None:
+    accept_spaces = read_opts.get("accept_spaces", True)
+    if valstr.strip() == "" and blank is not None:
         return blank
     if accept_spaces:
-        valstr = valstr.replace(' ', '')
+        valstr = valstr.replace(" ", "")
     for i, c in enumerate(valstr):
-        if i > 0 and (c == '+' or c == '-'):
-            if valstr[i-1].isdigit():
-                return float(valstr[:i] + 'E' + valstr[i:])
+        if i > 0 and (c == "+" or c == "-"):
+            if valstr[i - 1].isdigit():
+                return float(valstr[:i] + "E" + valstr[i:])
     try:
         return float(valstr)
     except ValueError as valerr:
@@ -43,15 +40,15 @@ def fortstr2float(valstr, blank=None, **read_opts):
 
 
 def float2basicnumstr(val, **write_opts):
-    width = write_opts.get('width', 11)
+    width = write_opts.get("width", 11)
     effwidth = width
-    abuse_signpos = write_opts.get('abuse_signpos', False)
-    skip_intzero = write_opts.get('skip_intzero', False)
+    abuse_signpos = write_opts.get("abuse_signpos", False)
+    skip_intzero = write_opts.get("skip_intzero", False)
     intpart = int(val)
     len_intpart = len(str(abs(intpart)))
-    is_integer = (intpart == val)
+    is_integer = intpart == val
     if is_integer and intpart == 0:
-        return '0'.rjust(effwidth)
+        return "0".rjust(effwidth)
     # -1 due to a minus sign slot
     # -1 due to the decimal point
     waste_space = 2
@@ -64,25 +61,25 @@ def float2basicnumstr(val, **write_opts):
         waste_space -= 1
     floatwidth = effwidth - waste_space - len_intpart
     if floatwidth > 0 and not is_integer:
-        numstr = f'{{:{effwidth}.{floatwidth}f}}'.format(val)
+        numstr = f"{{:{effwidth}.{floatwidth}f}}".format(val)
         if should_skip_zero:
-            dotpos = numstr.index('.')
-            numstr = numstr[:dotpos-1] + numstr[dotpos:]
+            dotpos = numstr.index(".")
+            numstr = numstr[: dotpos - 1] + numstr[dotpos:]
     else:
-        numstr = '{:d}'.format(int(val))
+        numstr = "{:d}".format(int(val))
         if val > 0 and not abuse_signpos:
-            numstr = ' ' + numstr
-        if len(numstr) <= width-2:
-            numstr += '.'
-            numstr = numstr.ljust(width, '0')
+            numstr = " " + numstr
+        if len(numstr) <= width - 2:
+            numstr += "."
+            numstr = numstr.ljust(width, "0")
     numstr = numstr.rjust(width)
     return numstr
 
 
 def float2expformstr(val, **write_opts):
-    width = write_opts.get('width', 11)
-    abuse_signpos = write_opts.get('abuse_signpos', False)
-    keep_E = write_opts.get('keep_E', False)
+    width = write_opts.get("width", 11)
+    abuse_signpos = write_opts.get("abuse_signpos", False)
+    keep_E = write_opts.get("keep_E", False)
     av = abs(val)
     if av >= 1e-9 and av < 1e10:
         nexp = 1
@@ -100,20 +97,20 @@ def float2expformstr(val, **write_opts):
     is_expo_pos = exponent >= 0
     absexponent = abs(exponent)
     mantissa_len = width - 1 - nexp - sign_dec - expsymb_dec
-    mantissa_str = f'{{:.{mantissa_len-2}f}}'.format(mantissa)
-    expsymb_str = 'E' if keep_E else ''
-    exposign_str = '+' if is_expo_pos else '-'
-    exponent_str = f'{{:{nexp}d}}'.format(absexponent)
+    mantissa_str = f"{{:.{mantissa_len-2}f}}".format(mantissa)
+    expsymb_str = "E" if keep_E else ""
+    exposign_str = "+" if is_expo_pos else "-"
+    exponent_str = f"{{:{nexp}d}}".format(absexponent)
     if is_pos:
-        sign_str = '' if abuse_signpos else ' '
+        sign_str = "" if abuse_signpos else " "
     else:
-        sign_str = '-'
+        sign_str = "-"
     res_str = sign_str + mantissa_str + expsymb_str + exposign_str + exponent_str
     if len(res_str) > width:
         # special case: we have 9.999999999 in the mantissa, which will
         #               be rounded to 10.0000000 so we have too many digits.
         #               Hack: Pass the rounded number again to this function.
-        tmp_str = sign_str + mantissa_str + 'e' + exposign_str + exponent_str
+        tmp_str = sign_str + mantissa_str + "e" + exposign_str + exponent_str
         res_str = float2expformstr(float(tmp_str), **write_opts)
     return res_str
 
@@ -123,32 +120,32 @@ def count_signif_digits(valstr):
     in_signif = False
     zero_acc = 0
     for c in valstr:
-        if not in_signif and c.isdigit() and c != '0':
+        if not in_signif and c.isdigit() and c != "0":
             in_signif = True
         if in_signif:
             if c.isdigit():
-                if c != '0':
+                if c != "0":
                     num_signif += 1 + zero_acc
                     zero_acc = 0
                 else:
                     zero_acc += 1
-            elif c != '.':
+            elif c != ".":
                 break
     return num_signif
 
 
 def float2fortstr(val, **write_opts):
-    width = write_opts.get('width', 11)
-    prefer_noexp = write_opts.get('prefer_noexp', False)
+    width = write_opts.get("width", 11)
+    prefer_noexp = write_opts.get("prefer_noexp", False)
     valstr_exp = float2expformstr(val, **write_opts)
     if not prefer_noexp:
         return valstr_exp
     valstr_basic = float2basicnumstr(val, **write_opts)
-    if '.' in valstr_basic:
-        valstr_basic = valstr_basic.rstrip('0').rstrip('.')
+    if "." in valstr_basic:
+        valstr_basic = valstr_basic.rstrip("0").rstrip(".")
         # next line to deal with case -.00 and .00
-        if valstr_basic in ('+', '-', ''):
-            valstr_basic = '0'
+        if valstr_basic in ("+", "-", ""):
+            valstr_basic = "0"
     if len(valstr_basic) > width:
         return valstr_exp
     delta1 = abs(fortstr2float(valstr_basic) - val)
@@ -160,24 +157,23 @@ def float2fortstr(val, **write_opts):
 
 
 def read_fort_floats(line, n=6, blank=None, **read_opts):
-    accept_spaces = read_opts.get('accept_spaces', True)
-    width = read_opts.get('width', 11)
+    accept_spaces = read_opts.get("accept_spaces", True)
+    width = read_opts.get("width", 11)
     assert isinstance(line, str)
     vals = []
-    for i in range(0, n*width, width):
-        if line[i:i+width] == ' '*width:
+    for i in range(0, n * width, width):
+        if line[i : i + width] == " " * width:
             if blank is None:
-                raise ValueError('blank encountered but blank=None')
+                raise ValueError("blank encountered but blank=None")
             else:
                 vals.append(blank)
         else:
-            vals.append(fortstr2float(line[i:i+width],
-                                      accept_spaces=accept_spaces))
+            vals.append(fortstr2float(line[i : i + width], accept_spaces=accept_spaces))
     return vals
 
 
 def write_fort_floats(vals, **write_opts):
-    line = ''
+    line = ""
     for i, v in enumerate(vals):
         line += float2fortstr(v, **write_opts)
     return line

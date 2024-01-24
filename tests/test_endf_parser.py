@@ -8,19 +8,28 @@ from endf_parserpy.user_tools import sanitize_fieldname_types
 
 
 @pytest.fixture(scope="module")
-def myBasicEndfParser(ignore_zero_mismatch, ignore_number_mismatch,
-                      ignore_varspec_mismatch, fuzzy_matching, blank_as_zero,
-                      abuse_signpos, skip_intzero, prefer_noexp,
-                      accept_spaces):
-    return BasicEndfParser(ignore_zero_mismatch=ignore_zero_mismatch,
-                           ignore_number_mismatch=ignore_number_mismatch,
-                           ignore_varspec_mismatch=ignore_varspec_mismatch,
-                           fuzzy_matching=fuzzy_matching,
-                           blank_as_zero=blank_as_zero,
-                           abuse_signpos=abuse_signpos,
-                           skip_intzero=skip_intzero,
-                           prefer_noexp=prefer_noexp,
-                           accept_spaces=accept_spaces)
+def myBasicEndfParser(
+    ignore_zero_mismatch,
+    ignore_number_mismatch,
+    ignore_varspec_mismatch,
+    fuzzy_matching,
+    blank_as_zero,
+    abuse_signpos,
+    skip_intzero,
+    prefer_noexp,
+    accept_spaces,
+):
+    return BasicEndfParser(
+        ignore_zero_mismatch=ignore_zero_mismatch,
+        ignore_number_mismatch=ignore_number_mismatch,
+        ignore_varspec_mismatch=ignore_varspec_mismatch,
+        fuzzy_matching=fuzzy_matching,
+        blank_as_zero=blank_as_zero,
+        abuse_signpos=abuse_signpos,
+        skip_intzero=skip_intzero,
+        prefer_noexp=prefer_noexp,
+        accept_spaces=accept_spaces,
+    )
 
 
 def test_endf_parserpy_never_fails(endf_file, myBasicEndfParser, mf_sel):
@@ -28,10 +37,12 @@ def test_endf_parserpy_never_fails(endf_file, myBasicEndfParser, mf_sel):
         endfdic = myBasicEndfParser.parsefile(endf_file, include=mf_sel)
     except Exception as exc:
         filename = os.path.basename(endf_file)
-        pytest.fail(f'BasicEndfParser failed on file {filename} with exception {exc}')
+        pytest.fail(f"BasicEndfParser failed on file {filename} with exception {exc}")
 
 
-def test_endf_read_write_read_roundtrip_preserves_content(endf_file, tmp_path, myBasicEndfParser, mf_sel):
+def test_endf_read_write_read_roundtrip_preserves_content(
+    endf_file, tmp_path, myBasicEndfParser, mf_sel
+):
     endf_dic = myBasicEndfParser.parsefile(endf_file, include=mf_sel)
     outfile = tmp_path / os.path.basename(endf_file)
     myBasicEndfParser.writefile(outfile, endf_dic)
@@ -46,7 +57,9 @@ def test_endf_read_write_read_roundtrip_preserves_content(endf_file, tmp_path, m
     compare_objects(raw_endf, raw_endf2, strlen_only=True, rstrcut=75)
 
 
-def test_endf_json_endf_roundtrip_preserves_content(endf_file, tmp_path, myBasicEndfParser, mf_sel):
+def test_endf_json_endf_roundtrip_preserves_content(
+    endf_file, tmp_path, myBasicEndfParser, mf_sel
+):
     endf_dic = myBasicEndfParser.parsefile(endf_file, include=mf_sel)
     jsonstr = json.dumps(endf_dic, ensure_ascii=False)
     endf_dic2 = json.loads(jsonstr)

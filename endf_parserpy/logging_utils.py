@@ -14,8 +14,9 @@ from .tree_utils import reconstruct_tree_str
 
 
 def write_info(message, ofs=None):
-    prefix = f'Line #{ofs}: ' if ofs is not None else ''
+    prefix = f"Line #{ofs}: " if ofs is not None else ""
     logging.info(prefix + message)
+
 
 def abbreviate_valstr(val):
     if isinstance(val, int) or isinstance(val, float):
@@ -24,18 +25,24 @@ def abbreviate_valstr(val):
         if len(val) < 13:
             return val
         else:
-            return val[1:5] + '...' + val[1:5]
+            return val[1:5] + "..." + val[1:5]
     elif isinstance(val, dict):
-        return '{' + ', '.join(str(k) for k in tuple(val.keys())[:3]) + ', ...' + '}'
+        return "{" + ", ".join(str(k) for k in tuple(val.keys())[:3]) + ", ..." + "}"
+
 
 def should_skip_logging_info(varnames, datadic):
     if len(varnames) == 0:
         return True
-    elif (len(varnames) == 1 and isinstance(datadic[varnames[0]], dict)
-           and len(datadic[varnames[0]]) > 1):
+    elif (
+        len(varnames) == 1
+        and isinstance(datadic[varnames[0]], dict)
+        and len(datadic[varnames[0]]) > 1
+    ):
         return True
     # if all variables are dictionaries...
-    elif len(tuple(1 for v in varnames if isinstance(datadic[v], dict))) == len(varnames):
+    elif len(tuple(1 for v in varnames if isinstance(datadic[v], dict))) == len(
+        varnames
+    ):
         # and all these dictionaries have more than one element
         # we skip displaying then because they have been already
         # filled and displayed before
@@ -47,8 +54,7 @@ def should_skip_logging_info(varnames, datadic):
         return False
 
 
-class RingBuffer():
-
+class RingBuffer:
     def __init__(self, capacity):
         self.capacity = capacity
         self.buffer = [None] * capacity
@@ -61,52 +67,48 @@ class RingBuffer():
         self.num_enqueued += 1
 
     def get_queue(self):
-        if (self.num_enqueued > self.capacity):
-            return self.buffer[self.tail+1:] + self.buffer[:self.tail+1]
+        if self.num_enqueued > self.capacity:
+            return self.buffer[self.tail + 1 :] + self.buffer[: self.tail + 1]
         else:
-            return self.buffer[:self.tail+1]
+            return self.buffer[: self.tail + 1]
 
     def dump_state(self):
         return {
-            'capacity': self.capacity,
-            'buffer': self.buffer,
-            'tail': self.tail,
-            'num_enqueued': self.num_enqueued
+            "capacity": self.capacity,
+            "buffer": self.buffer,
+            "tail": self.tail,
+            "num_enqueued": self.num_enqueued,
         }
 
     def load_state(self, state_info):
-        self.capacity = state_info['capacity']
-        self.buffer = state_info['buffer']
-        self.tail = state_info['tail']
-        self.num_enqueued = state_info['num_enqueued']
+        self.capacity = state_info["capacity"]
+        self.buffer = state_info["buffer"]
+        self.tail = state_info["tail"]
+        self.num_enqueued = state_info["num_enqueued"]
 
     def save_record_log(self, ofs, line, record_tree, onlyfirst=False):
         recon_str = reconstruct_tree_str(record_tree)
         if onlyfirst:
-            recon_str = recon_str.split('\n')[0]
-        self.enqueue({
-            'ofs': ofs,
-            'line': line.rstrip(),
-            'record_spec': recon_str
-            })
+            recon_str = recon_str.split("\n")[0]
+        self.enqueue({"ofs": ofs, "line": line.rstrip(), "record_spec": recon_str})
 
     def display_record_logs(self):
-        outstr = ''
+        outstr = ""
         for curentry in self.get_queue():
             outstr += f'-------- Line {curentry["ofs"]} -----------\n'
-            outstr += 'Template:  {}\n'.format(curentry['record_spec'])
-            outstr += 'Line:     "{}"\n\n'.format(curentry['line'])
+            outstr += "Template:  {}\n".format(curentry["record_spec"])
+            outstr += 'Line:     "{}"\n\n'.format(curentry["line"])
         return outstr
 
     def save_reduced_record_log(self, record_tree, onlyfirst=False):
-        self.save_record_log(0, '', record_tree, onlyfirst)
+        self.save_record_log(0, "", record_tree, onlyfirst)
 
     def display_reduced_record_logs(self):
-        outstr = ''
+        outstr = ""
         for curentry in self.get_queue():
-            outstr += 'Template:  {}\n'.format(curentry['record_spec'])
+            outstr += "Template:  {}\n".format(curentry["record_spec"])
         return outstr
 
-    def get_last_entry(self, key_prefix=''):
+    def get_last_entry(self, key_prefix=""):
         last_entry = self.buffer[self.tail]
-        return {f'{key_prefix}{k}': v for k, v in last_entry.items()}
+        return {f"{key_prefix}{k}": v for k, v in last_entry.items()}

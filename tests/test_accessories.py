@@ -3,19 +3,19 @@ from copy import deepcopy
 from endf_parserpy.accessories import EndfPath, EndfVariable, EndfDict
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def testdict():
-    return {'a': {'b': 10, 'c': {'d': 5}}, 3: {'x': 'abc'}}
+    return {"a": {"b": 10, "c": {"d": 5}}, 3: {"x": "abc"}}
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def testdict2(testdict):
     return EndfDict(testdict)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def testpath(testdict):
-    return EndfPath('a/c/d')
+    return EndfPath("a/c/d")
 
 
 def test_dict_endfdict_association(testdict, testdict2):
@@ -23,46 +23,46 @@ def test_dict_endfdict_association(testdict, testdict2):
 
 
 def test_endfdict_path_split(testdict2):
-    d1 = testdict2['a/c']
-    d2 = testdict2['a']['c']
+    d1 = testdict2["a/c"]
+    d2 = testdict2["a"]["c"]
     assert id(d1.unwrap()) == id(d2.unwrap())
 
 
 def test_endfdict_wrap_and_unwrap(testdict, testdict2):
-    testdict2['u'] = {'x': 7}
-    testdict['v'] = {'y': 9}
-    testdict2['w'] = EndfDict({'z': 10})
-    assert type(testdict2['u']) == EndfDict
-    assert type(testdict2['v']) == EndfDict
-    assert type(testdict2['w']) == EndfDict
-    assert type(testdict['u']) == dict
-    assert type(testdict['v']) == dict
-    assert type(testdict['w']) == dict
+    testdict2["u"] = {"x": 7}
+    testdict["v"] = {"y": 9}
+    testdict2["w"] = EndfDict({"z": 10})
+    assert type(testdict2["u"]) == EndfDict
+    assert type(testdict2["v"]) == EndfDict
+    assert type(testdict2["w"]) == EndfDict
+    assert type(testdict["u"]) == dict
+    assert type(testdict["v"]) == dict
+    assert type(testdict["w"]) == dict
 
 
 def test_dict_endfdict_update(testdict, testdict2):
     testdict2 = EndfDict(testdict)
-    testdict2['u/3'] = 25
-    testdict.setdefault('v', {}).setdefault(5, 7)
-    assert testdict['u'][3] == testdict2['u/3']
-    assert testdict['v'][5] == testdict2['v/5']
+    testdict2["u/3"] = 25
+    testdict.setdefault("v", {}).setdefault(5, 7)
+    assert testdict["u"][3] == testdict2["u/3"]
+    assert testdict["v"][5] == testdict2["v/5"]
 
 
 def test_endfdict_equal(testdict, testdict2):
     assert testdict == testdict2
     testdict3 = deepcopy(testdict2)
     assert testdict2 == testdict3
-    testdict3['x/y'] = 13.
+    testdict3["x/y"] = 13.0
     assert testdict2 != testdict3
     testdict3 = deepcopy(testdict2)
-    testdict2['x/a'] = 'abc'
-    testdict3['x/a'] = 'abd'
+    testdict2["x/a"] = "abc"
+    testdict3["x/a"] = "abd"
     assert testdict2 != testdict3
     testdict3 = deepcopy(testdict2)
-    testdict2['x'] = (1, 2, 3)
-    testdict3['x'] = (1, 2, 3)
+    testdict2["x"] = (1, 2, 3)
+    testdict3["x"] = (1, 2, 3)
     assert testdict2 == testdict3
-    testdict3['x'] = (1, 3, 3)
+    testdict3["x"] = (1, 3, 3)
     assert testdict2 != testdict3
 
 
@@ -84,8 +84,9 @@ def test_endfpath_set_type(testdict, testdict2, testpath):
         testpath[:-1].set(t, d)
         assert type(testpath[:-1].get(testdict)) == dict
         assert type(testpath[:-1].get(testdict2)) == EndfDict
-        assert (id(testpath[:-1].get(testdict)) ==
-                id(testpath[:-1].get(testdict2).unwrap()))
+        assert id(testpath[:-1].get(testdict)) == id(
+            testpath[:-1].get(testdict2).unwrap()
+        )
         v = d
         if isinstance(v, EndfDict):
             v = v.unwrap()
@@ -93,11 +94,11 @@ def test_endfpath_set_type(testdict, testdict2, testpath):
 
 
 def test_endfpath_alternative_representations():
-    p1 = EndfPath('a/b[1,2]/3')
-    p2 = EndfPath('a/b/1/2/3')
-    p3 = EndfPath('a /  b[ 1] / 2/3')
-    p4 = EndfPath('a/b') + EndfPath('1/2/3')
-    p5 = EndfPath('a/  ///b[1,2,3]')
+    p1 = EndfPath("a/b[1,2]/3")
+    p2 = EndfPath("a/b/1/2/3")
+    p3 = EndfPath("a /  b[ 1] / 2/3")
+    p4 = EndfPath("a/b") + EndfPath("1/2/3")
+    p5 = EndfPath("a/  ///b[1,2,3]")
     assert p1 == p2
     assert p2 == p3
     assert p3 == p4
@@ -105,10 +106,10 @@ def test_endfpath_alternative_representations():
 
 
 def test_endfpath_addition():
-    p1 = '1/2/3' + EndfPath('4/5/6')
-    p2 = EndfPath('1/2/3') + '4/5/6'
-    p3 = (1, 2, '3') + EndfPath('4/5/6')
-    p4 = EndfPath('1/2/3/4/5/6')
+    p1 = "1/2/3" + EndfPath("4/5/6")
+    p2 = EndfPath("1/2/3") + "4/5/6"
+    p3 = (1, 2, "3") + EndfPath("4/5/6")
+    p4 = EndfPath("1/2/3/4/5/6")
     assert p1 == p2
     assert p2 == p3
     assert p3 == p4

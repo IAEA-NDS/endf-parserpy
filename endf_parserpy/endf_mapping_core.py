@@ -76,24 +76,23 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
 
         targetkey = get_varname(expr_vv[2])
         varnames.append(targetkey)
-        # if the record specification contains a value,
-        # hence targetkey is None, we check if the value
-        # in the ENDF file is equal to that value and
-        # bomb out if not. Except that, we don't do anything else,
-        # as the fixed value can be written back during
-        # the inverse transform from the record specification
-        # in the ENDF recipe.
-        # NOTE: This branch is also entered, if all variables
+        # If the record specification in the ENDF recipe
+        # specification contains a value, hence targetkey is None,
+        # we check if the value in the ENDF file is equal to this
+        # value and raise an exception otherwise. Apart from this,
+        # we don't do anything else, as the value in the record
+        # specification can be employed while translating informatoin
+        # in the datadic back to an an ENDF-6 file.
+        # NOTE: This branch is also entered if all variables
         # appearing in an expression have already been read in
         # before.
         if targetkey is None:
             assert expr_vv[1] == 0
-
-            # if we have a DESIRED_NUMBER in the expression,
-            # we expect a certain number but we do not require it.
-            # with only NUMBER in the expression, any mismatch between
-            # our expectation and the number in the ENDF file will yield
-            # an error.
+            # If we have a DESIRED_NUMBER in the expression,
+            # we expect a specific number but do not require it.
+            # If, on the other hand, there are only NUMBERs in the
+            # expression, any inconsistency between these numbers
+            # and the number in the ENDF file will yield an error.
             contains_desired_number = search_name(curexpr, 'DESIRED_NUMBER')
             contains_inconsistent_varspec = search_name(curexpr, 'inconsistent_varspec')
             if not fuzzy_matching:
@@ -117,8 +116,8 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
                 elif not ignore_all_mismatches:
                     log_offending_line(record_dic, 'error')
                     raise NumberMismatchError(msg)
-        # there is still a dangling variable but we can
-        # solve the linear equation given in the slot to obtain its value
+        # The else branch covers the case when there is still a dangling variable
+        # but the linear equation given in the slot can be solved to obtain its value.
         else:
             try:
                 val = varvalue_expr_conversion(expr_vv, record_dic[sourcekey],
@@ -130,7 +129,7 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
             if idxquants is None:
                 datadic[targetkey] = val
             else:
-                # loop through indexvars, and initialize
+                # Loop through indexvars and initialize the
                 # nested dictionaries with the indicies as keys
                 datadic.setdefault(targetkey, {})
                 curdic = datadic[targetkey]
@@ -142,7 +141,7 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
                 idx = get_indexvalue(idxquants[-1], loop_vars)
                 curdic[idx] = val
 
-    # we write out logging info the first time we encounter a variable
+    # Logging info is only produced the first time we encounter a variable
     tmp = tuple(v for v in varnames if v is not None)
     if not should_skip_logging_info(tmp, datadic):
         varvals = tuple(abbreviate_valstr(datadic[v]) for v in tmp)
@@ -168,7 +167,7 @@ def map_datadic_to_recorddic(basekeys, record_dic, expr_list,
 
 def map_record_helper(expr_list, basekeys, record_dic, datadic, loop_vars,
                       rwmode, parse_opts=None):
-    # remove COMMA token because it is not relevant
+    # remove COMMA tokens as they are not needed
     expr_list = [expr for expr in expr_list
                  if not is_token(expr) or get_name(expr) != 'COMMA']
 

@@ -49,6 +49,17 @@ def substitute_abbreviation(val, datadic, loop_vars, look_up):
     )
     return val
 
+def get_array_value(varname, idxquants, datadic, loop_vars):
+    curdic = datadic[varname]
+    for idxquant in idxquants:
+        idx = get_indexvalue(idxquant, loop_vars)
+        if idx in curdic:
+            curdic = curdic[idx]
+        else:
+            raise UnavailableIndexError(
+                    f'index {idx} does not exist in array {varname}')
+    return curdic
+
 def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
     name = get_name(expr, nofail=True)
     if name not in ('VARNAME', 'extvarname'):
@@ -81,15 +92,7 @@ def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
         else:
             return datadic[varname]
     else:
-        curdic = datadic[varname]
-        for idxquant in idxquants:
-            idx = get_indexvalue(idxquant, loop_vars)
-            if idx in curdic:
-                curdic = curdic[idx]
-            else:
-                raise UnavailableIndexError(
-                        f'index {idx} does not exist in array {varname}')
-        val = curdic
+        val = get_array_value(varname, idxquants, datadic, loop_vars)
         if eval_abbrev:
             return substitute_abbreviation(val, orig_datadic, loop_vars, look_up)
         else:

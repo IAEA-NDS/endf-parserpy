@@ -18,7 +18,8 @@ from .custom_exceptions import (
 from .endf_mapping_utils import (
         get_varname, get_indexquants, eval_expr,
         eval_expr_without_unknown_var,
-        varvalue_expr_conversion, get_indexvalue
+        varvalue_expr_conversion, get_indexvalue,
+        set_array_value
     )
 from .tree_utils import (is_token, get_name, search_name)
 from .math_utils import math_allclose
@@ -129,15 +130,7 @@ def map_recorddic_to_datadic(basekeys, record_dic, expr_list,
             if idxquants is None:
                 datadic[targetkey] = val
             else:
-                # Loop through indexvars and initialize the
-                # nested dictionaries with the indicies as keys
-                datadic.setdefault(targetkey, {})
-                curdic = datadic[targetkey]
-                for idxquant in idxquants[:-1]:
-                    idx = get_indexvalue(idxquant, loop_vars)
-                    curdic = curdic.setdefault(idx, {})
-                idx = get_indexvalue(idxquants[-1], loop_vars)
-                curdic[idx] = val
+                set_array_value(targetkey, idxquants, val, datadic, loop_vars)
 
     # Logging info is only produced the first time we encounter a variable
     tmp = tuple(v for v in varnames if v is not None)

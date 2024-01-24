@@ -76,6 +76,17 @@ from .debugging_utils import TrackingDict
 
 
 class BasicEndfParser:
+    """Class for parsing and writing ENDF-6 formatted data.
+
+    This class provides functions for
+    (1) parsing ENDF-6 formatted data, and (2) converting data
+    given in a `dict`-like object into the ENDF-6 format.
+    The ENDF-6 formatted data may be given
+    in a text file, a string, or a list of strings containing
+    separate lines. The essential methods of this class
+    are :func:`parsefile` and :func:`writefile`.
+    """
+
     def __init__(
         self,
         ignore_number_mismatch=False,
@@ -95,6 +106,90 @@ class BasicEndfParser:
         print_cache_info=True,
         recipes=None,
     ):
+        """Initializaton of options for parsing and writing ENDF-6 data.
+
+        The process of parsing can be influenced by many options that
+        determine how inconsistencies in ENDF-6 formatted data should be
+        handled and the degree of flexibility in accepting unusual
+        number representations. Parameters pertaining to the parsing process
+        are indicated by `(parsing)` in their description.
+        The reverse process, writing data into the ENDF-6 format, can also be
+        influenced by a variety of options, e.g., impacting the output precision.
+        Parameters related to converting data into the ENDF-6 format are
+        marked by `(writing)`.
+
+
+        Parameters
+        ------------------
+        ignore_number_mismatch: bool
+            Tolerate mismatches between numbers in ENDF-6 formatted
+            data and the expected numbers according to the ENDF-6 recipes.
+            *(parsing)*
+        ignore_zero_mismatch: bool
+            Tolerate non-zero numbers in ENDF-6 formatted data that
+            are required to be zero according to ENDF-6 recipes.
+            *(parsing)*
+        ignore_varspec_mismatch: bool
+            Tolerate distinct numbers that are supposed to be mapped
+            to the same symbol name. For the time being, even with this
+            option enabled, possible inconsistent variable assignment
+            have to be marked with a queston mark in the ENDF-6 recipe.
+            *(parsing)*
+        fuzzy_matching: bool
+            Tolerate small inconsistencies between fields when they
+            are linked by a mathematical relationship. *(parsing)*
+        blank_as_zero: bool
+            Interpret blank numeric fields in the ENDF-6 data as zero.
+            If this argument is `false`, blank fields will cause
+            the parsing process to fail. *(parsing)*
+        abuse_signpos: bool
+            Permit positive numbers to start in the first character slot
+            of an ENDF-6 field, which is usually reserved for the sign,
+            to enhance numerical precision. *(writing)*
+        skip_intzero: bool
+            For numbers written out in decimal notation, eliminate
+            the integer part if zero, e.g. `0.12` becomes `.12` to
+            increase attainable precision. *(writing)*
+        accept_spaces: bool
+            Eliminate spaces in a number before trying to parse it, e.g.
+            `1.234 +8` is transformed to `1.234+8`. *(writing)*
+        keep_E : bool
+            If `true`, include the `e` character in scientific notation,
+            e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
+            compatibility with programming languages different from Fortran
+            while the omission enhances numerical precision. *(writing)*
+        width : int
+            The number of character slots in an ENDF-6 field. The ENDF-6
+            format requires 11 but the user may opt for a different width
+            for their storage/application needs. *(parsing, writing)*
+        check_arrays : bool
+            Ensures that index ranges provided in the Python ``dict``
+            passed as argument to the :func:`write` and :func:`writefile`
+            method are consistent with the values of counter variables.
+            If `true`, a ``dict`` containing larger index ranges than
+            expected by counter variables will lead to failure, otherwise
+            the presence of additional indices will be ignored. *(writing)*
+        strict_datatypes : bool
+            Strict data type checking will lead to failure if a `float`
+            needs to be cast to an `int`. If `false`, the writing process
+            will only fail if the a value in the `float` cannot be
+            perfectly represented by an `int`. *(writing)*
+        cache_dir
+            Directory to store the parsing trees associated with ENDF-6 recipes
+            If `None`, the directory will be automatically determined
+            relying on the `appdirs` package. If `false`, no cache directory
+            will be used and ENDF-6 recipes will be compiled on the fly
+            whenever this class is instantiated. Finally, the user can
+            provide a custom directory as a string.
+        print_cache_info : bool
+            If `true`, print out a message regarding the location of the
+            cache directory if it was automatically determined.
+        recipes : dict_like
+            The default ENDF-6 recipes can be overrided by providing a
+            nested dictionary with custom recipes. Inspect the default
+            recipe dictionary to see the required structure
+            (`from endf_parserpy.endf_recipes import endf_recipe_dictionary`)
+        """
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         if cache_dir is None:
@@ -575,6 +670,25 @@ class BasicEndfParser:
         return False
 
     def parse(self, lines, exclude=None, include=None, nofail=False):
+        """Parse ENDF-6 formatted data.
+
+        Parameters
+        ----------
+        lines : Union[str, List[str]]
+            The lines of text containing the ENDF-6 formatted data.
+            This argument can be either a list of strings with each
+            string storing a single line, or a string containing
+            all ENDF-6 formatted data including linebreaks.
+        exclude : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+            See explanation of parameter ``exclude`` in
+            :func:`parsefile` for details.
+        include : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+            See explanation of parameter ``include`` in
+            :func:`parsefile` for details.
+        nofail : bool
+            See explanation of parameter ``nofail`` in
+            :func:`parsefile` for details.
+        """
         if isinstance(lines, str):
             lines = lines.split("\n")
         tree_dic = self.tree_dic
@@ -609,6 +723,16 @@ class BasicEndfParser:
         return mfmt_dic
 
     def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
+        """Convert data into the ENDF-6 format.
+
+        All parameters are explained in the description of
+        :func:`writefile`.
+
+        Returns
+        -------
+        List[str]
+            List of lines with the ENDF-6 formatted data.
+        """
         self.zero_as_blank = zero_as_blank
         self.reset_parser_state(rwmode="write", datadic={})
         should_check_arrays = self.write_opts["check_arrays"]
@@ -722,6 +846,48 @@ class BasicEndfParser:
         return lines
 
     def parsefile(self, filename, exclude=None, include=None, nofail=False):
+        """Parse ENDF-6 formatted data stored in a file.
+
+        Parameters
+        ----------
+        filename : str
+            Path to the ENDF-6 file
+        exclude : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+            MF/MT sections to exclude in the parsing process.
+            Excluded sections will only be available as a list of strings.
+            The default `None` indicates that nothing should be excluded.
+            If a `tuple` is provided, integers in that tuple denote the
+            `MF` sections to be excluded. In addition to integers,
+            also tuples composed of two integers can be provided to
+            indicate the `MF`/`MT` combinations that should be excluded.
+            For instance, ``(3,)`` would exclude MF section 3 and
+            ``(3, (2, 151))`` would exclude MF section 3 and additionally
+            MF=2/MT=151.
+            Useful to speed up the parsing process or to ensure
+            a verbatim copy of data in a read/write sequence.
+        include : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+            The MF/MT section to include in the parsing.
+            All the other sections will be only present as a list of
+            strings. This argument is only active if ``exclude=None``.
+            The MF and MF/MT sections are specified exactly in the
+            same way as for the ``exclude`` argument.
+        nofail : bool
+            If this argument is `true`, the parser will attempt to
+            parse *all* MF/MT sections desired by the user, irrespective
+            of failure in the parsing of any section. Sections where
+            parsing failed will only be available as list of strings.
+            On the other hand, ``nofail=false`` instructs the parser
+            to abort immediately upon the first parsing failure.
+
+        Returns
+        -------
+        dict
+            A nested dictionary. The keys of the first level are
+            MF numbers and of the second level MT numbers.
+            The structure of the `dict` stored under a specific
+            `MF`/`MT` combination is determined by the
+            corresponding ENDF recipe.
+        """
         with open(filename, "r") as fin:
             lines = fin.readlines()
         return self.parse(lines, exclude, include, nofail=nofail)
@@ -735,6 +901,33 @@ class BasicEndfParser:
         zero_as_blank=False,
         overwrite=False,
     ):
+        """Write data to an ENDF-6 file.
+
+        Parameters
+        ----------
+        filename : str
+            Path of the file to be created.
+        endf_dic : Dict
+            Nested dictionary with nuclear data. Keys of first level
+            are MF numbers and the keys of second level MT numbers.
+            The structure of the ``dict`` stored under an MF/MT combination
+            depends on the corresponding ENDF recipe.
+        exclude : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+            A section will only be written to the file if
+            not excluded. For an explanation of how to specify
+            MF/MT sections to be excluded, see the ``exclude`` argument
+            of :func:`parsefile`.
+        include : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+            This argument is only considered if ``exclude=None``.
+            If this argument is ``None``, all sections will be written
+            to the file. Otherwise, only the indicated sections will
+            be written to the file. For an explanation of how to
+            define which sections to include, see the ``include`` argument
+            of :func:`parsefile`.
+        overwrite : bool
+            Existing files will only be overwritten if this argument
+            is ``true``, otherwise this function will abort.
+        """
         if file_exists(filename) and not overwrite:
             raise FileExistsError(
                 f"file {filename} already exists. "

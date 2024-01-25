@@ -46,6 +46,21 @@ def get_endf_values(dic, locations):
 
 
 def list_unparsed_sections(dic):
+    """List all MF/MT sections that are not parsed.
+
+    Parameters
+    ----------
+    dic : Dict
+        A ``dict`` in the form as returned by the
+        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.BasicEndfParser` class.
+
+    Returns
+    -------
+    Tuple[Tuple[int, int]]
+        A tuple of tuples with pairs of MF and MT numbers that were not parsed.
+        For instance, if MF=1/MT=451 an MF=2/MT=151 were not parsed,
+        the return value would be ``((1, 451), (2, 151))``.
+    """
     unparsed = []
     for mf, mfsec in dic.items():
         for mt, mtsec in mfsec.items():
@@ -55,6 +70,21 @@ def list_unparsed_sections(dic):
 
 
 def list_parsed_sections(dic):
+    """List all MF/MT sections that were parsed.
+
+    Parameters
+    ----------
+    dic : Dict
+        A ``dict`` in the form as returned by the
+        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.BasicEndfParser` class.
+
+    Returns
+    -------
+    Tuple[Tuple[int, int]]
+        A tuple of tuples with pairs of MF and MT numbers that are available in parsed form.
+        For instance, if MF=1/MT=451 an MF=2/MT=151 were not parsed,
+        the return value would be ``((1, 451), (2, 151))``.
+    """
     parsed = []
     for mf, mfsec in dic.items():
         for mt, mtsec in mfsec.items():
@@ -64,6 +94,29 @@ def list_parsed_sections(dic):
 
 
 def sanitize_fieldname_types(dic):
+    """Sanitize the key of a ``dict`` object with ENDF-6 data.
+
+    The Python ``dict`` datatype supports the use of keys of
+    type ``int`` whereas hashtable implementations in other
+    language may only allow the use of strings. For example,
+    the JSON format only allows strings as keys. This function
+    recursively replaces all keys containing integer numbers
+    but being of type ``str`` to type ``int``.
+
+    Noteworthy, this conversion is necessary before using the ``.writefile``
+    method of the :class:`endf_parserpy.endf_parser.BasicEndfParser`
+    class if the dictionary ENDF-6 has been retrieved from a JSON file.
+
+    Parameters
+    ----------
+    dic : Dict
+        A ``dict_like`` object.
+
+    Returns
+    -------
+    None
+        Datatypes are changed in-place in the ``dict_like`` object provided as ``dic`` argument.
+    """
     if not isinstance(dic, dict):
         raise TypeError("please provide dictionary")
     keys = tuple(dic.keys())

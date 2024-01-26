@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/13
-# Last modified:   2022/09/13
+# Last modified:   2024/01/26
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -79,4 +79,8 @@ class SeveralUnboundVariablesError(ParserException):
 
 
 class AbbreviationNameCollisionError(ParserException):
+    pass
+
+
+class SizeMismatchError(ParserException):
     pass

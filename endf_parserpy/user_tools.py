@@ -105,7 +105,7 @@ def sanitize_fieldname_types(dic):
 
     Noteworthy, this conversion is necessary before using the ``.writefile``
     method of the :class:`endf_parserpy.endf_parser.BasicEndfParser`
-    class if the dictionary ENDF-6 has been retrieved from a JSON file.
+    class if the dictionary with ENDF-6 data has been retrieved from a JSON file.
 
     Parameters
     ----------

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2022/11/15
+# Last modified:   2024/01/26
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -14,6 +14,7 @@ from .custom_exceptions import (
     NumberMismatchError,
     InvalidIntegerError,
     SeveralUnboundVariablesError,
+    SizeMismatchError,
 )
 from .endf_mapping_utils import (
     get_varname,
@@ -48,6 +49,20 @@ def create_variable_wrong_value_error_msg(realval, expval, sourcekey):
         f"Expected {expval} in the ENDF file but got {realval}. "
         f"The value was encountered in a source field named {sourcekey}"
     )
+
+
+def create_size_mismatch_error_msg(realval, expval, sourcekey):
+    msgpart1 = "Attempted to associate "
+    if hasattr(realval, "__len__"):
+        msgpart2 = f"an array ({sourcekey}) of length {len(realval)} "
+    else:
+        msgpart2 = f"a single value ({sourcekey}) "
+    msgpart3 = "in an ENDF record with a variable " + "that is already associated with "
+    if hasattr(expval, "__len__"):
+        msgpart4 = f"an array of different length {len(expval)}."
+    else:
+        msgpart4 = f"with a scalar value ({expval})"
+    return msgpart1 + msgpart2 + msgpart3 + msgpart4
 
 
 def log_offending_line(record_dic, logging_method):
@@ -103,6 +118,19 @@ def map_recorddic_to_datadic(
             # and the number in the ENDF file will yield an error.
             contains_desired_number = search_name(curexpr, "DESIRED_NUMBER")
             contains_inconsistent_varspec = search_name(curexpr, "inconsistent_varspec")
+
+            srcval = record_dic[sourcekey]
+            expval = expr_vv[0]
+            srcval_has_len = hasattr(srcval, "__len__")
+            expval_has_len = hasattr(expval, "__len__")
+            if (
+                (srcval_has_len and not expval_has_len)
+                or (expval_has_len and not srcval_has_len)
+                or (srcval_has_len and expval_has_len and len(srcval) != len(expval))
+            ):
+                errmsg = create_size_mismatch_error_msg(srcval, expval, sourcekey)
+                raise SizeMismatchError(errmsg)
+
             if not fuzzy_matching:
                 value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
             else:

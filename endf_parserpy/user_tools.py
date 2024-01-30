@@ -95,7 +95,7 @@ def list_parsed_sections(dic):
 
 
 def sanitize_fieldname_types(dic):
-    """Sanitize the key of a ``dict`` object with ENDF-6 data.
+    """Sanitize the keys of a ``dict`` object with ENDF-6 data.
 
     The Python ``dict`` datatype supports the use of keys of
     type ``int`` whereas hashtable implementations in other

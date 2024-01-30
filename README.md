@@ -81,38 +81,37 @@ produce a new ENDF file:
 endf_dic[3][1]['AWR'] = 53.47624
 parser.writefile(endf_file + '.writeback', endf_dic)
 ```
-Please note that the ENDF dictionary (listing all MF/MT
+
+Please note that the ENDF directory (listing all MF/MT
 sections of the file) in MF1/MT451 is not automatically updated.
 To update it according to the effected changes,
-use the `ExtEndfParser` instead of the
-`BasicEndfParser` class (see also next section).
+use the `update_directory` function:
+```
+from endf_parserpy.endf6_plumbing import update_directory
+update_directory(endf_dic)
+```
 
 The following subsections provide short code snippets
 for common operations or interactions with ENDF files.
 
-### Updating description and MT451 dictionary
+### Update general description in MF1/MT451
 
-In case the description in MF1/MT451 or
-any other section were modified in ways that may
-result in a different number of lines in the ENDF file,
-it is better to use the `ExtEndfParser` class.
-In addition to the methods of the `BasicEndfParser`,
-it offers a few convenience methods, e.g.,
+Even though the general description in MF1/MT451
+can be changed by manipulating the corresponding
+variables in `endf_dic`, a few
+convenience functions are provided to help with
+this task:
 ```
-from endf_parserpy import ExtEndfParser
-parser = ExtEndfParser()
+from endf_parserpy import BasicEndfParser
+from endf_parserpy.endf6_plumbing import *
+parser = BasicEndfParser()
 endf_dic = parser.parsefile(endf_file)
-descr = parser.get_description(endf_dic)
+descr = get_description(endf_dic)
 print(descr)
 newinfo = 'We tweaked the data in MF3...\nJust joking!'
-parser.insert_description(endf_dic, newinfo, after_line=5)
+insert_description(endf_dic, newinfo, after_line=5)
+update_directory(endf_dic, parser)
 parser.writefile('modified_file.endf', endf_dic)
-```
-
-The updating of the dictionary in MF1/MT451 can also
-be done without writing a file to disk:
-```
-parser.update_dictionary(endf_dic)
 ```
 
 ### Convenient syntax to navigate ENDF-6 data

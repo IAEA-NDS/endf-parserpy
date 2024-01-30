@@ -3,8 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
+# Last modified:   2024/01/30
 # License:         MIT
-# Copyright (c) 2023 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -257,6 +258,7 @@ class EndfVariable:
     pass around objects that can be treated like variables
     but are always in sync with the data in a given dictionary.
     """
+
     def __init__(self, endf_path, endf_dict, value=None):
         """Create and associate ``EndfVariable`` with location in dictionary.
 
@@ -371,6 +373,7 @@ class EndfDict(MutableMapping):
     are converted to the underlying ``dict_like`` object
     before being stored (see :func:`unwrap` method).
     """
+
     def __init__(self, mapping=None):
         """The constructor takes a single argument.
 

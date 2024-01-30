@@ -153,7 +153,7 @@ class EndfParser:
             increase attainable precision. *(writing)*
         accept_spaces: bool
             Eliminate spaces in a number before trying to parse it, e.g.
-            `1.234 +8` is transformed to `1.234+8`. *(writing)*
+            `1.234 +8` is transformed to `1.234+8`. *(parsing)*
         keep_E : bool
             If `true`, include the `e` character in scientific notation,
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes

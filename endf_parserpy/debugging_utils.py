@@ -42,7 +42,7 @@ def compare_objects(
     iterable array-like objects. For example, this class can be
     used to confirm or reject the equality of two nested dictionaries
     resulting from the parsing of ENDF-6 files via the ``parsefile()``
-    method of the :class:`endf_parserpy.BasicEndfParser` class.
+    method of the :class:`endf_parserpy.EndfParser` class.
     The function can print out meaningful information where the
     discrepancies are present in the objects with a nested structure.
 
@@ -222,9 +222,9 @@ class TrackingDict(MutableMapping):
       key that starts with two underscores (``__``).
 
     These two rules are owed to the mode of operation of the
-    :class:`endf_parserpy.endf_parser.BasicEndfParser` class.
+    :class:`endf_parserpy.endf_parser.EndfParser` class.
     The methods ``.parsefile()`` and ``.writefile()`` of the
-    ``BasicEndfParser`` class will temporarily create auxiliary
+    ``EndfParser`` class will temporarily create auxiliary
     variables stored under keys starting with two underscores.
     It is not pertinent to track read access to those ephemeral
     objects. The purpose of the ``TrackingDict`` class---

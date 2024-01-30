@@ -49,14 +49,14 @@ The only two dependencies of this package are [lark] and [appdirs].
 ## Basic usage
 
 The essential class implemented in this
-package is `BasicEndfParser`. It contains the
+package is `EndfParser`. It contains the
 methods `.parsefile` for reading and `.writefile`
 for writing ENDF-6 files.
 The following code snippet demonstrates reading
 an ENDF-6 file:
 ```
-from endf_parserpy import BasicEndfParser
-parser = BasicEndfParser()
+from endf_parserpy import EndfParser
+parser = EndfParser()
 endf_file = 'n_2925_29-Cu-63.endf'
 endf_dic = parser.parsefile(endf_file)
 ```
@@ -102,9 +102,9 @@ variables in `endf_dic`, a few
 convenience functions are provided to help with
 this task:
 ```
-from endf_parserpy import BasicEndfParser
+from endf_parserpy import EndfParser
 from endf_parserpy.endf6_plumbing import *
-parser = BasicEndfParser()
+parser = EndfParser()
 endf_dic = parser.parsefile(endf_file)
 descr = get_description(endf_dic)
 print(descr)
@@ -231,9 +231,9 @@ endf_dic[1][451]['AWR'] = 63
 Equivalent JSON files can be produced from ENDF files
 with this code snippet:
 ```
-from endf_parserpy import BasicEndfParser
+from endf_parserpy import EndfParser
 import json
-parser = BasicEndfParser()
+parser = EndfParser()
 endf_dic = parser.parsefile(endf_filepath)
 with open('endf_file.json', 'w') as f:
     json.dump(endf_dic, f, indent=2)
@@ -260,8 +260,8 @@ Some options can be provided to increase the
 precision of outputted ENDF files by passing
 specific options to the constructor:
 ```
-from endf_parserpy import BasicEndfParser
-parser = BasicEndfParser(prefer_noexp=True,
+from endf_parserpy import EndfParser
+parser = EndfParser(prefer_noexp=True,
     abuse_signpos=True, skip_intzero=True)
 parser.writefile('endf_output.endf', endf_dic)
 ```
@@ -275,9 +275,9 @@ one digit precision, you can also add
 If two files are believed to be equivalent or to have only
 minor differences, they can be compared in the following way:
 ```
-from endf_parserpy import BasicEndfParser
+from endf_parserpy import EndfParser
 from endf_parserpy.debugging_utils import compare_objects
-parser = BasicEndfParser()
+parser = EndfParser()
 endf_dic1 = parser.parsefile('n_2925_29-Cu-63.endf')
 endf_dic2 = parser.parsefile('n_3025_30-Zn-64.endf')
 compare_objects(endf_dic1, endf_dic2, fail_on_diff=False)

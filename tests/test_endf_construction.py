@@ -1,5 +1,5 @@
 import pytest
-from endf_parserpy.endf_parser import BasicEndfParser
+from endf_parserpy.endf_parser import EndfParser
 from endf_parserpy.accessories import EndfDict
 from endf_parserpy.custom_exceptions import (
     InvalidIntegerError,
@@ -67,7 +67,7 @@ def mf3_section():
 
 
 def test_creation_of_mf3(mf3_section):
-    parser = BasicEndfParser()
+    parser = EndfParser()
     try:
         parser.write(mf3_section)
     except Exception:
@@ -75,7 +75,7 @@ def test_creation_of_mf3(mf3_section):
 
 
 def test_creation_of_mf1_mt451(mf1_mt451_section):
-    parser = BasicEndfParser()
+    parser = EndfParser()
     try:
         parser.write(mf1_mt451_section)
     except Exception:
@@ -83,7 +83,7 @@ def test_creation_of_mf1_mt451(mf1_mt451_section):
 
 
 def test_creation_of_mf3_without_strict_datatypes(mf3_section):
-    parser = BasicEndfParser(strict_datatypes=False)
+    parser = EndfParser(strict_datatypes=False)
     mf3_section["3/1/LR"] = 0.0
     parser.write(mf3_section)
     mf3_section["3/1/LR"] = 0.5
@@ -95,7 +95,7 @@ def test_creation_of_mf3_without_strict_datatypes(mf3_section):
 
 
 def test_creation_of_mf3_with_strict_datatypes(mf3_section):
-    parser = BasicEndfParser(strict_datatypes=True)
+    parser = EndfParser(strict_datatypes=True)
     mf3_section["3/1/LR"] = 0
     parser.write(mf3_section)
     mf3_section["3/1/LR"] = 0.0
@@ -108,7 +108,7 @@ def test_creation_of_mf3_with_strict_datatypes(mf3_section):
 
 def test_creation_of_mf1_mt451_with_check_arrays(mf1_mt451_section):
     d = mf1_mt451_section
-    parser = BasicEndfParser(check_arrays=True)
+    parser = EndfParser(check_arrays=True)
     parser.write(d)
     d["1/451/DESCRIPTION/50"] = "should not be here according to NWD"
     d["1/451/IgnoredVar1"] = 23
@@ -122,7 +122,7 @@ def test_creation_of_mf1_mt451_with_check_arrays(mf1_mt451_section):
 
 def test_creation_of_mf1_mt451_without_check_arrays(mf1_mt451_section):
     d = mf1_mt451_section
-    parser = BasicEndfParser(check_arrays=False)
+    parser = EndfParser(check_arrays=False)
     d["1/451/DESCRIPTION/50"] = "should not be here according to NWD"
     d["1/451/IgnoredVar1"] = 23
     d["1/451/IgnoredVar2"] = {1: "a", 2: "b"}
@@ -130,7 +130,7 @@ def test_creation_of_mf1_mt451_without_check_arrays(mf1_mt451_section):
 
 
 def test_creation_of_mf1_mt451_with_dictionary(mf1_mt451_section):
-    parser = BasicEndfParser(check_arrays=False)
+    parser = EndfParser(check_arrays=False)
     d = mf1_mt451_section
     d["1/451/NXC"] = 1
     d["1/451/MFx[1]"] = 3
@@ -141,7 +141,7 @@ def test_creation_of_mf1_mt451_with_dictionary(mf1_mt451_section):
 
 
 def test_creation_of_mf1_mt451_fails_if_variable_missing(mf1_mt451_section):
-    parser = BasicEndfParser(check_arrays=False)
+    parser = EndfParser(check_arrays=False)
     d = mf1_mt451_section
     del d["1/451/LRP"]
     try:
@@ -151,7 +151,7 @@ def test_creation_of_mf1_mt451_fails_if_variable_missing(mf1_mt451_section):
 
 
 def test_creation_of_mf1_mt451_fails_if_counter_larger_than_array(mf1_mt451_section):
-    parser = BasicEndfParser(check_arrays=False)
+    parser = EndfParser(check_arrays=False)
     d = mf1_mt451_section
     d["1/451/NWD"] = len(d["1/451/DESCRIPTION"]) + 1
     try:
@@ -161,7 +161,7 @@ def test_creation_of_mf1_mt451_fails_if_counter_larger_than_array(mf1_mt451_sect
 
 
 def test_creation_of_mf1_mt451_fails_if_counter_smaller_than_array(mf1_mt451_section):
-    parser = BasicEndfParser()
+    parser = EndfParser()
     d = mf1_mt451_section
     d["1/451/NWD"] = len(d["1/451/DESCRIPTION"]) - 1
     try:

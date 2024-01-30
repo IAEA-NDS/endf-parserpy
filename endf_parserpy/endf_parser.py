@@ -3,13 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2024/01/30
 # License:         MIT
-# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from collections.abc import Mapping
+import logging
 from .logging_utils import write_info, RingBuffer
 from appdirs import user_cache_dir
 from os.path import exists as file_exists
@@ -75,7 +76,7 @@ from .endf_recipes import endf_recipe_dictionary
 from .debugging_utils import TrackingDict
 
 
-class BasicEndfParser:
+class EndfParser:
     """Class for parsing and writing ENDF-6 formatted data.
 
     This class provides functions for
@@ -938,3 +939,15 @@ class BasicEndfParser:
             lines = self.write(endf_dic, exclude, include, zero_as_blank)
             with open(filename, "w") as fout:
                 fout.write("\n".join(lines))
+
+
+# DEPRECATED NAME
+
+
+class BasicEndfParser(EndfParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        logging.warning(
+            "DEPRECATION NOTICE: The name of the class is now `EndfParser`. "
+            + "The alias `BasicEndfParser` will be abandoned soon."
+        )

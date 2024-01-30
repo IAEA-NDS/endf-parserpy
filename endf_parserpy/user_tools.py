@@ -3,8 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
+# Last modified:   2024/01/30
 # License:         MIT
-# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -52,7 +53,7 @@ def list_unparsed_sections(dic):
     ----------
     dic : Dict
         A ``dict`` in the form as returned by the
-        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.BasicEndfParser` class.
+        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.EndfParser` class.
 
     Returns
     -------
@@ -76,7 +77,7 @@ def list_parsed_sections(dic):
     ----------
     dic : Dict
         A ``dict`` in the form as returned by the
-        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.BasicEndfParser` class.
+        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.EndfParser` class.
 
     Returns
     -------
@@ -104,7 +105,7 @@ def sanitize_fieldname_types(dic):
     but being of type ``str`` to type ``int``.
 
     Noteworthy, this conversion is necessary before using the ``.writefile``
-    method of the :class:`endf_parserpy.endf_parser.BasicEndfParser`
+    method of the :class:`endf_parserpy.endf_parser.EndfParser`
     class if the dictionary with ENDF-6 data has been retrieved from a JSON file.
 
     Parameters

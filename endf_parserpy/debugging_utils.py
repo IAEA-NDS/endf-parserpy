@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2022/09/09
+# Last modified:   2024/01/30
 # License:         MIT
-# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -60,7 +60,7 @@ def compare_objects(
         If ``true``, only compare the lengths of strings, otherwise also
         the content of the strings is considered in the comparison.
     do_rstrip : bool
-        Again related to the comparison of strings. If ``true`` strip whitespace
+        If ``true``, strip whitespace
         characters at the end of the strings before comparison.
     rstrcut : Union[None, int]
         If an integer is provided, only retain the first ``rstrcut`` characters
@@ -72,9 +72,10 @@ def compare_objects(
         and return ``true`` if the two objects are equal and ``false`` if they
         exhibit differences. The second option is mostly useful in combination
         with ``diff_log=True``.
-    diff_log : bool
-        If ``true``, print out the differences found, otherwise not.
-        This option is mostly useful in combination with ``fail_on_diff=false``.
+    diff_log : Union[None, List]
+        A ``list`` object can be passed which will be filled with
+        strings that indicate the differences found.
+        This option is only useful in combination with ``fail_on_diff=false``.
     """
     return _compare_objects(
         obj1,

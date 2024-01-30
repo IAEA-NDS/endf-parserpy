@@ -87,6 +87,20 @@ def insert_description(endf_dic, text, after_line=0):
 
 
 def update_directory(endf_dic, parser=None, lines=None):
+    """Update the ENDF directory in MF1/MT451.
+
+    Parameters
+    ----------
+    endf_dic : dict
+        Dictionary of appropriate structure with ENDF-6 data.
+    parser : EndfParser
+        An ``EndfParser`` instance
+    lines: list[str]
+        A list of strings with the ENDF-6 formatted data
+        corresponding to the data in ``endf_dict``.
+        If this argument is provided, the ``parser``
+        argument will be ignored.
+    """
     if not lines:
         if not parser:
             raise TypeError("provide either`parser` or `lines` argument")

@@ -675,15 +675,15 @@ class EndfParser:
 
         Parameters
         ----------
-        lines : Union[str, List[str]]
+        lines : Union[str, list[str]]
             The lines of text containing the ENDF-6 formatted data.
             This argument can be either a list of strings with each
             string storing a single line, or a string containing
             all ENDF-6 formatted data including linebreaks.
-        exclude : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+        exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             See explanation of parameter ``exclude`` in
             :func:`parsefile` for details.
-        include : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+        include : Union[None, tuple[Union[int, tuple[int, int]]]]
             See explanation of parameter ``include`` in
             :func:`parsefile` for details.
         nofail : bool
@@ -731,7 +731,7 @@ class EndfParser:
 
         Returns
         -------
-        List[str]
+        list[str]
             List of lines with the ENDF-6 formatted data.
         """
         self.zero_as_blank = zero_as_blank
@@ -853,7 +853,7 @@ class EndfParser:
         ----------
         filename : str
             Path to the ENDF-6 file
-        exclude : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+        exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             MF/MT sections to exclude in the parsing process.
             Excluded sections will only be available as a list of strings.
             The default `None` indicates that nothing should be excluded.
@@ -866,7 +866,7 @@ class EndfParser:
             MF=2/MT=151.
             Useful to speed up the parsing process or to ensure
             a verbatim copy of data in a read/write sequence.
-        include : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+        include : Union[None, tuple[Union[int, tuple[int, int]]]]
             The MF/MT section to include in the parsing.
             All the other sections will be only present as a list of
             strings. This argument is only active if ``exclude=None``.
@@ -908,17 +908,17 @@ class EndfParser:
         ----------
         filename : str
             Path of the file to be created.
-        endf_dic : Dict
+        endf_dic : dict
             Nested dictionary with nuclear data. Keys of first level
             are MF numbers and the keys of second level MT numbers.
             The structure of the ``dict`` stored under an MF/MT combination
             depends on the corresponding ENDF recipe.
-        exclude : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+        exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             A section will only be written to the file if
             not excluded. For an explanation of how to specify
             MF/MT sections to be excluded, see the ``exclude`` argument
             of :func:`parsefile`.
-        include : Union[None, Tuple[Union[int, Tuple[int, int]]]]
+        include : Union[None, tuple[Union[int, tuple[int, int]]]]
             This argument is only considered if ``exclude=None``.
             If this argument is ``None``, all sections will be written
             to the file. Otherwise, only the indicated sections will

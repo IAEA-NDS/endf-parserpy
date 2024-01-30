@@ -51,13 +51,13 @@ def list_unparsed_sections(dic):
 
     Parameters
     ----------
-    dic : Dict
+    dic : dict
         A ``dict`` in the form as returned by the
         ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.EndfParser` class.
 
     Returns
     -------
-    Tuple[Tuple[int, int]]
+    tuple[tuple[int,int]]
         A tuple of tuples with pairs of MF and MT numbers that were not parsed.
         For instance, if MF=1/MT=451 an MF=2/MT=151 were not parsed,
         the return value would be ``((1, 451), (2, 151))``.
@@ -75,13 +75,13 @@ def list_parsed_sections(dic):
 
     Parameters
     ----------
-    dic : Dict
+    dic : dict
         A ``dict`` in the form as returned by the
         ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.EndfParser` class.
 
     Returns
     -------
-    Tuple[Tuple[int, int]]
+    tuple[tuple[int,int]]
         A tuple of tuples with pairs of MF and MT numbers that are available in parsed form.
         For instance, if MF=1/MT=451 an MF=2/MT=151 were not parsed,
         the return value would be ``((1, 451), (2, 151))``.
@@ -110,7 +110,7 @@ def sanitize_fieldname_types(dic):
 
     Parameters
     ----------
-    dic : Dict
+    dic : dict
         A ``dict_like`` object.
 
     Returns

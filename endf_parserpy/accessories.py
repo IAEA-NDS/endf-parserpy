@@ -145,7 +145,7 @@ class EndfPath(Sequence):
 
         Parameters
         ----------
-        dict_like : Dict
+        dict_like : dict
             The (nested) dictionary from which an object
             should be retrieved.
 
@@ -170,7 +170,7 @@ class EndfPath(Sequence):
 
         Parameters
         ----------
-        dict_like : Dict
+        dict_like : dict
             The (nested) dictionary to be extended/altered.
         value : Object
             The object that should be inserted at the location
@@ -202,7 +202,7 @@ class EndfPath(Sequence):
 
         Parameters
         ----------
-        dict_like : Dict
+        dict_like : dict
             The (nested) dictionary for which the existence
             of a key at the ``EndfPath`` location should be checked.
 
@@ -231,7 +231,7 @@ class EndfPath(Sequence):
 
         Parameters
         ----------
-        dict_like : Dict
+        dict_like : dict
             The (nested) dictionary from which the key
             at the ``EndfPath`` location should be removed.
 
@@ -268,7 +268,7 @@ class EndfVariable:
             An :class:`EndfPath` instance (or an object that is accepted
             by the ``EndfPath`` constructor) establishing the link
             to a specific location in a nested ``dict_like`` object.
-        endf_dict : Dict
+        endf_dict : dict
             A (nested) ``dict_like`` object that contains a key
             referenced by the ``endf_path`` argument.
         """

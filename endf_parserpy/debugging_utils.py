@@ -241,7 +241,7 @@ class TrackingDict(MutableMapping):
 
         Parameters
         __________
-        dict_like : Dict
+        dict_like : dict
             The ``dict_like`` object for which read access should be tracked.
         """
         self._basedict = dict_like

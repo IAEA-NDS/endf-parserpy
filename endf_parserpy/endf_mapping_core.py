@@ -242,7 +242,12 @@ def map_text_record_helper(
                 textlength = int(get_value(textlength_node))
                 upper_index = charcount + textlength
             if charcount >= upper_index:
-                raise IndexError("should not happen")
+                raise SizeMismatchError(
+                    "Variables span more character slots than "
+                    + "provided in the file. Either the ENDF-6 recipe "
+                    + "is wrong or the `width` argument was smaller "
+                    + "than 11 in the EndfParser constructor call."
+                )
             curstr = fullstring[charcount:upper_index]
             if extvarname_node is not None:
                 set_varval(extvarname_node, datadic, loop_vars, curstr)
@@ -260,7 +265,7 @@ def map_text_record_helper(
                 curstr = get_varval(extvarname_node, datadic, loop_vars)
                 if textlength is not None and len(curstr) != textlength:
                     varnamestr = generate_varname_str(extvarname_node, loop_vars)
-                    raise IndexError(
+                    raise SizeMismatchError(
                         f"String in variable {varnamestr} is of "
                         + f"length {len(curstr)} but expected to be of "
                         + f"length {textlength}"

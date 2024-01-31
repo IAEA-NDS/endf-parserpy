@@ -274,6 +274,7 @@ class EndfParser:
             # only other place that adds this information.
             self.datadic.update(get_ctrl(text_dic))
         else:
+            self.logbuffer.save_reduced_record_log(tree)
             text_dic = map_text_dic(
                 tree,
                 {},

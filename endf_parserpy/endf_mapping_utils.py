@@ -73,15 +73,36 @@ def set_array_value(varname, idxquants, value, datadic, loop_vars):
     curdic[idx] = value
 
 
-def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
+def varname_or_extvarname_check(expr):
     name = get_name(expr, nofail=True)
     if name not in ("VARNAME", "extvarname"):
         raise TypeError(
-            "node must be either of type VARNAME or extvarname "
-            + f"but is {name} OR it must be at least a string with "
-            + "the variable name"
+            "node must be either of type `VARNAME` or `extvarname` "
+            + f"but is of type `{name}`"
         )
 
+
+def generate_varname_str(expr, loop_vars):
+    varname_or_extvarname_check(expr)
+    node_name = get_name(expr)
+    if node_name == "VARNAME":
+        return get_value(expr)
+    # we assume it is an extvarname node
+    retstr = ""
+    for child in expr.children:
+        child_name = get_name(expr)
+        if child_name == "VARNAME":
+            retstr += get_value(child)
+        elif child_name == "indexquant":
+            idxval = get_indexvalue(expr, loop_vars)
+            retstr += str(idxval)
+        else:
+            retstr += get_value(child)
+    return retstr
+
+
+def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
+    varname_or_extvarname_check(expr)
     varname = get_varname(expr)
     idxquants = get_indexquants(expr)
 
@@ -112,6 +133,16 @@ def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
             return substitute_abbreviation(val, orig_datadic, loop_vars, look_up)
         else:
             return val
+
+
+def set_varval(expr, datadic, loop_vars, value):
+    varname_or_extvarname_check(expr)
+    varname = get_varname(expr)
+    idxquants = get_indexquants(expr)
+    if idxquants is None:
+        datadic[varname] = value
+    else:
+        set_array_value(varname, idxquants, value, datadic, loop_vars)
 
 
 def count_unassigned_vars(expr, datadic, loop_vars, look_up=True):

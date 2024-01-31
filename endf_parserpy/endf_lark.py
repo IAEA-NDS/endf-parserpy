@@ -136,8 +136,8 @@ bracketexpr : "(" expr ")"
 
 // allowed variable names (including indices)
 extvarname : VARNAME ("[" indexquant ("," indexquant)* "]")?
-VARNAME : CNAME
-INDEXVAR : CNAME
+VARNAME : LETTER (LETTER | DIGIT | "_")*
+INDEXVAR : VARNAME
 INDEXNUM : NUMBER
 indexquant : INDEXVAR | INDEXNUM
 
@@ -149,8 +149,4 @@ DESIRED_NUMBER : NUMBER "?"
 // that if the value of the variable in the current record
 // is permitted to be inconsistent with a previously read value
 inconsistent_varspec : extvarname "?"
-
-// possible field values
-CFIELD: CNAME | "0.0"
-IFIELD: CNAME | "0"
 """

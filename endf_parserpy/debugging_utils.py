@@ -141,7 +141,7 @@ def _compare_objects(
             ret = _compare_objects(
                 obj1[key],
                 obj2[key],
-                ".".join((curpath, str(key))),
+                "/".join((curpath, str(key))),
                 atol=atol,
                 rtol=rtol,
                 strlen_only=strlen_only,

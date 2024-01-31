@@ -18,14 +18,17 @@ from .custom_exceptions import (
 )
 from .endf_mapping_utils import (
     get_varname,
+    get_child,
     get_indexquants,
     eval_expr,
     eval_expr_without_unknown_var,
     varvalue_expr_conversion,
-    get_indexvalue,
     set_array_value,
+    set_varval,
+    get_varval,
+    generate_varname_str,
 )
-from .tree_utils import is_token, get_name, search_name
+from .tree_utils import is_token, get_name, search_name, get_value
 from .math_utils import math_allclose
 
 
@@ -221,3 +224,51 @@ def map_record_helper(
         return map_datadic_to_recorddic(
             basekeys, record_dic, expr_list, datadic, loop_vars, parse_opts
         )
+
+
+def map_text_record_helper(
+    expr_list, basekeys, record_dic, datadic, loop_vars, rwmode, parse_opts=None
+):
+    assert len(basekeys) == 1 and basekeys[0] == "HL"
+    if rwmode == "read":
+        charcount = 0
+        fullstring = record_dic[basekeys[0]]
+        for expr in expr_list:
+            extvarname_node = get_child(expr, "extvarname", nofail=True)
+            textlength_node = get_child(expr, "TEXTLENGTH", nofail=True)
+            if textlength_node is None:
+                upper_index = len(fullstring)
+            else:
+                textlength = int(get_value(textlength_node))
+                upper_index = charcount + textlength
+            if charcount >= upper_index:
+                raise IndexError("should not happen")
+            curstr = fullstring[charcount:upper_index]
+            if extvarname_node is not None:
+                set_varval(extvarname_node, datadic, loop_vars, curstr)
+            charcount = upper_index
+        return datadic
+    else:
+        fullstring = ""
+        for expr in expr_list:
+            extvarname_node = get_child(expr, "extvarname", nofail=True)
+            textlength_node = get_child(expr, "TEXTLENGTH", nofail=True)
+            textlength = None
+            if textlength_node is not None:
+                textlength = int(get_value(textlength_node))
+            if extvarname_node is not None:
+                curstr = get_varval(extvarname_node, datadic, loop_vars)
+                if textlength is not None and len(curstr) != textlength:
+                    varnamestr = generate_varname_str(extvarname_node, loop_vars)
+                    raise IndexError(
+                        f"String in variable {varnamestr} is of "
+                        + f"length {len(curstr)} but expected to be of "
+                        + f"length {textlength}"
+                    )
+            else:
+                if textlength is None:
+                    raise IndexError("Programming error: should never happen")
+                curstr = " " * textlength
+            fullstring += curstr
+        record_dic[basekeys[0]] = fullstring
+        return record_dic

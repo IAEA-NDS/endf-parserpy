@@ -59,6 +59,19 @@ def set_library(endf_dic, libtype):
 
 
 def get_description(endf_dic):
+    """Retrieve the description from MF1/MT451 section.
+
+    Parameters
+    ----------
+    endf_dic : dict
+        Dictionary with ENDF-6 data
+
+    Returns
+    -------
+    str
+        String with the description
+        extracted from MF1/MT451
+    """
     descr_dic = endf_dic[1][451]["DESCRIPTION"]
     descr_list = []
     for k in sorted(descr_dic.keys()):
@@ -67,6 +80,20 @@ def get_description(endf_dic):
 
 
 def set_description(endf_dic, text):
+    """Set the description in the MF1/MT451 section.
+
+    Updates the ``DESCRIPTION`` variable in
+    ``endf_dic[1][451]`` and adjusts the corresponding
+    counter variable ``NWD``.
+
+    Parameters
+    ----------
+    endf_dic : dict
+        Dictionary with ENDF-6 data
+    text : str
+        String with description.
+        Lines with more than 66 characters are trimmed.
+    """
     lines = text.splitlines()
     numlines = len(lines)
     endf_dic[1][451]["NWD"] = numlines
@@ -77,6 +104,23 @@ def set_description(endf_dic, text):
 
 
 def insert_description(endf_dic, text, after_line=0):
+    """Insert text in the description in MF1/MT451.
+
+    Insert the text provided into the `DESCRIPTION`
+    in `endf_dic[1][451]` and adjusts the corresponding
+    counter variable `NWD`.
+
+    Parameters
+    ----------
+    endf_dic : dict
+        Dictionary with ENDF-6 data
+    text : str
+        String with text to be inserted.
+    after_line : int
+        After which line ``text`` should be inserted.
+        ``after_line=0`` inserted the text provided
+        at the very beginning.
+    """
     descr = get_description(endf_dic)
     lines = descr.splitlines()
     newlines = lines[:after_line] + text.splitlines()

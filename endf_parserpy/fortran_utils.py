@@ -93,7 +93,7 @@ def float2expformstr(val, **write_opts):
     sign_dec = 0 if abuse_signpos and is_pos else 1
     expsymb_dec = 1 if keep_E else 0
     exponent = floor(log10(av)) if av != 0 else 0
-    mantissa = abs(val / 10**exponent)
+    mantissa = abs(val / 10 ** exponent)
     is_expo_pos = exponent >= 0
     absexponent = abs(exponent)
     mantissa_len = width - 1 - nexp - sign_dec - expsymb_dec

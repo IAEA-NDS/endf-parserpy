@@ -18,7 +18,7 @@ from .custom_exceptions import (
     MoreListElementsExpectedError,
     UnconsumedListElementsError,
 )
-from .endf_mapping_core import map_record_helper
+from .endf_mapping_core import map_record_helper, map_text_record_helper
 
 
 def check_ctrl_spec(record_line_node, record_dic, datadic, rwmode):
@@ -59,9 +59,13 @@ def map_text_dic(
     datadic = {} if datadic is None else datadic
     loop_vars = {} if loop_vars is None else loop_vars
     check_ctrl_spec(text_line_node, text_dic, datadic, rwmode)
-    expr_list = get_child(text_line_node, "text_fields").children
+    textfields = get_child(text_line_node, "text_fields").children
+    expr_list = []
+    for textfield in textfields:
+        if get_name(textfield) == "textplaceholder":
+            expr_list.append(textfield)
     cn = ("HL",)
-    return map_record_helper(
+    return map_text_record_helper(
         expr_list, cn, text_dic, datadic, loop_vars, rwmode, parse_opts
     )
 

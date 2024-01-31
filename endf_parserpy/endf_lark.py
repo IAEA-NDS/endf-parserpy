@@ -54,7 +54,9 @@ abbreviation : VARNAME ":=" expr NEWLINE
 
 // TEXT record
 text_line : "[" ctrl_spec "/" text_fields "]" "TEXT"
-text_fields : expr
+text_fields : textplaceholder NEWLINE? ("," NEWLINE? textplaceholder NEWLINE?)*
+textplaceholder : extvarname? ("{" TEXTLENGTH+ "}")?
+TEXTLENGTH : DIGIT+
 
 // HEAD and CONT record
 head_or_cont_line : "[" ctrl_spec "/" record_fields "]" CONT_SUBTYPE

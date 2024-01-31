@@ -14,6 +14,7 @@ from .tree_utils import is_tree, get_name, get_child, get_child_value
 from .meta_control_utils import cycle_for_loop, should_proceed
 from .meta_control_utils import open_section, close_section
 from .custom_exceptions import (
+    VariableNotFoundError,
     UnexpectedControlRecordError,
     MoreListElementsExpectedError,
     UnconsumedListElementsError,
@@ -25,8 +26,11 @@ def check_ctrl_spec(record_line_node, record_dic, datadic, rwmode):
     ctrl_spec = get_child(record_line_node, "ctrl_spec")
     dic = record_dic if rwmode == "read" else datadic
     # if MAT not found in local scope, scan the outer ones
-    while not "MAT" in dic and "__up" in dic:
+    while "MAT" not in dic and "__up" in dic:
         dic = dic["__up"]
+    for v in ("MAT", "MF", "MT"):
+        if v not in dic:
+            raise VariableNotFoundError(f"Variable {v} missing in dictionary.")
     cur_mat = dic["MAT"]
     cur_mf = dic["MF"]
     cur_mt = dic["MT"]

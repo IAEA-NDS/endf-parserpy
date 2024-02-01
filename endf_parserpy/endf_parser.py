@@ -68,6 +68,7 @@ from .custom_exceptions import (
     InconsistentSectionBracketsError,
     StopException,
     ParserException,
+    VariableNotFoundError,
 )
 from .endf_recipe_utils import (
     get_recipe_parsetree_dic,
@@ -104,6 +105,7 @@ class EndfParser:
         width=11,
         check_arrays=True,
         strict_datatypes=False,
+        explain_missing_variable=True,
         cache_dir=None,
         print_cache_info=True,
         recipes=None,
@@ -176,6 +178,10 @@ class EndfParser:
             needs to be cast to an `int`. If `false`, the writing process
             will only fail if the a value in the `float` cannot be
             perfectly represented by an `int`. *(writing)*
+        explain_missing_variable : bool
+            If the :func:`write` or :func:`writefile` method
+            fail because a variable is missing in the dictionary,
+            print available explanation if this argument is ``True``.
         cache_dir
             Directory to store the parsing trees associated with ENDF-6 recipes
             If `None`, the directory will be automatically determined
@@ -246,6 +252,7 @@ class EndfParser:
             "strict_datatypes": strict_datatypes,
         }
         self.read_opts = {"accept_spaces": accept_spaces, "width": width}
+        self.explain_missing_variable = explain_missing_variable
         self.variable_descriptions = None
         self.current_mf = None
         self.current_mt = None
@@ -834,12 +841,26 @@ class EndfParser:
                         finalize_abbreviations(self.datadic)
                     except Exception as exc:
                         logstr = self.logbuffer.display_reduced_record_logs()
-                        raise type(exc)(
-                            "\nHere is the parser record log until failure:\n\n"
+                        errmsg = (
+                            "\nHere is the parser record log until failure:\n"
+                            + "--------------------------------------------\n"
                             + logstr
+                            + "\n"
                             + "Error message: "
                             + str(exc)
                         )
+                        if isinstance(exc, VariableNotFoundError):
+                            if self.explain_missing_variable:
+                                explanation = self.explain(exc.varname, stdout=False)
+                                if explanation is None:
+                                    explanation = "No explanation available"
+                                explain_header = (
+                                    f"Explanation of missing variable `{exc.varname}`"
+                                )
+                            errmsg += "\n\n" + explain_header + "\n"
+                            errmsg += "-" * len(explain_header) + "\n"
+                            errmsg += explanation
+                        raise type(exc)(errmsg)
                     # add the NS number to the lines except last one
                     # because the SEND (=section end) record already
                     # contains it

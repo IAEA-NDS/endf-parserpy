@@ -665,6 +665,9 @@ class EndfParser:
         self.datadic = close_section(section_head, self.datadic)
 
     def process_for_loop(self, tree):
+        if self.rwmode == "write":
+            for_head = get_child(tree, "for_head")
+            self.logbuffer.save_reduced_record_log(for_head)
         return cycle_for_loop(tree, self.run_instruction, self.datadic, self.loop_vars)
 
     def process_if_clause(self, tree):

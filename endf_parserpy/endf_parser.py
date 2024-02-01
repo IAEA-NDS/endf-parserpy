@@ -76,6 +76,7 @@ from .endf_recipe_utils import (
 )
 from .endf_recipes import endf_recipe_dictionary
 from .debugging_utils import TrackingDict
+from .accessories import EndfDict
 
 
 class EndfParser:
@@ -253,7 +254,7 @@ class EndfParser:
         }
         self.read_opts = {"accept_spaces": accept_spaces, "width": width}
         self.explain_missing_variable = explain_missing_variable
-        self.variable_descriptions = None
+        self.variable_descriptions = EndfDict()
         self.current_mf = None
         self.current_mt = None
 
@@ -265,19 +266,17 @@ class EndfParser:
             raise ValueError(f"Invalid variable name `{varname}`")
         varname = m.group(1)
         vardescrs = self.variable_descriptions
-        mfdescrs = vardescrs.get(mf, {})
-        mtdescrs = mfdescrs.get(mt, {})
-        vardescr = mtdescrs.get(varname, None)
-        if stdout:
-            if vardescr is None:
+        try:
+            vardesc = vardescrs[mf, mt, varname]
+            if stdout:
+                print(vardesc)
+            else:
+                return vardesc
+        except KeyError:
+            if stdout:
                 print(f"No description for variable `{varname}` available")
             else:
-                print(vardescr)
-        else:
-            if vardescr is None:
                 return None
-            else:
-                return vardescr
 
     def process_comment_block(self, tree):
         def extract_info(comment):
@@ -310,9 +309,9 @@ class EndfParser:
                     curdescr.append(comment_line[maxindent:])
                     idx += 1
                 vardescrs = self.variable_descriptions
-                mf_descr = vardescrs.setdefault(self.current_mf, {})
-                mt_descr = mf_descr.setdefault(self.current_mt, {})
-                mt_descr[varname] = "\n".join(curdescr)
+                cur_mf = self.current_mf
+                cur_mt = self.current_mt
+                vardescrs[cur_mf, cur_mt, varname] = "\n".join(curdescr)
             idx += 1
 
     def process_stop_line(self, tree):

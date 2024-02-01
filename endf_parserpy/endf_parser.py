@@ -76,7 +76,7 @@ from .endf_recipe_utils import (
 )
 from .endf_recipes import endf_recipe_dictionary
 from .debugging_utils import TrackingDict
-from .accessories import EndfDict
+from .accessories import EndfDict, EndfPath
 
 
 class EndfParser:
@@ -255,19 +255,18 @@ class EndfParser:
         self.read_opts = {"accept_spaces": accept_spaces, "width": width}
         self.explain_missing_variable = explain_missing_variable
         self.variable_descriptions = EndfDict()
-        self.current_mf = None
-        self.current_mt = None
+        self.current_path = None
 
-    def explain(self, varname, mf=None, mt=None, stdout=True):
-        mf = mf if mf is not None else self.current_mf
-        mt = mt if mt is not None else self.current_mt
+    def explain(self, varpath, stdout=True):
+        varpath = EndfPath(varpath)
+        varname = str(varpath[-1])
         m = re.match("([a-zA-Z][a-zA-Z0-9]+)", varname)
         if not m:
             raise ValueError(f"Invalid variable name `{varname}`")
         varname = m.group(1)
         vardescrs = self.variable_descriptions
         try:
-            vardesc = vardescrs[mf, mt, varname]
+            vardesc = vardescrs[varpath]
             if stdout:
                 print(vardesc)
             else:
@@ -309,9 +308,7 @@ class EndfParser:
                     curdescr.append(comment_line[maxindent:])
                     idx += 1
                 vardescrs = self.variable_descriptions
-                cur_mf = self.current_mf
-                cur_mt = self.current_mt
-                vardescrs[cur_mf, cur_mt, varname] = "\n".join(curdescr)
+                vardescrs[self.current_path, varname] = "\n".join(curdescr)
             idx += 1
 
     def process_stop_line(self, tree):
@@ -654,14 +651,20 @@ class EndfParser:
             )
 
         create_missing = self.rwmode == "read"
-        self.datadic = open_section(
-            section_head, self.datadic, self.loop_vars, create_missing
+        previous_path = self.current_path
+        self.datadic, self.current_path = open_section(
+            section_head,
+            self.datadic,
+            self.loop_vars,
+            create_missing,
+            path=self.current_path,
         )
         section_body = get_child(tree, "section_body")
         initialize_abbreviations(self.datadic)
         self.run_instruction(section_body)
         finalize_abbreviations(self.datadic)
         self.datadic = close_section(section_head, self.datadic)
+        self.current_path = previous_path
 
     def process_for_loop(self, tree):
         if self.rwmode == "write":
@@ -709,8 +712,7 @@ class EndfParser:
         self.rwmode = rwmode
         self.ofs = 0
         self.logbuffer = RingBuffer(capacity=20)
-        self.current_mf = None
-        self.current_mt = None
+        self.current_path = None
 
     def get_parser_state(self):
         return {
@@ -721,8 +723,7 @@ class EndfParser:
             "ofs": self.ofs,
             "logbuffer_state": self.logbuffer.dump_state(),
             "parse_opts": self.parse_opts,
-            "current_mf": self.current_mf,
-            "current_mt": self.current_mt,
+            "current_path": self.current_path,
         }
 
     def set_parser_state(self, parser_state):
@@ -733,8 +734,7 @@ class EndfParser:
         self.ofs = parser_state["ofs"]
         self.logbuffer.load_state(parser_state["logbuffer_state"])
         self.parse_opts = parser_state["parse_opts"]
-        self.current_mf = parser_state["current_mf"]
-        self.current_mt = parser_state["current_mt"]
+        self.current_path = parser_state["current_path"]
 
     def should_skip_section(self, mf, mt, exclude=None, include=None):
         if exclude is None:
@@ -772,7 +772,7 @@ class EndfParser:
         if isinstance(lines, str):
             lines = lines.split("\n")
         tree_dic = self.tree_dic
-        self.variable_descriptions = {}
+        self.variable_descriptions = EndfDict()
         mfmt_dic = split_sections(lines, **self.read_opts)
         for mf in mfmt_dic:
             write_info(f"Parsing section MF{mf}")
@@ -787,8 +787,7 @@ class EndfParser:
                     # if the MT section cannot be completely parsed
                     curlines += write_send(curmat, with_ctrl=True, **self.write_opts)
                     self.reset_parser_state(rwmode="read", lines=curlines)
-                    self.current_mf = mf
-                    self.current_mt = mt
+                    self.current_path = EndfPath((mf, mt))
                     try:
                         initialize_abbreviations(self.datadic)
                         self.run_instruction(cur_tree)
@@ -818,7 +817,7 @@ class EndfParser:
         """
         self.zero_as_blank = zero_as_blank
         self.reset_parser_state(rwmode="write", datadic={})
-        self.variable_descriptions = {}
+        self.variable_descriptions = EndfDict()
         should_check_arrays = self.write_opts["check_arrays"]
         if should_check_arrays:
             endf_dic = TrackingDict(endf_dic)
@@ -835,8 +834,7 @@ class EndfParser:
                 if cur_tree is not None and is_parsed:
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode="write", datadic=datadic)
-                    self.current_mf = mf
-                    self.current_mt = mt
+                    self.current_path = EndfPath((mf, mt))
                     try:
                         initialize_abbreviations(self.datadic)
                         self.run_instruction(cur_tree)
@@ -853,7 +851,8 @@ class EndfParser:
                         )
                         if isinstance(exc, VariableNotFoundError):
                             if self.explain_missing_variable:
-                                explanation = self.explain(exc.varname, stdout=False)
+                                varpath = self.current_path + exc.varname
+                                explanation = self.explain(varpath, stdout=False)
                                 if explanation is None:
                                     explanation = "No explanation available"
                                 explain_header = (

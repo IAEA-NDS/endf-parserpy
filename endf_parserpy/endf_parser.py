@@ -259,6 +259,30 @@ class EndfParser:
         self.current_path = None
 
     def explain(self, varpath, stdout=True):
+        """Explain the meaning of a variable.
+
+        ENDF-6 recipes can contain the descriptions of variables,
+        which are automatically read while calling the
+        :func:`parsefile`, :func:`parse`, :func:`write`
+        and :func:`writefile` method. Given the path to a
+        variable, this function can output the associated
+        descriptions.
+
+        Parameters
+        ----------
+        varpath : EndfPath
+            The EndfPath to the variable or an object accepted
+            by the constructor of the EndfPath class.
+        stdout : bool
+            If ``True``, print the description on stdout.
+            Otherwise, return the description.
+
+        Returns
+        -------
+        str
+            If ``stdout=True`` return ``None``,
+            otherwise the description as a ``str``.
+        """
         varpath = EndfPath(varpath)
         varname = str(varpath[-1])
         m = re.match("([a-zA-Z][a-zA-Z0-9]*)", varname)

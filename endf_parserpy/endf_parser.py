@@ -260,7 +260,7 @@ class EndfParser:
     def explain(self, varpath, stdout=True):
         varpath = EndfPath(varpath)
         varname = str(varpath[-1])
-        m = re.match("([a-zA-Z][a-zA-Z0-9]+)", varname)
+        m = re.match("([a-zA-Z][a-zA-Z0-9]*)", varname)
         if not m:
             raise ValueError(f"Invalid variable name `{varname}`")
         varname = m.group(1)

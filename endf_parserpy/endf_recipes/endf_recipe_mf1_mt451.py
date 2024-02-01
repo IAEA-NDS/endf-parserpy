@@ -11,7 +11,10 @@
 
 ENDF_RECIPE_MF1_MT451 = """
 
-# var ZA:      Standard material charge and mass parameters
+# var ZA:      ZA = (1000.0 * Z) + A
+#              Z ... charge number of material
+#              A ... mass number of material
+# var AWR:     ratio of the mass of the material to that of the neutron
 # var LRP:     Flag indicating whether resolved and/or unresolved
 #              resonance parameters are given in File 2
 #              LRP=-1, no File 2 is given (not allowed for incident neutrons);

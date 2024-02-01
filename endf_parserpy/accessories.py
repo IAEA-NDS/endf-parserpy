@@ -47,7 +47,7 @@ class EndfPath(Sequence):
     ``EndPath`` instances.
     """
 
-    def __init__(self, pathspec=''):
+    def __init__(self, pathspec=""):
         """The EndfPath constructor accepts the following parameters.
 
         Parameters
@@ -455,7 +455,7 @@ class EndfDict(MutableMapping):
         if isinstance(key, (str, int)):
             endf_path = EndfPath(key)
         elif isinstance(key, Sequence):
-            endf_path = EndfPath('')
+            endf_path = EndfPath("")
             for p in key:
                 endf_path += p
         else:
@@ -473,7 +473,7 @@ class EndfDict(MutableMapping):
         if isinstance(key, (str, int)):
             endf_path = EndfPath(key)
         elif isinstance(key, Sequence):
-            endf_path = EndfPath('')
+            endf_path = EndfPath("")
             for p in key:
                 endf_path += p
         else:

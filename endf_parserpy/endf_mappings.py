@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2022/02/01
 # License:         MIT
-# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -20,6 +20,7 @@ from .custom_exceptions import (
     UnconsumedListElementsError,
 )
 from .endf_mapping_core import map_record_helper, map_text_record_helper
+from .accessories import EndfPath
 
 
 def check_ctrl_spec(record_line_node, record_dic, datadic, rwmode):
@@ -157,6 +158,7 @@ def map_tab2_dic(
     loop_vars=None,
     rwmode="read",
     parse_opts=None,
+    path="",
 ):
     tab2_dic = {} if tab2_dic is None else tab2_dic
     datadic = {} if datadic is None else datadic
@@ -184,15 +186,22 @@ def map_tab2_dic(
     # open section if desired
     if tab2_name_node is not None:
         create_missing = rwmode == "read"
-        datadic = open_section(tab2_name_node, datadic, loop_vars, create_missing)
+        path = EndfPath(path)
+        datadic, path = open_section(
+            tab2_name_node, datadic, loop_vars, create_missing, path=path
+        )
     # deal with the mapping of the variable names in the table first
     cn = ("NBT", "INT")
     tab2_def_fields = get_child(tab2_fields, "tab2_def").children
     expr_list = [Token("VARNAME", "NBT"), Token("VARNAME", "INT")]
     tbl_dic = {} if rwmode != "read" else tab2_dic["table"]
-    tbl_ret = map_record_helper(
-        expr_list, cn, tbl_dic, datadic, loop_vars, rwmode, parse_opts
-    )
+    try:
+        tbl_ret = map_record_helper(
+            expr_list, cn, tbl_dic, datadic, loop_vars, rwmode, parse_opts
+        )
+    except VariableNotFoundError as exc:
+        exc.varname = str(path + exc.varname)
+        raise exc
     # close section if desired
     if tab2_name_node is not None:
         datadic = close_section(tab2_name_node, datadic)
@@ -208,6 +217,7 @@ def map_tab1_dic(
     loop_vars=None,
     rwmode="read",
     parse_opts=None,
+    path="",
 ):
     tab1_dic = {} if tab1_dic is None else tab1_dic
     datadic = {} if datadic is None else datadic
@@ -231,7 +241,10 @@ def map_tab1_dic(
     # open section if desired
     if tab1_name_node is not None:
         create_missing = rwmode == "read"
-        datadic = open_section(tab1_name_node, datadic, loop_vars, create_missing)
+        path = EndfPath(path)
+        datadic, path = open_section(
+            tab1_name_node, datadic, loop_vars, create_missing, path=path
+        )
     # deal with the mapping of the variable names in the table first
     cn = ("NBT", "INT", "X", "Y")
     tab1_def_fields = get_child(tab1_fields, "tab1_def").children
@@ -241,9 +254,13 @@ def map_tab1_dic(
         tab1_def_fields
     )
     tbl_dic = {} if rwmode != "read" else tab1_dic["table"]
-    tbl_ret = map_record_helper(
-        expr_list, cn, tbl_dic, datadic, loop_vars, rwmode, parse_opts
-    )
+    try:
+        tbl_ret = map_record_helper(
+            expr_list, cn, tbl_dic, datadic, loop_vars, rwmode, parse_opts
+        )
+    except VariableNotFoundError as exc:
+        exc.varname = str(path + exc.varname)
+        raise exc
     # close section if desired
     if tab1_name_node is not None:
         datadic = close_section(tab1_name_node, datadic)
@@ -260,6 +277,7 @@ def map_list_dic(
     rwmode="read",
     run_instruction=None,
     parse_opts=None,
+    path="",
 ):
     list_dic = {} if list_dic is None else list_dic
     datadic = {} if datadic is None else datadic
@@ -360,10 +378,17 @@ def map_list_dic(
     list_name_node = get_child(list_line_node, "list_name", nofail=True)
     if list_name_node is not None:
         create_missing = rwmode == "read"
-        datadic = open_section(list_name_node, datadic, loop_vars, create_missing)
+        path = EndfPath(path)
+        datadic, path = open_section(
+            list_name_node, datadic, loop_vars, create_missing, path=path
+        )
     # parse the list body
     list_body_node = get_child(list_line_node, "list_body")
-    parse_list_body_node(list_body_node)
+    try:
+        parse_list_body_node(list_body_node)
+    except VariableNotFoundError as exc:
+        exc.varname = str(path + exc.varname)
+        raise exc
     # close subsection if opened
     if list_name_node is not None:
         datadic = close_section(list_name_node, datadic)

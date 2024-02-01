@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2022/02/01
 # License:         MIT
-# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -57,8 +57,10 @@ def finalize_abbreviations(datadic):
     del datadic["__abbrevs"]
 
 
-def open_section(extvarname, datadic, loop_vars, create_missing):
+def open_section(extvarname, datadic, loop_vars, create_missing, path=None):
     varname = get_varname(extvarname)
+    if path is not None:
+        path += (varname,)
     indexquants = get_indexquants(extvarname)
     curdatadic = datadic
     datadic.setdefault(varname, {})
@@ -71,11 +73,16 @@ def open_section(extvarname, datadic, loop_vars, create_missing):
             if create_missing:
                 datadic.setdefault(idx, {})
             datadic = datadic[idx]
+            if path is not None:
+                path += (idx,)
     # provide a pointer so that functions
     # can look for variable names in the outer scope
     datadic["__up"] = curdatadic
     write_info(f"Open section {varname}[" + ",".join(idcsstr_list) + "]")
-    return datadic
+    if path is None:
+        return datadic
+    else:
+        return datadic, path
 
 
 def close_section(extvarname, datadic):

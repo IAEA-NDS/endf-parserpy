@@ -97,8 +97,8 @@ list_for_head : VARNAME "=" for_start "to" for_stop
 send_line : "SEND"
 
 // FOR loop
-for_loop : "for" for_head for_body "endfor" NEWLINE
-for_head : VARNAME "=" for_start "to" for_stop ":"
+for_loop : for_head for_body "endfor" NEWLINE
+for_head : "for" VARNAME "=" for_start "to" for_stop ":"
 for_body : (code_token | NEWLINE)*
 for_start :  expr
 for_stop :   expr

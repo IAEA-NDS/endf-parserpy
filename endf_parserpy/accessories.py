@@ -47,7 +47,7 @@ class EndfPath(Sequence):
     ``EndPath`` instances.
     """
 
-    def __init__(self, pathspec):
+    def __init__(self, pathspec=''):
         """The EndfPath constructor accepts the following parameters.
 
         Parameters

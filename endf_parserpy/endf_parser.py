@@ -244,6 +244,8 @@ class EndfParser:
             "strict_datatypes": strict_datatypes,
         }
         self.read_opts = {"accept_spaces": accept_spaces, "width": width}
+        self.current_mf = None
+        self.current_mt = None
 
     def process_stop_line(self, tree):
         stop_message = retrieve_value(tree, "STOP_MESSAGE")
@@ -637,6 +639,8 @@ class EndfParser:
         self.rwmode = rwmode
         self.ofs = 0
         self.logbuffer = RingBuffer(capacity=20)
+        self.current_mf = None
+        self.current_mt = None
 
     def get_parser_state(self):
         return {
@@ -647,6 +651,8 @@ class EndfParser:
             "ofs": self.ofs,
             "logbuffer_state": self.logbuffer.dump_state(),
             "parse_opts": self.parse_opts,
+            "current_mf": self.current_mf,
+            "current_mt": self.current_mt,
         }
 
     def set_parser_state(self, parser_state):
@@ -657,6 +663,8 @@ class EndfParser:
         self.ofs = parser_state["ofs"]
         self.logbuffer.load_state(parser_state["logbuffer_state"])
         self.parse_opts = parser_state["parse_opts"]
+        self.current_mf = parser_state["current_mf"]
+        self.current_mt = parser_state["current_mt"]
 
     def should_skip_section(self, mf, mt, exclude=None, include=None):
         if exclude is None:
@@ -708,6 +716,8 @@ class EndfParser:
                     # if the MT section cannot be completely parsed
                     curlines += write_send(curmat, with_ctrl=True, **self.write_opts)
                     self.reset_parser_state(rwmode="read", lines=curlines)
+                    self.current_mf = mf
+                    self.current_mt = mt
                     try:
                         initialize_abbreviations(self.datadic)
                         self.run_instruction(cur_tree)
@@ -753,6 +763,8 @@ class EndfParser:
                 if cur_tree is not None and is_parsed:
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode="write", datadic=datadic)
+                    self.current_mf = mf
+                    self.current_mt = mt
                     try:
                         initialize_abbreviations(self.datadic)
                         self.run_instruction(cur_tree)

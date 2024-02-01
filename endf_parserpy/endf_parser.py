@@ -280,7 +280,7 @@ class EndfParser:
     def process_comment_block(self, tree):
         def extract_info(comment):
             rex = r"(?P<indentstr> *#( *var *"
-            rex += r"(?P<varname>[a-zA-Z][a-zA-Z0-9]*) *(\[[^]]*\])?"
+            rex += r"(?P<varname>[a-zA-Z][a-zA-Z0-9/]*) *(\[[^]]*\])?"
             rex += " *:)?)?"
             rex += "(?P<comment>.*)"
             dic = re.match(rex, comment).groupdict()
@@ -300,8 +300,6 @@ class EndfParser:
                     newvarname, comment, _ = extract_info(comment_line)
                     if newvarname is not None:
                         idx -= 1
-                        break
-                    if comment.lstrip("#").strip() == "":
                         break
                     curindent = len(comment_line) - len(comment.lstrip())
                     maxindent = min(firstindent, curindent)

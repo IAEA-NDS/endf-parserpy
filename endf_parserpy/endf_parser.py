@@ -69,6 +69,7 @@ from .custom_exceptions import (
     StopException,
     ParserException,
     VariableNotFoundError,
+    UnexpectedControlRecordError,
 )
 from .endf_recipe_utils import (
     get_recipe_parsetree_dic,
@@ -838,6 +839,16 @@ class EndfParser:
                     datadic = endf_dic[mf][mt]
                     self.reset_parser_state(rwmode="write", datadic=datadic)
                     self.current_path = EndfPath((mf, mt))
+                    datadic.setdefault("MF", mf)
+                    if datadic["MF"] != mf:
+                        raise UnexpectedControlRecordError(
+                            f"expected MF={mf} but found MF={datadic['MF']}"
+                        )
+                    datadic.setdefault("MT", mt)
+                    if datadic["MT"] != mt:
+                        raise UnexpectedControlRecordError(
+                            f"expected MT={mt} but found MT={datadic['MT']}"
+                        )
                     try:
                         initialize_abbreviations(self.datadic)
                         self.run_instruction(cur_tree)

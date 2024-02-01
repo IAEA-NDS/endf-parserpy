@@ -63,7 +63,10 @@ class InconsistentSectionBracketsError(ParserException):
 
 
 class VariableNotFoundError(ParserException):
-    pass
+
+    def __init__(self, message, varname=""):
+        super().__init__(message)
+        self.varname = varname
 
 
 class UnavailableIndexError(ParserException):

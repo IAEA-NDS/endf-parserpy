@@ -30,7 +30,7 @@ def check_ctrl_spec(record_line_node, record_dic, datadic, rwmode):
         dic = dic["__up"]
     for v in ("MAT", "MF", "MT"):
         if v not in dic:
-            raise VariableNotFoundError(f"Variable {v} missing in dictionary.")
+            raise VariableNotFoundError(f"Variable {v} missing in dictionary.", v)
     cur_mat = dic["MAT"]
     cur_mf = dic["MF"]
     cur_mt = dic["MT"]

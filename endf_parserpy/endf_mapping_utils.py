@@ -119,7 +119,7 @@ def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
     while varname not in datadic and "__up" in datadic and look_up:
         datadic = datadic["__up"]
     if varname not in datadic:
-        raise VariableNotFoundError(f"variable {varname} not found")
+        raise VariableNotFoundError(f"variable {varname} not found", varname)
     if idxquants is None:
         if eval_abbrev:
             return substitute_abbreviation(

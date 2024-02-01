@@ -11,6 +11,7 @@
 
 from collections.abc import Mapping
 import logging
+import re
 from .logging_utils import write_info, RingBuffer
 from appdirs import user_cache_dir
 from os.path import exists as file_exists
@@ -225,6 +226,7 @@ class EndfParser:
         meta_actions["if_clause"] = self.process_if_clause
         meta_actions["section"] = self.process_section
         meta_actions["abbreviation"] = self.process_abbreviation
+        meta_actions["comment_block"] = self.process_comment_block
         self.meta_actions = meta_actions
 
         self.parse_opts = {
@@ -244,8 +246,67 @@ class EndfParser:
             "strict_datatypes": strict_datatypes,
         }
         self.read_opts = {"accept_spaces": accept_spaces, "width": width}
+        self.variable_descriptions = None
         self.current_mf = None
         self.current_mt = None
+
+    def explain(self, varname, mf=None, mt=None, stdout=True):
+        mf = mf if mf is not None else self.current_mf
+        mt = mt if mt is not None else self.current_mt
+        m = re.match("([a-zA-Z][a-zA-Z0-9]+)", varname)
+        if not m:
+            raise ValueError(f"Invalid variable name `{varname}`")
+        varname = m.group(1)
+        vardescrs = self.variable_descriptions
+        mfdescrs = vardescrs.get(mf, {})
+        mtdescrs = mfdescrs.get(mt, {})
+        vardescr = mtdescrs.get(varname, None)
+        if stdout:
+            if vardescr is None:
+                print(f"No description for variable `{varname}` available")
+            else:
+                print(vardescr)
+        else:
+            if vardescr is None:
+                return None
+            else:
+                return vardescr
+
+    def process_comment_block(self, tree):
+        def extract_info(comment):
+            rex = r"(?P<indentstr> *#( *var *"
+            rex += r"(?P<varname>[a-zA-Z][a-zA-Z0-9]*) *(\[[^]]*\])?"
+            rex += " *:)?)?"
+            rex += "(?P<comment>.*)"
+            dic = re.match(rex, comment).groupdict()
+            return dic["varname"], dic["comment"], len(dic["indentstr"])
+
+        idx = 0
+        comment_lines = get_child_value(tree, "COMMENT").splitlines()
+        while idx < len(comment_lines):
+            comment_line = comment_lines[idx]
+            varname, comment, indent = extract_info(comment_line)
+            if varname is not None:
+                firstindent = len(comment_line) - len(comment.lstrip())
+                curdescr = [comment_line[firstindent:]]
+                idx += 1
+                while idx < len(comment_lines):
+                    comment_line = comment_lines[idx]
+                    newvarname, comment, _ = extract_info(comment_line)
+                    if newvarname is not None:
+                        idx -= 1
+                        break
+                    if comment.lstrip("#").strip() == "":
+                        break
+                    curindent = len(comment_line) - len(comment.lstrip())
+                    maxindent = min(firstindent, curindent)
+                    curdescr.append(comment_line[maxindent:])
+                    idx += 1
+                vardescrs = self.variable_descriptions
+                mf_descr = vardescrs.setdefault(self.current_mf, {})
+                mt_descr = mf_descr.setdefault(self.current_mt, {})
+                mt_descr[varname] = "\n".join(curdescr)
+            idx += 1
 
     def process_stop_line(self, tree):
         stop_message = retrieve_value(tree, "STOP_MESSAGE")
@@ -702,6 +763,7 @@ class EndfParser:
         if isinstance(lines, str):
             lines = lines.split("\n")
         tree_dic = self.tree_dic
+        self.variable_descriptions = {}
         mfmt_dic = split_sections(lines, **self.read_opts)
         for mf in mfmt_dic:
             write_info(f"Parsing section MF{mf}")
@@ -747,6 +809,7 @@ class EndfParser:
         """
         self.zero_as_blank = zero_as_blank
         self.reset_parser_state(rwmode="write", datadic={})
+        self.variable_descriptions = {}
         should_check_arrays = self.write_opts["check_arrays"]
         if should_check_arrays:
             endf_dic = TrackingDict(endf_dic)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2024/01/30
+# Last modified:   2024/02/01
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
@@ -74,6 +74,9 @@ class EndfPath(Sequence):
         >>> assert p4 == p5 and p5 == p6
         >>> assert p6 == p7
         """
+        if isinstance(pathspec, EndfPath):
+            self._path_elements = pathspec._path_elements
+            return
         if isinstance(pathspec, int):
             pathspec = str(pathspec)
         if isinstance(pathspec, str):

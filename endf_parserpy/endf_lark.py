@@ -22,7 +22,7 @@ endf_recipe_grammar = r"""
 
 endf_recipe : (code_token | NEWLINE)*
 code_token: (endf_line | for_loop | if_clause | section |
-            | abbreviation | COMMENT_LINE)
+            | abbreviation | comment_block)
 endf_line : (list_line | head_or_cont_line | tab1_line | tab2_line
             | text_line | dir_line | intg_line | send_line | stop_line) NEWLINE
 
@@ -41,8 +41,9 @@ MT_SPEC : "MT" | INT
 // generic record body
 record_fields : expr "," expr "," expr "," expr "," expr "," expr
 
-// comment line
-COMMENT_LINE : "#" /.*/ NEWLINE
+// comment block
+comment_block : COMMENT
+COMMENT : /(#[^\n]*\r?\n)+/s
 
 // stop instruction to quit parsing
 stop_line : "stop" "(" escaped_stop_message? ")"

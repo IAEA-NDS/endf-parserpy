@@ -449,7 +449,14 @@ class EndfDict(MutableMapping):
         return ret
 
     def __getitem__(self, key):
-        endf_path = EndfPath(key)
+        if isinstance(key, (str, int)):
+            endf_path = EndfPath(key)
+        elif isinstance(key, Sequence):
+            endf_path = EndfPath('')
+            for p in key:
+                endf_path += p
+        else:
+            raise ValueError("unsupported key data type")
         ret = endf_path.get(self._store)
         if isinstance(ret, MutableMapping) and not isinstance(ret, EndfDict):
             ret = EndfDict(ret)
@@ -460,7 +467,14 @@ class EndfDict(MutableMapping):
     def __setitem__(self, key, value):
         if isinstance(value, EndfDict):
             value = value.unwrap()
-        endf_path = EndfPath(key)
+        if isinstance(key, (str, int)):
+            endf_path = EndfPath(key)
+        elif isinstance(key, Sequence):
+            endf_path = EndfPath('')
+            for p in key:
+                endf_path += p
+        else:
+            raise ValueError("unsupported key data type")
         endf_path.set(self._store, value)
 
     def __delitem__(self, key):

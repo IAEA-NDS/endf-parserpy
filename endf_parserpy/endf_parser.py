@@ -266,7 +266,7 @@ class EndfParser:
         :func:`parsefile`, :func:`parse`, :func:`write`
         and :func:`writefile` method. Given the path to a
         variable, this function can output the associated
-        descriptions.
+        description.
 
         Parameters
         ----------

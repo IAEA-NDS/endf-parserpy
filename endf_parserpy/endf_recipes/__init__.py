@@ -25,6 +25,7 @@ from .endf_recipe_mf23 import ENDF_RECIPE_MF23
 from .endf_recipe_mf26 import ENDF_RECIPE_MF26
 from .endf_recipe_mf27 import ENDF_RECIPE_MF27
 from .endf_recipe_mf28 import ENDF_RECIPE_MF28
+from .endf_recipe_mf31_mt452_455_456 import ENDF_RECIPE_MF31_MT452_455_456
 from .endf_recipe_mf32 import ENDF_RECIPE_MF32
 from .endf_recipe_mf33 import ENDF_RECIPE_MF33
 from .endf_recipe_mf34 import ENDF_RECIPE_MF34
@@ -74,6 +75,10 @@ __defdic(endf_recipe_dictionary, (23,), ENDF_RECIPE_MF23)
 __defdic(endf_recipe_dictionary, (26,), ENDF_RECIPE_MF26)
 __defdic(endf_recipe_dictionary, (27,), ENDF_RECIPE_MF27)
 __defdic(endf_recipe_dictionary, (28,), ENDF_RECIPE_MF28)
+__defdic(endf_recipe_dictionary, (31, 452), ENDF_RECIPE_MF31_MT452_455_456)
+__defdic(endf_recipe_dictionary, (31, 455), ENDF_RECIPE_MF31_MT452_455_456)
+__defdic(endf_recipe_dictionary, (31, 456), ENDF_RECIPE_MF31_MT452_455_456)
+__defdic(endf_recipe_dictionary, (31,), ENDF_RECIPE_MF31_MT452_455_456)
 __defdic(endf_recipe_dictionary, (32,), ENDF_RECIPE_MF32)
 __defdic(endf_recipe_dictionary, (33,), ENDF_RECIPE_MF33)
 __defdic(endf_recipe_dictionary, (34,), ENDF_RECIPE_MF34)

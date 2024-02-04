@@ -1,4 +1,4 @@
-Related software
+Related Software
 ================
 
 The following alphabetically-sorted list
@@ -13,6 +13,7 @@ software projects for interacting with ENDF-6 files:
 - `FRENDY <https://rpg.jaea.go.jp/main/en/program_frendy/>`_
 - `FUDGE <https://github.com/LLNL/fudge>`_
 - `NJOY2016 <https://github.com/njoy/NJOY2016>`_
+- `PREPRO <https://github.com/IAEA-NDS/PREPRO>`_
 - `PyNE <https://github.com/pyne/pyne>`_
 - `SANDY <https://github.com/luca-fiorito-11/sandy>`_
 

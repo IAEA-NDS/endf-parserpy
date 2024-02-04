@@ -1,4 +1,4 @@
-High-level functionality
+High-level Functionality
 ========================
 
 The paramount focus of endf-parserpy

@@ -1,4 +1,4 @@
-ENDF-6 recipes
+ENDF-6 Recipes
 ==============
 
 endf-parserpy relies on ENDF-6 recipes to

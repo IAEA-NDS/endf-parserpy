@@ -53,7 +53,7 @@ ENDF-6 file:
 from endf_parserpy import EndfParser
 parser = EndfParser()
 endf_dict = parser.parsefile('input.endf')
-endf_dict['3']['1']['AWR'] = 99.99
+endf_dict[3][1]['AWR'] = 99.99
 parser.writefile('output.endf', endf_dict)
 ```
 

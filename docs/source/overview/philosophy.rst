@@ -1,5 +1,5 @@
 .. _ENDF-6 format: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
-.. _ENDF-6 formats manual: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf 
+.. _ENDF-6 formats manual: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
 .. _Lark: https://github.com/lark-parser/lark
 
 Philosophy
@@ -43,9 +43,9 @@ Design considerations
 ---------------------
 
 The technical and comprehensive nature of the
-`ENDF-6 formats manual`_ 
+`ENDF-6 formats manual`_
 with more than 400 pages, occassionally updated
-due to format extensions, gives rise to the 
+due to format extensions, gives rise to the
 following three questions:
 
 1) How can the support for the entire `ENDF-6 format`_ be implemented
@@ -77,7 +77,7 @@ these facilities can also be leveraged
 for ENDF-6 data if available in a dictionary.
 
 Therefore, it was decided that the core functionality
-of endf-parserpy should be the capability to 
+of endf-parserpy should be the capability to
 map the entirety of data present in an ENDF-6 file
 into a Python dictionary. It should also be possible
 to translate the data of such a dictionary into the
@@ -89,7 +89,7 @@ it should also allow for translating this data type
 into the `ENDF-6 format`_.
 
 
-2. Rely on a formal ENDF format description 
+2. Rely on a formal ENDF format description
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The descriptions in the `ENDF-6 formats manual`_ can
@@ -107,11 +107,11 @@ correctly by design as the automated interpretation
 of the format description removes the possibility
 that a programmer implements any part of the ENDF-6 format
 wrongly due to misunderstanding the description of the
-format. 
+format.
 
 This design choice also implies that
 support for ENDF-6 format extensions can be seamlessly
-implemented by updating the formal ENDF-6 descriptions. 
+implemented by updating the formal ENDF-6 descriptions.
 The design of the formal ENDF format specification
 language is explained in an `arxiv preprint
 <https://arxiv.org/abs/2312.08249>`_.
@@ -127,7 +127,7 @@ While object-oriented design (closely coupling data and specific
 methods for these data) is often advantageous,
 it was not regarded as good fit for ENDF-6 data.
 The set of possible operations is too large to implement all
-of them and there is not a clear argument that any subset of 
+of them and there is not a clear argument that any subset of
 operations should be favored by coupling it more closely
 to the data than others. In addition, the usage of
 custom classes make generic Python functions for data
@@ -135,12 +135,14 @@ transformation and manipulation less likely to be applicable out of the
 box and more hand-tailored code becomes necessary.
 
 For these reasons, it was decided to organize ENDF-6 data
-exclusively using the basic Python data types ``int``, ``float``, 
-``str``, ``dict`` and ``list``. Dictionaries provide the associations
+exclusively using the basic Python data types
+:class:`int`, :class:`float`,
+:class:`str`, :class:`dict` and :class:`list`.
+Dictionaries provide the associations
 between symbol names and numerical values (being either
-``int`` or ``float``). Tabulated functions, such as 
+:class:`int` or :class:`float`). Tabulated functions, such as
 cross sections as a function of incident energy, can be
-realized with the ``list`` datatype or as dictionaries
+realized with the :class:`list` datatype or as dictionaries
 with contiguous integer keys. The nesting of dictionaries
 can be used to organize ENDF-6 data in sections, subsections,
 etc.

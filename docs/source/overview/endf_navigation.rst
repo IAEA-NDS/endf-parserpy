@@ -25,7 +25,7 @@ variable or section in an ENDF-6 dictionary. The path is
 constructed by combining the keys of the nested dictionaries
 to a single string using a ``/`` character as separator.
 For instance, there may be a variable ``AJ`` in a Python dictionary
-``endf_dict`` accessible via: 
+``endf_dict`` accessible via:
 
 .. code::
 
@@ -60,7 +60,7 @@ behaves like a standard :class:`dict` but
 enables the use of paths (as described above) to access
 data. When the class is instantiated with a dictionary
 as argument, it can be regarded as a `view object` of the
-original dictionary. Any modification of data through the 
+original dictionary. Any modification of data through the
 :class:`~endf_parserpy.accessories.EndfDict` object will lead to the same modification
 of the original dictionary (technically speaking:
 :class:`~endf_parserpy.accessories.EndfDict`
@@ -98,14 +98,14 @@ You could use the following code:
 
 .. code:: python
 
-    F = endf_dict['subsection[1]/ni_subsection[1]/F']
+    F = endf_dict['33/1/subsection[1]/ni_subsection[1]/F']
     F[2, 3] = 0.5
 
 This code works because any dictionary-like object retrieved
 from an :class:`~endf_parserpy.accessories.EndfDict` object
-will be automatically wrapped into a
+will be automatically wrapped into an
 :class:`~endf_parserpy.accessories.EndfDict` object itself
-before being returned. Consequently, the extended indexing 
+before being returned. Consequently, the extended indexing
 capabilities are available for these retrieved objects,
 such as demonstrated here by the assignment involving ``F``.
 
@@ -121,11 +121,11 @@ will create all intermediate dictionaries, hence this instruction
 even works for an empty dictionary ``endf_dict = EndfDict({})``.
 
 See the documentation of the :class:`endf_parserpy.accessories.EndfDict` class
-for further details. 
+for further details.
 
 Finally, we may want to use abbreviations to read and modify data in
 a dictionary with ENDF-6 data. Perhaps we would like to assign
-a new value to the ``aj`` variable and expect that the  
+a new value to the ``aj`` variable and expect that the
 same value is also assigned to the corresponding location in  ``endf_dict``.
 However, this will not be the case. The
 :class:`~endf_parserpy.accessories.EndfVariable` class
@@ -138,7 +138,7 @@ An instance of :class:`~endf_parserpy.accessories.EndfVariable`
 possesses a ``.value`` attribute
 that is always kept in sync with a specific location in
 a nested dictionary with ENDF-6 data.
-It can be instantiated by providing an :class:`~endf_parserpy.accessories.EndfPath` object 
+It can be instantiated by providing an :class:`~endf_parserpy.accessories.EndfPath` object
 and a dictionary:
 
 .. code:: python
@@ -147,7 +147,8 @@ and a dictionary:
 
 Any change of the value of ``AJ`` in ``endf_dict`` will be
 reflected in ``ajvar.value`` and vice-versa. This class may
-be a good basis for implementing higher-level functionality,
+be a good basis for implementing
+:ref:`higher-level functionality <high_level_functionality_doc>`,
 such as linear interpolation of cross sections with the
 link to the original data being preserved.
 More technical details are provided in the documentation

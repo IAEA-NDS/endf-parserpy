@@ -1,3 +1,5 @@
+.. _high_level_functionality_doc:
+
 High-level Functionality
 ========================
 

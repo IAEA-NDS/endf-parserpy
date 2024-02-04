@@ -45,8 +45,8 @@ a JSON file.
 
    Keys in dictionaries with ENDF-6 data are
    either of type :class:`int` or :class:`str`. However,
-   the JSON format only supports keys of type class:`str`.
-   The :func:`json.dump` method converts class:`int` keys
+   the JSON format only supports keys of type :class:`str`.
+   The :func:`json.dump` method converts :class:`int` keys
    automatically to :class:`str` before writing them
    to a JSON file.
 
@@ -71,4 +71,4 @@ Afterwards, the invocation of :func:`~endf_parserpy.user_tools.sanitize_fieldnam
 converts keys of type :class:`str` that contain integer values back to
 type :class:`int`. Finally, the :func:`~endf_parserpy.endf_parser.EndfParser.writefile`
 method of the :class:`~endf_parserpy.endf_parser.EndfParser` object is called to write
-the data stored in the  dictionary ``endf_dict`` into an ENDF-6 file.
+the data stored in the  dictionary ``endf_dict`` to an ENDF-6 file.

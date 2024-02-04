@@ -3,7 +3,7 @@
 Classes
 =======
 
-The following link contains the links
+The following list contains the links
 to explanations of all the essential classes
 implemented in the ``endf_parserpy`` package:
 

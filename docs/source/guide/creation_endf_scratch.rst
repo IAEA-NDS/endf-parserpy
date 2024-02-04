@@ -176,7 +176,7 @@ Based on this information, we can now add the missing variable:
 
 The alternative assignment  ``p['ZA'] = 26054.0`` would have had the same effect.
 One approach to completing the dictionary is calling ``parser.write(endf_dict)``
-iteratively and add each time add the variable that was reported until
+iteratively and add each time the variable that was reported until
 the function doesn't complain anymore.
 Probably a faster approach is to consult the explanations of the variables
 in the :endf6manpage:`57` and define all of them at once.
@@ -234,7 +234,7 @@ doesn't need to be concerned anymore about the alignment of strings in
 text fields or the number of dashes preceding certain words.
 
 Also note that the MF1/MT451
-dictionary contains a directory listing (:endf6manshort:`57`) represented by
+dictionary contains a directory (:endf6manshort:`57`) represented by
 the arrays ``MFx[i]``, ``MTx[i]``, ``NCx[i]`` and ``MOD[i]``, which keeps
 track of MF/MT sections included in the file and the number of ENDF records stored
 in each of them.
@@ -271,7 +271,7 @@ is given by:
 
 We have encountered the variables ``ZA`` and ``AWR`` already in the creation
 of the MF1/MT451 section above. The mass-difference Q-value for the
-total cross section is zero, i.e. ``QM = 0.0``., and the same holds true
+total cross section is zero, i.e. ``QM = 0.0``, and the same holds true
 for the reaction Q-value, i.e. ``QI =  0.0``. Also the breakup flag is
 given by ``LR = 0``.
 For the total cross section, these values will be stored in an ``MT=1``
@@ -325,7 +325,7 @@ the :endf6manpage:`43`.
     The parser doesn't check whether the values provided
     are physically meaningful. For instance, negative cross section
     values in ``xs`` or negative incident energies in ``E`` will be written
-    by the :func:`~endf_parserpy.endf_parser.EndfParser.write` method to an ENDF-6 file as
+    by the :func:`~endf_parserpy.endf_parser.EndfParser.writefile` method to an ENDF-6 file as
     they are, without any warnings.
 
 
@@ -375,8 +375,8 @@ An example covariance matrix can be created with the following code snippet:
 
 With this specification including four elements together with the
 adopted energies (``endf_dict['3/1/xstable/E']``), the uncertainty
-is specified as 10% (square root of 0.05) between one and two eV,
-20% between two and three electronvolt, etc. The numbers in
+is specified as 20% (square root of 0.04) between one and two eV,
+30% between two and three electronvolt, etc. The numbers in
 ``endf_dict['3/1/xstable/E']`` were specified in the code snippet
 introduced above :ref:`in the section about MF3/MT1 <creating_mf3mt1_sec>`.
 
@@ -412,10 +412,10 @@ Let's set up these variables:
    endf_dict['33/1/AWR'] = endf_dict['1/451/AWR']
    endf_dict['33/1/MTL'] = 0
 
-The ``NL`` variable defines the number of sections.
+The ``NL`` variable defines the number of subsections.
 The relevant part of the recipe looks like this:
 
-.. code:: python
+.. code:: text
 
     if MTL == 0:
         for n=1 to NL:
@@ -464,7 +464,7 @@ Because we are in the MF=33/MT=1 section for a covariance
 matrix to a total cross section and we only provide the
 matrix for that channel, by the convention laid out in
 the manual, we have ``XMF1=0.0``, ``XLFS1=0.0``, ``MAT1=2625``
-and ``MT1==1``:
+and ``MT1=1``:
 
 .. code:: python
 
@@ -515,7 +515,7 @@ We include here an abridged version of the relevant recipe part:
 The ``lookahead=1`` specification informs the parser that
 the variable names used in the logical expression may
 be only defined within a certain number of ENDF records
-(here 1) inside the if-branch, which is the here
+(here 1) inside the if-branch, which is the
 the case for the ``LB`` and ``LS`` variable.
 
 To use the representation associated with ``LB=5`` and
@@ -640,7 +640,7 @@ Updating the ENDF directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Being (hopefully) statisfied with our data, we need to wrap
-it up by updating the directory listing in MF1/MT451.
+it up by updating the directory in MF1/MT451.
 The information we have at present in the directory is
 given by:
 
@@ -736,7 +736,7 @@ This yields the following output:
      0.000000+0 0.000000+0          0          0          0          0  -1 0  0    0
 
 
-Taking into account that the ``SEND`` (=Section end) records are considered 
+Taking into account that the ``SEND`` (=Section end) records are not considered
 for the counting,
 we see that :func:`~endf_parserpy.endf6_plumbing.update_directory`
 has indeed determined the correct number of ENDF records of each MF/MT section.

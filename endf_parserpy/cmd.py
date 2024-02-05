@@ -57,9 +57,15 @@ if __name__ == "__main__":
         prog="endf_parserpy.cmd", description="endf_parserpy command-line utility"
     )
 
-    parser.add_argument("action", choices=["validate"])
-    parser.add_argument("-s", "--strict", action="store_true")
-    parser.add_argument("files", nargs="+")
+    parser.add_argument(
+        "action",
+        choices=["validate"],
+        help="the action to perform (at the moment only `validate`)",
+    )
+    parser.add_argument(
+        "-s", "--strict", action="store_true", help="switch to enable strict mode"
+    )
+    parser.add_argument("files", nargs="+", help="files for applying the action")
 
     args = parser.parse_args()
     action = args.action

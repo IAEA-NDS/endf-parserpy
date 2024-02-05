@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2024/02/05
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -457,7 +457,7 @@ def split_sections(lines, **read_opts):
     for line in lines:
         if is_blank_line(line):
             continue
-        dic = read_ctrl(line, nofail=True, **read_opts)
+        dic = read_ctrl(line, nofail=False, **read_opts)
         mf = dic["MF"]
         mt = dic["MT"]
         # end markers (SEND, MEND, FEND, TEND) ignored

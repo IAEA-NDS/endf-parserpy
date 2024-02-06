@@ -23,7 +23,7 @@ Desired technical capabilities
 
 1) Easy translation between ENDF-6 and other formats, such as JSON
 2) Convenient access to any information in ENDF-6 files
-3) Support of the entire `ENDF-6 format`_ standard
+3) Support for the entire `ENDF-6 format`_ standard
 4) Straightforward creation and manipulation of ENDF-6 files
 
 The first capability makes evaluated nuclear data

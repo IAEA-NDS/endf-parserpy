@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/01/30
+# Last modified:   2024/02/11
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -242,7 +242,6 @@ class EndfParser:
             "ignore_number_mismatch": ignore_number_mismatch,
             "ignore_varspec_mismatch": ignore_varspec_mismatch,
             "fuzzy_matching": fuzzy_matching,
-            "blank_as_zero": blank_as_zero,
         }
         self.write_opts = {
             "abuse_signpos": abuse_signpos,
@@ -253,7 +252,11 @@ class EndfParser:
             "check_arrays": check_arrays,
             "strict_datatypes": strict_datatypes,
         }
-        self.read_opts = {"accept_spaces": accept_spaces, "width": width}
+        self.read_opts = {
+            "blank_as_zero": blank_as_zero,
+            "accept_spaces": accept_spaces,
+            "width": width,
+        }
         self.explain_missing_variable = explain_missing_variable
         self.variable_descriptions = EndfDict()
         self.current_path = None
@@ -395,7 +398,6 @@ class EndfParser:
                 self.lines,
                 self.ofs,
                 with_ctrl=True,
-                blank_as_zero=self.parse_opts["blank_as_zero"],
                 **self.read_opts,
             )
             cont_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
@@ -432,7 +434,6 @@ class EndfParser:
             cont_dic, self.ofs = read_cont(
                 self.lines,
                 self.ofs,
-                blank_as_zero=self.parse_opts["blank_as_zero"],
                 **self.read_opts,
             )
             cont_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
@@ -467,7 +468,6 @@ class EndfParser:
             dir_dic, self.ofs = read_dir(
                 self.lines,
                 self.ofs,
-                blank_as_zero=self.parse_opts["blank_as_zero"],
                 **self.read_opts,
             )
             dir_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
@@ -505,7 +505,6 @@ class EndfParser:
                 self.lines,
                 self.ofs,
                 ndigit=ndigit,
-                blank_as_zero=self.parse_opts["blank_as_zero"],
                 **self.read_opts,
             )
             intg_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
@@ -545,7 +544,6 @@ class EndfParser:
             tab1_dic, self.ofs = read_tab1(
                 self.lines,
                 self.ofs,
-                blank_as_zero=self.parse_opts["blank_as_zero"],
                 **self.read_opts,
             )
             tab1_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
@@ -581,7 +579,6 @@ class EndfParser:
             tab2_dic, self.ofs = read_tab2(
                 self.lines,
                 self.ofs,
-                blank_as_zero=self.parse_opts["blank_as_zero"],
                 **self.read_opts,
             )
             tab2_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
@@ -616,7 +613,6 @@ class EndfParser:
             list_dic, self.ofs = read_list(
                 self.lines,
                 self.ofs,
-                blank_as_zero=self.parse_opts["blank_as_zero"],
                 **self.read_opts,
             )
             list_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
@@ -649,7 +645,6 @@ class EndfParser:
             read_send(
                 self.lines,
                 self.ofs,
-                blank_as_zero=self.parse_opts["blank_as_zero"],
                 **self.read_opts,
             )
         else:

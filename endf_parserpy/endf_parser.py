@@ -104,6 +104,7 @@ class EndfParser:
         prefer_noexp=False,
         accept_spaces=True,
         ignore_blank_lines=False,
+        ignore_send_records=False,
         keep_E=False,
         width=11,
         check_arrays=True,
@@ -163,6 +164,9 @@ class EndfParser:
         ignore_blank_lines: bool
             If `True`, skip blank lines in ENDF-6 formatted input without
             complaining. Otherwise, blank lines will lead to parsing failure.
+        ignore_send_records: bool
+            If `True`, the correct positioning of SEND/FEND/MEND/TEND
+            to indicate the end of a section is not checked. *(parsing)*
         keep_E : bool
             If `true`, include the `e` character in scientific notation,
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
@@ -260,6 +264,7 @@ class EndfParser:
             "blank_as_zero": blank_as_zero,
             "accept_spaces": accept_spaces,
             "ignore_blank_lines": ignore_blank_lines,
+            "ignore_send_records": ignore_send_records,
             "width": width,
         }
         self.explain_missing_variable = explain_missing_variable

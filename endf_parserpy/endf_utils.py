@@ -459,6 +459,7 @@ def split_sections(lines, **read_opts):
         )
 
     ignore_blank_lines = read_opts.get("ignore_blank_lines", False)
+    ignore_send_records = read_opts.get("ignore_send_records", False)
     ofs = 0
     if ignore_blank_lines:
         while lines[ofs].strip() == "":
@@ -516,6 +517,10 @@ def split_sections(lines, **read_opts):
             last_mf = mf
             last_mt = mt
             continue
+
+        if ignore_send_records:
+            continue
+
         # it is a section end record (SEND, FEND, MEND or TEND)
         if sec_level >= 2 and mat != last_mat:
             raise UnexpectedControlRecordError(
@@ -541,11 +546,12 @@ def split_sections(lines, **read_opts):
         # Next line just for checking all fields are zero or blank
         read_send([line], **read_opts)
 
-    if sec_level >= 1:
-        sectype = ("MAT", "MF", "MT")[sec_level - 1]
-        secnum = (mat, mf, mt)[sec_level - 1]
-        UnexpectedEndOfInputError(make_eof_error_message(sectype, secnum))
-    elif sec_level == 0:
-        UnexpectedEndOfInputError("Tape ENDF (TEND) record missing")
+    if not ignore_send_records:
+        if sec_level >= 1:
+            sectype = ("MAT", "MF", "MT")[sec_level - 1]
+            secnum = (mat, mf, mt)[sec_level - 1]
+            UnexpectedEndOfInputError(make_eof_error_message(sectype, secnum))
+        elif sec_level == 0:
+            UnexpectedEndOfInputError("Tape ENDF (TEND) record missing")
 
     return mfdic

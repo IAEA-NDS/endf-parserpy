@@ -458,7 +458,11 @@ def split_sections(lines, **read_opts):
             + "records are missing"
         )
 
+    ignore_blank_lines = read_opts.get("ignore_blank_lines", False)
     ofs = 0
+    if ignore_blank_lines:
+        while lines[ofs].strip() == "":
+            ofs += 1
     mfdic = {}
     th = read_ctrl(lines[ofs], **read_opts)
     th_mat = th["MAT"]
@@ -480,7 +484,7 @@ def split_sections(lines, **read_opts):
     while ofs < len(lines) - 1:
         ofs += 1
         line = lines[ofs]
-        if (sec_level == -1) and line.strip() == "":
+        if (ignore_blank_lines or sec_level == -1) and line.strip() == "":
             continue
         if sec_level == -1:
             raise UnexpectedControlRecordError(

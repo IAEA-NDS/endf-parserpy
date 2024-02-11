@@ -103,6 +103,7 @@ class EndfParser:
         skip_intzero=False,
         prefer_noexp=False,
         accept_spaces=True,
+        ignore_blank_lines=False,
         keep_E=False,
         width=11,
         check_arrays=True,
@@ -159,6 +160,9 @@ class EndfParser:
         accept_spaces: bool
             Eliminate spaces in a number before trying to parse it, e.g.
             `1.234 +8` is transformed to `1.234+8`. *(parsing)*
+        ignore_blank_lines: bool
+            If `True`, skip blank lines in ENDF-6 formatted input without
+            complaining. Otherwise, blank lines will lead to parsing failure.
         keep_E : bool
             If `true`, include the `e` character in scientific notation,
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
@@ -255,6 +259,7 @@ class EndfParser:
         self.read_opts = {
             "blank_as_zero": blank_as_zero,
             "accept_spaces": accept_spaces,
+            "ignore_blank_lines": ignore_blank_lines,
             "width": width,
         }
         self.explain_missing_variable = explain_missing_variable

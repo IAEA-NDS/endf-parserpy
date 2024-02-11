@@ -164,6 +164,7 @@ class EndfParser:
         ignore_blank_lines: bool
             If `True`, skip blank lines in ENDF-6 formatted input without
             complaining. Otherwise, blank lines will lead to parsing failure.
+            *(parsing)*
         ignore_send_records: bool
             If `True`, the correct positioning of SEND/FEND/MEND/TEND
             to indicate the end of a section is not checked. *(parsing)*

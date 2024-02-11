@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/05
+# Last modified:   2024/02/11
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -22,6 +22,7 @@ from .custom_exceptions import (
     InvalidIntegerError,
     MoreListElementsExpectedError,
     UnconsumedListElementsError,
+    UnexpectedControlRecordError,
 )
 
 
@@ -453,21 +454,110 @@ def skip_blank_lines(lines, ofs):
 
 
 def split_sections(lines, **read_opts):
+    def make_control_error_message(sectype, secnum, expsecnum, ofs):
+        return (
+            f"Currently in {sectype}={expsecnum} section but encountered "
+            + f"{sectype}={secnum} in control record of line {ofs}."
+        )
+
+    def make_send_error_message(sectype, secnum, expsecnum, ofs):
+        return (
+            "Expecting a Section End (SEND/FEND/MEND) record with "
+            + f"{sectype}={expsecnum} but encountered {sectype}={secnum} "
+            + f"in control record of line {ofs}."
+        )
+
+    def make_eof_error_message(sectype, secnum):
+        return (
+            "Reached the End-Of-File but still in an open "
+            + f"{sectype}={secnum} section. Required Section End "
+            + "records are missing"
+        )
+
+    ofs = 0
     mfdic = {}
-    for line in lines:
-        if is_blank_line(line):
+    th = read_ctrl(lines[ofs], **read_opts)
+    th_mat = th["MAT"]
+    th_mf = th["MF"]
+    th_mt = th["MT"]
+    if th_mf != 0 or th_mt != 0:
+        raise UnexpectedControlRecordError(
+            "tape head (TPID) must contain MF=0, MT=0 in control record "
+            + f"but contains MAT={th_mat}, MF={th_mf}, MT={th_mt}."
+        )
+    cursec = mfdic.setdefault(th_mf, {}).setdefault(th_mt, [])
+    cursec.append(lines[0])
+
+    # sec_levels: TAPE=0, MAT=1, MF=2, MT=3
+    sec_level = 0
+    last_mat = None
+    last_mf = None
+    last_mt = None
+    while ofs < len(lines) - 1:
+        ofs += 1
+        line = lines[ofs]
+        if (sec_level == -1) and line.strip() == "":
             continue
-        dic = read_ctrl(line, nofail=False, **read_opts)
-        mf = dic["MF"]
-        mt = dic["MT"]
-        # end markers (SEND, MEND, FEND, TEND) ignored
-        # but: if the dictionary is empty and we get
-        # mf=0 and mt=0, we assume it is the tape head
-        # line and store it
-        if (mf != 0 and mt != 0) or (mf == 0 and mt == 0 and not mfdic):
-            mfdic.setdefault(mf, {})
-            mtdic = mfdic[mf]
-            mt = dic["MT"]
-            mtdic.setdefault(mt, [])
-            mtdic[mt].append(line)
+        if sec_level == -1:
+            raise UnexpectedControlRecordError(
+                "Already encountered Tape End (TEND) record. "
+                + "Nothing else is allowed to follow afterwards."
+            )
+        d = read_ctrl(line, **read_opts)
+        mat = d["MAT"]
+        mf = d["MF"]
+        mt = d["MT"]
+        # if branch entered if regular record
+        if mat != 0 and mf != 0 and mt != 0:
+            if sec_level >= 3 and last_mt != mt:
+                raise UnexpectedControlRecordError(
+                    make_control_error_message("MT", mt, last_mt, ofs)
+                )
+            if sec_level >= 2 and last_mf != mf:
+                raise UnexpectedControlRecordError(
+                    make_control_error_message("MF", mf, last_mf, ofs)
+                )
+            if sec_level >= 1 and last_mat != mat:
+                raise UnexpectedControlRecordError(
+                    make_control_error_message("MAT", mat, last_mat, ofs)
+                )
+            cursec = mfdic.setdefault(mf, {}).setdefault(mt, [])
+            cursec.append(line)
+            sec_level = 3
+            last_mat = mat
+            last_mf = mf
+            last_mt = mt
+            continue
+        # it is a section end record (SEND, FEND, MEND or TEND)
+        if sec_level >= 2 and mat != last_mat:
+            raise UnexpectedControlRecordError(
+                make_send_error_message("MAT", mat, last_mat, ofs)
+            )
+        if sec_level == 1 and mat != 0:
+            raise UnexpectedControlRecordError(
+                make_send_error_message("MAT", mat, 0, ofs)
+            )
+        if sec_level >= 3 and mf != last_mf:
+            raise UnexpectedControlRecordError(
+                make_send_error_message("MF", mf, last_mf, ofs)
+            )
+        if sec_level < 3 and mf != 0:
+            raise UnexpectedControlRecordError(
+                make_send_error_message("MF", mf, 0, ofs)
+            )
+        if sec_level == 0 and mat != -1:
+            raise UnexpectedControlRecordError(
+                make_send_error_message("MAT", mat, -1, ofs)
+            )
+        sec_level -= 1
+        # Next line just for checking all fields are zero or blank
+        read_send([line], blank_as_zero=True, **read_opts)
+
+    if sec_level >= 1:
+        sectype = ("MAT", "MF", "MT")[sec_level - 1]
+        secnum = (mat, mf, mt)[sec_level - 1]
+        UnexpectedEndOfInputError(make_eof_error_message(sectype, secnum))
+    elif sec_level == 0:
+        UnexpectedEndOfInputError("Tape ENDF (TEND) record missing")
+
     return mfdic

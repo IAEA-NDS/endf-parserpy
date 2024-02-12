@@ -152,6 +152,7 @@ def update_directory(endf_dic, parser=None, lines=None, **read_opts):
         lines = parser.write(endf_dic)
         active_read_opts.update(parser.read_opts)
     active_read_opts.update(read_opts)
+    active_read_opts["ignore_missing_tpid"] = True
     # determine the lengths of the sections
     # the checks for mf=0 and mt=0 are here
     # to not consider the tape head as a section

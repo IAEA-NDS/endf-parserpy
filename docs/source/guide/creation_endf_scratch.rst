@@ -5,7 +5,7 @@ Creating ENDF-6 Files from Scratch
 
 You've managed to fit a spline, Pade
 approximant or a nuclear physics model nicely to
-experimental data. Now you are eager to put 
+experimental data. Now you are eager to put
 your result into an ENDF-6 file for further
 processing with `NJOY <http://www.njoy21.io/>`_
 or submit it as a candidate file to
@@ -46,7 +46,7 @@ endf-parserpy, you need the following:
 
 
 .. note::
-   
+
    If you just get started with the ENDF-6 format,
    these prerequisites may seem daunting. However,
    with endf-parserpy you can construct the dictionary
@@ -126,10 +126,10 @@ building process:
    endf_dict = EndfDict()
 
 Next, we create an empty MF=1/MT=451 section and associate it with a
-short variable name for reduced typing and perform our first 
-little variable assignment for the ``MAT`` number (:endf6manshort:`30`). 
+short variable name for reduced typing and perform our first
+little variable assignment for the ``MAT`` number (:endf6manshort:`30`).
 Let's assume we want to create a file for 26-Fe-54 which corresponds
-to ``MAT=2625``. 
+to ``MAT=2625``.
 The code to accomplish the described actions is given by:
 
 .. code:: Python
@@ -246,7 +246,7 @@ Regarding the process, there are a lot of variables and it takes time
 to understand their meaning and associate them with the right values.
 On the positive side, issues regarding formatting, reading and writing
 are completely decoupled from the specification of the data. In effect,
-this approach emphasizes an *information-oriented* perspective 
+this approach emphasizes an *information-oriented* perspective
 over a *processing-oriented* one. The user can focus on
 the correct definition of variables and doesn't need to be concerned anymore
 with the technical details of how the data is organized in an ENDF-6 file.
@@ -276,7 +276,7 @@ for the reaction Q-value, i.e. ``QI =  0.0``. Also the breakup flag is
 given by ``LR = 0``.
 For the total cross section, these values will be stored in an ``MT=1``
 section. For the association between reaction channels and MT numbers
-consult the :endf6manpage:`348`. 
+consult the :endf6manpage:`348`.
 
 As discussed in the section about the :ref:`particularities of the TAB1 record
 <particularities_tab1_tab2_record>`, the ``NR`` and ``NP`` variable are
@@ -371,7 +371,7 @@ An example covariance matrix can be created with the following code snippet:
 .. code:: python
 
    import numpy as np
-   covmat = np.diag([0.04, 0.09, 0.16, 0.25])  
+   covmat = np.diag([0.04, 0.09, 0.16, 0.25])
 
 With this specification including four elements together with the
 adopted energies (``endf_dict['3/1/xstable/E']``), the uncertainty
@@ -431,7 +431,7 @@ Each subsection contains the covariance matrix
 between the cross section data associated with this
 MF33 section (here MF3/MT1) and another cross section
 channel (determined by another MAT, MF, MT number
-combination). In this guide, we only want to 
+combination). In this guide, we only want to
 include a single section that contains the covariance
 matrix for MF33/MT1, hence ``NL = 1``.
 Let's establish this assignment and create an empty ``subsection``:
@@ -457,7 +457,7 @@ determine which additional variables we still need to define:
     endfor
 
 The variables ``XMF1``, ``XLFS1```, ``MAT1`` and ``MT1``
-specify to which other material/cross section combination 
+specify to which other material/cross section combination
 we want to define the covariance matrix, see also
 :endf6manshort:`295`.
 Because we are in the MF=33/MT=1 section for a covariance
@@ -492,7 +492,7 @@ a sub-subsection. We will use the one indicated by
 the variable assignment ``LB=5``. Furthermore, due to our
 covariance matrix being symmetric, we can use the flag ``LS=1``
 to indicate this situation and store only half of the elements.
-These variables are described in the :endf6manpage:`301`. 
+These variables are described in the :endf6manpage:`301`.
 We include here an abridged version of the relevant recipe part:
 
 .. code:: text
@@ -541,7 +541,7 @@ should be stored:
 
 The variables ``LB`` and ``LS`` have already been defined above.
 The variable ``NE`` contains the number of energy mesh points
-for the covariance matrix. We use the same mesh as for 
+for the covariance matrix. We use the same mesh as for
 MF3/MT1 with five mesh points  (``endf_dict['3/1/xstable/E']``),
 so ``NE=5``.
 
@@ -550,7 +550,7 @@ so ``NE=5``.
 of other variables, in our example ``NE``. We can ignore this variable
 as any definition of this variable in the dictionary would be ignored
 by the parser.
-The energy mesh of the covariance matrix is stored in the array 
+The energy mesh of the covariance matrix is stored in the array
 ``E[k]``. Importantly, ``E`` is a Python dictionary with contiguous
 integer keys covering the range from 1 to ``NE``. We can
 set up this dictionary with this code snippet:
@@ -558,7 +558,7 @@ set up this dictionary with this code snippet:
 .. code:: python
 
    energies = endf_dict['3/1/xstable/E']
-   endf_dict['33/1/subsection[1]/ni_subsection[1]/NE'] = len(energies) 
+   endf_dict['33/1/subsection[1]/ni_subsection[1]/NE'] = len(energies)
    endf_dict['33/1/subsection[1]/ni_subsection[1]/E'] = \
        {k: v for k, v in enumerate(energies, start=1)}
 
@@ -636,6 +636,24 @@ script:
             F[k, kp] = float(covmat[k-1, kp-1])
 
 
+Adding the TPID record
+~~~~~~~~~~~~~~~~~~~~~~
+
+Complete ENDF-6 files also contain a TPID record at the very beginning
+of the file (see :endf6manshort:`52`). It is a TEXT record whose text
+field is ignored and hence may be used for version control information.
+The MAT number is given by a *tape number* NTAPE, which we can set
+to one. The MF and MT numbers in the control record must be zero.
+Also the TPID record is defined in an `ENDF-6 recipe file
+<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf0_mt0.py>`_
+and we can add this record to our dictionary using the following assignments:
+
+.. code:: python
+
+   endf_dict['0/0/MAT'] = 1
+   endf_dict['0/0/TAPEDESCR'] = 'some ignored description in the TPID record'
+
+
 Updating the ENDF directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -664,7 +682,7 @@ is outdated. We can update it using the
 .. code:: python
 
    from endf_parserpy.end6_plumbing import update_directory
-   update_directory(endf_dict, parser) 
+   update_directory(endf_dict, parser)
 
 
 Let's check the udpated values:
@@ -835,6 +853,10 @@ in the following Python script:
     for k in range(1, NE):
         for kp in range(k, NE):
             F[k, kp] = float(covmat[k-1, kp-1])
+
+    # add the TPID record
+    endf_dict['0/0/MAT'] = 1
+    endf_dict['0/0/TAPEDESCR'] = 'some ignored description in the TPID record'
 
     # update the directory in MF1/MT451
     update_directory(endf_dict, parser)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/11
+# Last modified:   2024/02/12
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -105,6 +105,7 @@ class EndfParser:
         accept_spaces=True,
         ignore_blank_lines=False,
         ignore_send_records=False,
+        ignore_missing_tpid=False,
         keep_E=False,
         width=11,
         check_arrays=True,
@@ -168,6 +169,9 @@ class EndfParser:
         ignore_send_records: bool
             If `True`, the correct positioning of SEND/FEND/MEND/TEND
             to indicate the end of a section is not checked. *(parsing)*
+        ignore_missing_tpid: bool
+            If `True`, the parser will tolerate a missing TPID
+            record at the beginning of the file. *(parsing)*
         keep_E : bool
             If `true`, include the `e` character in scientific notation,
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
@@ -266,6 +270,7 @@ class EndfParser:
             "accept_spaces": accept_spaces,
             "ignore_blank_lines": ignore_blank_lines,
             "ignore_send_records": ignore_send_records,
+            "ignore_missing_tpid": ignore_missing_tpid,
             "width": width,
         }
         self.explain_missing_variable = explain_missing_variable

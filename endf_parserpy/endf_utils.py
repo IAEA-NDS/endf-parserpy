@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/11
+# Last modified:   2024/02/12
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -460,6 +460,7 @@ def split_sections(lines, **read_opts):
 
     ignore_blank_lines = read_opts.get("ignore_blank_lines", False)
     ignore_send_records = read_opts.get("ignore_send_records", False)
+    ignore_missing_tpid = read_opts.get("ignore_missing_tpid", False)
     ofs = 0
     if ignore_blank_lines:
         while lines[ofs].strip() == "":
@@ -470,12 +471,15 @@ def split_sections(lines, **read_opts):
     th_mf = th["MF"]
     th_mt = th["MT"]
     if th_mf != 0 or th_mt != 0:
-        raise UnexpectedControlRecordError(
-            "tape head (TPID) must contain MF=0, MT=0 in control record "
-            + f"but contains MAT={th_mat}, MF={th_mf}, MT={th_mt}."
-        )
-    cursec = mfdic.setdefault(th_mf, {}).setdefault(th_mt, [])
-    cursec.append(lines[0])
+        if not ignore_missing_tpid:
+            raise UnexpectedControlRecordError(
+                "tape head (TPID) must contain MF=0, MT=0 in control record "
+                + f"but contains MAT={th_mat}, MF={th_mf}, MT={th_mt}."
+            )
+        ofs -= 1
+    else:
+        cursec = mfdic.setdefault(th_mf, {}).setdefault(th_mt, [])
+        cursec.append(lines[0])
 
     # sec_levels: TAPE=0, MAT=1, MF=2, MT=3
     sec_level = 0

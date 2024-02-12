@@ -23,6 +23,7 @@ from .custom_exceptions import (
     MoreListElementsExpectedError,
     UnconsumedListElementsError,
     UnexpectedControlRecordError,
+    BlankLineError,
 )
 
 
@@ -462,9 +463,10 @@ def split_sections(lines, **read_opts):
     ignore_send_records = read_opts.get("ignore_send_records", False)
     ignore_missing_tpid = read_opts.get("ignore_missing_tpid", False)
     ofs = 0
-    if ignore_blank_lines:
-        while lines[ofs].strip() == "":
-            ofs += 1
+    while lines[ofs].strip() == "":
+        if not ignore_blank_lines:
+            raise BlankLineError(f"Line {ofs} is a blank line.")
+        ofs += 1
     mfdic = {}
     th = read_ctrl(lines[ofs], **read_opts)
     th_mat = th["MAT"]
@@ -489,8 +491,13 @@ def split_sections(lines, **read_opts):
     while ofs < len(lines) - 1:
         ofs += 1
         line = lines[ofs]
-        if (ignore_blank_lines or sec_level == -1) and line.strip() == "":
-            continue
+        if line.strip() == "":
+            if sec_level == -1:
+                continue
+            if ignore_blank_lines:
+                continue
+            else:
+                raise BlankLineError(f"Line {ofs} is a blank line.")
         if sec_level == -1:
             raise UnexpectedControlRecordError(
                 "Already encountered Tape End (TEND) record. "

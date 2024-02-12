@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/01/30
+# Last modified:   2024/02/12
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -130,7 +130,7 @@ def insert_description(endf_dic, text, after_line=0):
     set_description(endf_dic, newdescr)
 
 
-def update_directory(endf_dic, parser=None, lines=None):
+def update_directory(endf_dic, parser=None, lines=None, **read_opts):
     """Update the ENDF directory in MF1/MT451.
 
     Parameters
@@ -145,14 +145,17 @@ def update_directory(endf_dic, parser=None, lines=None):
         If this argument is provided, the ``parser``
         argument will be ignored.
     """
+    active_read_opts = {}
     if not lines:
         if not parser:
             raise TypeError("provide either`parser` or `lines` argument")
         lines = parser.write(endf_dic)
+        active_read_opts.update(parser.read_opts)
+    active_read_opts.update(read_opts)
     # determine the lengths of the sections
     # the checks for mf=0 and mt=0 are here
     # to not consider the tape head as a section
-    mfdic = split_sections(lines)
+    mfdic = split_sections(lines, **active_read_opts)
     countdic = {}
     numsecs = 0
     for mf, mfsec in mfdic.items():

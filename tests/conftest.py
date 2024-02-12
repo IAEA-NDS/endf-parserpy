@@ -16,6 +16,9 @@ def pytest_addoption(parser):
     parser.addoption("--prefer_noexp", action="store", default="true")
     # defaults for reading options
     parser.addoption("--accept_spaces", action="store", default="true")
+    parser.addoption("--ignore_blank_lines", action="store", default="False")
+    parser.addoption("--ignore_send_records", action="store", default="False")
+    parser.addoption("--ignore_missing_tpid", action="store", default="False")
 
 
 def pytest_generate_tests(metafunc):
@@ -38,6 +41,9 @@ def pytest_generate_tests(metafunc):
         "skip_intzero",
         "prefer_noexp",
         "accept_spaces",
+        "ignore_blank_lines",
+        "ignore_send_records",
+        "ignore_missing_tpid",
     )
 
     opts = metafunc.config.option

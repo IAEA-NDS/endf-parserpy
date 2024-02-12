@@ -18,6 +18,9 @@ def myEndfParser(
     skip_intzero,
     prefer_noexp,
     accept_spaces,
+    ignore_blank_lines,
+    ignore_send_records,
+    ignore_missing_tpid,
 ):
     return EndfParser(
         ignore_zero_mismatch=ignore_zero_mismatch,
@@ -29,6 +32,9 @@ def myEndfParser(
         skip_intzero=skip_intzero,
         prefer_noexp=prefer_noexp,
         accept_spaces=accept_spaces,
+        ignore_blank_lines=ignore_blank_lines,
+        ignore_send_records=ignore_send_records,
+        ignore_missing_tpid=ignore_missing_tpid,
     )
 
 

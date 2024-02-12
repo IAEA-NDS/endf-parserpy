@@ -561,8 +561,8 @@ def split_sections(lines, **read_opts):
         if sec_level >= 1:
             sectype = ("MAT", "MF", "MT")[sec_level - 1]
             secnum = (mat, mf, mt)[sec_level - 1]
-            UnexpectedEndOfInputError(make_eof_error_message(sectype, secnum))
+            raise UnexpectedEndOfInputError(make_eof_error_message(sectype, secnum))
         elif sec_level == 0:
-            UnexpectedEndOfInputError("Tape ENDF (TEND) record missing")
+            raise UnexpectedEndOfInputError("Tape End (TEND) record missing")
 
     return mfdic

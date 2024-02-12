@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/13
-# Last modified:   2024/01/26
+# Last modified:   2024/02/12
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -19,6 +19,10 @@ class StopException(ParserException):
 
 
 class UnexpectedControlRecordError(ParserException):
+    pass
+
+
+class BlankLineError(ParserException):
     pass
 
 

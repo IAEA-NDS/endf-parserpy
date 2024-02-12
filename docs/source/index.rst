@@ -46,7 +46,7 @@ perform various actions on ENDF-6 files, such as:
 - Easily access any information
 - Modify, delete and insert data
 - Perform format validation
-- Convert from and to other file formats, such as JSON 
+- Convert from and to other file formats, such as JSON
 - Merge data from various ENDF-6 files into a single one
 - Compare ENDF-6 files with meaningful reporting on differences
 - Construct ENDF-6 files from scratch
@@ -58,6 +58,8 @@ of the major nuclear data libraries, such as
 `ENDF/B <https://www.nndc.bnl.gov/endf/>`_,
 `JEFF <https://www.oecd-nea.org/dbdata/jeff/>`_,
 and `JENDL <https://wwwndc.jaea.go.jp/jendl/jendl.html>`_.
+Note that the package does not support several materials
+in a single ENDF-6 file.
 
 
 Install endf-parserpy
@@ -84,7 +86,7 @@ Resources
 - :doc:`overview/endf_navigation`
 - Guides
 
-  - :doc:`guide/reading_writing_endf` 
+  - :doc:`guide/reading_writing_endf`
   - :doc:`guide/endf_format_validation`
   - :doc:`guide/comparing_endf_files`
   - :doc:`guide/format_translation`

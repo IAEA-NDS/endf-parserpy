@@ -9,7 +9,7 @@ perform various actions on ENDF-6 files, such as:
 - Easily access any information
 - Modify, delete and insert data
 - Perform format validation
-- Convert from and to other file formats, such as JSON 
+- Convert from and to other file formats, such as JSON
 - Merge data from various ENDF-6 files into a single one
 - Compare ENDF-6 files with meaningful reporting on differences
 - Construct ENDF-6 files from scratch
@@ -22,6 +22,8 @@ of the major nuclear data libraries, such as
 [ENDF/B](https://www.nndc.bnl.gov/endf/),
 [JEFF](https://www.oecd-nea.org/dbdata/jeff/),
 and [JENDL](https://wwwndc.jaea.go.jp/jendl/jendl.html).
+Note that the package does not support several materials
+in a single ENDF-6 file.
 
 
 ## Install endf-parserpy
@@ -68,7 +70,7 @@ G. Schnabel, D. L. Aldama, R. Capote, "How to explain ENDF-6 to computers: A for
 ```
 
 
-## License 
+## License
 
 This code is distributed under the MIT license, see the
 accompanying license file for more information.

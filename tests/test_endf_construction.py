@@ -5,7 +5,11 @@ from endf_parserpy.custom_exceptions import (
     InvalidIntegerError,
     VariableNotFoundError,
     UnavailableIndexError,
+    BlankLineError,
+    UnexpectedEndOfInputError,
+    UnexpectedControlRecordError,
 )
+from endf_parserpy.debugging_utils import compare_objects
 
 
 @pytest.fixture(scope="function")
@@ -177,3 +181,81 @@ def test_creation_of_mf1_mt451_fails_if_counter_smaller_than_array(mf1_mt451_sec
         parser.write(d)
     except IndexError:
         pass
+
+
+def test_ignore_blank_lines_option_does_not_impact_result(mf1_mt451_section):
+    parser1 = EndfParser(ignore_missing_tpid=True, ignore_blank_lines=False)
+    parser2 = EndfParser(ignore_missing_tpid=True, ignore_blank_lines=True)
+    lines = parser1.write(mf1_mt451_section)
+    result1 = parser1.parse(lines)
+    lines.insert(0, "  ")
+    lines.insert(4, "  ")
+    result2 = parser2.parse(lines)
+    compare_objects(result1, result2)
+
+
+def test_blank_lines_cause_failure_if_not_ignored(mf1_mt451_section):
+    parser = EndfParser(ignore_missing_tpid=True, ignore_blank_lines=False)
+    lines = parser.write(mf1_mt451_section)
+    lines.insert(3, "  ")
+    try:
+        parser.parse(lines)
+        raise TypeError("test failed")
+    except BlankLineError:
+        pass
+
+
+def test_missing_send_record_causes_failure_if_not_ignored(mf1_mt451_section):
+    parser = EndfParser(ignore_missing_tpid=True, ignore_send_records=False)
+    lines = parser.write(mf1_mt451_section)
+    lines_list = [lines.copy() for i in range(3)]
+    for i in range(0, 3):
+        lines = lines_list[i]
+        del lines[-(i + 1)]
+        try:
+            parser.parse(lines)
+            raise TypeError(f"test failed on subcase {i}")
+        except UnexpectedEndOfInputError:
+            if i != 0:
+                raise TypeError(f"test failed for the wrong reason in subcase {i}")
+        except UnexpectedControlRecordError:
+            if i not in (1, 2):
+                raise TypeError(f"test failed for the wrong reason in subcase {i}")
+
+
+def test_missing_send_record_option_does_not_impact_result(mf1_mt451_section):
+    parser1 = EndfParser(ignore_missing_tpid=True, ignore_send_records=False)
+    parser2 = EndfParser(ignore_missing_tpid=True, ignore_send_records=True)
+    lines = parser1.write(mf1_mt451_section)
+    result1 = parser1.parse(lines)
+    lines_list = [lines.copy() for i in range(3)]
+    for i in range(0, 3):
+        lines = lines_list[i]
+        del lines[-(i + 1)]
+        result2 = parser2.parse(lines)
+        compare_objects(result1, result2)
+
+
+def test_ignore_missing_tpid_prevents_failure(mf1_mt451_section):
+    if 0 in mf1_mt451_section:
+        del mf1_mt451_section[0]
+    parser = EndfParser(ignore_missing_tpid=True)
+    lines = parser.write(mf1_mt451_section)
+    parser.parse(lines)
+
+
+def test_missing_tpid_does_not_impact_result(mf1_mt451_section):
+    parser1 = EndfParser(ignore_missing_tpid=True)
+    parser2 = EndfParser(ignore_missing_tpid=False)
+    lines1 = parser1.write(mf1_mt451_section)
+    mf1_mt451_section.setdefault(0, {})[0] = {
+        "MAT": 1,
+        "MF": 0,
+        "MT": 0,
+        "TAPEDESCR": "dummy taped hea description",
+    }
+    lines2 = parser1.write(mf1_mt451_section)
+    result1 = parser1.parse(lines1)
+    result2 = parser2.parse(lines2)
+    del result2[0]
+    compare_objects(result1, result2)

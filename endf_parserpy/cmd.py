@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/02/05
-# Last modified:   2024/02/05
+# Last modified:   2024/02/13
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -30,6 +30,9 @@ def validate_endf_files(files, strict=False):
         fuzzy_matching=fuzzy_matching,
         ignore_varspec_mismatch=False,
         accept_spaces=False,
+        ignore_blank_lines=False,
+        ignore_send_records=False,
+        ignore_missing_tpid=False,
     )
     any_failed = False
     file_status_list = []

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/13
-# Last modified:   2024/02/12
+# Last modified:   2024/02/16
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -90,3 +90,9 @@ class AbbreviationNameCollisionError(ParserException):
 
 class SizeMismatchError(ParserException):
     pass
+
+
+class MissingSectionError(ParserException):
+    def __init__(self, message, section_name=""):
+        super().__init__(message)
+        self.section_name = section_name

@@ -916,7 +916,7 @@ class EndfParser:
                                     eltype = "variable"
                                 elif isinstance(exc, MissingSectionError):
                                     varpath = self.current_path + exc.section_name
-                                    eltype = "section"
+                                    eltype = exc.section_type
                                 explanation = self.explain(varpath, stdout=False)
                                 if explanation is None:
                                     explanation = "No explanation available"

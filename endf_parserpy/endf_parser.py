@@ -676,6 +676,8 @@ class EndfParser:
     def process_section(self, tree):
         self.loop_vars["__ofs"] = self.ofs
         section_head = get_child(tree, "section_head")
+        if self.rwmode == "write":
+            self.logbuffer.save_reduced_record_log(section_head)
         section_tail = get_child(tree, "section_tail")
         varname = get_varname(section_head)
         varname2 = get_varname(section_tail)

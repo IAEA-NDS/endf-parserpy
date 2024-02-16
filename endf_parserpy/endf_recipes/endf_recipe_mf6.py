@@ -3,13 +3,118 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2024/02/16
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 ENDF_RECIPE_MF6 = """
+
+# var ZA:   ZA = (1000.0 * Z) + A
+#           Z ... charge number of material
+#           A ... mass number of material
+# var AWR:  ratio of the mass of the material to that of the neutron
+#
+# var JP:   An integer that is “overloaded” to provide information about
+#           both prompt fission neutrons and photons. When not storing fission
+#           observables, set JP=0.
+#           JP=JPP*10+JPN where JPP and JPN are flags for photons and neutrons
+#           respectively. The flags JPP and JPN take values 0, 1 or 2.
+#           For JPX=JPN or JPP:
+#
+#               - JPX=0  This indicates that the usual MF=6 interpretation
+#                        of yi and fi holds.
+#
+#               - JPX=1  This indicates the probability functions P̃i (ν, E)
+#                        for each particle i are given in the spot reserved
+#                        for the particle yields yi. In this case, fi is
+#                        not given explicitly in MF=6 as is indicated by the
+#                        LAW flag. P̃i(ν, E) is the probability of emitting ν
+#                        particles of type i divided by the average
+#                        multiplicity of particle i as a function of energy.
+#
+#               - JPX=2  This indicates that only the probability functions
+#                        and individual spectra are given. In this case, yi
+#                        stores the probability functions P̃i(ν, E), and
+#                        fi stores the average spectrum for the ν particles
+#                        of type i.
+#
+#           Note, when JP>0, the LAW values may take unusual, negative,
+#           values. In such cases the format is equal to LAW=0, giving only
+#           the incident energy-dependent probability table. See the definition
+#           of LAW below and Section 6.3.9 for further discussion.
+#
+# var LCT:  Reference system for secondary energy and angle (incident energy
+#           is always given in the LAB system).
+#
+#               - LCT=1  laboratory (LAB) coordinates used for secondary
+#                        energy and angle for all reaction products;
+#
+#               - LCT=2  center-of-mass (CM) system used for secondary energy
+#                        and angle for all reaction products;
+#
+#               - LCT=3  LCT=3 center-of-mass system for both angle and
+#                        secondary energy for light particles (A≤ 4) and
+#                        laboratory system for heavy recoils (A>4).
+#
+#               - LCT=4  center-of-mass system for initial reaction products,
+#                        and laboratory system for any subsequent breakup
+#                        products. Intended for use with breakup reactions
+#                        (see section 0.4.3.4).
+#
+# var NK:   Number of subsections in this section (MT). Each subsection
+#           describes one reaction product. There can be more than one
+#           subsection for a given particle or residual nucleus (see LIP).
+#           For the limit on NK see Appendix G.
+#
+# var ZAP:  Product identifier 1000 ∗ Z + A with Z = 0 for photons and
+#           A = 0 for electrons and positrons. A section with A = 0 can also
+#           be used to represent the average recoil energy or spectrum for an
+#           elemental target (see text).
+#
+# var AWP:  Product mass in neutron units. When ZAP=0, this field can contain
+#           the energy of a primary photon. In that case, this section will
+#           contain an angular distribution (LAW=2) for the primary photon.
+#
+# var LIP:  Product modifier flag.
+#
+#           *Isomeric states*: Its main use is to identify the isomeric state
+#           of a product nucleus. In this case, LIP=0 for the ground state,
+#           LIP=1 for the first isomeric state, etc. These values should be
+#           consistent with LISO in File 8, MT=457.
+#
+#           *Multiple emission*: In some cases, it may be useful to use LIP
+#           to distinguish between different subsections with the same value of
+#           ZAP for light particles. For example, LIP=0 could be the first
+#           neutron out for a sequential reaction, LIP=1 could be the second
+#           neutron, and so on. Other possible uses might be to indicate which
+#           compound system emitted the particles, or to distinguish
+#           between the neutron from the (n,np) channel and that from the
+#           (n,pn) channel. The exact meaning assigned to LIP should be
+#           explained in the File 1, MT=451 comments.
+#
+#           *Fission*: LIP may be used to denote which particle out of
+#           ν particles the current set describes. See Section 6.3.9 for
+#           further discussion.
+#
+# var LAW:  Flag to distinguish between different representations of the
+#           distribution function, fi :
+#
+#              LAW=0  unknown distribution;
+#              LAW=1  continuum energy-angle distribution;
+#              LAW=2  two-body reaction angular distribution;
+#              LAW=3  isotropic two-body distribution;
+#              LAW=4  recoil distribution of a two-body reaction;
+#              LAW=5  charged-particle elastic scattering;
+#              LAW=6  n-body phase-space distribution; and
+#              LAW=7  laboratory angle-energy law.
+#              LAW<0  (For Fission only with JP>0) the average particle
+#                     distributions are given in MF=4/5 (for neutrons) or
+#                     MF=14/15 (for photons). The format here is equivalent
+#                     to LAW=0, giving only the incident energy-dependent
+#                     probability table. See Sections 6.2.1 and 6.3.9 for
+#                     further discussion.
 
 [MAT, 6, MT/ ZA, AWR, JP, LCT, NK, 0]HEAD
 for i=1 to NK:

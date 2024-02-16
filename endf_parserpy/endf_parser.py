@@ -699,11 +699,7 @@ class EndfParser:
         )
         section_body = get_child(tree, "section_body")
         initialize_abbreviations(self.datadic)
-        try:
-            self.run_instruction(section_body)
-        except VariableNotFoundError as exc:
-            exc.varname = str(self.current_path + exc.varname)
-            raise exc
+        self.run_instruction(section_body)
         finalize_abbreviations(self.datadic)
         self.datadic = close_section(section_head, self.datadic)
         self.current_path = previous_path

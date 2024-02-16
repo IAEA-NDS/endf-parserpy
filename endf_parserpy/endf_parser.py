@@ -776,10 +776,15 @@ class EndfParser:
         self.current_path = parser_state["current_path"]
 
     def should_skip_section(self, mf, mt, exclude=None, include=None):
-        if include is not None and isinstance(include, int):
-            include = (include,)
-        if exclude is not None and isinstance(exclude, int):
-            exclude = (exclude,)
+        if include is not None:
+            if isinstance(include, int):
+                include = (include,)
+            include = tuple(tuple(p) if hasattr(p, "__iter__") else p for p in include)
+        if exclude is not None:
+            if isinstance(exclude, int):
+                exclude = (exclude,)
+            exclude = tuple(tuple(p) if hasattr(p, "__iter__") else p for p in exclude)
+
         if exclude is None:
             if include is not None:
                 if mf not in include and (mf, mt) not in include:

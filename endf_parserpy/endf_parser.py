@@ -581,7 +581,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
-                path=self.current_path[2:],
+                path=self.current_path,
             )
             tab1_dic.update(get_ctrl(self.datadic))
             newlines = write_tab1(tab1_dic, with_ctrl=True, **self.write_opts)
@@ -695,7 +695,7 @@ class EndfParser:
             self.datadic,
             self.loop_vars,
             create_missing,
-            path=self.current_path[2:],
+            path=self.current_path,
         )
         section_body = get_child(tree, "section_body")
         initialize_abbreviations(self.datadic)

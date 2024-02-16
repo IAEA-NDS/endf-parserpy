@@ -93,6 +93,7 @@ class SizeMismatchError(ParserException):
 
 
 class MissingSectionError(ParserException):
-    def __init__(self, message, section_name=""):
+    def __init__(self, message, section_name="", section_type=""):
         super().__init__(message)
         self.section_name = section_name
+        self.section_type = section_type

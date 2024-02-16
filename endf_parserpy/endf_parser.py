@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/12
+# Last modified:   2024/02/16
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -776,6 +776,10 @@ class EndfParser:
         self.current_path = parser_state["current_path"]
 
     def should_skip_section(self, mf, mt, exclude=None, include=None):
+        if include is not None and isinstance(include, int):
+            include = (include,)
+        if exclude is not None and isinstance(exclude, int):
+            exclude = (exclude,)
         if exclude is None:
             if include is not None:
                 if mf not in include and (mf, mt) not in include:

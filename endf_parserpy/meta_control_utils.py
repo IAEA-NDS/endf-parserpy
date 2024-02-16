@@ -69,9 +69,14 @@ def open_section(extvarname, datadic, loop_vars, create_missing, path=None):
     try:
         datadic = datadic[varname]
     except KeyError:
-        msg = "Array of sections " if indexquants is not None else "Section "
+        if indexquants is not None:
+            msg = "Array of sections "
+            section_type = "array of sections"
+        else:
+            msg = "Section "
+            section_type = "section"
         msg += f"`{varname}` is missing in dictionary"
-        raise MissingSectionError(msg, section_name=varname)
+        raise MissingSectionError(msg, section_name=varname, section_type=section_type)
 
     idcsstr_list = []
     if indexquants is not None:
@@ -87,6 +92,7 @@ def open_section(extvarname, datadic, loop_vars, create_missing, path=None):
                 raise MissingSectionError(
                     f"Section `{ext_secname}` is missing in dictionary",
                     section_name=ext_secname,
+                    section_type="section",
                 )
             if path is not None:
                 path += (idx,)

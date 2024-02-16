@@ -70,6 +70,7 @@ from .custom_exceptions import (
     ParserException,
     VariableNotFoundError,
     UnexpectedControlRecordError,
+    MissingSectionError,
 )
 from .endf_recipe_utils import (
     get_recipe_parsetree_dic,
@@ -906,14 +907,21 @@ class EndfParser:
                             + "Error message: "
                             + str(exc)
                         )
-                        if isinstance(exc, VariableNotFoundError):
+                        if isinstance(
+                            exc, (VariableNotFoundError, MissingSectionError)
+                        ):
                             if self.explain_missing_variable:
-                                varpath = self.current_path + exc.varname
+                                if isinstance(exc, VariableNotFoundError):
+                                    varpath = self.current_path + exc.varname
+                                    eltype = "variable"
+                                elif isinstance(exc, MissingSectionError):
+                                    varpath = self.current_path + exc.section_name
+                                    eltype = "section"
                                 explanation = self.explain(varpath, stdout=False)
                                 if explanation is None:
                                     explanation = "No explanation available"
                                 explain_header = (
-                                    f"Explanation of missing variable `{varpath}`"
+                                    f"Explanation of missing {eltype} `{varpath}`"
                                 )
                             errmsg += "\n\n" + explain_header + "\n"
                             errmsg += "-" * len(explain_header) + "\n"

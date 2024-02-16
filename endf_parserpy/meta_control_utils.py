@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/02/01
+# Last modified:   2024/02/16
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -29,6 +29,7 @@ from .custom_exceptions import (
     AbbreviationNameCollisionError,
     VariableNotFoundError,
     UnexpectedControlRecordError,
+    MissingSectionError,
 )
 from copy import deepcopy
 
@@ -63,8 +64,15 @@ def open_section(extvarname, datadic, loop_vars, create_missing, path=None):
         path += (varname,)
     indexquants = get_indexquants(extvarname)
     curdatadic = datadic
-    datadic.setdefault(varname, {})
-    datadic = datadic[varname]
+    if create_missing:
+        datadic.setdefault(varname, {})
+    try:
+        datadic = datadic[varname]
+    except KeyError:
+        msg = "Array of sections " if indexquants is not None else "Section "
+        msg += f"`{varname}` is missing in dictionary"
+        raise MissingSectionError(msg, section_name=varname)
+
     idcsstr_list = []
     if indexquants is not None:
         for idxquant in indexquants:
@@ -72,7 +80,14 @@ def open_section(extvarname, datadic, loop_vars, create_missing, path=None):
             idcsstr_list.append(str(idx))
             if create_missing:
                 datadic.setdefault(idx, {})
-            datadic = datadic[idx]
+            try:
+                datadic = datadic[idx]
+            except KeyError:
+                ext_secname = f"{varname}[" + ",".join(idcsstr_list) + "]"
+                raise MissingSectionError(
+                    f"Section `{ext_secname}` is missing in dictionary",
+                    section_name=ext_secname,
+                )
             if path is not None:
                 path += (idx,)
     # provide a pointer so that functions

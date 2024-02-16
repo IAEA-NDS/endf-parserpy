@@ -1,4 +1,4 @@
-.. _ENDF-6 formats manual: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf 
+.. _ENDF-6 formats manual: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
 
 Reading & Writing ENDF-6
 ========================
@@ -27,7 +27,7 @@ method of the :class:`~endf_parserpy.endf_parser.EndfParser` class:
 The variable ``endf_dict`` is a dictionary (:class:`dict`) in which
 all quantities are associated with the symbol names
 described in the `ENDF-6 formats manual`_.
-The data organization within this dictionary is determined by 
+The data organization within this dictionary is determined by
 :ref:`ENDF-6 recipes <endf6_recipe_sec>`.
 An :class:`~endf_accessories.EndfDict` object,
 instantiated by
@@ -35,7 +35,7 @@ instantiated by
 :ref:`data navigation <data_navigation>`.
 
 The parsing process can be influenced by using additional
-arguments in the instantiation of the 
+arguments in the instantiation of the
 :class:`~endf_parserpy.endf_parser.EndfParser` class.
 The default choices of these arguments are forgiving so that
 even ENDF-6 files that do not strictly comply with the ENDF-6
@@ -64,7 +64,7 @@ in MT sections within MF=3,4,5 sections, you can use:
 
 .. code:: Python
 
-   endf_dict = parser.parsefile('input.endf', include=(3, 4, 5))
+   endf_dict = parser.parsefile('input.endf', include=[3, 4, 5])
 
 In the resulting dictionary, only the subdictionaries associated
 with the included MF numbers contain keys named according to
@@ -76,12 +76,12 @@ also use the ``exclude`` argument, e.g.
 
 .. code:: Python
 
-   endf_dict = parser.parsefile('input.endf', exclude=(3, 4, 5))
+   endf_dict = parser.parsefile('input.endf', exclude=[3, 4, 5])
 
 to parse everything except MF=3,4,5. Both inclusion and exclusion
 can be performed more fine-grained at the level of MT sections.
 For example, to include everything of MF=6 and only MT=1 from MF=3,
-specify ``include=(6, (3, 1))``.
+specify ``include=[6, [3, 1]]``.
 
 If one wants to check which MF/MT sections have been parsed,
 one can utilize the
@@ -114,7 +114,7 @@ The following code snippet demonstrates writing:
    parser.writefile('output.endf', endf_dict)
 
 Also the :func:`~endf_parserpy.endf_parser.EndfParser.writefile`
-method supports the 
+method supports the
 ``include`` and ``exclude`` argument. If the
 ``include`` argument is provided, only included
 MF/MT sections will be written to the file.
@@ -125,7 +125,7 @@ If data in the ``endf_dict`` dictionary
 have been added or deleted, it is important to
 update the directory listing in MF1/MT451 first
 before writing to an ENDF-6 file (see :endf6manshort:`57`).
-This can be achieved with the 
+This can be achieved with the
 :func:`~endf_parserpy.endf6_plumbing.update_directory` function.
 
 .. code:: Python
@@ -137,7 +137,7 @@ This can be achieved with the
 
    Don't use the ``include`` and ``exclude`` argument
    of the :func:`~endf_parserpy.endf_parser.EndfParser.writefile` method
-   if it is important that the ENDF directory in MF1/MT451 is in sync with 
+   if it is important that the ENDF directory in MF1/MT451 is in sync with
    the file. Rather remove the sections manually before the
    invocation of :func:`~endf_parserpy.endf6_plumbing.update_directory`.
 
@@ -147,7 +147,7 @@ of numerical data. The ENDF-6 format only provides eleven
 character slots for the representation of numbers,
 limiting the achievable precision. By default, numbers are written
 in a specific floating point notation that appears to be commonly adopted
-by nuclear data library projects. This notation is of the form 
+by nuclear data library projects. This notation is of the form
 ``␣1.234567+8``, with the first character slot being reserved
 for a potential minus sign and skipping the ``e``, which would
 usually be included to indicate the start of the exponent.
@@ -188,6 +188,6 @@ the original ``endf_dict``:
 .. code:: Python
 
    from endf_parserpy.debugging_utils import compare_objects
-   
+
    test_dict = parser.parsefile('output.endf')
-   compare_objects(endf_dict, test_dict, atol=1e-6, rtol=1e-6, fail_on_diff=False) 
+   compare_objects(endf_dict, test_dict, atol=1e-6, rtol=1e-6, fail_on_diff=False)

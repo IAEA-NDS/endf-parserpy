@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2024/02/01
+# Last modified:   2024/02/16
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
@@ -112,7 +112,9 @@ class EndfPath(Sequence):
     def _validate_path(self, path_elements):
         for el in path_elements:
             if not isinstance(el, int):
-                if not el.replace("_", "").isalnum() or el[0].isdigit():
+                if (
+                    not el.replace("_", "").isalnum() or el[0].isdigit()
+                ) and not el == "*":
                     raise ValueError(f"invalid path element `{el}`")
 
     def __eq__(self, other):

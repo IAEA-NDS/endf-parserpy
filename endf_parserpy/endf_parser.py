@@ -303,28 +303,29 @@ class EndfParser:
             otherwise the description as a ``str``.
         """
         varpath = EndfPath(varpath)
-        varname = str(varpath[-1])
-        m = re.match("([a-zA-Z][a-zA-Z0-9]*)", varname)
-        if not m:
-            raise ValueError(f"Invalid variable name `{varname}`")
-        varname = m.group(1)
-        vardescrs = self.variable_descriptions
-        try:
-            vardesc = vardescrs[varpath]
-            if stdout:
-                print(vardesc)
+        vardescr = self.variable_descriptions
+        found = True
+        for p in varpath:
+            if p in vardescr:
+                vardescr = vardescr[p]
+            elif "*" in vardescr:
+                vardescr = vardescr["*"]
             else:
-                return vardesc
-        except KeyError:
+                found = False
+                break
+        if not found or not isinstance(vardescr, str):
             if stdout:
-                print(f"No description for variable `{varname}` available")
-            else:
-                return None
+                print(f"No description for `{str(varpath)}` available")
+            return None
+        if stdout:
+            print(vardescr)
+        else:
+            return vardescr
 
     def process_comment_block(self, tree):
         def extract_info(comment):
             rex = r"(?P<indentstr> *#( *var *"
-            rex += r"(?P<varname>[a-zA-Z][a-zA-Z0-9/]*) *(\[[^]]*\])?"
+            rex += r"(?P<varname>[a-zA-Z0-9/*]*) *(\[[^]]*\])?"
             rex += " *:)?)?"
             rex += "(?P<comment>.*)"
             dic = re.match(rex, comment).groupdict()

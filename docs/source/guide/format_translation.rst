@@ -61,8 +61,8 @@ this conversion:
     with open('input.json', 'r') as f:
         endf_dict = json.load(f)
 
-        sanitize_fieldname_types(endf_dict)
-        parser.writefile('output.endf', endf_dict)
+    sanitize_fieldname_types(endf_dict)
+    parser.writefile('output.endf', endf_dict)
 
 Here, basic Python functionality is employed to
 read the data from the JSON file into a dictionary

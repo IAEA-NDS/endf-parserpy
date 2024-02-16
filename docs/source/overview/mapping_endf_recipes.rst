@@ -3,8 +3,8 @@
 Mappings by ENDF-6 Recipes
 ==========================
 
-Endf-parserpy relies on a `formal description 
-<https://arxiv.org/abs/2312.08249>`_ of the `ENDF-6 format`_ 
+Endf-parserpy relies on a `formal description
+<https://arxiv.org/abs/2312.08249>`_ of the `ENDF-6 format`_
 for parsing ENDF-6 files and mapping their data into Python dictionaries
 (:class:`dict`).
 From the user perspective, the formal description
@@ -42,7 +42,7 @@ from such recipes.
    guides and tutorials.
 
 
-Structure of Python dictionaries with ENDF-6 data 
+Structure of Python dictionaries with ENDF-6 data
 -------------------------------------------------
 
 The structure of a dictionary returned by a call to
@@ -105,19 +105,19 @@ of how the dictionary structure is determined by a recipe:
 
 This recipe is a formalized version of the format specification in
 the :endf6manpage:`61`.
-Let's assume that the corresponding dictionary 
+Let's assume that the corresponding dictionary
 is named ``mf1_mt451_dict`` referring to ``endf_dict[1][451]``.
 Each dictionary associated with a specific MF and MT number
 will contain the keys ``MAT``, ``MF`` and ``MT``
-(:endf6manshort:`30`) with 
+(:endf6manshort:`30`) with
 the appropriate integer values (data type :class:`int`).
 Lines of the form ``[ ... / ... ] <record type>`` in an
 ENDF-6 recipe represent ENDF records (:endf6manshort:`52`). The variable names
 in the six slots after the first slash in an ENDF record
-are directly mapped onto equally named keys in the 
-corresponding dictionary. 
+are directly mapped onto equally named keys in the
+corresponding dictionary.
 For example, the six slots of the first line (the HEAD record)
-contain the variable names ``ZA``, ``AWR``, ``LRP``, 
+contain the variable names ``ZA``, ``AWR``, ``LRP``,
 ``LFI``, ``NLIB`` and ``NMOD``, and equally named keys are expected
 to be present in ``mf1_mt451_dict``.
 More generally, the variable names introduced in the six
@@ -152,16 +152,16 @@ is expected to contain all integers between 1 and the value of ``NWD``
 as keys. The third element in ``DESCRIPTION`` could then
 be accessed via ``mf1_mt451_dict['DESCRIPTION'][3]``.
 Also multidimensional arrays are possible, e.g. ``arr2d[i, j]``
-would indicate a two-dimensional array. 
+would indicate a two-dimensional array.
 Multidimensional arrays are realized by nesting dictionaries
 with integer keys.
 For example, an array of size 2x2 could be set up like this:
 
 .. code:: python
 
-   arr2d = {1: dict(), 2: dict()} 
+   arr2d = {1: dict(), 2: dict()}
    arr2d[1] = {1: 1, 2: 2}
-   arr2d[2] = {1: 3, 2: 4} 
+   arr2d[2] = {1: 3, 2: 4}
 
 
 .. _data_types_sec:
@@ -170,7 +170,7 @@ Data types
 ~~~~~~~~~~
 
 The data types of objects linked to the various keys can also be
-inferred from an ENDF-6 recipe. The variables in 
+inferred from an ENDF-6 recipe. The variables in
 the first two slots of an ENDF record are of type :class:`float`
 and those in the next four slots of type :class:`int`:
 
@@ -190,7 +190,7 @@ data type :class:`str` due to the variable name being introduced
 in the slot of a TEXT record. Noteworthy, variable names in
 TEXT record specifications may be suffixed by an integer
 enclosed by curly braces to indicate the length of the
-associated string. For example: 
+associated string. For example:
 
 .. code:: text
 
@@ -239,7 +239,7 @@ one-dimensional arrays that are stored as data type :class:`list`.
 Furthermore, there are two additional keys ``NBT`` and ``INT``
 expected to be present. These variables establish
 the definition of a piecewise interpolation scheme (see :endf6manshort:`44`
-for details). The associated objects also need to be of type ``list``.
+for details). The associated objects also need to be of type :class:`list`.
 Regarding the regular six slots, the variable names
 of the first four slots are mapped into the dictionary
 as described in :ref:`an earlier section on this page
@@ -269,7 +269,7 @@ in the remaining slots are mapped into the dictionary
 as explained in :ref:`an earlier section on this page
 <basic_mapping_of_variables>`. So for the given example
 of a TAB2 record specification, keys with names
-``SPI``, ``LIDP``, ``NE``, ``NBT`` and ``INT`` 
+``SPI``, ``LIDP``, ``NE``, ``NBT`` and ``INT``
 are expected to be present in the dictionary.
 
 Finally, there is a feature called
@@ -293,7 +293,7 @@ here ``E`` and ``XS``. These variables could be accessed by
 ``mf3_mt1_section['xstable']['NBT']``, etc.
 
 
-Particularities of LIST records 
+Particularities of LIST records
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Let's consider the following LIST record specification
@@ -315,7 +315,7 @@ Notation such as ``{...}{l=1 to NL[i]}`` indicates repetitions
 (see also `here
 <https://arxiv.org/pdf/2312.08249.pdf#page=10>`_),
 and helps to infer the ranges of indices for arrays introduced inside
-the first curly bracket pair. 
+the first curly bracket pair.
 
 
 Sections
@@ -338,7 +338,7 @@ the corresponding dictionary:
 
 The notation ``(subsection[k])`` opens an array of sections
 and ``(/subsection[k])`` indicates the end of the section block.
-Assume that the corresponding dictionary is given by ``mf10_m1_section``.
+Assume that the corresponding dictionary is given by ``mf10_mt1_section``.
 The presence of an opening and closing section statement
 leads to the creation of a key whose name is given by the section
 name in the section opening statement. In the current example, we have
@@ -349,7 +349,7 @@ a dictionary, so ``mf10_mt1_section['subsection'][1]``,
 ``mf10_mt1_section['subsection'][2]``, etc. are dictionaries as well.
 The range of the contiguous integer keys can be inferred from the
 loop statement containing the variable of the index, so in the
-example considered keys from 1 to ``NS`` exist.
+example considered keys from ``1`` to ``NS`` exist.
 Variables introduced between the opening and closing section
 statement are mapped into the subdictionaries as explained
 in the previous section on this page. In the current example,
@@ -365,7 +365,7 @@ Conditional blocks are associated with `if/elif/else
 <https://arxiv.org/pdf/2312.08249.pdf#page=12>`_ statements.
 Consider the `recipe for an MF=1/MT=452 section
 <https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf1_mt452.py>`_
-(see also :endf6manshort:`63`): 
+(see also :endf6manshort:`63`):
 
 .. code:: text
 
@@ -382,13 +382,13 @@ Assume the dictionary linked to MF=1/MT=452 is named
 Variable names introduced inside a conditional block will only
 be present in this dictionary if the logical expression in the
 if-statement is true. In the current example: The variable ``NC``
-will only be present as key in ``mf1_mt452_section`` if 
+will only be present as key in ``mf1_mt452_section`` if
 ``mf1_mt452_section['LNU']`` is equal to 1. Similarly,
 keys named ``Eint`` and ``nu`` will only exist if
 ``mf1_mt452_section['LNU'] == 2``.
 
 
 .. _ENDF-6 format: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
-.. _ENDF-6 formats manual: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf 
+.. _ENDF-6 formats manual: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
 .. _ENDF-6 recipes: https://github.com/IAEA-NDS/endf-parserpy/tree/main/endf_parserpy/endf_recipes
 .. _GitHub repository: https://github.com/IAEA-NDS/endf-parserpy/

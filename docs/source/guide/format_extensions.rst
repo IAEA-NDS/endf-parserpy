@@ -1,15 +1,17 @@
+.. _guide_format_extension:
+
 Extending the ENDF-6 Format
 ===========================
 
-endf-parserpy leverages 
+endf-parserpy leverages
 :ref:`ENDF-6 recipe files <endf6_recipe_sec>`
 for reading and writing ENDF-6 files.
 These recipe files are written in a
 formal language described in
 detail in `this ArXiv preprint
 <https://arxiv.org/abs/2312.08249>`_.
-This approach enables the addition of support 
-for format extensions by 
+This approach enables the addition of support
+for format extensions by
 updating these recipe files.
 The Python source code of endf-parserpy
 doesn't need to be touched.
@@ -93,7 +95,7 @@ is a possible form of the additional branch:
     """
 
 The notation ``numel := ...``` introduces a
-name for an expression that can be used 
+name for an expression that can be used
 as an abbreviation in record specifications.
 
 We can now include this additional representation
@@ -128,7 +130,7 @@ with the updated ENDF recipe dictionary to its constructor:
 
 
 For the sake of illustration, let's create an
-MF33/MT1 section making use of the format extension. 
+MF33/MT1 section making use of the format extension.
 We can adopt a large of part of the set up from the
 tutorial that covered the creation of an ENDF-6 file,
 more precisely the :ref:`section that covered the

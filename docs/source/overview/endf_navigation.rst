@@ -66,7 +66,7 @@ of the original dictionary (technically speaking:
 :class:`~endf_parserpy.accessories.EndfDict`
 objects manage a reference to the original :class:`dict` or other :class:`~collections.abc.MutableMapping` object).
 Suppose that ``endf_dict`` is an instance of
-:class:`~endf_parserpy.accessories.EndfDict`
+:class:`~endf_parserpy.accessories.EndfDict`.
 Using the example given above, we could access the variable ``AJ``
 via:
 

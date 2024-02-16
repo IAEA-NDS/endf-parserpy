@@ -154,7 +154,7 @@ usually be included to indicate the start of the exponent.
 
 If more output precision is required, several options are available
 to tweak the output format, which can be passed as arguments
-to the construtor of the :class:`~endf_parserpy.endf_parser.EndfParser` class.
+to the constructor of the :class:`~endf_parserpy.endf_parser.EndfParser` class.
 With ``abuse_signpos=True``, positive numbers
 are allowed to consume the first character slot usually
 reserved for the sign.

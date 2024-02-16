@@ -95,7 +95,9 @@ into the `ENDF-6 format`_.
 The descriptions in the `ENDF-6 formats manual`_ can
 be formalized to enable automatic interpretation
 by computer programs. This package should leverage
-such a formal ENDF-6 description for the translation
+such a `formal ENDF-6 description
+<https://arxiv.org/abs/2312.08249>`_
+for the translation
 between ENDF-6 files and Python dictionaries.
 The mapping logic is then implemented generically
 for all elements of the formal format description.
@@ -110,7 +112,8 @@ wrongly due to misunderstanding the description of the
 format.
 
 This design choice also implies that
-support for ENDF-6 format extensions can be seamlessly
+:ref:`support for ENDF-6 format extensions <guide_format_extension>`
+can be seamlessly
 implemented by updating the formal ENDF-6 descriptions.
 The design of the formal ENDF format specification
 language is explained in an `arxiv preprint

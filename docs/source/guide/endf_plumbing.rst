@@ -27,7 +27,7 @@ ENDF-6 files:
 - Modifying arrays
 
 The explanations for these actions will also give
-some intution on how similar operations not listed here can be
+some intuition on how similar operations not listed here can be
 accomplished.
 
 Tweaking a cross section
@@ -73,7 +73,7 @@ The :class:`~endf_parserpy.accessories.EndfDict` class is an
 enhanced :class:`dict` that enables convenient access to
 data via :ref:`EndfPaths <endf_path_class>`.
 
-After instantiating an 
+After instantiating an
 :class:`~endf_parserpy.endf_parser.EndfParser` object,
 the ENDF-6 file ``input.endf`` is read and the resulting
 :class:`dict` immediately converted to an
@@ -104,12 +104,12 @@ The reported differences should only involve the location ``3/2/xstable/xs``.
 Please also take note of the information in the
 :ref:`section about writing ENDF-6 files <writing_endf_file_subsec>`
 regarding the control of output precision.
+
 With the instructions provided above, potentially small numerical
 differences are introduced in other MF/MT sections if the original
 file uses an unconventional notation style for real values, e.g.
 switching from floating point notation to decimal notation to
 increase precision.
-
 To avoid this issue from the start, we can use the ``include``
 argument in the call of the :func:`~endf_parserpy.endf_parser.EndfParser.parsefile`
 method to only parse MF3/MT2. The other sections will then be read
@@ -133,7 +133,7 @@ from an ENDF-6 file:
 .. code:: python
 
    endf_dict = EndfDict(parser.parsefile('input.endf', include=[])
-   del endf_dict['3/2'] 
+   del endf_dict['3/2']
    parser.writefile('output.endf')
 
 The ``include=[]`` argument causes the parser to not parse any
@@ -161,7 +161,7 @@ both files verbatim into two dictionaries and use
 basic Python functionality to manipulate the dictionaries
 for the desired effect. The resulting dictionary is then
 written to an ENDF-6 file. Assume that we want to merge the
-elastic cross sections (stored in MF3/MT2) from a file ``input1.endf`` 
+elastic cross sections (stored in MF3/MT2) from a file ``input1.endf``
 into another file ``input2.endf``.
 Here's the code snippet that
 implements the described actions for this case:

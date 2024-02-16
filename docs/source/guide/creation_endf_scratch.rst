@@ -563,7 +563,7 @@ set up this dictionary with this code snippet:
        {k: v for k, v in enumerate(energies, start=1)}
 
 The first instruction retrieves the energies
-from MF3/MT1 (given as a ``list`` object).
+from MF3/MT1 (given as a :class:`list` object).
 The second instruction assigns the correct value to ``NE``.
 In the assignment accomplished by the third instruction,
 the energies :class:`list` is converted to a :class:`dict` data type.

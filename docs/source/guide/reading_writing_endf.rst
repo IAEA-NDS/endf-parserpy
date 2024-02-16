@@ -14,7 +14,7 @@ along with some considerations to be heeded.
 Reading an ENDF-6 file
 ------------------------
 
-An ENDF-6 file can be read with the ``.parsefile()``
+An ENDF-6 file can be read with the :func:`~endf_parserpy.endf_parser.EndfParser.parsefile()`
 method of the :class:`~endf_parserpy.endf_parser.EndfParser` class:
 
 .. code:: Python

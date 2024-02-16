@@ -73,11 +73,13 @@ ENDF_RECIPE_MF6 = """
 #           be used to represent the average recoil energy or spectrum for an
 #           elemental target (see text).
 #
-# var AWP:  Product mass in neutron units. When ZAP=0, this field can contain
+# var subsection/*/AWP:
+#           Product mass in neutron units. When ZAP=0, this field can contain
 #           the energy of a primary photon. In that case, this section will
 #           contain an angular distribution (LAW=2) for the primary photon.
 #
-# var LIP:  Product modifier flag.
+# var subsection/*/LIP:
+#           Product modifier flag.
 #
 #           *Isomeric states*: Its main use is to identify the isomeric state
 #           of a product nucleus. In this case, LIP=0 for the ground state,
@@ -98,7 +100,8 @@ ENDF_RECIPE_MF6 = """
 #           ν particles the current set describes. See Section 6.3.9 for
 #           further discussion.
 #
-# var LAW:  Flag to distinguish between different representations of the
+# var subsection/*/LAW:
+#           Flag to distinguish between different representations of the
 #           distribution function, fi :
 #
 #              LAW=0  unknown distribution;

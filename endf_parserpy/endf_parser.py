@@ -325,7 +325,7 @@ class EndfParser:
 
     def process_comment_block(self, tree):
         def extract_info(comment):
-            rex = r"(?P<indentstr> *#( *var *"
+            rex = r" *#(?P<indentstr>( *var *"
             rex += r"(?P<varname>[a-zA-Z0-9/*]+) *(\[[^]]*\])?"
             rex += " *:)?)?"
             rex += "(?P<comment>.*)"
@@ -338,8 +338,17 @@ class EndfParser:
             comment_line = comment_lines[idx]
             varname, comment, indent = extract_info(comment_line)
             if varname is not None:
-                firstindent = len(comment_line) - len(comment.lstrip())
-                curdescr = [comment_line[firstindent:]]
+                if comment.strip() != "":
+                    firstindent = indent + len(comment) - len(comment.lstrip())
+                    curdescr = [comment.lstrip()]
+                else:
+                    idx += 1
+                    comment_line = comment_lines[idx]
+                    tmp, comment, indent = extract_info(comment_line)
+                    if tmp is not None:
+                        raise ValueError(f"empty explaination of {varname}")
+                    firstindent = len(comment) - len(comment.lstrip())
+                    curdescr = [comment[firstindent:]]
                 idx += 1
                 while idx < len(comment_lines):
                     comment_line = comment_lines[idx]
@@ -347,9 +356,9 @@ class EndfParser:
                     if newvarname is not None:
                         idx -= 1
                         break
-                    curindent = len(comment_line) - len(comment.lstrip())
+                    curindent = len(comment) - len(comment.lstrip())
                     maxindent = min(firstindent, curindent)
-                    curdescr.append(comment_line[maxindent:])
+                    curdescr.append(comment[maxindent:])
                     idx += 1
                 vardescrs = self.variable_descriptions
                 vardescrs[self.current_path, varname] = "\n".join(curdescr).strip()

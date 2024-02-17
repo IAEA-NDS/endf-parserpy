@@ -6,6 +6,6 @@ EndfDict
 --------
 
 .. autoclass:: EndfDict
-   :members: unwrap, root, path
+   :members: exists, unwrap, root, path
 
 

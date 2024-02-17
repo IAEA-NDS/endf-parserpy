@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2024/02/16
+# Last modified:   2024/02/17
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
@@ -492,6 +492,18 @@ class EndfDict(MutableMapping):
 
     def __len__(self):
         return len(self._store)
+
+    def exists(self, path):
+        """Check whether object exists under path.
+
+        Parameters
+        ----------
+        path : EndfPath
+            An :class:`EndfPath` or object that is accepted
+            by its constructor.
+        """
+        path = EndfPath(path)
+        return path.exists(self._store)
 
     def keys(self):
         return self._store.keys()

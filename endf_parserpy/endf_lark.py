@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2024/02/17
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -43,7 +43,7 @@ record_fields : expr "," expr "," expr "," expr "," expr "," expr
 
 // comment block
 comment_block : COMMENT
-COMMENT : /(#[^\n]*\r?\n)+/s
+COMMENT : /( *#[^\n]*\r?\n)+/s
 
 // stop instruction to quit parsing
 stop_line : "stop" "(" escaped_stop_message? ")"

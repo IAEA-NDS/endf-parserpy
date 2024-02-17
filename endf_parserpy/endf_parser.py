@@ -352,7 +352,7 @@ class EndfParser:
                     curdescr.append(comment_line[maxindent:])
                     idx += 1
                 vardescrs = self.variable_descriptions
-                vardescrs[self.current_path, varname] = "\n".join(curdescr)
+                vardescrs[self.current_path, varname] = "\n".join(curdescr).strip()
             idx += 1
 
     def process_stop_line(self, tree):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/16
+# Last modified:   2024/02/17
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -326,7 +326,7 @@ class EndfParser:
     def process_comment_block(self, tree):
         def extract_info(comment):
             rex = r"(?P<indentstr> *#( *var *"
-            rex += r"(?P<varname>[a-zA-Z0-9/*]*) *(\[[^]]*\])?"
+            rex += r"(?P<varname>[a-zA-Z0-9/*]+) *(\[[^]]*\])?"
             rex += " *:)?)?"
             rex += "(?P<comment>.*)"
             dic = re.match(rex, comment).groupdict()

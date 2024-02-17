@@ -84,7 +84,7 @@ is a possible form of the additional branch:
 
     format_extension = """
 
-    elif LB==10 [lookahead=10]:
+    elif LB==10 [lookahead=1]:
         numel := NE + (NE-1)*M + M*M
         [MAT, 33, MT / 0.0, 0.0, NE, LB, numel, M /
             { E[i] }{ i=1 to NE},

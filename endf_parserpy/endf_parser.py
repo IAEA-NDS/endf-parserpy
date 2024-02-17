@@ -305,23 +305,38 @@ class EndfParser:
         """
         varpath = EndfPath(varpath)
         vardescr = self.variable_descriptions
-        found = True
-        for p in varpath:
-            if p in vardescr:
-                vardescr = vardescr[p]
-            elif "*" in vardescr:
-                vardescr = vardescr["*"]
+        search_state = [0]
+        search_dicts = [vardescr]
+        level = 0
+        while level >= 0:
+            search_state[level] += 1
+            ss = search_state[level]
+            sd = search_dicts[level]
+            p = varpath[level]
+            if level == len(varpath) - 1:
+                if sd.exists(p) and isinstance(sd[p], str):
+                    if stdout:
+                        print(sd[p])
+                        return
+                    else:
+                        return sd[p]
+                search_dicts.pop()
+                search_state.pop()
+                level -= 1
+            elif ss == 3:
+                search_dicts.pop()
+                search_state.pop()
+                level -= 1
             else:
-                found = False
-                break
-        if not found or not isinstance(vardescr, str):
-            if stdout:
-                print(f"No description for `{str(varpath)}` available")
-            return None
+                ps = p if ss == 1 else "*"
+                if sd.exists(ps):
+                    search_dicts.append(sd[ps])
+                    search_state.append(0)
+                    level += 1
+
         if stdout:
-            print(vardescr)
-        else:
-            return vardescr
+            print(f"No description for `{str(varpath)}` available")
+        return None
 
     def process_comment_block(self, tree):
         def extract_info(comment):

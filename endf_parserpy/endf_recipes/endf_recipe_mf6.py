@@ -154,7 +154,8 @@ for i=1 to NK:
 
             [MAT, 6, MT/ 0.0, 0.0, LANG, LEP, NR, NE/ Eint ]TAB2
             for j=1 to NE:
-                [MAT, 6, MT/ 0.0, E[j] , ND[j], NA[j], NEP[j]*(NA[j]+2), NEP[j]/
+                NW := NEP[j] * (NA[j]+2)
+                [MAT, 6, MT/ 0.0, E[j] , ND[j], NA[j], NW, NEP[j]/
                              {Ep[j,k], {b[m,j,k]}{m=0 to NA[j]}}{k=1 to NEP[j]} ]LIST
             endfor
 

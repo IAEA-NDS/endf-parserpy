@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/16
+# Last modified:   2024/02/18
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -14,6 +14,7 @@ ENDF_RECIPE_MF6 = """
 # var ZA:   ZA = (1000.0 * Z) + A
 #           Z ... charge number of material
 #           A ... mass number of material
+#
 # var AWR:  ratio of the mass of the material to that of the neutron
 #
 # var JP:   An integer that is “overloaded” to provide information about
@@ -124,6 +125,33 @@ for i=1 to NK:
     (subsection[i])
         [MAT, 6, MT/ ZAP, AWP, LIP, LAW, NR, NP/ Eint / yi]TAB1 (yields)
         if LAW == 1:
+
+            # var LANG:
+            #    Indicator which selects the angular representation
+            #    to be used; if
+            #        - LANG=1,     Legendre coefficients are used,
+            #        - LANG=2,     Kalbach-Mann systematics are used,
+            #        - LANG=11-15, a tabulated angular distribution
+            #                      is given using NA/2 cosines and the
+            #                      interpolation scheme specified
+            #                      by LANG-10 (for example, LANG=12
+            #                      selects linear-linear interpolation).
+            # var LEP:
+            #    Interpolation scheme for secondary energy;
+            #    LEP=1 for histogram,
+            #    LEP=2 for linear-linear, etc.
+            #
+            # var NE:
+            #    Number of secondary energy points given in E
+            #
+            # var INT:
+            #    (TAB2) INT array to specify interpolation
+            #    schemes to interpolate between energies in E.
+            #
+            # var NBT:
+            #    (TAB2) NBT array to specify breaks between
+            #    interpolation domains associated with E.
+
             [MAT, 6, MT/ 0.0, 0.0, LANG, LEP, NR, NE/ Eint ]TAB2
             for j=1 to NE:
                 [MAT, 6, MT/ 0.0, E[j] , ND[j], NA[j], NW[j], NEP[j]/

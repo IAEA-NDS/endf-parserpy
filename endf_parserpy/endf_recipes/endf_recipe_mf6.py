@@ -69,7 +69,8 @@ ENDF_RECIPE_MF6 = """
 #           subsection for a given particle or residual nucleus (see LIP).
 #           For the limit on NK see Appendix G.
 #
-# var ZAP:  Product identifier 1000 ∗ Z + A with Z = 0 for photons and
+# var subsection/*/ZAP:
+#           Product identifier 1000 ∗ Z + A with Z = 0 for photons and
 #           A = 0 for electrons and positrons. A section with A = 0 can also
 #           be used to represent the average recoil energy or spectrum for an
 #           elemental target (see text).
@@ -151,6 +152,22 @@ for i=1 to NK:
             # var NBT:
             #    (TAB2) NBT array to specify breaks between
             #    interpolation domains associated with E.
+            #
+            # var NEP:
+            #    Number of secondary energy points in the distribution.
+            #
+            # var ND:
+            #     Number of discrete energies given.
+            #     The first ND≥0 entries in the list of NEP energies are discrete, and the
+            #     remaining (NEP-ND)≥ 0 entries are to be used with LEP to describe a
+            #     continuous distribution. Discrete primary photons should be flagged with
+            #     negative energies.
+            #
+            # var NA:
+            #     Number of angular parameters.
+            #     Use NA=0 for isotropic distributions (note that all options are identical if
+            #     NA=0).
+            #     Use NA=1 or 2 with LANG=2 (Kalbach-Mann).
 
             [MAT, 6, MT/ 0.0, 0.0, LANG, LEP, NR, NE/ Eint ]TAB2
             for j=1 to NE:

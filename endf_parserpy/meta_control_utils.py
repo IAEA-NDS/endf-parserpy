@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/16
+# Last modified:   2024/02/18
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -41,10 +41,10 @@ def initialize_abbreviations(datadic):
 def introduce_abbreviation(tree, datadic):
     abbrevs = datadic.setdefault("__abbrevs", set())
     varname = get_child_value(tree, "VARNAME")
-    if varname in datadic:
+    if varname not in abbrevs and varname in datadic:
         raise AbbreviationNameCollisionError(
-            f"Abbreviation `{varname}` collides with an equally"
-            "named variable or abbreviation defined earlier"
+            f"Abbreviation `{varname}` collides with "
+            "an equally named variable defined earlier"
         )
     expr = get_child(tree, "expr")
     abbrevs.add(varname)

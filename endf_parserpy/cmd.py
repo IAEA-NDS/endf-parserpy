@@ -18,6 +18,7 @@ import os
 from .endf_parser import EndfParser
 from .accessories import EndfPath
 from .debugging_utils import compare_objects
+from .endf6_plumbing import update_directory
 from .user_tools import show_content
 
 
@@ -114,6 +115,14 @@ def show_file_content(parser, endfpath, file):
     show_content(cont)
 
 
+def update_mf1mt451_directory(parser, file, create_backup):
+    endf_dict = parser.parsefile(file, include=[(1, 451)])
+    update_directory(endf_dict, parser, **parser.read_opts)
+    if create_backup:
+        create_backup_file(file)
+    parser.writefile(file, endf_dict, overwrite=(not create_backup))
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -163,6 +172,15 @@ if __name__ == "__main__":
         "endfpath", type=str, help="EndfPath to section or value to display"
     )
     parser_show.add_argument("file", type=str, help="ENDF file")
+
+    parser_update_dir = subparsers.add_parser("update-directory")
+    parser_update_dir.add_argument(
+        "-nb",
+        "--no-backup",
+        action="store_true",
+        help="disable creation of backup file (suffix .bak)",
+    )
+    parser_update_dir.add_argument("file", type=str, help="ENDF file")
 
     args = parser.parse_args()
     strict_mode = args.strict
@@ -215,6 +233,9 @@ if __name__ == "__main__":
         sys.exit(retcode)
     elif args.subcommand == "show":
         show_file_content(parser, args.endfpath, args.file)
+    elif args.subcommand == "update-directory":
+        create_backup = not args.no_backup
+        update_mf1mt451_directory(parser, args.file, create_backup)
 
     # should not arrive here
     sys.exit(1)

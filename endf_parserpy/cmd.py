@@ -55,23 +55,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="endf_parserpy.cmd", description="endf_parserpy command-line utility"
     )
-
-    parser.add_argument(
-        "action",
-        choices=["validate", "compare"],
-        help="the action to perform (at the moment only `validate`)",
-    )
     parser.add_argument(
         "-s", "--strict", action="store_true", help="switch to enable strict mode"
     )
-    parser.add_argument("files", nargs="+", help="files for applying the action")
+
+    subparsers = parser.add_subparsers(dest="subcommand")
+    subparsers.required = True
+
+    parser_validate = subparsers.add_parser("validate")
+    parser_validate.add_argument("files", nargs="+", help="files for validation")
+
+    parser_compare = subparsers.add_parser("compare")
+    parser_compare.add_argument("files", nargs=2, help="files for comparison")
 
     args = parser.parse_args()
-    action = args.action
     strict_mode = args.strict
-    files = []
-    for fp in args.files:
-        files.extend(glob(fp))
 
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
@@ -90,10 +88,14 @@ if __name__ == "__main__":
         ignore_missing_tpid=False,
     )
 
-    if action == "validate":
+    files = []
+    for fp in args.files:
+        files.extend(glob(fp))
+
+    if args.subcommand == "validate":
         retcode = validate_endf_files(parser, files)
         sys.exit(retcode)
-    elif action == "compare":
+    elif args.subcommand == "compare":
         retcode = compare_endf_files(parser, files)
         sys.exit(retcode)
 

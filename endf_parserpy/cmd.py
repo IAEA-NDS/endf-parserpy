@@ -14,6 +14,7 @@ import sys
 import logging
 from glob import glob
 from .endf_parser import EndfParser
+from .debugging_utils import compare_objects
 
 
 def validate_endf_files(parser, files):
@@ -38,6 +39,17 @@ def validate_endf_files(parser, files):
     return retcode
 
 
+def compare_endf_files(parser, files):
+    if len(files) != 2:
+        print("expecting exactly two files for the comparison")
+        sys.exit(1)
+    endf_dict1 = parser.parsefile(files[0])
+    endf_dict2 = parser.parsefile(files[1])
+    is_equal = compare_objects(endf_dict1, endf_dict2, fail_on_diff=False)
+    retcode = 0 if is_equal else 1
+    return retcode
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -46,7 +58,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "action",
-        choices=["validate"],
+        choices=["validate", "compare"],
         help="the action to perform (at the moment only `validate`)",
     )
     parser.add_argument(
@@ -80,6 +92,9 @@ if __name__ == "__main__":
 
     if action == "validate":
         retcode = validate_endf_files(parser, files)
+        sys.exit(retcode)
+    elif action == "compare":
+        retcode = compare_endf_files(parser, files)
         sys.exit(retcode)
 
     # should not arrive here

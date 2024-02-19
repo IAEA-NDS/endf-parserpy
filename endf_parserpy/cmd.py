@@ -140,6 +140,13 @@ def insert_mf1mt451_description(parser, line_no, file, create_backup):
     parser.writefile(file, endf_dict, overwrite=(not create_backup))
 
 
+def explain_endf_variable(parser, endfpath, file):
+    endfpath = EndfPath(endfpath)
+    include = determine_include(endfpath)
+    parser.parsefile(file, include=include)
+    parser.explain(endfpath)
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -216,6 +223,12 @@ if __name__ == "__main__":
     )
     parser_instext.add_argument("file", type=str, help="ENDF file")
 
+    parser_explain = subparsers.add_parser("explain")
+    parser_explain.add_argument(
+        "endfpath", type=str, help="EndfPath to the variable that should be explained"
+    )
+    parser_explain.add_argument("file", type=str, help="ENDF file")
+
     args = parser.parse_args()
     strict_mode = args.strict
 
@@ -275,6 +288,8 @@ if __name__ == "__main__":
     elif args.subcommand == "insert-text":
         create_backup = not args.no_backup
         insert_mf1mt451_description(parser, args.line, args.file, create_backup)
+    elif args.subcommand == "explain":
+        explain_endf_variable(parser, args.endfpath, args.file)
 
     # should not arrive here
     sys.exit(1)

@@ -41,13 +41,15 @@ def validate_endf_files(parser, files):
     return retcode
 
 
-def compare_endf_files(parser, files):
+def compare_endf_files(parser, files, atol, rtol):
     if len(files) != 2:
         print("expecting exactly two files for the comparison")
         sys.exit(1)
     endf_dict1 = parser.parsefile(files[0])
     endf_dict2 = parser.parsefile(files[1])
-    is_equal = compare_objects(endf_dict1, endf_dict2, fail_on_diff=False)
+    is_equal = compare_objects(
+        endf_dict1, endf_dict2, atol=atol, rtol=rtol, fail_on_diff=False
+    )
     retcode = 0 if is_equal else 1
     return retcode
 
@@ -94,6 +96,12 @@ if __name__ == "__main__":
     parser_validate.add_argument("files", nargs="+", help="files for validation")
 
     parser_compare = subparsers.add_parser("compare")
+    parser_compare.add_argument(
+        "--atol", type=float, default=1e-8, help="absolute tolerance"
+    )
+    parser_compare.add_argument(
+        "--rtol", type=float, default=1e-6, help="relative tolerance"
+    )
     parser_compare.add_argument("files", nargs=2, help="files for comparison")
 
     parser_replace = subparsers.add_parser("replace")
@@ -138,7 +146,9 @@ if __name__ == "__main__":
         sys.exit(retcode)
     elif args.subcommand == "compare":
         files = args.files
-        retcode = compare_endf_files(parser, files)
+        atol = args.atol
+        rtol = args.rtol
+        retcode = compare_endf_files(parser, files, atol=atol, rtol=rtol)
         sys.exit(retcode)
     elif args.subcommand == "replace":
         endfpath = args.endfpath

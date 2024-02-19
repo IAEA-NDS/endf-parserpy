@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2024/01/30
+# Last modified:   2024/02/19
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -137,6 +137,12 @@ def _compare_objects(
             )
 
         common_keys = set(obj1).intersection(set(obj2))
+        common_int_keys = [k for k in common_keys if isinstance(k, int)]
+        common_nonint_keys = [k for k in common_keys if not isinstance(k, int)]
+        common_int_keys.sort()
+        common_nonint_keys.sort()
+        common_keys = common_nonint_keys + common_int_keys
+
         for key in common_keys:
             ret = _compare_objects(
                 obj1[key],

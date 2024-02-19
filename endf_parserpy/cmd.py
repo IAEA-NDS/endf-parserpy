@@ -30,6 +30,21 @@ def atomic_rename(src, dst):
         os.unlink(src)
 
 
+def create_backup_file(file):
+    backup_file = file
+    backup_created = False
+    for i in range(10):
+        backup_file += ".bak"
+        try:
+            atomic_rename(file, backup_file)
+            backup_created = True
+            break
+        except OSError:
+            pass
+    if not backup_created:
+        raise OSError(f"Unable to create backup file for {file}")
+
+
 def validate_endf_files(parser, files):
 
     any_failed = False
@@ -78,19 +93,7 @@ def replace_element(parser, endfpath, sourcefile, destfiles, create_backup):
         dest_dict = parser.parsefile(outfile, include=include)
         endfpath.set(dest_dict, obj)
         if create_backup:
-            backup_file = outfile
-            backup_created = False
-            for i in range(10):
-                backup_file += ".bak"
-                try:
-                    atomic_rename(outfile, backup_file)
-                    backup_created = True
-                    break
-                except OSError:
-                    pass
-            if not backup_created:
-                print("Unable to create backup file", file=sys.stderr)
-                return 1
+            create_backup_file(outfile)
         parser.writefile(outfile, dest_dict, overwrite=(not create_backup))
     return 0
 

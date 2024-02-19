@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/02/05
-# Last modified:   2024/02/13
+# Last modified:   2024/02/19
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -16,24 +16,8 @@ from glob import glob
 from .endf_parser import EndfParser
 
 
-def validate_endf_files(files, strict=False):
+def validate_endf_files(parser, files):
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.CRITICAL)
-
-    ignore_number_mismatch = not strict
-    ignore_zero_mismatch = not strict
-    fuzzy_matching = not strict
-    parser = EndfParser(
-        ignore_number_mismatch=ignore_number_mismatch,
-        ignore_zero_mismatch=ignore_zero_mismatch,
-        fuzzy_matching=fuzzy_matching,
-        ignore_varspec_mismatch=False,
-        accept_spaces=False,
-        ignore_blank_lines=False,
-        ignore_send_records=False,
-        ignore_missing_tpid=False,
-    )
     any_failed = False
     file_status_list = []
     for file in files:
@@ -77,8 +61,25 @@ if __name__ == "__main__":
     for fp in args.files:
         files.extend(glob(fp))
 
+    logger = logging.getLogger()
+    logger.setLevel(logging.CRITICAL)
+
+    ignore_number_mismatch = not strict_mode
+    ignore_zero_mismatch = not strict_mode
+    fuzzy_matching = not strict_mode
+    parser = EndfParser(
+        ignore_number_mismatch=ignore_number_mismatch,
+        ignore_zero_mismatch=ignore_zero_mismatch,
+        fuzzy_matching=fuzzy_matching,
+        ignore_varspec_mismatch=False,
+        accept_spaces=False,
+        ignore_blank_lines=False,
+        ignore_send_records=False,
+        ignore_missing_tpid=False,
+    )
+
     if action == "validate":
-        retcode = validate_endf_files(files, strict_mode)
+        retcode = validate_endf_files(parser, files)
         sys.exit(retcode)
 
     # should not arrive here

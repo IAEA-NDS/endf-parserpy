@@ -18,7 +18,10 @@ import os
 from .endf_parser import EndfParser
 from .accessories import EndfPath
 from .debugging_utils import compare_objects
-from .endf6_plumbing import update_directory
+from .endf6_plumbing import (
+    update_directory,
+    insert_description,
+)
 from .user_tools import show_content
 
 
@@ -127,6 +130,16 @@ def update_mf1mt451_directory(parser, file, create_backup):
     parser.writefile(file, endf_dict, overwrite=(not create_backup))
 
 
+def insert_mf1mt451_description(parser, line_no, file, create_backup):
+    endf_dict = parser.parsefile(file, include=[(1, 451)])
+    text = sys.stdin.read()
+    insert_description(endf_dict, text, after_line=line_no)
+    update_directory(endf_dict, parser)
+    if create_backup:
+        create_backup_file(file)
+    parser.writefile(file, endf_dict, overwrite=(not create_backup))
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -186,6 +199,18 @@ if __name__ == "__main__":
     )
     parser_update_dir.add_argument("file", type=str, help="ENDF file")
 
+    parser_instext = subparsers.add_parser("insert-text")
+    parser_instext.add_argument(
+        "-nb",
+        "--no-backup",
+        action="store_true",
+        help="disable creation of backup file (suffix .bak)",
+    )
+    parser_instext.add_argument(
+        "-l", "--line", type=int, default=0, help="after which line to insert the text"
+    )
+    parser_instext.add_argument("file", type=str, help="ENDF file")
+
     args = parser.parse_args()
     strict_mode = args.strict
 
@@ -240,6 +265,9 @@ if __name__ == "__main__":
     elif args.subcommand == "update-directory":
         create_backup = not args.no_backup
         update_mf1mt451_directory(parser, args.file, create_backup)
+    elif args.subcommand == "insert-text":
+        create_backup = not args.no_backup
+        insert_mf1mt451_description(parser, args.line, args.file, create_backup)
 
     # should not arrive here
     sys.exit(1)

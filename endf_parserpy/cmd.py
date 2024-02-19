@@ -54,7 +54,7 @@ def validate_endf_files(parser, files):
 
 def compare_endf_files(parser, files, atol, rtol):
     if len(files) != 2:
-        print("expecting exactly two files for the comparison")
+        print("Expecting exactly two files for the comparison", file=sys.stderr)
         sys.exit(1)
     endf_dict1 = parser.parsefile(files[0])
     endf_dict2 = parser.parsefile(files[1])
@@ -89,7 +89,7 @@ def replace_element(parser, endfpath, sourcefile, destfiles, create_backup):
                 except OSError:
                     pass
             if not backup_created:
-                print("Unable to create backup file")
+                print("Unable to create backup file", file=sys.stderr)
                 return 1
         parser.writefile(outfile, dest_dict, overwrite=(not create_backup))
     return 0
@@ -181,7 +181,7 @@ if __name__ == "__main__":
             curfiles2 = [fp]
             if all(f1 == f2 for f1, f2 in zip(curfiles1, curfiles2)):
                 if not os.path.exists(fp):
-                    print(f"File {fp} does not exist")
+                    print(f"File {fp} does not exist", file=sys.stderr)
                     sys.exit(1)
             destfiles.extend(glob(fp))
         retcode = replace_element(

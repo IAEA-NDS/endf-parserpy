@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/01/30
+# Last modified:   2024/02/19
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -142,6 +142,9 @@ def sanitize_fieldname_types(dic):
 
 
 def show_content(endf_dic, maxlevel=0, prefix="/"):
+    if isinstance(endf_dic, (int, float, str)):
+        print(endf_dic)
+        return
     maxlen = max(len(prefix + str(s)) for s in endf_dic.keys())
     for k, v in endf_dic.items():
         if isinstance(v, dict):

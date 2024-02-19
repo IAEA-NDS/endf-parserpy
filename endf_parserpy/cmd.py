@@ -31,6 +31,10 @@ def atomic_rename(src, dst):
     elif os_name in ("Linux", "Darwin"):
         os.link(src, dst)
         os.unlink(src)
+    else:
+        raise OSError(
+            "Unknown operating system --- " + "atomic file renaming not possible"
+        )
 
 
 def create_backup_file(file):

@@ -146,6 +146,11 @@ if __name__ == "__main__":
         prog="endf_parserpy.cmd", description="endf_parserpy command-line utility"
     )
     parser.add_argument(
+        "--no-cache-info",
+        action="store_true",
+        help="suppress the message on cache location",
+    )
+    parser.add_argument(
         "-s", "--strict", action="store_true", help="switch to enable strict mode"
     )
 
@@ -217,6 +222,7 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
+    print_cache_info = not args.no_cache_info
     ignore_number_mismatch = not strict_mode
     ignore_zero_mismatch = not strict_mode
     fuzzy_matching = not strict_mode
@@ -229,6 +235,7 @@ if __name__ == "__main__":
         ignore_blank_lines=False,
         ignore_send_records=False,
         ignore_missing_tpid=False,
+        print_cache_info=print_cache_info,
     )
 
     if args.subcommand == "validate":

@@ -12,11 +12,22 @@
 import argparse
 import sys
 import logging
+import platform
 from glob import glob
 import os
 from .endf_parser import EndfParser
 from .accessories import EndfPath
 from .debugging_utils import compare_objects
+
+os_name = platform.system()
+
+
+def atomic_rename(src, dst):
+    if os_name == "Windows":
+        os.rename(src, dst)
+    elif os_name in ("Linux", "Darwin"):
+        os.link(src, dst)
+        os.unlink(src)
 
 
 def validate_endf_files(parser, files):
@@ -54,7 +65,7 @@ def compare_endf_files(parser, files, atol, rtol):
     return retcode
 
 
-def replace_element(parser, endfpath, sourcefile, destfiles):
+def replace_element(parser, endfpath, sourcefile, destfiles, create_backup):
     endfpath = EndfPath(endfpath)
     if len(endfpath) == 1:
         include = (endfpath[0],)
@@ -66,18 +77,22 @@ def replace_element(parser, endfpath, sourcefile, destfiles):
     for outfile in destfiles:
         dest_dict = parser.parsefile(outfile, include=include)
         endfpath.set(dest_dict, obj)
-        backup_file = outfile
-        backup_created = False
-        while not backup_created:
-            backup_file += ".bak"
-            try:
-                os.rename(outfile, backup_file)
-                backup_created = True
-            except FileExistsError:
-                pass
-        parser.writefile(outfile, dest_dict)
-    retcode = 0
-    return retcode
+        if create_backup:
+            backup_file = outfile
+            backup_created = False
+            for i in range(10):
+                backup_file += ".bak"
+                try:
+                    atomic_rename(outfile, backup_file)
+                    backup_created = True
+                    break
+                except OSError:
+                    pass
+            if not backup_created:
+                print("Unable to create backup file")
+                return 1
+        parser.writefile(outfile, dest_dict, overwrite=(not create_backup))
+    return 0
 
 
 if __name__ == "__main__":
@@ -105,6 +120,12 @@ if __name__ == "__main__":
     parser_compare.add_argument("files", nargs=2, help="files for comparison")
 
     parser_replace = subparsers.add_parser("replace")
+    parser_replace.add_argument(
+        "-nb",
+        "--no-backup",
+        action="store_true",
+        help="disable creation of backup file (suffix .bak)",
+    )
     parser_replace.add_argument(
         "endfpath", type=str, help="EndfPath to object in ENDF file"
     )
@@ -151,12 +172,21 @@ if __name__ == "__main__":
         retcode = compare_endf_files(parser, files, atol=atol, rtol=rtol)
         sys.exit(retcode)
     elif args.subcommand == "replace":
+        create_backup = not args.no_backup
         endfpath = args.endfpath
         sourcefile = args.sourcefile
         destfiles = []
         for fp in args.destfile:
+            curfiles1 = glob(fp)
+            curfiles2 = [fp]
+            if all(f1 == f2 for f1, f2 in zip(curfiles1, curfiles2)):
+                if not os.path.exists(fp):
+                    print(f"File {fp} does not exist")
+                    sys.exit(1)
             destfiles.extend(glob(fp))
-        retcode = replace_element(parser, endfpath, sourcefile, destfiles)
+        retcode = replace_element(
+            parser, endfpath, sourcefile, destfiles, create_backup=create_backup
+        )
         sys.exit(retcode)
 
     # should not arrive here

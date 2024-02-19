@@ -13,7 +13,9 @@ import argparse
 import sys
 import logging
 from glob import glob
+import os
 from .endf_parser import EndfParser
+from .accessories import EndfPath
 from .debugging_utils import compare_objects
 
 
@@ -50,6 +52,32 @@ def compare_endf_files(parser, files):
     return retcode
 
 
+def replace_element(parser, endfpath, sourcefile, destfiles):
+    endfpath = EndfPath(endfpath)
+    if len(endfpath) == 1:
+        include = (endfpath[0],)
+    else:
+        include = ((endfpath[0], endfpath[1]),)
+    source_dict = parser.parsefile(sourcefile, include=include)
+    obj = endfpath.get(source_dict)
+    del source_dict
+    for outfile in destfiles:
+        dest_dict = parser.parsefile(outfile, include=include)
+        endfpath.set(dest_dict, obj)
+        backup_file = outfile
+        backup_created = False
+        while not backup_created:
+            backup_file += ".bak"
+            try:
+                os.rename(outfile, backup_file)
+                backup_created = True
+            except FileExistsError:
+                pass
+        parser.writefile(outfile, dest_dict)
+    retcode = 0
+    return retcode
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -67,6 +95,20 @@ if __name__ == "__main__":
 
     parser_compare = subparsers.add_parser("compare")
     parser_compare.add_argument("files", nargs=2, help="files for comparison")
+
+    parser_replace = subparsers.add_parser("replace")
+    parser_replace.add_argument(
+        "endfpath", type=str, help="EndfPath to object in ENDF file"
+    )
+    parser_replace.add_argument(
+        "sourcefile", type=str, help="file from which object should be retrieved"
+    )
+    parser_replace.add_argument(
+        "destfile",
+        nargs="+",
+        type=str,
+        help="file(s) in which information should be inserted/replaced",
+    )
 
     args = parser.parse_args()
     strict_mode = args.strict
@@ -88,15 +130,23 @@ if __name__ == "__main__":
         ignore_missing_tpid=False,
     )
 
-    files = []
-    for fp in args.files:
-        files.extend(glob(fp))
-
     if args.subcommand == "validate":
+        files = []
+        for fp in args.files:
+            files.extend(glob(fp))
         retcode = validate_endf_files(parser, files)
         sys.exit(retcode)
     elif args.subcommand == "compare":
+        files = args.files
         retcode = compare_endf_files(parser, files)
+        sys.exit(retcode)
+    elif args.subcommand == "replace":
+        endfpath = args.endfpath
+        sourcefile = args.sourcefile
+        destfiles = []
+        for fp in args.destfile:
+            destfiles.extend(glob(fp))
+        retcode = replace_element(parser, endfpath, sourcefile, destfiles)
         sys.exit(retcode)
 
     # should not arrive here

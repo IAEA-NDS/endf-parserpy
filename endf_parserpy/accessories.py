@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2024/02/17
+# Last modified:   2024/02/19
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
@@ -144,6 +144,11 @@ class EndfPath(Sequence):
     def __radd__(self, other):
         other = EndfPath(other)
         return other.__add__(self)
+
+    def __int__(self):
+        if len(self._path_elements) != 1:
+            raise TypeError("Can only convert an EndfPath of length one to `int`")
+        return int(self._path_elements[0])
 
     def get(self, dict_like):
         """Retrieve object from nested dictionary.

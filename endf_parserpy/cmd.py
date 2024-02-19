@@ -18,6 +18,8 @@ import os
 from .endf_parser import EndfParser
 from .accessories import EndfPath
 from .debugging_utils import compare_objects
+from .user_tools import show_content
+
 
 os_name = platform.system()
 
@@ -104,6 +106,14 @@ def replace_element(parser, endfpath, sourcefile, destfiles, create_backup):
     return 0
 
 
+def show_file_content(parser, endfpath, file):
+    endfpath = EndfPath(endfpath)
+    include = determine_include(endfpath)
+    endf_dict = parser.parsefile(file, include=include)
+    cont = endfpath.get(endf_dict)
+    show_content(cont)
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -147,6 +157,12 @@ if __name__ == "__main__":
         type=str,
         help="file(s) in which information should be inserted/replaced",
     )
+
+    parser_show = subparsers.add_parser("show")
+    parser_show.add_argument(
+        "endfpath", type=str, help="EndfPath to section or value to display"
+    )
+    parser_show.add_argument("file", type=str, help="ENDF file")
 
     args = parser.parse_args()
     strict_mode = args.strict
@@ -197,6 +213,8 @@ if __name__ == "__main__":
             parser, endfpath, sourcefile, destfiles, create_backup=create_backup
         )
         sys.exit(retcode)
+    elif args.subcommand == "show":
+        show_file_content(parser, args.endfpath, args.file)
 
     # should not arrive here
     sys.exit(1)

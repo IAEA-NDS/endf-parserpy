@@ -45,6 +45,15 @@ def create_backup_file(file):
         raise OSError(f"Unable to create backup file for {file}")
 
 
+def determine_include(endfpath):
+    endfpath = EndfPath(endfpath)
+    if len(endfpath) == 1:
+        include = (endfpath[0],)
+    else:
+        include = ((endfpath[0], endfpath[1]),)
+    return include
+
+
 def validate_endf_files(parser, files):
 
     any_failed = False
@@ -82,10 +91,7 @@ def compare_endf_files(parser, files, atol, rtol):
 
 def replace_element(parser, endfpath, sourcefile, destfiles, create_backup):
     endfpath = EndfPath(endfpath)
-    if len(endfpath) == 1:
-        include = (endfpath[0],)
-    else:
-        include = ((endfpath[0], endfpath[1]),)
+    include = determine_include(endfpath)
     source_dict = parser.parsefile(sourcefile, include=include)
     obj = endfpath.get(source_dict)
     del source_dict

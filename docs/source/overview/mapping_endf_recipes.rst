@@ -140,7 +140,7 @@ Variables with indices: Arrays
 The ENDF-6 recipe listed :ref:`above <mf1mt451_recipe>` contains
 several examples of array specifications, such as ``DESCRIPTION[i]``,
 ``MFx[i]`` and ``MTx[i]``. Their names, ``DESCRIPTION``,
-``MF``, etc. are expected to be available as keys in the Python dictionary
+``MFx``, etc. are expected to be available as keys in the Python dictionary
 corresponding to the ENDF-6 recipe. The objects associated with those
 keys are expected to be dictionaries with integer keys.
 The range of the available integer keys can be inferred from the

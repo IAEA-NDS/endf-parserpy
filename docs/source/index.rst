@@ -67,7 +67,7 @@ Install endf-parserpy
 
 .. code:: bash
 
-   pip install endf-parserpy --upgrade.
+   pip install endf-parserpy --upgrade
 
 
 .. note::

@@ -26,7 +26,7 @@ more abstract representations into human-friendly
 ones.
 
 In this section, we want to discuss one possible
-approach to the implementatoin of high-level functionality.
+approach to the implementation of high-level functionality.
 
 A nice feature of endf-parserpy is that it keeps
 the bidirectional link between data in the ENDF-6
@@ -38,7 +38,7 @@ high-level functionality also preserves the
 link between the original data and the
 derived/simplified representation.
 While it won't be possible to maintain a
-bidirectional link due to the loss of 
+bidirectional link due to the loss of
 information in all cases, e.g. when calculating a group-wise
 cross section from point-wise cross sections,
 it will certainly be possible in some cases.
@@ -49,7 +49,7 @@ to the original low-level representation.
 
 We want to demonstrate one possibility to accomplish
 this bidirectional linking by implementing a prototype class for linear
-interpolation of cross sections in MF3. 
+interpolation of cross sections in MF3.
 The class should support the computation of interpolated values
 at energies requested by the user and also enable the user to update the cross section
 values at the mesh points.
@@ -62,7 +62,7 @@ could look something like this:
 .. code:: python
 
     import numpy as np
-    from copy import copy 
+    from copy import copy
     from endf_parserpy.accessories import EndfVariable
 
 
@@ -109,16 +109,16 @@ cross section (MF3/MT1):
 
    from endf_parserpy import EndfParser
    from endf_parserpy.accessories import EndfVariable
-   
+
    parser = EndfParser()
    endf_dict = parser.parsefile('input.endf')
 
-   xvar = EndfVariable('3/1/xstable/E', endf_dict) 
+   xvar = EndfVariable('3/1/xstable/E', endf_dict)
    yvar = EndfVariable('3/1/xstable/xs', endf_dict)
    int_arr = EndfVariable('3/1/xstable/INT', endf_dict)
    nbt_arr = EndfVariable('3/1/xstable/INT', endf_dict)
 
-   interpobj = LinearCrossSectionInterpolation(xvar, yvar, nbt_arr, int_arr) 
+   interpobj = LinearCrossSectionInterpolation(xvar, yvar, nbt_arr, int_arr)
 
 
 After loading the data of an ENDF-6 file into the dictionary ``endf_dict``,

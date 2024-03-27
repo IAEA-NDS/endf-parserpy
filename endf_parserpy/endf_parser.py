@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/17
+# Last modified:   2024/03/28
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -75,6 +75,7 @@ from .custom_exceptions import (
 from .endf_recipe_utils import (
     get_recipe_parsetree_dic,
     get_responsible_recipe_parsetree,
+    get_responsible_recipe_parsefun,
 )
 from .endf_recipes import endf_recipe_dictionary
 from .debugging_utils import TrackingDict
@@ -115,6 +116,7 @@ class EndfParser:
         cache_dir=None,
         print_cache_info=True,
         recipes=None,
+        parsing_funs=None,
     ):
         """Initializaton of options for parsing and writing ENDF-6 data.
 
@@ -230,6 +232,8 @@ class EndfParser:
         if recipes is None:
             recipes = endf_recipe_dictionary
         self.tree_dic = get_recipe_parsetree_dic(recipes, cache_dir)
+        self.parsing_funs = parsing_funs if parsing_funs is not None else {}
+
         # endf record treatment
         endf_actions = {}
         endf_actions["head_or_cont_line"] = self.process_head_or_cont_line
@@ -853,8 +857,23 @@ class EndfParser:
                 write_info(f"Parsing subsection MF/MT {mf}/{mt}")
                 curlines = mfmt_dic[mf][mt]
                 cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
+                cur_parsefun = get_responsible_recipe_parsefun(
+                    self.parsing_funs, mf, mt
+                )
                 should_skip = self.should_skip_section(mf, mt, exclude, include)
-                if cur_tree is not None and not should_skip:
+                if cur_parsefun is not None and not should_skip:
+                    try:
+                        curlines += write_send(
+                            curmat, with_ctrl=True, **self.write_opts
+                        )
+                        mfmt_dic[mf][mt] = cur_parsefun(curlines)
+                    except Exception as exc:
+                        raise type(exc)(
+                            f"parsing function for MF={mf}/MT={mt} failed "
+                            + "with error message:\n"
+                            + str(exc)
+                        )
+                elif cur_tree is not None and not should_skip:
                     # we add the SEND line so that parsing fails
                     # if the MT section cannot be completely parsed
                     curlines += write_send(curmat, with_ctrl=True, **self.write_opts)

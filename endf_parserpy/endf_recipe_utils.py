@@ -58,3 +58,15 @@ def get_responsible_recipe_parsetree(tree_dic, mf, mt):
         elif (-1) in tree_dic[mf] and is_tree(tree_dic[mf][-1]):
             return tree_dic[mf][-1]
     return None
+
+
+def get_responsible_recipe_parsefun(parsefun_dic, mf, mt):
+    d = parsefun_dic
+    if mf in parsefun_dic:
+        if callable(d[mf]):
+            return d[mf]
+        elif mt in d[mf] and callable(d[mf][mt]):
+            return d[mf][mt]
+        elif (-1) in d[mf] and callable(d[mf][-1]):
+            return d[mf][-1]
+    return None

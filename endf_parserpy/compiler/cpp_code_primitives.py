@@ -286,12 +286,48 @@ def get_cpp_varname(vartok):
     return varname
 
 
+def fillout_template(template, params=None, idx=None):
+    if params is None:
+        return template
+    if idx is not None:
+        params = {k: v[idx] for k, v in params.items()}
+        res = template.format(**params)
+    return res
+
+
 def line(code):
-    return code.strip().rstrip("; ").replace("\n", "") + ";\n"
+    return code.strip().rstrip("\n") + ";\n"
 
 
-def block(code):
-    return "{\n" + code + "}\n"
+def comment(text):
+    return "// " + text + "\n"
+
+
+def block(code, only_indent=False):
+    code = align_code(code, 4)
+    if not only_indent:
+        code = "{\n" + code + "}\n"
+    return code
+
+
+def nested_block_repeat(code, num, only_indent=False, extra_params=None):
+    if num == 0:
+        return ""
+    result_code = code
+    if extra_params is not None:
+        result_code = fillout_template(code, extra_params, idx=0)
+    result_code = block(result_code)
+    for i in range(1, num):
+        result_code = block(
+            concat([fillout_template(code, extra_params, idx=i), result_code])
+        )
+    return result_code
+
+
+def logical_not(logical_expression):
+    if logical_expression.strip("() ") == "true":
+        return ""
+    return "(! " + logical_expression + ")"
 
 
 def logical_or(logical_expressions):

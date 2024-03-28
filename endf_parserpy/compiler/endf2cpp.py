@@ -520,6 +520,17 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
                             + f"for variable {v} are missing"
                         ),
                     ),
+                    cpp.pureif(
+                        condition=cpp.logical_not(cpp.did_var_mem_allocation(v)),
+                        code=cpp.concat(
+                            [
+                                cpp.comment(
+                                    "do memory allocation for variable if not yet done"
+                                ),
+                                # cpp.allocate_var_mem(v, vardict)  not working right now
+                            ]
+                        ),
+                    ),
                     _generate_code_for_varassign(
                         v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
                     ),

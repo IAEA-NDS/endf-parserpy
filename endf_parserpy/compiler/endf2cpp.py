@@ -167,6 +167,16 @@ def count_not_encountered_vars(node, vardict):
     return sum(not did_encounter_var(v, vardict) for v in varset)
 
 
+def register_var(vartok, dtype, vardict):
+    vardict[vartok] = dtype
+
+
+def unregister_var(vartok, vardict):
+    if vartok.startswith("__"):
+        raise TypeError("not a valid variable")
+    del vardict[vartok]
+
+
 def generate_vardefs(vardict, save_state=False):
     code = "\n// variable declarations\n"
     for vartok, dtype in vardict.items():
@@ -182,7 +192,7 @@ def generate_mark_vars_as_unread(vardict, prefix=""):
         if vartok.startswith("__"):
             continue
         code += cpp.mark_var_as_unread(vartok, prefix)
-        del vardict[vartok]
+        unregister_var(vartok, vardict)
     return code
 
 
@@ -481,7 +491,7 @@ def _generate_code_for_varassign(
 
     if not in_lookahead(vardict):
         code += cpp.store_var_in_endf_dict(vartok, vardict)
-    vardict[vartok] = dtype
+    register_var(vartok, dtype, vardict)
     return code
 
 
@@ -571,7 +581,7 @@ def generate_code_for_text(node, vardict):
             continue
         length = int(txtlen) if txtlen is not None else 66
         vartok = VariableToken(v)
-        vardict[vartok] = str
+        register_var(vartok, str, vardict)
         code += cpp.read_text_field(vartok, ofs, length, vardict)
         if not in_lookahead(vardict):
             code += cpp.store_var_in_endf_dict(vartok, vardict)
@@ -716,7 +726,9 @@ def _generate_code_for_loop(
     cpp_loopvar = cpp.get_cpp_varname(loopvar)
     if loopvar in vardict:
         raise TypeError(f"variable {loopvar} already declared")
-    vardict[loopvar] = (start_expr_str, stop_expr_str)
+    dtype = (start_expr_str, stop_expr_str)
+    register_var(loopvar, dtype, vardict)
+
     code = cpp.align_code(
         rf"""
     for (int {cpp_loopvar} = {start_expr_str};
@@ -727,7 +739,7 @@ def _generate_code_for_loop(
     body_code = parsefun(for_body, vardict)
     code += cpp.align_code(body_code, 4)
     code += "}\n"
-    del vardict[loopvar]
+    unregister_var(loopvar, vardict)
     return code
 
 

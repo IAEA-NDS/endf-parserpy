@@ -599,9 +599,8 @@ def get_numeric_field(fieldpos, dtype):
     return code
 
 
-def read_text_field(vartok, start, length, vardict):
-    exprstr = f"(*cpp_lineptr).substr({start}, {length});"
-    code = assign_exprstr_to_var(vartok, exprstr, vardict)
+def get_text_field(vartok, start, length, vardict):
+    code = f"(*cpp_lineptr).substr({start}, {length});"
     return code
 
 

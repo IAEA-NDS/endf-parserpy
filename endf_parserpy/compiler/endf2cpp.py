@@ -197,9 +197,10 @@ def generate_mark_vars_as_unread(vardict, prefix=""):
 
 
 def get_varassign_from_expr(vartok, node, vardict):
-    if not is_expr:
-        raise TypeError("expect `expr` node")
-    node = node.children[0]
+    if is_expr(node):
+        node = node.children[0]
+    elif not isinstance(node, VariableToken):
+        raise TypeError("expect `expr` node or VariableToken")
     lhs = node
     rhs = Token("VARIABLE", "cpp_val")
     vartok, expr = solve_equation(lhs, rhs, vartok)
@@ -477,8 +478,10 @@ def _generate_code_for_varassign(
     else:
         if dtype == float:
             cpp_newval_tok = Token("VARNAME", "cpp_float_val")
-        else:
+        elif dtype == int:
             cpp_newval_tok = Token("VARNAME", "cpp_int_val")
+        else:
+            raise NotImplementedError(f"unknown node type {dtype}")
         cpp_newval_tok = VariableToken(cpp_newval_tok)
         expr = transform_nodes(expr, replace_node, cpp_val_tok, cpp_newval_tok)
         code += cpp.assign_exprstr_to_var(
@@ -592,8 +595,10 @@ def generate_code_for_text(node, vardict):
             continue
         length = int(txtlen) if txtlen is not None else 66
         vartok = VariableToken(v)
-        register_var(vartok, str, vardict)
-        code += cpp.read_text_field(vartok, ofs, length, vardict)
+        dtype = str
+        register_var(vartok, dtype, vardict)
+        valcode = cpp.get_text_field(vartok, ofs, length, vardict)
+        code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         if not in_lookahead(vardict):
             code += cpp.store_var_in_endf_dict(vartok, vardict)
         ofs += length

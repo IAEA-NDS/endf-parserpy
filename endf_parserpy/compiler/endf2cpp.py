@@ -781,7 +781,11 @@ def generate_cpp_module_code():
     parsefuns_code += generate_cpp_parsefun("parse_mf12", endf_recipe_dictionary[12])
     parsefuns_code += generate_cpp_parsefun("parse_mf14", endf_recipe_dictionary[14])
     parsefuns_code += generate_cpp_parsefun("parse_mf15", endf_recipe_dictionary[15])
+    parsefuns_code += generate_cpp_parsefun("parse_mf32", endf_recipe_dictionary[32])
     parsefuns_code += generate_cpp_parsefun("parse_mf33", endf_recipe_dictionary[33])
+    parsefuns_code += generate_cpp_parsefun("parse_mf34", endf_recipe_dictionary[34])
+    parsefuns_code += generate_cpp_parsefun("parse_mf40", endf_recipe_dictionary[40])
+
     pybind_glue = cpp.register_cpp_parsefuns(
         (
             "parse_mf1mt451",
@@ -794,7 +798,10 @@ def generate_cpp_module_code():
             "parse_mf12",
             "parse_mf14",
             "parse_mf15",
+            "parse_mf32",
             "parse_mf33",
+            "parse_mf34",
+            "parse_mf40",
         )
     )
     code = module_header + parsefuns_code + pybind_glue

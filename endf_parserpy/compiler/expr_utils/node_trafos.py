@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/28
+# Last modified:   2024/03/29
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -194,7 +194,9 @@ def remove_factor_from_product(node, factor):
     if not found_factor:
         raise TypeError("node must contain factor")
     if len(new_children) == 0:
-        breakpoint()  # debug
+        if node.children[0] != factor:
+            raise NotImplementedError("who implemented this stupid routine??")
+        new_children.append(factor)
     return Tree("multiplication", new_children)
 
 

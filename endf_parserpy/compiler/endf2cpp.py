@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/28
+# Last modified:   2024/03/29
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -521,17 +521,6 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
                             + f"""{", ".join(variables.difference((v,)))} """
                             + f"to solve the equation {exprstr}=val "
                             + f"for variable {v} are missing"
-                        ),
-                    ),
-                    cpp.pureif(
-                        condition=cpp.logical_not(cpp.did_var_mem_allocation(v)),
-                        code=cpp.concat(
-                            [
-                                cpp.comment(
-                                    "do memory allocation for variable if not yet done"
-                                ),
-                                # cpp.allocate_var_mem(v, vardict)  not working right now
-                            ]
                         ),
                     ),
                     _generate_code_for_varassign(

@@ -221,61 +221,6 @@ def define_var(vartok, dtype, save_state=False):
     return code
 
 
-def did_var_mem_allocation(vartok):
-    # TODO: maybe remove, no performance improvement
-    indices = vartok.indices
-    if len(indices) == 0:
-        return "true"
-    varname = get_cpp_varname(vartok)
-    last_idx_pos = len(indices) - 1
-    return f"({varname}_lastidx{last_idx_pos}_read != -1)"
-
-
-def _allocate_var_mem(vartok, idcs, sizes):
-    # TODO: maybe remove, no performance impact or even worse
-    # return ""
-    cpp_varname = get_cpp_varname(vartok)
-    params = {"idx": idcs[1:], "size": sizes[1:]}
-    code = block(
-        concat(
-            [
-                line(f"auto& cpp_curvar = {cpp_varname};"),
-                line(f"cpp_curvar.reserve({sizes[0]})"),
-                nested_block_repeat(
-                    concat(
-                        [
-                            line("auto& cpp_lastcurvar = cpp_curvar;"),
-                            line("auto& cpp_curvar = cpp_lastcurvar[{idx}];"),
-                            line("cpp_curvar.reserve({size})"),
-                        ]
-                    ),
-                    len(idcs) - 1,
-                    extra_params=params,
-                ),
-            ]
-        )
-    )
-    return code
-
-
-def allocate_var_mem(vartok, vardict):
-    # TODO: no performance impact or even worse
-    # return ""
-    indices = vartok.indices
-    if len(indices) == 0:
-        return ""
-    idcs = []
-    sizes = []
-    for idxtok in indices:
-        if not isinstance(idxtok, VariableToken):
-            raise NotImplementedError("should not happen")
-        start_str, stop_str = vardict[idxtok]
-        size_str = f"((({stop_str})-({start_str})+10)*4)"
-        idcs.append(get_shifted_idxstr(idxtok, vardict))
-        sizes.append(size_str)
-    return _allocate_var_mem(vartok, idcs, sizes)
-
-
 def _did_read_var(vartok):
     varname = get_cpp_varname(vartok)
     indices = vartok.indices

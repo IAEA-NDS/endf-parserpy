@@ -649,10 +649,6 @@ def parsefun_header(fun_name):
         int cpp_idxnum;
         int cpp_int_val;
         double cpp_float_val;
-
-        cpp_current_dict["MAT"] = std::stoi(cpp_lines[0].substr(66, 4));
-        cpp_current_dict["MF"] = std::stoi(cpp_lines[0].substr(70, 2));
-        cpp_current_dict["MT"] = std::stoi(cpp_lines[0].substr(72, 3));
     """,
         -4,
     )

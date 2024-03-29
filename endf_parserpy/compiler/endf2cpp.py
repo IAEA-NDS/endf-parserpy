@@ -212,12 +212,31 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
         parser = Lark(endf_recipe_grammar, start="endf_recipe", keep_all_tokens=True)
     parsetree = parser.parse(endf_recipe)
     parsetree = transform_nodes(parsetree, simplify_expr_node)
-    vardict = dict()
+    var_mat = VariableToken(Token("VARNAME", "MAT"))
+    var_mf = VariableToken(Token("VARNAME", "MF"))
+    var_mt = VariableToken(Token("VARNAME", "MT"))
+    vardict = {var_mat: int, var_mf: int, var_mt: int}
+
     code = generate_code_from_parsetree(parsetree, vardict)
+
     vardefs = generate_vardefs(vardict)
+    ctrl_code = ""
+    ctrl_code = cpp.assign_exprstr_to_var(
+        var_mat, "std::stoi(cpp_lines[0].substr(66, 4))", vardict
+    )
+    ctrl_code += cpp.assign_exprstr_to_var(
+        var_mf, "std::stoi(cpp_lines[0].substr(70, 2))", vardict
+    )
+    ctrl_code += cpp.assign_exprstr_to_var(
+        var_mt, "std::stoi(cpp_lines[0].substr(72, 3))", vardict
+    )
+    ctrl_code += cpp.store_var_in_endf_dict(var_mat, vardict)
+    ctrl_code += cpp.store_var_in_endf_dict(var_mf, vardict)
+    ctrl_code += cpp.store_var_in_endf_dict(var_mt, vardict)
+
     fun_header = cpp.parsefun_header(name)
     fun_footer = cpp.parsefun_footer()
-    fun_body = cpp.align_code(vardefs + code, 4)
+    fun_body = cpp.align_code(vardefs + ctrl_code + code, 4)
     code = fun_header + fun_body + fun_footer
     return code
 

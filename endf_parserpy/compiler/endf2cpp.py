@@ -588,8 +588,6 @@ def generate_code_for_text(node, vardict):
         register_var(vartok, dtype, vardict)
         valcode = cpp.get_text_field(vartok, ofs, length, vardict)
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
-        if not in_lookahead(vardict):
-            code += cpp.store_var_in_endf_dict(vartok, vardict)
         ofs += length
     return code
 

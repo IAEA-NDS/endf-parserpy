@@ -178,7 +178,7 @@ def unregister_var(vartok, vardict):
 
 
 def generate_vardefs(vardict, save_state=False):
-    code = "\n// variable declarations\n"
+    code = "// variable declarations\n"
     for vartok, dtype in vardict.items():
         if vartok.startswith("__"):
             continue
@@ -342,13 +342,12 @@ def generate_code_for_if_clause(node, vardict):
     if_statement = get_child(node, "if_statement")
     elif_statements = [c for c in node.children if get_name(c) == "elif_statement"]
     else_statement = get_child(node, "else_statement", nofail=True)
-    code = cpp.align_code(
-        """
-    // evaluate if-elif-else clause
-    {
-        bool cpp_found_match = false;
-    """,
-        -4,
+    code = cpp.concat(
+        [
+            cpp.comment("evaluate if-elif-else clause"),
+            cpp.open_block(),
+            cpp.statement("bool cpp_found_match = false", indent=4),
+        ]
     )
     new_vardict = vardict.copy()
     if_statement_code = generate_code_for_if_statement(if_statement, new_vardict)
@@ -356,28 +355,28 @@ def generate_code_for_if_clause(node, vardict):
     code += cpp.align_code(if_statement_code, 4)
     for elif_statement in elif_statements:
         new_vardict = vardict.copy()
-        code += cpp.align_code(
-            cpp.pureif(
+        code += cpp.indent_code(
+            code=cpp.pureif(
                 condition="! cpp_found_match",
                 code=generate_code_for_if_statement(elif_statement, new_vardict),
             ),
-            4,
+            indent=4,
         )
         add_vardict.update(new_vardict)
         code += cpp.align_code(if_statement_code, 8)
     if else_statement is not None:
         else_code = get_child(else_statement, "if_body")
         new_vardict = vardict.copy()
-        code += cpp.align_code(
-            cpp.pureif(
+        code += cpp.indent_code(
+            code=cpp.pureif(
                 condition="! cpp_found_match",
                 code=generate_code_from_parsetree(else_code, new_vardict),
             ),
-            4,
+            indent=4,
         )
         add_vardict.update(new_vardict)
 
-    code += "}\n"
+    code += cpp.close_block()
     if "__up" in add_vardict:
         del add_vardict["__up"]
     unregister_abbreviations(add_vardict)
@@ -397,19 +396,19 @@ def generate_code_for_if_statement(node, vardict):
 
     code = ""
     if in_lookahead(vardict):
-        code += cpp.align_code(
-            """
-        // if statement evaluation with lookahead
-        {
-            int cpp_old_linenum = cpp_linenum;
-        """,
-            -8,
+        code = cpp.concat(
+            [
+                cpp.comment("if statement evaluation with lookahead"),
+                cpp.open_block(),
+                cpp.statement("int cpp_old_linenum = cpp_linenum", 4),
+            ]
         )
+
         la_body_code = generate_code_from_parsetree(if_body, vardict)
         logical_expr_str = logical_expr2cppstr(if_head, vardict)
         vardef_code = generate_vardefs(vardict, save_state=True)
-        code += cpp.align_code(
-            cpp.block(
+        code += cpp.indent_code(
+            code=cpp.block(
                 cpp.concat(
                     [
                         vardef_code,
@@ -418,7 +417,7 @@ def generate_code_for_if_statement(node, vardict):
                             condition=logical_expr_str,
                             code=cpp.concat(
                                 [
-                                    "cpp_found_match = true;",
+                                    cpp.statement("cpp_found_match = true"),
                                     generate_mark_vars_as_unread(vardict),
                                 ]
                             ),
@@ -427,15 +426,15 @@ def generate_code_for_if_statement(node, vardict):
                     ]
                 )
             ),
-            4,
+            indent=4,
         )
         remove_lookahead_counter(vardict)
-        code += cpp.align_code(
-            cpp.pureif(
+        code += cpp.indent_code(
+            code=cpp.pureif(
                 condition="cpp_found_match",
                 code=generate_code_from_parsetree(if_body, vardict),
             ),
-            4,
+            indent=4,
         )
         code += "}\n"
     else:
@@ -444,8 +443,8 @@ def generate_code_for_if_statement(node, vardict):
             condition=logical_expr_str,
             code=cpp.concat(
                 [
-                    "// if statement evaluation",
-                    "cpp_found_match = true;",
+                    cpp.comment("if statement evaluation"),
+                    cpp.statement("cpp_found_match = true"),
                     generate_code_from_parsetree(if_body, vardict),
                 ]
             ),
@@ -506,7 +505,7 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
         raise IndexError("more than one unencountered variables")
     if len(variables) == 0:
         # NOTE: consistency checking could be done here
-        return cpp.line(valcode)
+        return cpp.statement(valcode)
 
     exprstr = transform_nodes(node, node2str)
     code = cpp.conditional_branches(
@@ -595,7 +594,7 @@ def generate_code_for_text(node, vardict):
 def generate_code_for_cont(node, vardict):
     code = cpp.read_line()
     record_fields = get_child(node, "record_fields")
-    code += "\n// read CONT record\n"
+    code += cpp.comment("read CONT record")
     code += generate_code_from_record_fields(record_fields, vardict)
     return code
 
@@ -603,7 +602,7 @@ def generate_code_for_cont(node, vardict):
 def generate_code_for_dir(node, vardict):
     code = cpp.read_line()
     record_fields = get_child(node, "dir_fields")
-    code += "\n// read TEXT record\n"
+    code += cpp.comment("read TEXT record")
     code += generate_code_from_record_fields(record_fields, vardict, skip=(0, 1), ofs=2)
     return code
 

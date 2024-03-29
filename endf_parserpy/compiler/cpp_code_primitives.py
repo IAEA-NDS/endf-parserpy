@@ -279,10 +279,12 @@ def _check_variable(vartok, vardict):
             raise TypeError(f"variable {idxvar} used as index not a loop variable")
 
 
-def get_cpp_varname(vartok):
+def get_cpp_varname(vartok, quote=False):
     if not isinstance(vartok, VariableToken):
         raise TypeError("expect vartok of type VariableToken")
     varname = f"var_{vartok}_{len(vartok.indices)}d"
+    if quote:
+        varname = '"' + varname + '"'
     return varname
 
 
@@ -290,37 +292,69 @@ def fillout_template(template, params=None, idx=None):
     if params is None:
         return template
     if idx is not None:
-        params = {k: v[idx] for k, v in params.items()}
+        params = {
+            k: v[idx] for k, v in params.items() if idx in v and v[idx] is not None
+        }
         res = template.format(**params)
     return res
 
 
-def line(code):
-    return code.strip().rstrip("\n") + ";\n"
+def indent_code(code, indent):
+    code_lines = [" " * indent + s for s in code.split("\n")]
+    code_lines = [s if s != " " * indent else "" for s in code_lines]
+    return "\n".join(code_lines)
 
 
-def comment(text):
-    return "// " + text + "\n"
+def line(code, indent=0):
+    return " " * indent + code.strip().rstrip("\n") + "\n"
 
 
-def block(code, only_indent=False):
-    code = align_code(code, 4)
-    if not only_indent:
-        code = "{\n" + code + "}\n"
-    return code
+def statement(code, indent=0):
+    return " " * indent + code.strip().rstrip(";\n") + ";\n"
 
 
-def nested_block_repeat(code, num, only_indent=False, extra_params=None):
-    if num == 0:
+def comment(text, indent=0):
+    return " " * indent + "// " + text + "\n"
+
+
+def open_block(indent=0):
+    return " " * indent + "{\n"
+
+
+def close_block(indent=0):
+    return " " * indent + "}\n"
+
+
+def block(code, indent=4, escape=False):
+    obr = "{\n" if not escape else "{{\n"
+    cbr = "}\n" if not escape else "}}\n"
+    return obr + indent_code(code, indent) + cbr
+
+
+def block_repeat(code, num, extra_params=None, indent=0):
+    if num <= 0:
         return ""
-    result_code = code
+    if isinstance(code, str):
+        code = [code] * num
+    code = [*code]
     if extra_params is not None:
-        result_code = fillout_template(code, extra_params, idx=0)
-    result_code = block(result_code)
-    for i in range(1, num):
-        result_code = block(
-            concat([fillout_template(code, extra_params, idx=i), result_code])
-        )
+        for i in range(num):
+            code[i] = fillout_template(code[i], extra_params, idx=i)
+    return concat(code)
+
+
+def nested_block_repeat(code, num, extra_params=None, indent=4):
+    if num <= 0:
+        return ""
+    if isinstance(code, str):
+        code = [code] * num
+    code = [*code]
+    if extra_params is not None:
+        for i in range(num):
+            code[i] = fillout_template(code[i], extra_params, idx=i)
+    result_code = block(code[num - 1], indent)
+    for i in range(num - 2, -1, -1):
+        result_code = block(concat([code[i], result_code]))
     return result_code
 
 
@@ -359,20 +393,22 @@ def throw_runtime_error(message):
 
 
 def concat(codes):
-    return "\n".join(codes) + "\n"
+    return "".join(codes)
 
 
-def conditional_branches(conditions, codes, default=None):
+def conditional_branches(conditions, codes, default=None, escape=False):
+    obr = "{" if not escape else "{{"
+    cbr = "}" if not escape else "}}"
     if_cond = conditions[0]
-    code = f"if ({if_cond}) {{\n"
+    code = f"if ({if_cond}) {obr}\n"
     code += align_code(codes[0], 4)
     for elif_cond, elif_body in zip(conditions[1:], codes[1:]):
-        code += f"\n}} else if ({elif_cond}) {{\n"
+        code += f"\n{cbr} else if ({elif_cond}) {obr}\n"
         code += align_code(elif_body, 4)
     if default is not None:
-        code += "\n} else {\n"
+        code += f"\n{cbr} else {obr}\n"
         code += align_code(default, 4)
-    code += "}\n"
+    code += f"{cbr}\n"
     return code
 
 
@@ -380,10 +416,10 @@ def ifelse(condition, code, other_code):
     return conditional_branches([condition], [code], default=other_code)
 
 
-def pureif(condition, code):
+def pureif(condition, code, escape=False):
     if condition.strip("() ") == "":
         return ""
-    return conditional_branches([condition], [code])
+    return conditional_branches([condition], [code], escape=escape)
 
 
 def get_cpp_extvarname(vartok, vardict):
@@ -412,111 +448,79 @@ def assign_exprstr_to_var(
         cpp_varname = get_cpp_varname(vartok)
     else:
         cpp_varname = str(vartok)
-    code = f"// assign expression to variable {vartok}\n"
+    code = comment(f"assign expression to variable {vartok}")
     if mark_as_read:
         code += mark_var_as_read(vartok)
     if len(vartok.indices) == 0:
-        code += align_code(
-            f"""
-        {cpp_varname} = {exprstr};
-        """,
-            -8,
-        )
+        code += statement(f"{cpp_varname} = {exprstr}")
     else:
         indices = vartok.indices
-        code += align_code(
-            f"""
-        {{
-            auto& cpp_curvar = {cpp_varname};
-        """,
-            -8,
+        most_outer_code = statement(f"auto& cpp_curvar = {cpp_varname}")
+        outer_code = concat(
+            [
+                pureif(
+                    condition="cpp_curvar.size() <= ({idxstr})",
+                    code=concat(
+                        [
+                            statement(
+                                "using cpp_cureltype = "
+                                + "std::remove_reference<decltype(cpp_curvar)>"
+                                + "::type::value_type"
+                            ),
+                            statement("cpp_cureltype cpp_curel"),
+                            statement("cpp_curvar.push_back(cpp_curel)"),
+                        ]
+                    ),
+                    escape=True,
+                ),
+                statement("auto& cpp_lastcurvar = cpp_curvar"),
+                statement("auto& cpp_curvar = cpp_lastcurvar[{idxstr}]"),
+            ]
         )
-        for i, idx in enumerate(indices):
-            idxstr = get_shifted_idxstr(idx, vardict)
-            code += align_code(
-                f"""
-            {{
-                if (cpp_curvar.size() <= ({idxstr})) {{
-                    using cpp_cureltype = std::remove_reference<decltype(cpp_curvar)>::type::value_type;
-                    cpp_cureltype cpp_curel;
-                    cpp_curvar.push_back(cpp_curel);
-                }}
-                auto& cpp_lastcurvar = cpp_curvar;
-                auto& cpp_curvar = cpp_lastcurvar[{idxstr}];
-            """,
-                -8 + i * 4,
-            )
-
-        code += align_code(
-            f"""
-                cpp_curvar = {exprstr};
-        """,
-            -8 + (len(indices) - 1) * 4,
-        )
-
-        for i in range(len(indices)):
-            code += align_code(
-                """
-            }
-            """,
-                -8 + (len(indices) - 1 - i) * 4,
-            )
-
-        code += align_code(
-            """
+        inner_code = statement("cpp_curvar = {exprstr}")
+        nested_codes = [most_outer_code] + [outer_code] * len(indices) + [inner_code]
+        extra_params = {
+            **{"exprstr": {len(indices) + 1: exprstr}},
+            **{
+                "idxstr": {
+                    i: get_shifted_idxstr(idx, vardict)
+                    for i, idx in enumerate(indices, start=1)
+                }
+            },
         }
-        """,
-            -8,
-        )
+        code += nested_block_repeat(nested_codes, len(indices) + 2, extra_params)
     return code
 
 
 def store_var_in_endf_dict(vartok, vardict):
     _check_variable(vartok, vardict)
-    code = f"// store variable {vartok} in endf dictionary"
+    code = comment(f"store variable {vartok} in endf dictionary")
     src_varname = get_cpp_extvarname(vartok, vardict)
-    if len(vartok.indices) == 0:
-        code += align_code(
-            f"""
-        cpp_current_dict["{vartok}"] = {src_varname};
-        """,
-            -8,
-        )
-    else:
-        dest_varname = vartok
-        indices = vartok.indices
-        code += align_code(
-            f"""
-        if (! cpp_current_dict.contains("{dest_varname}")) {{
-            cpp_current_dict["{dest_varname}"] = py::dict();
-        }}
-        cpp_workdict = cpp_current_dict["{dest_varname}"];
-        """,
-            -8,
-        )
-        for i, idx in enumerate(indices):
-            cpp_idxstr = get_cpp_varname(idx)
-            if not isinstance(idx, VariableToken):
-                dest_varname += f"[py::cast({cpp_idxstr})]"
-            else:
-                cpp_idxstr = get_cpp_extvarname(idx, vardict)
-                if i + 1 < len(indices):
-                    code += align_code(
-                        f"""
-                    if (! cpp_workdict.contains(py::cast({cpp_idxstr}))) {{
-                        cpp_workdict[py::cast({cpp_idxstr})] = py::dict();
-                    }}
-                    cpp_workdict = cpp_workdict[py::cast({cpp_idxstr})];
-                    """,
-                        -20,
-                    )
-                else:
-                    code += align_code(
-                        f"""
-                    cpp_workdict[py::cast({cpp_idxstr})] = {src_varname};
-                    """,
-                        -20,
-                    )
+    indices = vartok.indices
+    if len(indices) == 0:
+        code += statement(f"""cpp_current_dict["{vartok}"] = {src_varname}""")
+        return code
+
+    code += statement("cpp_workdict = cpp_current_dict")
+    change_dict_code = concat(
+        [
+            pureif(
+                condition="! cpp_workdict.contains(py::cast({idxstr}))",
+                code=statement("cpp_workdict[py::cast({idxstr})] = py::dict()"),
+                escape=True,
+            ),
+            statement("cpp_workdict = cpp_workdict[py::cast({idxstr})]"),
+        ]
+    )
+    cpp_idxstrs = [f'"{vartok}"']
+    cpp_idxstrs += [
+        str(idx) if not isinstance(idx, VariableToken) else get_cpp_varname(idx)
+        for idx in indices
+    ]
+    extra_params = {"idxstr": {i: v for i, v in enumerate(cpp_idxstrs[:-1])}}
+    code += block_repeat(change_dict_code, len(indices), extra_params=extra_params)
+    src_varname = get_cpp_extvarname(vartok, vardict)
+    code += statement(f"cpp_workdict[py::cast({cpp_idxstrs[-1]})] = {src_varname}")
     return code
 
 
@@ -530,12 +534,12 @@ def get_numeric_field(fieldpos, dtype):
         readfun = "cpp_read_float_field"
     elif dtype == int:
         readfun = "cpp_read_int_field"
-    code = f"{readfun}(*cpp_lineptr, {fieldpos});"
+    code = f"{readfun}(*cpp_lineptr, {fieldpos})"
     return code
 
 
 def get_text_field(vartok, start, length, vardict):
-    code = f"(*cpp_lineptr).substr({start}, {length});"
+    code = f"(*cpp_lineptr).substr({start}, {length})"
     return code
 
 

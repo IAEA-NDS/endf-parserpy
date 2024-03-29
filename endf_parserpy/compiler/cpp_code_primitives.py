@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/28
+# Last modified:   2024/03/29
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -577,16 +577,6 @@ def store_var_in_endf_dict(vartok, vardict):
 
 def read_line():
     code = "cpp_lineptr = cpp_read_line(cpp_lines, cpp_linenum);\n"
-    return code
-
-
-def read_numeric_field(vartok, fieldpos, dtype, vardict):
-    if dtype == float:
-        readfun = "cpp_read_float_field"
-    elif dtype == int:
-        readfun = "cpp_read_int_field"
-    exprstr = f"{readfun}(*cpp_lineptr, {fieldpos});"
-    code = assign_exprstr_to_var(vartok, exprstr, vardict)
     return code
 
 

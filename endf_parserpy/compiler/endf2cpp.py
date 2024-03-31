@@ -23,62 +23,21 @@ from .expr_utils.node_checks import is_variable
 from .expr_utils.node_trafos import node2str, replace_node
 from endf_parserpy.compiler.expr_utils.equation_utils import solve_equation
 from . import cpp_code_primitives as cpp
-
-
-def is_code_token(node):
-    return isinstance(node, Tree) and node.data == "code_token"
-
-
-def is_expr(node):
-    return isinstance(node, Tree) and node.data == "expr"
-
-
-def is_head_or_cont(node):
-    return isinstance(node, Tree) and node.data == "head_or_cont_line"
-
-
-def is_dir(node):
-    return isinstance(node, Tree) and node.data == "dir_line"
-
-
-def is_tab1(node):
-    return isinstance(node, Tree) and node.data == "tab1_line"
-
-
-def is_tab2(node):
-    return isinstance(node, Tree) and node.data == "tab2_line"
-
-
-def is_list(node):
-    return isinstance(node, Tree) and node.data == "list_line"
-
-
-def is_text(node):
-    return isinstance(node, Tree) and node.data == "text_line"
-
-
-def is_section(node):
-    return isinstance(node, Tree) and node.data == "section"
-
-
-def is_extvar(node):
-    return isinstance(node, Tree) and node.data == "extvarname"
-
-
-def is_textplaceholder(node):
-    return isinstance(node, Tree) and node.data == "textplaceholder"
-
-
-def is_for_loop(node):
-    return isinstance(node, Tree) and node.data == "for_loop"
-
-
-def is_if_clause(node):
-    return isinstance(node, Tree) and node.data == "if_clause"
-
-
-def is_abbreviation(node):
-    return isinstance(node, Tree) and node.data == "abbreviation"
+from .node_checks import (
+    is_expr,
+    is_head_or_cont,
+    is_dir,
+    is_tab1,
+    is_tab2,
+    is_list,
+    is_text,
+    is_section,
+    is_extvar,
+    is_textplaceholder,
+    is_for_loop,
+    is_if_clause,
+    is_abbreviation,
+)
 
 
 def simplify_expr_node(node):

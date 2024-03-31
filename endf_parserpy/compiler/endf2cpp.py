@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/29
+# Last modified:   2024/03/31
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -14,7 +14,6 @@ from lark.lexer import Token
 from lark import Lark
 from ..tree_utils import get_child, get_name
 from ..endf_lark import endf_recipe_grammar
-from ..endf_recipes import endf_recipe_dictionary
 from .expr_utils.conversion import (
     convert_to_exprtree,
     VariableToken,
@@ -764,46 +763,25 @@ def _generate_code_for_loop(
     return code
 
 
-def generate_cpp_module_code():
+def generate_cpp_module_code(recipes):
     module_header = cpp.module_header()
     parsefuns_code = ""
-    parsefuns_code += generate_cpp_parsefun(
-        "parse_mf1mt451", endf_recipe_dictionary[1][451]
-    )
-    parsefuns_code += generate_cpp_parsefun(
-        "parse_mf2mt151", endf_recipe_dictionary[2][151]
-    )
-    parsefuns_code += generate_cpp_parsefun("parse_mf3", endf_recipe_dictionary[3])
-    parsefuns_code += generate_cpp_parsefun("parse_mf4", endf_recipe_dictionary[4])
-    parsefuns_code += generate_cpp_parsefun("parse_mf5", endf_recipe_dictionary[5])
-    parsefuns_code += generate_cpp_parsefun("parse_mf6", endf_recipe_dictionary[6])
-    parsefuns_code += generate_cpp_parsefun("parse_mf10", endf_recipe_dictionary[10])
-    parsefuns_code += generate_cpp_parsefun("parse_mf12", endf_recipe_dictionary[12])
-    parsefuns_code += generate_cpp_parsefun("parse_mf14", endf_recipe_dictionary[14])
-    parsefuns_code += generate_cpp_parsefun("parse_mf15", endf_recipe_dictionary[15])
-    parsefuns_code += generate_cpp_parsefun("parse_mf32", endf_recipe_dictionary[32])
-    parsefuns_code += generate_cpp_parsefun("parse_mf33", endf_recipe_dictionary[33])
-    parsefuns_code += generate_cpp_parsefun("parse_mf34", endf_recipe_dictionary[34])
-    parsefuns_code += generate_cpp_parsefun("parse_mf40", endf_recipe_dictionary[40])
 
-    pybind_glue = cpp.register_cpp_parsefuns(
-        (
-            "parse_mf1mt451",
-            "parse_mf2mt151",
-            "parse_mf3",
-            "parse_mf4",
-            "parse_mf5",
-            "parse_mf6",
-            "parse_mf10",
-            "parse_mf12",
-            "parse_mf14",
-            "parse_mf15",
-            "parse_mf32",
-            "parse_mf33",
-            "parse_mf34",
-            "parse_mf40",
-        )
-    )
+    func_names = []
+    for mf, mt_recipes in recipes.items():
+        if isinstance(mt_recipes, str):
+            func_name = f"parse_mf{mf}"
+            func_names.append(func_name)
+            recipe = mt_recipes
+            parsefuns_code += generate_cpp_parsefun(func_name, recipe)
+            continue
+        for mt, recipe in mt_recipes.items():
+            print((mf, mt))
+            func_name = f"parse_mf{mf}mt{mt}" if mt != -1 else f"parse_mf{mf}"
+            func_names.append(func_name)
+            parsefuns_code += generate_cpp_parsefun(func_name, recipe)
+
+    pybind_glue = cpp.register_cpp_parsefuns(func_names)
     code = module_header + parsefuns_code + pybind_glue
     return code
 

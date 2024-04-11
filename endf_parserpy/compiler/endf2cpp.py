@@ -22,7 +22,8 @@ from .expr_utils.tree_walkers import transform_nodes
 from .expr_utils.node_checks import is_variable
 from .expr_utils.node_trafos import node2str, replace_node
 from endf_parserpy.compiler.expr_utils.equation_utils import solve_equation
-from . import cpp_code_primitives as cpp
+from . import cpp_primitives as cpp
+from . import endf2cpp_aux as aux
 from .node_checks import (
     is_expr,
     is_head_or_cont,
@@ -51,7 +52,7 @@ def simplify_expr_node(node):
 
 def logical_expr2cppstr(node, vardict):
     if isinstance(node, VariableToken):
-        return cpp.get_cpp_extvarname(node, vardict)
+        return aux.get_cpp_extvarname(node, vardict)
     elif isinstance(node, Token):
         if node == "and":
             return "&&"
@@ -74,7 +75,7 @@ def expr2str_shiftidx(node, vardict, rawvars=False):
     else:
         use_cpp_name = node not in rawvars
     if use_cpp_name:
-        varname = cpp.get_cpp_extvarname(node, vardict)
+        varname = aux.get_cpp_extvarname(node, vardict)
     else:
         varname = str(node)
     return varname
@@ -140,7 +141,7 @@ def generate_vardefs(vardict, save_state=False):
     for vartok, dtype in vardict.items():
         if vartok.startswith("__"):
             continue
-        code += cpp.define_var(vartok, dtype, save_state=save_state)
+        code += aux.define_var(vartok, dtype, save_state=save_state)
     return code
 
 
@@ -149,7 +150,7 @@ def generate_mark_vars_as_unread(vardict, prefix=""):
     for vartok in tuple(vardict):
         if vartok.startswith("__"):
             continue
-        code += cpp.mark_var_as_unread(vartok, prefix)
+        code += aux.mark_var_as_unread(vartok, prefix)
         unregister_var(vartok, vardict)
     return code
 
@@ -179,21 +180,21 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
 
     vardefs = generate_vardefs(vardict)
     ctrl_code = ""
-    ctrl_code = cpp.assign_exprstr_to_var(
+    ctrl_code = aux.assign_exprstr_to_var(
         var_mat, "std::stoi(cpp_lines[0].substr(66, 4))", vardict
     )
-    ctrl_code += cpp.assign_exprstr_to_var(
+    ctrl_code += aux.assign_exprstr_to_var(
         var_mf, "std::stoi(cpp_lines[0].substr(70, 2))", vardict
     )
-    ctrl_code += cpp.assign_exprstr_to_var(
+    ctrl_code += aux.assign_exprstr_to_var(
         var_mt, "std::stoi(cpp_lines[0].substr(72, 3))", vardict
     )
-    ctrl_code += cpp.store_var_in_endf_dict(var_mat, vardict)
-    ctrl_code += cpp.store_var_in_endf_dict(var_mf, vardict)
-    ctrl_code += cpp.store_var_in_endf_dict(var_mt, vardict)
+    ctrl_code += aux.store_var_in_endf_dict(var_mat, vardict)
+    ctrl_code += aux.store_var_in_endf_dict(var_mf, vardict)
+    ctrl_code += aux.store_var_in_endf_dict(var_mt, vardict)
 
-    fun_header = cpp.parsefun_header(name)
-    fun_footer = cpp.parsefun_footer()
+    fun_header = aux.parsefun_header(name)
+    fun_footer = aux.parsefun_footer()
     fun_body = cpp.indent_code(vardefs + ctrl_code + code, 4)
     code = fun_header + fun_body + fun_footer
     return code
@@ -282,10 +283,10 @@ def _generate_code_for_section(sectok, section_body, vardict, parsefun):
     body_code = parsefun(section_body, vardict)
     vardef_code = generate_vardefs(vardict)
     code = f"\n// open section {sectok}"
-    code += cpp.open_section(sectok, vardict)
+    code += aux.open_section(sectok, vardict)
     code += cpp.indent_code(vardef_code, 4)
     code += cpp.indent_code(body_code, 4)
-    code += cpp.close_section()
+    code += aux.close_section()
     vardict = pardict
     return code
 
@@ -450,7 +451,7 @@ def _generate_code_for_varassign(
     cpp_val_tok = Token("VARIABLE", "cpp_val")
     code = ""
     if expr == cpp_val_tok:
-        code += cpp.assign_exprstr_to_var(vartok, valcode, vardict)
+        code += aux.assign_exprstr_to_var(vartok, valcode, vardict)
     else:
         if dtype == float:
             cpp_newval_tok = Token("VARNAME", "cpp_float_val")
@@ -460,16 +461,16 @@ def _generate_code_for_varassign(
             raise NotImplementedError(f"unknown node type {dtype}")
         cpp_newval_tok = VariableToken(cpp_newval_tok)
         expr = transform_nodes(expr, replace_node, cpp_val_tok, cpp_newval_tok)
-        code += cpp.assign_exprstr_to_var(
+        code += aux.assign_exprstr_to_var(
             cpp_newval_tok, valcode, vardict, use_cpp_name=False, mark_as_read=False
         )
         exprstr = transform_nodes(
             expr, expr2str_shiftidx, vardict, rawvars=(cpp_newval_tok,)
         )
-        code += cpp.assign_exprstr_to_var(vartok, exprstr, vardict)
+        code += aux.assign_exprstr_to_var(vartok, exprstr, vardict)
 
     if not in_lookahead(vardict):
-        code += cpp.store_var_in_endf_dict(vartok, vardict)
+        code += aux.store_var_in_endf_dict(vartok, vardict)
     register_var(vartok, dtype, vardict)
     return code
 
@@ -486,12 +487,12 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
 
     exprstr = transform_nodes(node, node2str)
     code = cpp.conditional_branches(
-        conditions=[cpp.did_not_read_var(v) for v in variables],
+        conditions=[aux.did_not_read_var(v) for v in variables],
         codes=[
             cpp.concat(
                 [
                     cpp.pureif(
-                        condition=cpp.any_unread_vars(variables.difference((v,))),
+                        condition=aux.any_unread_vars(variables.difference((v,))),
                         code=cpp.throw_runtime_error(
                             "some of the required variables "
                             + f"""{", ".join(variables.difference((v,)))} """
@@ -525,7 +526,7 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
         if skip is not None and idx in skip:
             continue
         dtype = float if idx < 2 else int
-        valcode = cpp.get_numeric_field(idx, dtype)
+        valcode = aux.get_numeric_field(idx, dtype)
         try:
             code += generate_code_for_varassign(
                 child, vardict, valcode, dtype, throw_cpp=throw_cpp
@@ -541,7 +542,7 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
 
 
 def generate_code_for_text(node, vardict):
-    code = cpp.read_line()
+    code = aux.read_line()
     text_fields = get_child(node, "text_fields")
     tphs = [v for v in text_fields.children if is_textplaceholder(v)]
     ofs = 0
@@ -562,14 +563,14 @@ def generate_code_for_text(node, vardict):
         vartok = VariableToken(v)
         dtype = str
         register_var(vartok, dtype, vardict)
-        valcode = cpp.get_text_field(vartok, ofs, length, vardict)
+        valcode = aux.get_text_field(vartok, ofs, length, vardict)
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         ofs += length
     return code
 
 
 def generate_code_for_cont(node, vardict):
-    code = cpp.read_line()
+    code = aux.read_line()
     record_fields = get_child(node, "record_fields")
     code += cpp.comment("read CONT record")
     code += generate_code_from_record_fields(record_fields, vardict)
@@ -577,7 +578,7 @@ def generate_code_for_cont(node, vardict):
 
 
 def generate_code_for_dir(node, vardict):
-    code = cpp.read_line()
+    code = aux.read_line()
     record_fields = get_child(node, "dir_fields")
     code += cpp.comment("read TEXT record")
     code += generate_code_from_record_fields(record_fields, vardict, skip=(0, 1), ofs=2)
@@ -586,7 +587,7 @@ def generate_code_for_dir(node, vardict):
 
 def generate_code_for_tab1(node, vardict):
     code = "\n// read TAB1 record\n"
-    code += cpp.read_line()
+    code += aux.read_line()
     tab1_fields = get_child(node, "tab1_fields")
     table_name = get_child(node, "table_name", nofail=True)
     record_fields = get_child(tab1_fields, "record_fields")
@@ -604,18 +605,18 @@ def generate_code_for_tab1(node, vardict):
     yvar = VariableToken(colnodes[1])
     if not in_lookahead(vardict):
         if sectok is None:
-            code += cpp.read_tab_body(xvar, yvar)
+            code += aux.read_tab_body(xvar, yvar)
         else:
-            code += cpp.open_section(sectok, vardict)
-            body_code = cpp.read_tab_body(xvar, yvar)
+            code += aux.open_section(sectok, vardict)
+            body_code = aux.read_tab_body(xvar, yvar)
             code += cpp.indent_code(body_code, 4)
-            code += cpp.close_section()
+            code += aux.close_section()
     return code
 
 
 def generate_code_for_tab2(node, vardict):
     code = "\n// read TAB2 record\n"
-    code += cpp.read_line()
+    code += aux.read_line()
     tab2_fields = get_child(node, "tab2_fields")
     table_name = get_child(node, "table_name", nofail=True)
     record_fields = get_child(tab2_fields, "record_fields")
@@ -628,17 +629,17 @@ def generate_code_for_tab2(node, vardict):
 
     if not in_lookahead(vardict):
         if sectok is None:
-            code += cpp.read_tab_body(None, None)
+            code += aux.read_tab_body(None, None)
         else:
-            code += cpp.open_section(sectok, vardict)
-            body_code = cpp.read_tab_body(None, None)
+            code += aux.open_section(sectok, vardict)
+            body_code = aux.read_tab_body(None, None)
             code += cpp.indent_code(body_code, 4)
-            code += cpp.close_section()
+            code += aux.close_section()
     return code
 
 
 def generate_code_for_list(node, vardict):
-    code = cpp.read_line()
+    code = aux.read_line()
     record_fields = get_child(node, "record_fields")
     code += "\n// read LIST record\n"
     code += generate_code_from_record_fields(record_fields, vardict)
@@ -702,7 +703,7 @@ def _generate_code_for_loop(
     start_expr_str = transform_nodes(start_expr_node, expr2str_shiftidx, vardict)
     stop_expr_str = transform_nodes(stop_expr_node, expr2str_shiftidx, vardict)
     loopvar = VariableToken(loopvar_node)
-    cpp_loopvar = cpp.get_cpp_varname(loopvar)
+    cpp_loopvar = aux.get_cpp_varname(loopvar)
     if loopvar in vardict:
         raise TypeError(f"variable {loopvar} already declared")
     dtype = (start_expr_str, stop_expr_str)
@@ -723,7 +724,7 @@ def _generate_code_for_loop(
 
 
 def generate_cpp_module_code(recipes):
-    module_header = cpp.module_header()
+    module_header = aux.module_header()
     parsefuns_code = ""
 
     func_names = []
@@ -740,7 +741,7 @@ def generate_cpp_module_code(recipes):
             func_names.append(func_name)
             parsefuns_code += generate_cpp_parsefun(func_name, recipe)
 
-    pybind_glue = cpp.register_cpp_parsefuns(func_names)
+    pybind_glue = aux.register_cpp_parsefuns(func_names)
     code = module_header + parsefuns_code + pybind_glue
     return code
 

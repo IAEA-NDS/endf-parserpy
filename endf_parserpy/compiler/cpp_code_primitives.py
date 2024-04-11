@@ -3,27 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/29
+# Last modified:   2024/04/11
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from .expr_utils.conversion import VariableToken
-
-
-def align_code(code, indent):
-    missing_newline = "\n" if code.endswith("\n") else ""
-    code_lines = code.splitlines()
-    if indent < 0:
-        i = -indent
-        code_lines = [line[i:] for line in code_lines]
-    else:
-        i = indent
-        code_lines = [" " * i + line for line in code_lines]
-
-    code = "\n".join(code_lines) + missing_newline
-    return code
 
 
 def module_header():
@@ -145,14 +131,14 @@ def module_header():
     }
 
     """
-    return align_code(code, -4)
+    return indent_code(code, -4)
 
 
 def register_cpp_parsefuns(parsefuns):
     code = "\n\nPYBIND11_MODULE(cpp_parsefuns, m) {\n"
     for parsefun in parsefuns:
         curcode = f"""m.def("{parsefun}", &{parsefun}, "parsing function");\n"""
-        code += align_code(curcode, 4)
+        code += indent_code(curcode, 4)
     code += "\n}"
     return code
 
@@ -300,8 +286,11 @@ def fillout_template(template, params=None, idx=None):
 
 
 def indent_code(code, indent):
-    code_lines = [" " * indent + s for s in code.split("\n")]
-    code_lines = [s if s != " " * indent else "" for s in code_lines]
+    if indent >= 0:
+        code_lines = [" " * indent + s for s in code.split("\n")]
+    else:
+        code_lines = [s[(-indent):] for s in code.split("\n")]
+    code_lines = [s if s.strip() != "" else s.strip() for s in code_lines]
     return "\n".join(code_lines)
 
 
@@ -401,13 +390,13 @@ def conditional_branches(conditions, codes, default=None, escape=False):
     cbr = "}" if not escape else "}}"
     if_cond = conditions[0]
     code = f"if ({if_cond}) {obr}\n"
-    code += align_code(codes[0], 4)
+    code += indent_code(codes[0], 4)
     for elif_cond, elif_body in zip(conditions[1:], codes[1:]):
         code += f"\n{cbr} else if ({elif_cond}) {obr}\n"
-        code += align_code(elif_body, 4)
+        code += indent_code(elif_body, 4)
     if default is not None:
         code += f"\n{cbr} else {obr}\n"
-        code += align_code(default, 4)
+        code += indent_code(default, 4)
     code += f"{cbr}\n"
     return code
 
@@ -547,7 +536,7 @@ def open_section(vartok, vardict):
     _check_variable(vartok, vardict)
     secname = vartok
     indices = vartok.indices
-    code = align_code(
+    code = indent_code(
         f"""
     {{
         py::dict cpp_parent_dict = cpp_current_dict;
@@ -561,7 +550,7 @@ def open_section(vartok, vardict):
     for idx in indices:
         cpp_idxstr = get_cpp_varname(idx)
         idxstr = f"py::cast({cpp_idxstr})"
-        code += align_code(
+        code += indent_code(
             f"""
         if (! cpp_current_dict.contains({idxstr})) {{
             cpp_current_dict[{idxstr}] = py::dict();
@@ -574,7 +563,7 @@ def open_section(vartok, vardict):
 
 
 def close_section():
-    code = align_code(
+    code = indent_code(
         """
         cpp_current_dict = cpp_parent_dict;
     }
@@ -585,7 +574,7 @@ def close_section():
 
 
 def read_tab_body(xvar, yvar):
-    code = align_code(
+    code = indent_code(
         """
     {
         int cpp_j;
@@ -610,7 +599,7 @@ def read_tab_body(xvar, yvar):
     if xvar is not None or yvar is not None:
         if xvar is None or yvar is None:
             raise ValueError("provide both xyvar with xvar")
-        code += align_code(
+        code += indent_code(
             f"""
         std::vector<double> {xvar};
         std::vector<double> {yvar};
@@ -626,7 +615,7 @@ def read_tab_body(xvar, yvar):
         """,
             -8,
         )
-    code += align_code(
+    code += indent_code(
         """
     }
     """,
@@ -636,7 +625,7 @@ def read_tab_body(xvar, yvar):
 
 
 def parsefun_header(fun_name):
-    code = align_code(
+    code = indent_code(
         rf"""
     py::dict {fun_name}(std::vector<std::string> cpp_lines) {{
         std::vector<int> cpp_intvec;
@@ -656,7 +645,7 @@ def parsefun_header(fun_name):
 
 
 def parsefun_footer():
-    code = align_code(
+    code = indent_code(
         """
         cpp_read_send(cpp_lines, cpp_linenum);
         return cpp_current_dict;

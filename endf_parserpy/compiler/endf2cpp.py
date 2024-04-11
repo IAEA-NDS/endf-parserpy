@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/31
+# Last modified:   2024/04/11
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -194,7 +194,7 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
 
     fun_header = cpp.parsefun_header(name)
     fun_footer = cpp.parsefun_footer()
-    fun_body = cpp.align_code(vardefs + ctrl_code + code, 4)
+    fun_body = cpp.indent_code(vardefs + ctrl_code + code, 4)
     code = fun_header + fun_body + fun_footer
     return code
 
@@ -283,8 +283,8 @@ def _generate_code_for_section(sectok, section_body, vardict, parsefun):
     vardef_code = generate_vardefs(vardict)
     code = f"\n// open section {sectok}"
     code += cpp.open_section(sectok, vardict)
-    code += cpp.align_code(vardef_code, 4)
-    code += cpp.align_code(body_code, 4)
+    code += cpp.indent_code(vardef_code, 4)
+    code += cpp.indent_code(body_code, 4)
     code += cpp.close_section()
     vardict = pardict
     return code
@@ -329,7 +329,7 @@ def generate_code_for_if_clause(node, vardict):
     new_vardict = vardict.copy()
     if_statement_code = generate_code_for_if_statement(if_statement, new_vardict)
     add_vardict.update(new_vardict)
-    code += cpp.align_code(if_statement_code, 4)
+    code += cpp.indent_code(if_statement_code, 4)
     for elif_statement in elif_statements:
         new_vardict = vardict.copy()
         code += cpp.indent_code(
@@ -340,7 +340,7 @@ def generate_code_for_if_clause(node, vardict):
             indent=4,
         )
         add_vardict.update(new_vardict)
-        code += cpp.align_code(if_statement_code, 8)
+        code += cpp.indent_code(if_statement_code, 8)
     if else_statement is not None:
         else_code = get_child(else_statement, "if_body")
         new_vardict = vardict.copy()
@@ -608,7 +608,7 @@ def generate_code_for_tab1(node, vardict):
         else:
             code += cpp.open_section(sectok, vardict)
             body_code = cpp.read_tab_body(xvar, yvar)
-            code += cpp.align_code(body_code, 4)
+            code += cpp.indent_code(body_code, 4)
             code += cpp.close_section()
     return code
 
@@ -632,7 +632,7 @@ def generate_code_for_tab2(node, vardict):
         else:
             code += cpp.open_section(sectok, vardict)
             body_code = cpp.read_tab_body(None, None)
-            code += cpp.align_code(body_code, 4)
+            code += cpp.indent_code(body_code, 4)
             code += cpp.close_section()
     return code
 
@@ -645,7 +645,7 @@ def generate_code_for_list(node, vardict):
     if not should_proceed(vardict):
         return code
     list_body_node = get_child(node, "list_body")
-    code += cpp.align_code(
+    code += cpp.indent_code(
         """
     {
         int cpp_npl = cpp_read_int_field(*cpp_lineptr, 4);
@@ -655,8 +655,8 @@ def generate_code_for_list(node, vardict):
         -4,
     )
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
-    code += cpp.align_code(list_body_code, 4)
-    code += cpp.align_code(
+    code += cpp.indent_code(list_body_code, 4)
+    code += cpp.indent_code(
         """
     }
     """,
@@ -708,7 +708,7 @@ def _generate_code_for_loop(
     dtype = (start_expr_str, stop_expr_str)
     register_var(loopvar, dtype, vardict)
 
-    code = cpp.align_code(
+    code = cpp.indent_code(
         rf"""
     for (int {cpp_loopvar} = {start_expr_str};
          {cpp_loopvar} <= {stop_expr_str}; {cpp_loopvar}++) {{
@@ -716,7 +716,7 @@ def _generate_code_for_loop(
         -4,
     )
     body_code = parsefun(for_body, vardict)
-    code += cpp.align_code(body_code, 4)
+    code += cpp.indent_code(body_code, 4)
     code += "}\n"
     unregister_var(loopvar, vardict)
     return code
@@ -746,7 +746,7 @@ def generate_cpp_module_code(recipes):
 
 
 def generate_cmake_content():
-    code = cpp.align_code(
+    code = cpp.indent_code(
         """
     cmake_minimum_required(VERSION 3.12)
     project(cpp_parsefuns)

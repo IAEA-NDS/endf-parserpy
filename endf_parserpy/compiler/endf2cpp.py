@@ -25,6 +25,28 @@ from endf_parserpy.compiler.expr_utils.equation_utils import solve_equation
 from . import cpp_primitives as cpp
 from . import cpp_boilerplate
 from . import endf2cpp_aux as aux
+from .lookahead_management import (
+    init_lookahead_counter,
+    remove_lookahead_counter,
+    decrease_lookahead_counter,
+    in_lookahead,
+    should_proceed,
+)
+from .variable_management import (
+    register_abbreviation,
+    unregister_abbreviations,
+    expand_abbreviation,
+    count_not_encountered_vars,
+    register_var,
+    unregister_var,
+)
+from .node_aux import (
+    simplify_expr_node,
+    get_varassign_from_expr,
+    get_variables_in_expr,
+    expr2str_shiftidx,
+    logical_expr2cppstr,
+)
 from .node_checks import (
     is_expr,
     is_head_or_cont,
@@ -40,101 +62,6 @@ from .node_checks import (
     is_if_clause,
     is_abbreviation,
 )
-
-
-def simplify_expr_node(node):
-    if not is_expr(node):
-        return node
-    new_node = convert_to_exprtree(node)
-    if not is_expr(new_node):
-        new_node = Tree("expr", [new_node])
-    return new_node
-
-
-def logical_expr2cppstr(node, vardict):
-    if isinstance(node, VariableToken):
-        return aux.get_cpp_extvarname(node, vardict)
-    elif isinstance(node, Token):
-        if node == "and":
-            return "&&"
-        elif node == "or":
-            return "||"
-        else:
-            return str(node)
-    elif isinstance(node, Tree):
-        return (
-            "(" + "".join(logical_expr2cppstr(c, vardict) for c in node.children) + ")"
-        )
-    raise NotImplementedError("should not happen")
-
-
-def expr2str_shiftidx(node, vardict, rawvars=False):
-    if not isinstance(node, VariableToken):
-        return node2str(node)
-    if rawvars in (True, False):
-        use_cpp_name = not rawvars
-    else:
-        use_cpp_name = node not in rawvars
-    if use_cpp_name:
-        varname = aux.get_cpp_extvarname(node, vardict)
-    else:
-        varname = str(node)
-    return varname
-
-
-def expand_abbreviation(node, vardict):
-    if not is_variable(node):
-        return node
-    if "__abbrevs" not in vardict:
-        return node
-    abbrevs = vardict["__abbrevs"]
-    if node not in abbrevs:
-        return node
-    return abbrevs[node].children[0]
-
-
-def get_variables_in_expr(node):
-    if is_variable(node):
-        return set((node,))
-    varset = set()
-    if isinstance(node, Tree):
-        for child in node.children:
-            curset = get_variables_in_expr(child)
-            varset.update(curset)
-    return varset
-
-
-def register_abbreviation(node, vardict):
-    vartok = VariableToken(get_child(node, "VARNAME"))
-    expr = get_child(node, "expr")
-    abbrevs = vardict.setdefault("__abbrevs", {})
-    abbrevs[vartok] = expr
-
-
-def unregister_abbreviations(vardict):
-    if "__abbrevs" in vardict:
-        del vardict["__abbrevs"]
-
-
-def did_encounter_var(vartok, vardict):
-    while vartok not in vardict and "__up" in vardict:
-        vardict = vardict["__up"]
-    return vartok in vardict
-
-
-def count_not_encountered_vars(node, vardict):
-    varset = get_variables_in_expr(node)
-    return sum(not did_encounter_var(v, vardict) for v in varset)
-
-
-def register_var(vartok, dtype, vardict):
-    vardict[vartok] = dtype
-
-
-def unregister_var(vartok, vardict):
-    if vartok.startswith("__"):
-        raise TypeError("not a valid variable")
-    del vardict[vartok]
 
 
 def generate_vardefs(vardict, save_state=False):
@@ -154,17 +81,6 @@ def generate_mark_vars_as_unread(vardict, prefix=""):
         code += aux.mark_var_as_unread(vartok, prefix)
         unregister_var(vartok, vardict)
     return code
-
-
-def get_varassign_from_expr(vartok, node, vardict):
-    if is_expr(node):
-        node = node.children[0]
-    elif not isinstance(node, VariableToken):
-        raise TypeError("expect `expr` node or VariableToken")
-    lhs = node
-    rhs = Token("VARIABLE", "cpp_val")
-    vartok, expr = solve_equation(lhs, rhs, vartok)
-    return vartok, expr
 
 
 def generate_cpp_parsefun(name, endf_recipe, parser=None):
@@ -199,45 +115,6 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
     fun_body = cpp.indent_code(vardefs + ctrl_code + code, 4)
     code = fun_header + fun_body + fun_footer
     return code
-
-
-def find_parent_dict(vartok, vardict):
-    d = vardict
-    while vartok not in d and "__up" in d:
-        d = d["__up"]
-    if vartok in d:
-        return d
-    return None
-
-
-def init_lookahead_counter(steps, vardict):
-    pardic = find_parent_dict("__lookahead", vardict)
-    if pardic is not None:
-        TypeError("already in lookahead")
-    vardict["__lookahead"] = steps
-
-
-def remove_lookahead_counter(vardict):
-    if "__lookahead" not in vardict:
-        raise TypeError("call at end of lookahead")
-    if vardict["__lookahead"] != 0:
-        raise IndexError("implementation error of lookahead")
-    del vardict["__lookahead"]
-
-
-def decrease_lookahead_counter(vardict):
-    pardic = find_parent_dict("__lookahead", vardict)
-    if pardic is not None:
-        pardic["__lookahead"] -= 1
-
-
-def in_lookahead(vardict):
-    return find_parent_dict("__lookahead", vardict) is not None
-
-
-def should_proceed(vardict):
-    pardic = find_parent_dict("__lookahead", vardict)
-    return pardic is None or pardic["__lookahead"] > 0
 
 
 def generate_code_from_parsetree(node, vardict):

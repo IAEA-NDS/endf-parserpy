@@ -173,15 +173,15 @@ def _initialize_aux_read_vars(vartok, save_state=False):
     num_dims = len(vartok.indices)
     code = ""
     if num_dims == 0:
-        v = f"{varname}_read"
+        v = f"aux_{varname}_read"
         if save_state:
             code += f"bool& glob_{v} = {v};\n"
             code += f"bool {v} = glob_{v};\n"
         else:
-            code += f"bool {varname}_read = false;\n"
+            code += f"bool aux_{varname}_read = false;\n"
     else:
         for i in range(num_dims):
-            v = f"{varname}_lastidx{i}_read"
+            v = f"aux_{varname}_lastidx{i}_read"
             if save_state:
                 code += f"int& glob_{v} = {v};\n"
                 code += f"int {v} = glob_{v};\n"
@@ -221,10 +221,10 @@ def mark_var_as_read(vartok, prefix=""):
     indices = vartok.indices
     num_dims = len(indices)
     if num_dims == 0:
-        return f"{prefix}{varname}_read = true;\n"
+        return f"{prefix}aux_{varname}_read = true;\n"
     return (
         "\n".join(
-            f"{prefix}{varname}_lastidx{i}_read = {get_cpp_varname(idx)};"
+            f"{prefix}aux_{varname}_lastidx{i}_read = {get_cpp_varname(idx)};"
             for i, idx in enumerate(indices)
         )
         + "\n"
@@ -236,10 +236,11 @@ def mark_var_as_unread(vartok, prefix=""):
     indices = vartok.indices
     num_dims = len(indices)
     if num_dims == 0:
-        return f"{prefix}{varname}_read = false;\n"
+        return f"{prefix}aux_{varname}_read = false;\n"
     return (
         "\n".join(
-            f"{prefix}{varname}_lastidx{i}_read = -1;" for i, idx in enumerate(indices)
+            f"{prefix}aux_{varname}_lastidx{i}_read = -1;"
+            for i, idx in enumerate(indices)
         )
         + "\n"
     )
@@ -250,9 +251,9 @@ def _did_read_var(vartok):
     indices = vartok.indices
     num_dims = len(indices)
     if num_dims == 0:
-        return f"({varname}_read == true)"
+        return f"(aux_{varname}_read == true)"
     return cpp.logical_and(
-        f"({varname}_lastidx{i}_read == {get_cpp_varname(idx)})"
+        f"(aux_{varname}_lastidx{i}_read == {get_cpp_varname(idx)})"
         for i, idx in enumerate(indices)
     )
 

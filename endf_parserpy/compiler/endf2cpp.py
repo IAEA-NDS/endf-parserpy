@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/11
+# Last modified:   2024/04/12
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -23,6 +23,7 @@ from .expr_utils.node_checks import is_variable
 from .expr_utils.node_trafos import node2str, replace_node
 from endf_parserpy.compiler.expr_utils.equation_utils import solve_equation
 from . import cpp_primitives as cpp
+from . import cpp_boilerplate
 from . import endf2cpp_aux as aux
 from .node_checks import (
     is_expr,
@@ -193,8 +194,8 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
     ctrl_code += aux.store_var_in_endf_dict(var_mf, vardict)
     ctrl_code += aux.store_var_in_endf_dict(var_mt, vardict)
 
-    fun_header = aux.parsefun_header(name)
-    fun_footer = aux.parsefun_footer()
+    fun_header = cpp_boilerplate.parsefun_header(name)
+    fun_footer = cpp_boilerplate.parsefun_footer()
     fun_body = cpp.indent_code(vardefs + ctrl_code + code, 4)
     code = fun_header + fun_body + fun_footer
     return code
@@ -724,7 +725,7 @@ def _generate_code_for_loop(
 
 
 def generate_cpp_module_code(recipes):
-    module_header = aux.module_header()
+    module_header = cpp_boilerplate.module_header()
     parsefuns_code = ""
 
     func_names = []
@@ -743,24 +744,4 @@ def generate_cpp_module_code(recipes):
 
     pybind_glue = aux.register_cpp_parsefuns(func_names)
     code = module_header + parsefuns_code + pybind_glue
-    return code
-
-
-def generate_cmake_content():
-    code = cpp.indent_code(
-        """
-    cmake_minimum_required(VERSION 3.12)
-    project(cpp_parsefuns)
-
-    find_package(pybind11 REQUIRED)
-
-    # Create the C++ executable
-    pybind11_add_module(cpp_parsefuns SHARED cpp_parsefuns.cpp)
-
-    # Link against Python libraries
-    # target_link_libraries(example PRIVATE Python::Python)
-    set_property(TARGET cpp_parsefuns PROPERTY CXX_STANDARD 11)
-    """,
-        -4,
-    )
     return code

@@ -1,5 +1,6 @@
 import os
-from .endf2cpp import generate_cpp_module_code, generate_cmake_content
+from .endf2cpp import generate_cpp_module_code
+from .cpp_boilerplate import generate_cmake_content
 from ..endf_recipes import endf_recipe_dictionary
 
 

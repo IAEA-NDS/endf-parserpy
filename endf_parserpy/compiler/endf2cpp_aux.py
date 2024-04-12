@@ -13,15 +13,6 @@ from .expr_utils.conversion import VariableToken
 from . import cpp_primitives as cpp
 
 
-def register_cpp_parsefuns(parsefuns):
-    code = "\n\nPYBIND11_MODULE(cpp_parsefuns, m) {\n"
-    for parsefun in parsefuns:
-        curcode = f"""m.def("{parsefun}", &{parsefun}, "parsing function");\n"""
-        code += cpp.indent_code(curcode, 4)
-    code += "\n}"
-    return code
-
-
 def _initialize_aux_read_vars(vartok, save_state=False):
     varname = get_cpp_varname(vartok)
     num_dims = len(vartok.indices)

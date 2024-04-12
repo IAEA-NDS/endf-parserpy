@@ -166,6 +166,15 @@ def parsefun_footer():
     return code
 
 
+def register_cpp_parsefuns(parsefuns):
+    code = "\n\nPYBIND11_MODULE(cpp_parsefuns, m) {\n"
+    for parsefun in parsefuns:
+        curcode = f"""m.def("{parsefun}", &{parsefun}, "parsing function");\n"""
+        code += cpp.indent_code(curcode, 4)
+    code += "\n}"
+    return code
+
+
 def generate_cmake_content():
     code = cpp.indent_code(
         """

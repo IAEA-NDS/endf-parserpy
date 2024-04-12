@@ -619,6 +619,6 @@ def generate_cpp_module_code(recipes):
             func_names.append(func_name)
             parsefuns_code += generate_cpp_parsefun(func_name, recipe)
 
-    pybind_glue = aux.register_cpp_parsefuns(func_names)
+    pybind_glue = cpp_boilerplate.register_cpp_parsefuns(func_names)
     code = module_header + parsefuns_code + pybind_glue
     return code

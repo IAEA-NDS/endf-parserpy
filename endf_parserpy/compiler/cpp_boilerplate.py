@@ -137,7 +137,7 @@ def module_header():
 def parsefun_header(fun_name):
     code = cpp.indent_code(
         rf"""
-        py::dict {fun_name}(std::vector<std::string> cpp_lines) {{
+    py::dict {fun_name}(std::vector<std::string> cpp_lines) {{
         std::vector<int> cpp_intvec;
         std::vector<double> cpp_floatvec;
         int cpp_linenum = 0;

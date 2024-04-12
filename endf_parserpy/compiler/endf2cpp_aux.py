@@ -44,22 +44,6 @@ def _initialize_aux_read_vars(vartok, save_state=False):
     return code
 
 
-def adopt_varval(vartok):
-    varname = get_cpp_varname(vartok)
-    num_dims = len(vartok.indices)
-    code = ""
-    if num_dims == 0:
-        code += f"glob_{varname} = {varname};\n"
-        v = f"{varname}_read"
-        code += f"glob_{v} = {v};\n"
-    else:
-        code += f"glob_{varname} = {varname};\n"
-        for i in range(num_dims):
-            v = f"{varname}_lastidx{i}_read"
-            code += f"glob_{v} = {v};\n"
-    return code
-
-
 def define_var(vartok, dtype, save_state=False):
     if dtype == float:
         dtype = "double"

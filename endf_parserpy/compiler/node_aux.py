@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/12
+# Last modified:   2024/04/13
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -52,7 +52,7 @@ def get_variables_in_expr(node):
 
 def logical_expr2cppstr(node, vardict):
     if isinstance(node, VariableToken):
-        return aux.get_cpp_extvarname(node, vardict)
+        return aux.get_cpp_extvarname(node)
     elif isinstance(node, Token):
         if node == "and":
             return "&&"
@@ -75,7 +75,7 @@ def expr2str_shiftidx(node, vardict, rawvars=False):
     else:
         use_cpp_name = node not in rawvars
     if use_cpp_name:
-        varname = aux.get_cpp_extvarname(node, vardict)
+        varname = aux.get_cpp_extvarname(node)
     else:
         varname = str(node)
     return varname

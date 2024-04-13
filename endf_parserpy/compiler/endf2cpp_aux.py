@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/13
+# Last modified:   2024/04/14
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -150,20 +150,21 @@ def get_cpp_varname(vartok, quote=False):
     return varname
 
 
-def get_cpp_extvarname(vartok, vardict):
+def get_cpp_extvarname(vartok):
     varname = get_cpp_varname(vartok)
-    for idxtok in vartok.indices:
-        shifted_idxstr = get_shifted_idxstr(idxtok, vardict)
+    for i, idxtok in enumerate(vartok.indices):
+        shifted_idxstr = get_shifted_idxstr(vartok, i)
         varname += f"[{shifted_idxstr}]"
     return varname
 
 
-def get_shifted_idxstr(idxtok, vardict):
-    cpp_idxstr = get_cpp_extvarname(idxtok, vardict)
+def get_shifted_idxstr(vartok, i):
+    idxtok = vartok.indices[i]
+    cpp_idxstr = get_cpp_extvarname(idxtok)
     if not isinstance(idxtok, VariableToken):
         idxstr = f"{cpp_idxstr}"
     else:
-        shift_exprstr = vardict[idxtok][0]
+        shift_exprstr = firstidx_varname(vartok, i)
         idxstr = f"({cpp_idxstr}-({shift_exprstr}))"
     return idxstr
 
@@ -263,8 +264,22 @@ def mark_var_as_read(vartok, prefix=""):
         firstidx = f"{prefix}aux_{varname}_firstidx{i}_read"
         lastidx = f"{prefix}aux_{varname}_lastidx{i}_read"
         code1 = cpp.pureif(f"{lastidx} == -1", cpp.statement(f"{firstidx} = {curidx}"))
-        code2 = cpp.statement(f"{lastidx} = {curidx}")
-        code += cpp.concat([code1, code2])
+        code2 = ""
+        if i + 1 < len(indices):
+            code2 += cpp.pureif(
+                f"{lastidx} != {curidx}",
+                cpp.concat(
+                    cpp.concat(
+                        [
+                            cpp.statement(f"{firstidx_varname(vartok, j)} = -1"),
+                            cpp.statement(f"{lastidx_varname(vartok, j)} = -1"),
+                        ]
+                    )
+                    for j in range(i + 1, len(indices))
+                ),
+            )
+        code3 = cpp.statement(f"{lastidx} = {curidx}")
+        code += cpp.concat([code1, code2, code3])
     return code
 
 
@@ -345,7 +360,7 @@ def assign_exprstr_to_var(
                     escape=True,
                 ),
                 cpp.statement("auto& cpp_lastcurvar = cpp_curvar"),
-                cpp.statement("auto& cpp_curvar = cpp_lastcurvar[{idxstr}]"),
+                cpp.statement("auto& cpp_curvar = cpp_lastcurvar.at({idxstr})"),
             ]
         )
         inner_code = cpp.statement("cpp_curvar = {exprstr}")
@@ -354,8 +369,7 @@ def assign_exprstr_to_var(
             **{"exprstr": {len(indices) + 1: exprstr}},
             **{
                 "idxstr": {
-                    i: get_shifted_idxstr(idx, vardict)
-                    for i, idx in enumerate(indices, start=1)
+                    i + 1: get_shifted_idxstr(vartok, i) for i in range(len(indices))
                 }
             },
         }
@@ -366,7 +380,7 @@ def assign_exprstr_to_var(
 def store_var_in_endf_dict(vartok, vardict):
     _check_variable(vartok, vardict)
     code = cpp.comment(f"store variable {vartok} in endf dictionary")
-    src_varname = get_cpp_extvarname(vartok, vardict)
+    src_varname = get_cpp_extvarname(vartok)
     indices = vartok.indices
     if len(indices) == 0:
         code += cpp.statement(f"""cpp_current_dict["{vartok}"] = {src_varname}""")
@@ -390,6 +404,6 @@ def store_var_in_endf_dict(vartok, vardict):
     ]
     extra_params = {"idxstr": {i: v for i, v in enumerate(cpp_idxstrs[:-1])}}
     code += cpp.block_repeat(change_dict_code, len(indices), extra_params=extra_params)
-    src_varname = get_cpp_extvarname(vartok, vardict)
+    src_varname = get_cpp_extvarname(vartok)
     code += cpp.statement(f"cpp_workdict[py::cast({cpp_idxstrs[-1]})] = {src_varname}")
     return code

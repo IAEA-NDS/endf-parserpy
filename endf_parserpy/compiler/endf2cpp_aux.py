@@ -168,25 +168,61 @@ def get_shifted_idxstr(idxtok, vardict):
     return idxstr
 
 
+def _init_local_var_from_global_var(v, ctyp):
+    return cpp.concat(
+        [
+            cpp.statement(f"{ctyp}& glob_{v} = {v}"),
+            cpp.statement(f"{ctyp} {v} = glob_{v}"),
+        ]
+    )
+
+
+def readflag_varname(vartok):
+    varname = get_cpp_varname(vartok)
+    return f"aux_{varname}_read"
+
+
+def init_readflag(vartok, glob=True):
+    v = readflag_varname(vartok)
+    if glob:
+        return cpp.statement(f"bool {v} = false")
+    return _init_local_var_from_global_var(v, "bool")
+
+
+def lastidx_varname(vartok, i):
+    varname = get_cpp_varname(vartok)
+    return f"aux_{varname}_lastidx{i}_read"
+
+
+def init_lastidx(vartok, i, glob=True):
+    v = lastidx_varname(vartok, i)
+    if glob:
+        return cpp.statement(f"int {v} = -1")
+    return _init_local_var_from_global_var(v, "int")
+
+
+def firstidx_varname(vartok, i):
+    varname = get_cpp_varname(vartok)
+    return f"aux_{varname}_firstidx{i}_read"
+
+
+def init_firstidx(vartok, i, glob=True):
+    v = firstidx_varname(vartok, i)
+    if glob:
+        return cpp.statement(f"int {v} = -1")
+    return _init_local_var_from_global_var(v, "int")
+
+
 def _initialize_aux_read_vars(vartok, save_state=False):
     varname = get_cpp_varname(vartok)
     num_dims = len(vartok.indices)
+    glob = not save_state
     code = ""
     if num_dims == 0:
-        v = f"aux_{varname}_read"
-        if save_state:
-            code += f"bool& glob_{v} = {v};\n"
-            code += f"bool {v} = glob_{v};\n"
-        else:
-            code += f"bool aux_{varname}_read = false;\n"
+        code += init_readflag(vartok, glob)
     else:
-        for i in range(num_dims):
-            v = f"aux_{varname}_lastidx{i}_read"
-            if save_state:
-                code += f"int& glob_{v} = {v};\n"
-                code += f"int {v} = glob_{v};\n"
-            else:
-                code += f"int {v} = -1;\n"
+        code += cpp.concat(init_lastidx(vartok, i, glob) for i in range(num_dims))
+        code += cpp.concat(init_firstidx(vartok, i, glob) for i in range(num_dims))
     return code
 
 
@@ -208,10 +244,9 @@ def define_var(vartok, dtype, save_state=False):
     varname = get_cpp_varname(vartok)
     code = ""
     if save_state:
-        code += f"{dtype}& glob_{varname} = {varname};\n"
-        code += f"{dtype} {varname} = glob_{varname};\n"
+        code += _init_local_var_from_global_var(varname, dtype)
     else:
-        code += f"{dtype} {varname};\n"
+        code += cpp.statement(f"{dtype} {varname}")
     code += _initialize_aux_read_vars(vartok, save_state)
     return code
 
@@ -222,10 +257,15 @@ def mark_var_as_read(vartok, prefix=""):
     num_dims = len(indices)
     if num_dims == 0:
         return cpp.statement(f"{prefix}aux_{varname}_read = true")
-    return cpp.concat(
-        cpp.statement(f"{prefix}aux_{varname}_lastidx{i}_read = {get_cpp_varname(idx)}")
-        for i, idx in enumerate(indices)
-    )
+    code = ""
+    for i, idx in enumerate(indices):
+        curidx = get_cpp_varname(idx)
+        firstidx = f"{prefix}aux_{varname}_firstidx{i}_read"
+        lastidx = f"{prefix}aux_{varname}_lastidx{i}_read"
+        code1 = cpp.pureif(f"{lastidx} == -1", cpp.statement(f"{firstidx} = {curidx}"))
+        code2 = cpp.statement(f"{lastidx} = {curidx}")
+        code += cpp.concat([code1, code2])
+    return code
 
 
 def mark_var_as_unread(vartok, prefix=""):

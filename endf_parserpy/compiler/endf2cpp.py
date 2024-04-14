@@ -595,6 +595,7 @@ def _generate_code_for_loop(
     """,
         -4,
     )
+    code += cpp.indent_code(aux.init_readflag(loopvar, val=True), 4)
     body_code = parsefun(for_body, vardict)
     code += cpp.indent_code(body_code, 4)
     code += "}\n"

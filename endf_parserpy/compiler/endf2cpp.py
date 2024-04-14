@@ -65,7 +65,7 @@ from .node_checks import (
 
 
 def generate_vardefs(vardict, save_state=False):
-    code = "// variable declarations\n"
+    code = cpp.comment("variable declarations")
     for vartok, dtype in vardict.items():
         if vartok.startswith("__"):
             continue
@@ -74,7 +74,7 @@ def generate_vardefs(vardict, save_state=False):
 
 
 def generate_mark_vars_as_unread(vardict, prefix=""):
-    code = "// accept new variable state\n"
+    code = cpp.comment("accept new variable state")
     for vartok in tuple(vardict):
         if vartok.startswith("__"):
             continue
@@ -160,7 +160,7 @@ def _generate_code_for_section(sectok, section_body, vardict, parsefun):
     vardict = {"__up": pardict}
     body_code = parsefun(section_body, vardict)
     vardef_code = generate_vardefs(vardict)
-    code = f"\n// open section {sectok}"
+    code = cpp.comment(f"open section {sectok}")
     code += aux.open_section(sectok, vardict)
     code += cpp.indent_code(vardef_code, 4)
     code += cpp.indent_code(body_code, 4)
@@ -520,7 +520,7 @@ def generate_code_for_tab2(node, vardict):
 def generate_code_for_list(node, vardict):
     code = aux.read_line()
     record_fields = get_child(node, "record_fields")
-    code += "\n// read LIST record\n"
+    code += cpp.comment("read LIST record")
     code += generate_code_from_record_fields(record_fields, vardict)
     if not should_proceed(vardict):
         return code
@@ -547,7 +547,7 @@ def generate_code_for_list(node, vardict):
 
 
 def generate_code_for_list_body(node, vardict):
-    code = "\n// read LIST body\n"
+    code = cpp.comment("read LIST body")
     for child in node.children:
         child_name = get_name(child)
         if child_name == "expr":

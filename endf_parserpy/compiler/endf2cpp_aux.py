@@ -31,7 +31,7 @@ def _check_variable(vartok, vardict):
 
 
 def read_line():
-    code = "cpp_lineptr = cpp_read_line(cpp_lines, cpp_linenum);\n"
+    code = cpp.statement("cpp_lineptr = cpp_read_line(cpp_lines, cpp_linenum)")
     return code
 
 
@@ -50,9 +50,9 @@ def get_text_field(vartok, start, length, vardict):
 
 
 def read_tab_body(xvar, yvar):
-    code = cpp.indent_code(
+    code = cpp.open_block()
+    code += cpp.indent_code(
         """
-    {
         int cpp_j;
         int cpp_nr = cpp_read_int_field(*cpp_lineptr, 4);
         int cpp_np = cpp_read_int_field(*cpp_lineptr, 5);
@@ -68,7 +68,7 @@ def read_tab_body(xvar, yvar):
 
         cpp_current_dict["NBT"] = NBT;
         cpp_current_dict["INT"] = INT;
-    """,
+        """,
         -4,
     )
 
@@ -91,12 +91,7 @@ def read_tab_body(xvar, yvar):
         """,
             -8,
         )
-    code += cpp.indent_code(
-        """
-    }
-    """,
-        -4,
-    )
+    code += cpp.close_block()
     return code
 
 
@@ -112,7 +107,7 @@ def open_section(vartok, vardict):
             cpp_parent_dict["{secname}"] = py::dict();
         }}
         py::dict cpp_current_dict = cpp_parent_dict["{secname}"];
-    """,
+        """,
         -4,
     )
     for idx in indices:
@@ -131,13 +126,8 @@ def open_section(vartok, vardict):
 
 
 def close_section():
-    code = cpp.indent_code(
-        """
-        cpp_current_dict = cpp_parent_dict;
-    }
-    """,
-        -4,
-    )
+    code = cpp.statement("cpp_current_dict = cpp_parent_dict", 4)
+    code += cpp.close_block()
     return code
 
 

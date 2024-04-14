@@ -29,6 +29,11 @@ def _check_variable(vartok, vardict):
             raise IndexError(f"variable {idxvar} does not exist")
 
 
+def read_send():
+    code = cpp.statement("cpp_read_send(cont)")
+    return code
+
+
 def read_line():
     code = cpp.statement("cpp_line = cpp_read_line(cont)")
     return code

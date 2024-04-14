@@ -49,6 +49,7 @@ from .node_aux import (
 )
 from .node_checks import (
     is_expr,
+    is_send,
     is_head_or_cont,
     is_dir,
     is_tab1,
@@ -129,7 +130,9 @@ def generate_code_from_parsetree(node, vardict):
     if not should_proceed(vardict):
         return ""
 
-    if is_head_or_cont(node):
+    if is_send(node):
+        return generate_code_for_send(node, vardict)
+    elif is_head_or_cont(node):
         decrease_lookahead_counter(vardict)
         return generate_code_for_cont(node, vardict)
     elif is_dir(node):
@@ -454,6 +457,10 @@ def generate_code_for_text(node, vardict):
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         ofs += length
     return code
+
+
+def generate_code_for_send(node, vardict):
+    return aux.read_send()
 
 
 def generate_code_for_cont(node, vardict):

@@ -152,7 +152,6 @@ def parsefun_header(fun_name):
 def parsefun_footer():
     code = cpp.indent_code(
         """
-        cpp_read_send(cont);
         return cpp_current_dict;
     }
     """,

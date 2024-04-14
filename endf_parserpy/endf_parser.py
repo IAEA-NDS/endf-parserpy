@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/03/28
+# Last modified:   2024/04/14
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -866,6 +866,7 @@ class EndfParser:
                         curlines += write_send(
                             curmat, with_ctrl=True, **self.write_opts
                         )
+                        curlines = "".join(curlines)
                         mfmt_dic[mf][mt] = cur_parsefun(curlines)
                     except Exception as exc:
                         raise type(exc)(

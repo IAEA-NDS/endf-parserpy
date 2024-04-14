@@ -102,19 +102,21 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
     code = generate_code_from_parsetree(parsetree, vardict)
 
     vardefs = generate_vardefs(vardict)
-    ctrl_code = ""
-    ctrl_code = aux.assign_exprstr_to_var(
-        var_mat, "std::stoi(cpp_lines[0].substr(66, 4))", vardict
+    ctrl_code = cpp.statement("std::streampos cpp_startpos = cont.tellg()")
+    ctrl_code += aux.read_line()
+    ctrl_code += aux.assign_exprstr_to_var(
+        var_mat, "std::stoi(cpp_line.substr(66, 4))", vardict
     )
     ctrl_code += aux.assign_exprstr_to_var(
-        var_mf, "std::stoi(cpp_lines[0].substr(70, 2))", vardict
+        var_mf, "std::stoi(cpp_line.substr(70, 2))", vardict
     )
     ctrl_code += aux.assign_exprstr_to_var(
-        var_mt, "std::stoi(cpp_lines[0].substr(72, 3))", vardict
+        var_mt, "std::stoi(cpp_line.substr(72, 3))", vardict
     )
     ctrl_code += aux.store_var_in_endf_dict(var_mat, vardict)
     ctrl_code += aux.store_var_in_endf_dict(var_mf, vardict)
     ctrl_code += aux.store_var_in_endf_dict(var_mt, vardict)
+    ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
 
     fun_header = cpp_boilerplate.parsefun_header(name)
     fun_footer = cpp_boilerplate.parsefun_footer()
@@ -262,7 +264,7 @@ def generate_code_for_if_statement(node, vardict):
             [
                 cpp.comment("if statement evaluation with lookahead"),
                 cpp.open_block(),
-                cpp.statement("int cpp_old_linenum = cpp_linenum", 4),
+                cpp.statement("std::streampos cpp_old_streampos = cont.tellg()", 4),
             ]
         )
 
@@ -284,7 +286,7 @@ def generate_code_for_if_statement(node, vardict):
                                 ]
                             ),
                         ),
-                        "cpp_linenum = cpp_old_linenum;",
+                        cpp.statement("cont.seekg(cpp_old_streampos)"),
                     ]
                 )
             ),
@@ -531,23 +533,14 @@ def generate_code_for_list(node, vardict):
     if not should_proceed(vardict):
         return code
     list_body_node = get_child(node, "list_body")
-    code += cpp.indent_code(
-        """
-    {
-        int cpp_npl = cpp_read_int_field(*cpp_lineptr, 4);
-        cpp_floatvec = cpp_read_float_vec(cpp_lines, cpp_npl, cpp_linenum);
-        int cpp_j = 0;
-    """,
-        -4,
-    )
+    code += cpp.open_block()
+    code += cpp.statement(f"int cpp_npl = {aux.get_int_field(4)}", 4)
+    values = aux.get_float_vec("cpp_npl")
+    code += cpp.statement(f"cpp_floatvec = {values}", 4)
+    code += cpp.statement("int cpp_j = 0")
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
     code += cpp.indent_code(list_body_code, 4)
-    code += cpp.indent_code(
-        """
-    }
-    """,
-        -4,
-    )
+    code += cpp.close_block()
     decrease_lookahead_counter(vardict)
     return code
 
@@ -608,24 +601,75 @@ def _generate_code_for_loop(
     return code
 
 
+def _mf_mt_parsefun_name(mf, mt):
+    if mt is None or mt == -1:
+        return f"parse_mf{mf}"
+    return f"parse_mf{mf}mt{mt}"
+
+
+def _mf_mt_dict_varname(mf, mt):
+    if mt is None or mt == -1:
+        return f"mf{mf}_dict"
+    return f"mf{mf}_mt{mt}_dict"
+
+
+def generate_master_parsefun(name, recipefuns):
+    header = cpp.line(f"py::dict {name}(std::istream& cont) {{")
+    footer = cpp.line("}")
+    body = ""
+    for mf, mfdic in recipefuns.items():
+        if isinstance(mfdic, str):
+            varname = _mf_mt_dict_varname(mf, None)
+            funname = mfdic
+            body += cpp.statement(f"py::dict {varname} = {funname}_istream(cont)")
+            continue
+        for mt, funname in mfdic.items():
+            varname = _mf_mt_dict_varname(mf, mt)
+            body += cpp.statement(f"py::dict {varname} = {funname}_istream(cont)")
+    code = cpp.line("") + header + cpp.indent_code(body, 4) + footer
+    return code
+
+
+def generate_cpp_parsefun_wrappers(parsefuns):
+    code = ""
+    for p in parsefuns:
+        code += cpp.line(f"py::dict {p}(std::string& strcont) {{")
+        code += cpp.statement("std::istringstream iss(strcont)", 4)
+        code += cpp.statement(f"return {p}_istream(iss)", 4)
+        code += cpp.close_block()
+        code += cpp.line("")
+    return code
+
+
 def generate_cpp_module_code(recipes):
     module_header = cpp_boilerplate.module_header()
     parsefuns_code = ""
-
     func_names = []
+    recipefuns = {}
     for mf, mt_recipes in recipes.items():
         if isinstance(mt_recipes, str):
-            func_name = f"parse_mf{mf}"
+            func_name = _mf_mt_parsefun_name(mf, None)
             func_names.append(func_name)
             recipe = mt_recipes
-            parsefuns_code += generate_cpp_parsefun(func_name, recipe)
+            parsefuns_code += generate_cpp_parsefun(func_name + "_istream", recipe)
+            recipefuns[mf] = func_name
             continue
         for mt, recipe in mt_recipes.items():
             print((mf, mt))
-            func_name = f"parse_mf{mf}mt{mt}" if mt != -1 else f"parse_mf{mf}"
+            func_name = _mf_mt_parsefun_name(mf, mt)
             func_names.append(func_name)
-            parsefuns_code += generate_cpp_parsefun(func_name, recipe)
-
+            parsefuns_code += generate_cpp_parsefun(func_name + "_istream", recipe)
+            curdic = recipefuns.setdefault(mf, {})
+            curdic[mt] = func_name
+    parsefun_wrappers_code = generate_cpp_parsefun_wrappers(func_names)
+    master_parsefun_code = generate_master_parsefun("parse_endf_istream", recipefuns)
+    func_names.append("parse_endf_istream")
     pybind_glue = cpp_boilerplate.register_cpp_parsefuns(func_names)
-    code = module_header + parsefuns_code + pybind_glue
+    code = (
+        module_header
+        + parsefuns_code
+        + parsefun_wrappers_code
+        + master_parsefun_code
+        + pybind_glue
+    )
     return code

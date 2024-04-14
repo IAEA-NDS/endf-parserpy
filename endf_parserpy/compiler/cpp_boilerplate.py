@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/12
+# Last modified:   2024/04/14
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -19,6 +19,7 @@ def module_header():
 
     #include <stdexcept>
     #include <iostream>
+    #include <sstream>
     #include <vector>
     #include <string>
 
@@ -73,60 +74,55 @@ def module_header():
     }
 
 
-    std::string* cpp_read_line(std::vector<std::string>& lines, int& linenum) {
-        if (lines.size() <= linenum) {
-            throw std::runtime_error("expected more lines");
-        }
-        return &lines[linenum++];
+    std::string cpp_read_line(std::istream& cont) {
+        std::string line;
+        std::getline(cont, line);
+        return line;
     }
 
 
-    void cpp_read_send(std::vector<std::string>& lines, int& linenum) {
-        std::string* lineptr = cpp_read_line(lines, linenum);
-        int mtnum = std::stoi(lineptr->substr(72, 3));
-        if (cpp_read_float_field(*lineptr, 0) != 0.0 ||
-            cpp_read_float_field(*lineptr, 1) != 0.0 ||
-            cpp_read_int_field(*lineptr, 2) != 0 ||
-            cpp_read_int_field(*lineptr, 3) != 0 ||
-            cpp_read_int_field(*lineptr, 4) != 0 ||
-            cpp_read_int_field(*lineptr, 5) != 0 ||
+    void cpp_read_send(std::istream& cont) {
+        std::string line = cpp_read_line(cont);
+        int mtnum = std::stoi(line.substr(72, 3));
+        if (cpp_read_float_field(line, 0) != 0.0 ||
+            cpp_read_float_field(line, 1) != 0.0 ||
+            cpp_read_int_field(line, 2) != 0 ||
+            cpp_read_int_field(line, 3) != 0 ||
+            cpp_read_int_field(line, 4) != 0 ||
+            cpp_read_int_field(line, 5) != 0 ||
             mtnum != 0) {
 
-            std::cout << linenum << std::endl;
-            std::cout << *lineptr << std::endl;
             throw std::runtime_error("expected SEND record");
         }
     }
 
 
-    std::vector<int> cpp_read_int_vec(std::vector<std::string>& lines, const int numel, int& linenum) {
+    std::vector<int> cpp_read_int_vec(std::istream& cont, const int numel) {
         int j = 0;
         std::vector<int> res;
-        std::string* lineptr = &lines[linenum];
+        std::string line = cpp_read_line(cont);
         for (int i=0; i < numel; i++) {
-            res.push_back(cpp_read_int_field(*lineptr, j++));
-            if (j > 5) {
-                lineptr = &lines[++linenum];
+            res.push_back(cpp_read_int_field(line, j++));
+            if (j > 5 && i+1 < numel) {
+                line = cpp_read_line(cont);
                 j = 0;
             }
         }
-        if (j != 0) linenum++;
         return res;
     }
 
 
-    std::vector<double> cpp_read_float_vec(std::vector<std::string>& lines, const int numel, int& linenum) {
+    std::vector<double> cpp_read_float_vec(std::istream& cont, const int numel) {
         int j = 0;
         std::vector<double> res;
-        std:: string* lineptr = &lines[linenum];
+        std::string line = cpp_read_line(cont);
         for (int i=0; i < numel; i++) {
-            res.push_back(cpp_read_float_field(*lineptr, j++));
-            if (j > 5) {
-                lineptr = &lines[++linenum];
+            res.push_back(cpp_read_float_field(line, j++));
+            if (j > 5 && i+1 < numel) {
+                line = cpp_read_line(cont);
                 j = 0;
             }
         }
-        if (j != 0) linenum++;
         return res;
     }
 
@@ -137,16 +133,15 @@ def module_header():
 def parsefun_header(fun_name):
     code = cpp.indent_code(
         rf"""
-    py::dict {fun_name}(std::vector<std::string> cpp_lines) {{
+    py::dict {fun_name}(std::istream& cont) {{
         std::vector<int> cpp_intvec;
         std::vector<double> cpp_floatvec;
-        int cpp_linenum = 0;
-        std::string *cpp_lineptr;
         py::dict cpp_parent_dict;
         py::dict cpp_current_dict;
         py::dict cpp_workdict;
         int cpp_idxnum;
         int cpp_int_val;
+        std::string cpp_line;
         double cpp_float_val;
     """,
         -4,
@@ -157,7 +152,7 @@ def parsefun_header(fun_name):
 def parsefun_footer():
     code = cpp.indent_code(
         """
-        cpp_read_send(cpp_lines, cpp_linenum);
+        cpp_read_send(cont);
         return cpp_current_dict;
     }
     """,

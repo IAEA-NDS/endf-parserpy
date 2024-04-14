@@ -30,7 +30,17 @@ def _check_variable(vartok, vardict):
 
 
 def read_line():
-    code = cpp.statement("cpp_lineptr = cpp_read_line(cpp_lines, cpp_linenum)")
+    code = cpp.statement("cpp_line = cpp_read_line(cont)")
+    return code
+
+
+def get_int_field(idx):
+    code = f"cpp_read_int_field(cpp_line, {idx})"
+    return code
+
+
+def get_float_vec(numel):
+    code = cpp.statement(f"cpp_read_float_vec(cont, {numel})")
     return code
 
 
@@ -39,12 +49,12 @@ def get_numeric_field(fieldpos, dtype):
         readfun = "cpp_read_float_field"
     elif dtype == int:
         readfun = "cpp_read_int_field"
-    code = f"{readfun}(*cpp_lineptr, {fieldpos})"
+    code = f"{readfun}(cpp_line, {fieldpos})"
     return code
 
 
 def get_text_field(vartok, start, length, vardict):
-    code = f"(*cpp_lineptr).substr({start}, {length})"
+    code = f"cpp_line.substr({start}, {length})"
     return code
 
 
@@ -53,12 +63,12 @@ def read_tab_body(xvar, yvar):
     code += cpp.indent_code(
         """
         int cpp_j;
-        int cpp_nr = cpp_read_int_field(*cpp_lineptr, 4);
-        int cpp_np = cpp_read_int_field(*cpp_lineptr, 5);
+        int cpp_nr = cpp_read_int_field(cpp_line, 4);
+        int cpp_np = cpp_read_int_field(cpp_line, 5);
 
         std::vector<int> NBT;
         std::vector<int> INT;
-        cpp_intvec = cpp_read_int_vec(cpp_lines, 2*cpp_nr, cpp_linenum);
+        cpp_intvec = cpp_read_int_vec(cont, 2*cpp_nr);
         cpp_j = 0;
         for (int cpp_i=0; cpp_i < cpp_nr; cpp_i++) {
             NBT.push_back(cpp_intvec[cpp_j++]);
@@ -78,7 +88,7 @@ def read_tab_body(xvar, yvar):
             f"""
         std::vector<double> {xvar};
         std::vector<double> {yvar};
-        cpp_floatvec = cpp_read_float_vec(cpp_lines, 2*cpp_np, cpp_linenum);
+        cpp_floatvec = cpp_read_float_vec(cont, 2*cpp_np);
         cpp_j = 0;
         for (int cpp_i=0; cpp_i < cpp_np; cpp_i++) {{
             {xvar}.push_back(cpp_floatvec[cpp_j++]);

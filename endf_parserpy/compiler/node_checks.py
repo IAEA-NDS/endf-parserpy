@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/12
+# Last modified:   2024/04/14
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -19,6 +19,10 @@ def is_code_token(node):
 
 def is_expr(node):
     return isinstance(node, Tree) and node.data == "expr"
+
+
+def is_send(node):
+    return isinstance(node, Tree) and node.data == "send_line"
 
 
 def is_head_or_cont(node):

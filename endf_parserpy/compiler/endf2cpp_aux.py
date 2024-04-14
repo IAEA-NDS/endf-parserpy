@@ -10,6 +10,7 @@
 ############################################################
 
 from .expr_utils.conversion import VariableToken
+from .expr_utils.node_checks import is_number
 from . import cpp_primitives as cpp
 
 
@@ -131,6 +132,17 @@ def close_section():
     return code
 
 
+def get_cpp_objstr(tok, quote=False):
+    if isinstance(tok, VariableToken):
+        return get_cpp_varname(tok, quote)
+    elif is_number(tok):
+        varname = str(tok)
+        if quote:
+            varname = '"' + varname + '"'
+        return varname
+    raise NotImplementedError("evil programmer, what did you do?")
+
+
 def get_cpp_varname(vartok, quote=False):
     if not isinstance(vartok, VariableToken):
         raise TypeError("expect vartok of type VariableToken")
@@ -150,7 +162,7 @@ def get_cpp_extvarname(vartok):
 
 def get_shifted_idxstr(vartok, i):
     idxtok = vartok.indices[i]
-    cpp_idxstr = get_cpp_extvarname(idxtok)
+    cpp_idxstr = get_cpp_objstr(idxtok)
     if not isinstance(idxtok, VariableToken):
         idxstr = f"{cpp_idxstr}"
     else:
@@ -251,7 +263,7 @@ def mark_var_as_read(vartok, prefix=""):
         return cpp.statement(f"{prefix}aux_{varname}_read = true")
     code = ""
     for i, idx in enumerate(indices):
-        curidx = get_cpp_varname(idx)
+        curidx = get_cpp_objstr(idx)
         firstidx = f"{prefix}aux_{varname}_firstidx{i}_read"
         lastidx = f"{prefix}aux_{varname}_lastidx{i}_read"
         code1 = cpp.pureif(f"{lastidx} == -1", cpp.statement(f"{firstidx} = {curidx}"))
@@ -296,7 +308,7 @@ def _did_read_var(vartok):
     if num_dims == 0:
         return f"(aux_{varname}_read == true)"
     return cpp.logical_and(
-        f"(aux_{varname}_lastidx{i}_read == {get_cpp_varname(idx)})"
+        f"(aux_{varname}_lastidx{i}_read == {get_cpp_objstr(idx)})"
         for i, idx in enumerate(indices)
     )
 

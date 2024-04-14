@@ -27,8 +27,6 @@ def _check_variable(vartok, vardict):
             d = d["__up"]
         if idxvar not in d:
             raise IndexError(f"variable {idxvar} does not exist")
-        if not type(d[idxvar]) == tuple:
-            raise TypeError(f"variable {idxvar} used as index not a loop variable")
 
 
 def read_line():
@@ -237,6 +235,8 @@ def define_var(vartok, dtype, save_state=False):
         dtype = "int"
     elif dtype == str:
         dtype = "std::string"
+    elif dtype == "loopvartype":
+        dtype = "int"
     else:
         raise TypeError(f"unknown dtype {dtype}")
     num_indices = len(vartok.indices)

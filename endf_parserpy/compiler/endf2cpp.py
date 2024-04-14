@@ -78,6 +78,12 @@ def generate_mark_vars_as_unread(vardict, prefix=""):
     for vartok in tuple(vardict):
         if vartok.startswith("__"):
             continue
+        # loop variables are not read in from the file
+        # so even in lookahead we neither want to remove
+        # their type information nor mark them as unread
+        # at the cpp level.
+        if vardict[vartok] == "loopvartype":
+            continue
         code += aux.mark_var_as_unread(vartok, prefix)
         unregister_var(vartok, vardict)
     return code
@@ -585,8 +591,7 @@ def _generate_code_for_loop(
     cpp_loopvar = aux.get_cpp_varname(loopvar)
     if loopvar in vardict:
         raise TypeError(f"variable {loopvar} already declared")
-    dtype = (start_expr_str, stop_expr_str)
-    register_var(loopvar, dtype, vardict)
+    register_var(loopvar, "loopvartype", vardict)
 
     code = cpp.indent_code(
         rf"""

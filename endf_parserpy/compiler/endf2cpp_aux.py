@@ -173,10 +173,11 @@ def readflag_varname(vartok):
     return f"aux_{varname}_read"
 
 
-def init_readflag(vartok, glob=True):
+def init_readflag(vartok, glob=True, val=False):
     v = readflag_varname(vartok)
+    valstr = "true" if val else "false"
     if glob:
-        return cpp.statement(f"bool {v} = false")
+        return cpp.statement(f"bool {v} = {valstr}")
     return _init_local_var_from_global_var(v, "bool")
 
 

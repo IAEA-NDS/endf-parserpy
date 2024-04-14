@@ -20,6 +20,7 @@ def module_header():
     #include <stdexcept>
     #include <iostream>
     #include <sstream>
+    #include <fstream>
     #include <vector>
     #include <string>
 
@@ -97,6 +98,7 @@ def module_header():
             cpp_read_int_field(line, 5) != 0 ||
             mtnum != 0) {
 
+            std::cout << line << std::endl;  // debug
             throw std::runtime_error("expected SEND record");
         }
     }

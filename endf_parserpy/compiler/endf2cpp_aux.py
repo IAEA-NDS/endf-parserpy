@@ -114,6 +114,23 @@ def read_tab_body(xvar, yvar):
     return code
 
 
+def dict_assign(dictvar, idcs, val):
+    code = ""
+    for i, idx in enumerate(idcs[:-1]):
+        idxstr = f"py::cast({idx})"
+        inner_code = ""
+        inner_code += cpp.statement(f"curdict = {dictvar}")
+        inner_code += cpp.pureif(
+            f"! curdict.contains({idxstr})",
+            cpp.statement(f"curdict[{idxstr}] = py::dict()"),
+        )
+        inner_code += cpp.statement(f"curdict = curdict[{idxstr}]")
+        code += inner_code
+    idxstr = f"py::cast({idcs[-1]})"
+    code += cpp.statement(f"curdict[{idxstr}] = {val}")
+    return code
+
+
 def open_section(vartok, vardict):
     _check_variable(vartok, vardict)
     secname = vartok

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/14
+# Last modified:   2024/04/15
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -51,6 +51,7 @@ from .node_checks import (
     is_tab2,
     is_list,
     is_text,
+    is_intg,
     is_section,
     is_extvar,
     is_textplaceholder,
@@ -145,6 +146,9 @@ def generate_code_from_parsetree(node, vardict):
     elif is_text(node):
         decrease_lookahead_counter(vardict)
         return generate_code_for_text(node, vardict)
+    elif is_intg(node):
+        decrease_lookahead_counter(vardict)
+        return generate_code_for_intg(node, vardict)
     elif is_abbreviation(node):
         register_abbreviation(node, vardict)
     elif is_for_loop(node):
@@ -225,7 +229,6 @@ def generate_code_for_if_clause(node, vardict):
             indent=4,
         )
         add_vardict.update(new_vardict)
-        code += cpp.indent_code(if_statement_code, 8)
     if else_statement is not None:
         else_code = get_child(else_statement, "if_body")
         new_vardict = vardict.copy()
@@ -341,6 +344,8 @@ def _generate_code_for_varassign(
             cpp_newval_tok = Token("VARNAME", "cpp_float_val")
         elif dtype == int:
             cpp_newval_tok = Token("VARNAME", "cpp_int_val")
+        elif dtype == "intvec":
+            cpp_newval_tok = Token("VARNAME", "cpp_intvec")
         else:
             raise NotImplementedError(f"unknown node type {dtype}")
         cpp_newval_tok = VariableToken(cpp_newval_tok)
@@ -366,9 +371,8 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
     if count_not_encountered_vars(node, vardict) > 1:
         raise IndexError("more than one unencountered variables")
     if len(variables) == 0:
-        return ""
         # NOTE: consistency checking could be done here
-        # return cpp.statement(valcode)
+        return cpp.statement(valcode)
 
     exprstr = transform_nodes(node, node2str)
     code = cpp.conditional_branches(
@@ -452,6 +456,44 @@ def generate_code_for_text(node, vardict):
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         ofs += length
     return code
+
+
+def generate_code_for_intg(node, vardict):
+    ndigit_expr = get_child(get_child(node, "ndigit_expr"), "expr")
+    ndigit_exprstr = transform_nodes(ndigit_expr, expr2str_shiftidx, vardict)
+    intg_fields = get_child(node, "intg_fields")
+    intg_fields_kids = [f for f in intg_fields.children if is_expr(f)]
+    ii_expr = intg_fields_kids[0]
+    jj_expr = intg_fields_kids[1]
+    kij_expr = intg_fields_kids[2]
+
+    code = aux.read_line()
+    code += cpp.statement(f"int cpp_ndigit = {ndigit_exprstr}")
+    code += cpp.pureif(
+        cpp.logical_or(["cpp_ndigit < 2", "cpp_ndigit > 6"]),
+        cpp.throw_runtime_error("invalid NDIGIT (must be between 2 and 6)"),
+    )
+    val_ii = aux.get_custom_int_field(0, 5)
+    val_jj = aux.get_custom_int_field(5, 5)
+    code += generate_code_for_varassign(ii_expr, vardict, val_ii, int)
+    code += generate_code_for_varassign(jj_expr, vardict, val_jj, int)
+    code += cpp.statement("int cpp_step = cpp_ndigit + 1")
+    code += cpp.statement("int cpp_end = 65")
+    code += cpp.statement("int cpp_start")
+    code += cpp.ifelse(
+        "cpp_ndigit <= 5",
+        cpp.statement("cpp_start = 11"),
+        cpp.statement("cpp_start = 10"),
+    )
+    code += cpp.statement("std::vector<int> cpp_intvec")
+    code += cpp.line(
+        "for (int cpp_i = cpp_start; cpp_i < cpp_end; cpp_i += cpp_step) {"
+    )
+    valcode = aux.get_custom_int_field("cpp_i", "cpp_step")
+    code += cpp.statement(f"cpp_intvec.push_back({valcode})", 4)
+    code += cpp.close_block()
+    code += generate_code_for_varassign(kij_expr, vardict, "cpp_intvec", "intvec")
+    return cpp.open_block() + cpp.indent_code(code, 4) + cpp.close_block()
 
 
 def generate_code_for_send(node, vardict):
@@ -539,7 +581,7 @@ def generate_code_for_list(node, vardict):
     code += cpp.statement(f"int cpp_npl = {aux.get_int_field(4)}", 4)
     values = aux.get_float_vec("cpp_npl")
     code += cpp.statement(f"cpp_floatvec = {values}", 4)
-    code += cpp.statement("int cpp_j = 0")
+    code += cpp.statement("int cpp_j = 0", 4)
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
     code += cpp.indent_code(list_body_code, 4)
     code += cpp.close_block()
@@ -617,27 +659,74 @@ def _mf_mt_dict_varname(mf, mt):
 
 def generate_master_parsefun(name, recipefuns):
     header = cpp.line(f"py::dict {name}(std::istream& cont) {{")
-    footer = cpp.line("}")
+    footer = cpp.statement("return mfmt_dict", 4)
+    footer += cpp.close_block()
     body = ""
+    body += cpp.statement("bool is_firstline = true")
+    body += cpp.statement("std::streampos curpos")
+    body += cpp.statement("py::dict mfmt_dict")
+    body += cpp.statement("py::dict curdict")
+    body += cpp.statement("int mf")
+    body += cpp.statement("int mt")
+    body += cpp.statement("std::string cpp_line")
+    body += cpp.statement("curpos = cont.tellg()")
+    body += cpp.line("while (std::getline(cont, cpp_line)) {")
+    body += cpp.statement("mf = std::stoi(cpp_line.substr(70, 2))", 4)
+    body += cpp.statement("mt = std::stoi(cpp_line.substr(72, 3))", 4)
+
+    conditions = []
+    statements = []
     for mf, mfdic in recipefuns.items():
         if isinstance(mfdic, str):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic
-            body += cpp.statement(f"py::dict {varname} = {funname}_istream(cont)")
+            conditions.append(f"mf == {mf}")
+            curstat = cpp.statement("cont.seekg(curpos)")
+            curstat += aux.dict_assign(
+                "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont)"
+            )
+            statements.append(curstat)
             continue
-        for mt, funname in mfdic.items():
+        for mt in reversed(sorted(mfdic.keys())):
+            funname = mfdic[mt]
             varname = _mf_mt_dict_varname(mf, mt)
-            body += cpp.statement(f"py::dict {varname} = {funname}_istream(cont)")
-    code = cpp.line("") + header + cpp.indent_code(body, 4) + footer
+            if mt == -1:
+                curcond = f"mf == {mf}"
+            else:
+                curcond = f"mf == {mf} && mt == {mt}"
+            if mt == 0 and mt == 0:
+                curcond = cpp.logical_and([curcond, "is_firstline"])
+            curstat = cpp.statement("cont.seekg(curpos)")
+            curstat += aux.dict_assign(
+                "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont)"
+            )
+            statements.append(curstat)
+            conditions.append(curcond)
+    body += cpp.indent_code(cpp.conditional_branches(conditions, statements), 4)
+    body += cpp.statement("curpos = cont.tellg()", 4)
+    body += cpp.statement("is_firstline = false", 4)
+    body += cpp.close_block()
+    code = cpp.line("") + header + cpp.indent_code(body, 4) + footer + cpp.line("")
     return code
 
 
-def generate_cpp_parsefun_wrappers(parsefuns):
+def generate_cpp_parsefun_wrappers_string(parsefuns):
     code = ""
     for p in parsefuns:
         code += cpp.line(f"py::dict {p}(std::string& strcont) {{")
         code += cpp.statement("std::istringstream iss(strcont)", 4)
         code += cpp.statement(f"return {p}_istream(iss)", 4)
+        code += cpp.close_block()
+        code += cpp.line("")
+    return code
+
+
+def generate_cpp_parsefun_wrappers_file(parsefuns):
+    code = ""
+    for p in parsefuns:
+        code += cpp.line(f"py::dict {p}_file(std::string& filename) {{")
+        code += cpp.statement("std::ifstream inpfile(filename)", 4)
+        code += cpp.statement(f"return {p}_istream(inpfile)", 4)
         code += cpp.close_block()
         code += cpp.line("")
     return code
@@ -663,15 +752,18 @@ def generate_cpp_module_code(recipes):
             parsefuns_code += generate_cpp_parsefun(func_name + "_istream", recipe)
             curdic = recipefuns.setdefault(mf, {})
             curdic[mt] = func_name
-    parsefun_wrappers_code = generate_cpp_parsefun_wrappers(func_names)
     master_parsefun_code = generate_master_parsefun("parse_endf_istream", recipefuns)
-    func_names.append("parse_endf_istream")
+    func_names.append("parse_endf")
+    parsefun_wrappers_code1 = generate_cpp_parsefun_wrappers_string(func_names)
+    parsefun_wrappers_code2 = generate_cpp_parsefun_wrappers_file(func_names)
+    func_names.append("parse_endf_file")
     pybind_glue = cpp_boilerplate.register_cpp_parsefuns(func_names)
     code = (
         module_header
         + parsefuns_code
-        + parsefun_wrappers_code
         + master_parsefun_code
+        + parsefun_wrappers_code1
+        + parsefun_wrappers_code2
         + pybind_glue
     )
     return code

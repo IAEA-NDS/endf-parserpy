@@ -257,6 +257,8 @@ def define_var(vartok, dtype, save_state=False):
         dtype = "std::string"
     elif dtype == "loopvartype":
         dtype = "int"
+    elif dtype == "intvec":
+        dtype = "std::vector<int>"
     else:
         raise TypeError(f"unknown dtype {dtype}")
     num_indices = len(vartok.indices)

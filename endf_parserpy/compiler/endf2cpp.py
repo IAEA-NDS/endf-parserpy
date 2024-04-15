@@ -14,14 +14,9 @@ from lark.lexer import Token
 from lark import Lark
 from ..tree_utils import get_child, get_name
 from ..endf_lark import endf_recipe_grammar
-from .expr_utils.conversion import (
-    convert_to_exprtree,
-    VariableToken,
-)
+from .expr_utils.conversion import VariableToken
 from .expr_utils.tree_walkers import transform_nodes
-from .expr_utils.node_checks import is_variable
 from .expr_utils.node_trafos import node2str, replace_node
-from endf_parserpy.compiler.expr_utils.equation_utils import solve_equation
 from . import cpp_primitives as cpp
 from . import cpp_boilerplate
 from . import endf2cpp_aux as aux

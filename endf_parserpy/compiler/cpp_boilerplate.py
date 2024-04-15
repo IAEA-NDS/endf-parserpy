@@ -74,6 +74,11 @@ def module_header():
     }
 
 
+    double cpp_read_custom_int_field(const std::string& str, int start_pos, int length) {
+        return endfstr2int(str.substr(start_pos, length));
+    }
+
+
     std::string cpp_read_line(std::istream& cont) {
         std::string line;
         std::getline(cont, line);

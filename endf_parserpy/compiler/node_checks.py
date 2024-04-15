@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/14
+# Last modified:   2024/04/15
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -47,6 +47,10 @@ def is_list(node):
 
 def is_text(node):
     return isinstance(node, Tree) and node.data == "text_line"
+
+
+def is_intg(node):
+    return isinstance(node, Tree) and node.data == "intg_line"
 
 
 def is_section(node):

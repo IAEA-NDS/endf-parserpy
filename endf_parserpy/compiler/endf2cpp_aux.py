@@ -343,3 +343,50 @@ def store_var_in_endf_dict(vartok, vardict):
     code = cpp.comment(f"store variable {vartok} in endf dictionary")
     code += dict_assign("cpp_current_dict", indices_str, src_varname)
     return code
+
+
+def store_var_in_endf_dict2(vartok, vardict):
+    # counter variables are not stored in the endf dictionary
+    if vardict[vartok] == "loopvartype":
+        return ""
+
+    src_varname = get_cpp_varname(vartok)
+    if len(vartok.indices) == 0:
+        assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')
+        code = cpp.pureif(did_read_var(vartok), assigncode)
+        return code
+
+    code = ""
+    for curlev in range(len(vartok.indices), 0, -1):
+        newcode = ""
+        if curlev < len(vartok.indices):
+            newcode += cpp.statement(
+                f"auto& cpp_curvar{curlev} = cpp_curvar{curlev-1}[cpp_i{curlev}]"
+            )
+            newcode += cpp.statement(
+                f"cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})] = py::dict()"
+            )
+            newcode += cpp.statement(
+                f"py::dict cpp_curdict{curlev} = cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})]"
+            )
+        else:
+            newcode = cpp.statement(
+                f"cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})] = cpp_curvar{curlev-1}[cpp_i{curlev}]"
+            )
+        newcode = newcode + code
+        newcode = cpp.forloop(
+            f"int cpp_i{curlev} = cpp_curvar{curlev-1}.get_start_index()",
+            f"cpp_i{curlev} <= cpp_curvar{curlev-1}.get_last_index()",
+            f"cpp_i{curlev}++",
+            newcode,
+        )
+        code = newcode
+
+    assigncode = cpp.statement(f"auto& cpp_curvar0 = {src_varname}", 4)
+    assigncode += cpp.statement(f'cpp_current_dict["{vartok}"] = py::dict()', 4)
+    assigncode += cpp.statement(
+        f'py::dict cpp_curdict0 = cpp_current_dict["{vartok}"]', 4
+    )
+    assigncode += cpp.indent_code(newcode, 4)
+    code = cpp.pureif(did_read_var(vartok), assigncode)
+    return code

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/15
+# Last modified:   2024/04/16
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -115,12 +115,17 @@ def read_tab_body(xvar, yvar):
 
 
 def dict_assign(dictvar, idcs, val):
-    code = ""
+    if len(idcs) == 0:
+        return TypeError("len(idcs) must be >= 1")
+    elif len(idcs) == 1:
+        idx = idcs[0]
+        idxstr = f"py::cast({idx})"
+        code = cpp.statement(f"{dictvar}[{idxstr}] = {val}")
+        return code
+    code = cpp.statement(f"py::dict curdict = {dictvar}")
     for i, idx in enumerate(idcs[:-1]):
         idxstr = f"py::cast({idx})"
-        inner_code = ""
-        inner_code += cpp.statement(f"curdict = {dictvar}")
-        inner_code += cpp.pureif(
+        inner_code = cpp.pureif(
             f"! curdict.contains({idxstr})",
             cpp.statement(f"curdict[{idxstr}] = py::dict()"),
         )
@@ -128,6 +133,7 @@ def dict_assign(dictvar, idcs, val):
         code += inner_code
     idxstr = f"py::cast({idcs[-1]})"
     code += cpp.statement(f"curdict[{idxstr}] = {val}")
+    code = cpp.open_block() + cpp.indent_code(code, 4) + cpp.close_block()
     return code
 
 

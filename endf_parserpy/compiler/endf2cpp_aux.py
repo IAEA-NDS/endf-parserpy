@@ -427,31 +427,8 @@ def assign_exprstr_to_var(
 
 def store_var_in_endf_dict(vartok, vardict):
     _check_variable(vartok, vardict)
+    src_varname = get_cpp_extvarname(vartok)
+    indices_str = [f'"{vartok}"'] + [get_cpp_objstr(v) for v in vartok.indices]
     code = cpp.comment(f"store variable {vartok} in endf dictionary")
-    src_varname = get_cpp_extvarname(vartok)
-    indices = vartok.indices
-    if len(indices) == 0:
-        code += cpp.statement(f"""cpp_current_dict["{vartok}"] = {src_varname}""")
-        return code
-
-    code += cpp.statement("cpp_workdict = cpp_current_dict")
-    change_dict_code = cpp.concat(
-        [
-            cpp.pureif(
-                condition="! cpp_workdict.contains(py::cast({idxstr}))",
-                code=cpp.statement("cpp_workdict[py::cast({idxstr})] = py::dict()"),
-                escape=True,
-            ),
-            cpp.statement("cpp_workdict = cpp_workdict[py::cast({idxstr})]"),
-        ]
-    )
-    cpp_idxstrs = [f'"{vartok}"']
-    cpp_idxstrs += [
-        str(idx) if not isinstance(idx, VariableToken) else get_cpp_varname(idx)
-        for idx in indices
-    ]
-    extra_params = {"idxstr": {i: v for i, v in enumerate(cpp_idxstrs[:-1])}}
-    code += cpp.block_repeat(change_dict_code, len(indices), extra_params=extra_params)
-    src_varname = get_cpp_extvarname(vartok)
-    code += cpp.statement(f"cpp_workdict[py::cast({cpp_idxstrs[-1]})] = {src_varname}")
+    code += dict_assign("cpp_current_dict", indices_str, src_varname)
     return code

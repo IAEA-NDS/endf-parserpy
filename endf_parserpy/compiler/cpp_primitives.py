@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/12
+# Last modified:   2024/04/16
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -129,3 +129,10 @@ def pureif(condition, code, escape=False):
     if condition.strip("() ") == "":
         return ""
     return conditional_branches([condition], [code], escape=escape)
+
+
+def forloop(start, stop, inc, body):
+    code = line(f"for ({start}; {stop}; {inc}) {{")
+    code += indent_code(body, 4)
+    code += close_block()
+    return code

@@ -70,6 +70,15 @@ def generate_vardefs(vardict, save_state=False):
     return code
 
 
+def generate_endf_dict_assignments(vardict):
+    code = cpp.comment("store data in Python dictionary")
+    for vartok in vardict:
+        if vartok.startswith("__"):
+            continue
+        code += aux.store_var_in_endf_dict2(vartok, vardict)
+    return code
+
+
 def generate_mark_vars_as_unread(vardict, prefix=""):
     code = cpp.comment("accept new variable state")
     for vartok in tuple(vardict):
@@ -116,7 +125,8 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
     ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
 
     fun_header = cpp_boilerplate.parsefun_header(name)
-    fun_footer = cpp_boilerplate.parsefun_footer()
+    fun_footer = cpp.indent_code(generate_endf_dict_assignments(vardict), 4)
+    fun_footer += cpp_boilerplate.parsefun_footer()
     fun_body = cpp.indent_code(vardefs + ctrl_code + code, 4)
     code = fun_header + fun_body + fun_footer
     return code
@@ -174,6 +184,7 @@ def _generate_code_for_section(sectok, section_body, vardict, parsefun):
     code += aux.open_section(sectok, vardict)
     code += cpp.indent_code(vardef_code, 4)
     code += cpp.indent_code(body_code, 4)
+    code += cpp.indent_code(generate_endf_dict_assignments(vardict), 4)
     code += aux.close_section()
     vardict = pardict
     return code
@@ -361,8 +372,6 @@ def _generate_code_for_varassign(
         )
         code += aux.assign_exprstr_to_var(vartok, exprstr, vardict)
 
-    if not in_lookahead(vardict):
-        code += aux.store_var_in_endf_dict(vartok, vardict)
     register_var(vartok, dtype, vardict)
     return code
 

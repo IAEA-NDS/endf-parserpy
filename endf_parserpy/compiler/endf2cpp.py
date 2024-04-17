@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/15
+# Last modified:   2024/04/17
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -253,6 +253,12 @@ def generate_code_for_if_statement(node, vardict):
     if_head = get_child(node, "if_head")
     if_body = get_child(node, "if_body")
     lookahead_option = get_child(node, "lookahead_option", nofail=True)
+    if in_lookahead(vardict) or lookahead_option is not None:
+        if in_lookahead(vardict) and lookahead_option is not None:
+            raise TypeError("nested lookahead is not possible")
+        orig_vardict = vardict
+        vardict = orig_vardict.copy()
+
     if lookahead_option is not None:
         la_expr = get_child(lookahead_option, "expr")
         la_expr_str = transform_nodes(la_expr.children[0], node2str)
@@ -294,6 +300,8 @@ def generate_code_for_if_statement(node, vardict):
             indent=4,
         )
         remove_lookahead_counter(vardict)
+        if lookahead_option is not None:
+            vardict = orig_vardict
         code += cpp.indent_code(
             code=cpp.pureif(
                 condition="cpp_found_match",

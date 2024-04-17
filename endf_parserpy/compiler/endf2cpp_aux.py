@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/16
+# Last modified:   2024/04/17
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -196,20 +196,15 @@ def get_cpp_varname(vartok, quote=False):
 def get_cpp_extvarname(vartok):
     varname = get_cpp_varname(vartok)
     for i, idxtok in enumerate(vartok.indices):
-        shifted_idxstr = get_shifted_idxstr(vartok, i)
-        varname += f"[{shifted_idxstr}]"
+        idxstr = get_idxstr(vartok, i)
+        varname += f"[{idxstr}]"
     return varname
 
 
-def get_shifted_idxstr(vartok, i):
+def get_idxstr(vartok, i):
     idxtok = vartok.indices[i]
     cpp_idxstr = get_cpp_objstr(idxtok)
-    if not isinstance(idxtok, VariableToken):
-        idxstr = f"{cpp_idxstr}"
-    else:
-        shift_exprstr = firstidx_varname(vartok, i)
-        idxstr = f"({cpp_idxstr}-({shift_exprstr}))"
-    return idxstr
+    return cpp_idxstr
 
 
 def _init_local_var_from_global_var(v, ctyp):
@@ -234,40 +229,10 @@ def init_readflag(vartok, glob=True, val=False):
     return _init_local_var_from_global_var(v, "bool")
 
 
-def lastidx_varname(vartok, i):
-    varname = get_cpp_varname(vartok)
-    return f"aux_{varname}_lastidx{i}_read"
-
-
-def init_lastidx(vartok, i, glob=True):
-    v = lastidx_varname(vartok, i)
-    if glob:
-        return cpp.statement(f"int {v} = -1")
-    return _init_local_var_from_global_var(v, "int")
-
-
-def firstidx_varname(vartok, i):
-    varname = get_cpp_varname(vartok)
-    return f"aux_{varname}_firstidx{i}_read"
-
-
-def init_firstidx(vartok, i, glob=True):
-    v = firstidx_varname(vartok, i)
-    if glob:
-        return cpp.statement(f"int {v} = -1")
-    return _init_local_var_from_global_var(v, "int")
-
-
 def _initialize_aux_read_vars(vartok, save_state=False):
     varname = get_cpp_varname(vartok)
-    num_dims = len(vartok.indices)
     glob = not save_state
-    code = ""
-    if num_dims == 0:
-        code += init_readflag(vartok, glob)
-    else:
-        code += cpp.concat(init_lastidx(vartok, i, glob) for i in range(num_dims))
-        code += cpp.concat(init_firstidx(vartok, i, glob) for i in range(num_dims))
+    code = init_readflag(vartok, glob)
     return code
 
 
@@ -287,7 +252,7 @@ def define_var(vartok, dtype, save_state=False):
     num_indices = len(vartok.indices)
     if num_indices > 0:
         for i in range(num_indices):
-            dtype = "std::vector<" + dtype
+            dtype = "CustomVector<" + dtype
         for i in range(num_indices):
             dtype += ">"
     varname = get_cpp_varname(vartok)
@@ -302,76 +267,39 @@ def define_var(vartok, dtype, save_state=False):
 
 def mark_var_as_read(vartok, prefix=""):
     varname = get_cpp_varname(vartok)
-    indices = vartok.indices
-    num_dims = len(indices)
-    if num_dims == 0:
-        return cpp.statement(f"{prefix}aux_{varname}_read = true")
-    code = ""
-    for i, idx in enumerate(indices):
-        curidx = get_cpp_objstr(idx)
-        firstidx = f"{prefix}aux_{varname}_firstidx{i}_read"
-        lastidx = f"{prefix}aux_{varname}_lastidx{i}_read"
-        code1 = cpp.pureif(f"{lastidx} == -1", cpp.statement(f"{firstidx} = {curidx}"))
-        code2 = ""
-        if i + 1 < len(indices):
-            code2 += cpp.pureif(
-                f"{lastidx} != {curidx}",
-                cpp.concat(
-                    cpp.concat(
-                        [
-                            cpp.statement(f"{firstidx_varname(vartok, j)} = -1"),
-                            cpp.statement(f"{lastidx_varname(vartok, j)} = -1"),
-                        ]
-                    )
-                    for j in range(i + 1, len(indices))
-                ),
-            )
-        code3 = cpp.statement(f"{lastidx} = {curidx}")
-        code += cpp.concat([code1, code2, code3])
+    code = cpp.statement(f"{prefix}aux_{varname}_read = true")
     return code
 
 
-def mark_var_as_unread(vartok, prefix=""):
+def _did_read_var(vartok, indices=None):
     varname = get_cpp_varname(vartok)
-    indices = vartok.indices
-    num_dims = len(indices)
-    if num_dims == 0:
-        return f"{prefix}aux_{varname}_read = false;\n"
-    return (
-        "\n".join(
-            f"{prefix}aux_{varname}_lastidx{i}_read = -1;"
-            for i, idx in enumerate(indices)
-        )
-        + "\n"
-    )
+    if len(vartok.indices) == 0 or indices is None:
+        code = f"(aux_{varname}_read == true)"
+        return code
+    idxstr = get_cpp_objstr(indices[0])
+    code = f"{varname}.contains({idxstr})"
+    lastidxstr = idxstr
+    for idx in indices[1:]:
+        idxstr = get_cpp_objstr(idx)
+        varname += f"[{lastidxstr}]"
+        code = cpp.logical_and([code, f"{varname}.contains({idxstr})"])
+        lastidxstr = idxstr
+    return code
 
 
-def _did_read_var(vartok):
-    varname = get_cpp_varname(vartok)
-    indices = vartok.indices
-    num_dims = len(indices)
-    if num_dims == 0:
-        return f"(aux_{varname}_read == true)"
-    return cpp.logical_and(
-        f"(aux_{varname}_lastidx{i}_read == {get_cpp_objstr(idx)})"
-        for i, idx in enumerate(indices)
-    )
+def did_read_var(vartok, indices=None):
+    return _did_read_var(vartok, indices)
 
 
-def did_read_var(vartok):
-    return _did_read_var(vartok)
+def did_not_read_var(vartok, indices=None):
+    return "(! " + _did_read_var(vartok, indices) + ")"
 
 
-def did_not_read_var(vartok):
-    return "(! " + _did_read_var(vartok) + ")"
-
-
-def any_unread_vars(vartoks):
-    return cpp.logical_or(did_not_read_var(v) for v in vartoks)
-
-
-def all_vars_read(vartoks):
-    return cpp.logical_and(did_read_var(v) for v in vartoks)
+def any_unread_vars(vartoks, glob=False):
+    if glob:
+        return cpp.logical_or(did_not_read_var(v) for v in vartoks)
+    else:
+        return cpp.logical_or(did_not_read_var(v, v.indices) for v in vartoks)
 
 
 def assign_exprstr_to_var(
@@ -392,36 +320,19 @@ def assign_exprstr_to_var(
         most_outer_code = cpp.statement(f"auto& cpp_curvar = {cpp_varname}")
         outer_code = cpp.concat(
             [
-                cpp.pureif(
-                    condition="cpp_curvar.size() <= ({idxstr})",
-                    code=cpp.concat(
-                        [
-                            cpp.statement(
-                                "using cpp_cureltype = "
-                                + "std::remove_reference<decltype(cpp_curvar)>"
-                                + "::type::value_type"
-                            ),
-                            cpp.statement("cpp_cureltype cpp_curel"),
-                            cpp.statement("cpp_curvar.push_back(cpp_curel)"),
-                        ]
-                    ),
-                    escape=True,
-                ),
                 cpp.statement("auto& cpp_lastcurvar = cpp_curvar"),
-                cpp.statement("auto& cpp_curvar = cpp_lastcurvar.at({idxstr})"),
+                cpp.statement("auto& cpp_curvar = cpp_lastcurvar.prepare({idxstr})"),
             ]
         )
-        inner_code = cpp.statement("cpp_curvar = {exprstr}")
-        nested_codes = [most_outer_code] + [outer_code] * len(indices) + [inner_code]
+        inner_code = cpp.statement("cpp_curvar.set({idxstr}, {exprstr})")
+        nested_codes = (
+            [most_outer_code] + [outer_code] * (len(indices) - 1) + [inner_code]
+        )
         extra_params = {
-            **{"exprstr": {len(indices) + 1: exprstr}},
-            **{
-                "idxstr": {
-                    i + 1: get_shifted_idxstr(vartok, i) for i in range(len(indices))
-                }
-            },
+            **{"exprstr": {len(indices): exprstr}},
+            **{"idxstr": {i + 1: get_idxstr(vartok, i) for i in range(len(indices))}},
         }
-        code += cpp.nested_block_repeat(nested_codes, len(indices) + 2, extra_params)
+        code += cpp.nested_block_repeat(nested_codes, len(indices) + 1, extra_params)
     return code
 
 

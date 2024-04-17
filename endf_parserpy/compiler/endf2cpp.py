@@ -286,12 +286,7 @@ def generate_code_for_if_statement(node, vardict):
                         la_body_code,
                         cpp.pureif(
                             condition=logical_expr_str,
-                            code=cpp.concat(
-                                [
-                                    cpp.statement("cpp_found_match = true"),
-                                    generate_mark_vars_as_unread(vardict),
-                                ]
-                            ),
+                            code=cpp.statement("cpp_found_match = true"),
                         ),
                         cpp.statement("cont.seekg(cpp_old_streampos)"),
                     ]
@@ -384,7 +379,7 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
 
     exprstr = transform_nodes(node, node2str)
     code = cpp.conditional_branches(
-        conditions=[aux.did_not_read_var(v) for v in variables],
+        conditions=[aux.did_not_read_var(v, v.indices) for v in variables],
         codes=[
             cpp.concat(
                 [

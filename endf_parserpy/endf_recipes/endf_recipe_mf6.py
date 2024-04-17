@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/18
+# Last modified:   2024/04/17
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -173,7 +173,7 @@ for i=1 to NK:
             for j=1 to NE:
                 NW := NEP[j] * (NA[j]+2)
                 [MAT, 6, MT/ 0.0, E[j] , ND[j], NA[j], NW, NEP[j]/
-                             {Ep[j,k], {b[m,j,k]}{m=0 to NA[j]}}{k=1 to NEP[j]} ]LIST
+                             {Ep[j,k], {b[j,k,m]}{m=0 to NA[j]}}{k=1 to NEP[j]} ]LIST
             endfor
 
         # Discrete Two-Body Scattering

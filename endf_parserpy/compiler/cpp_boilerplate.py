@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/17
+# Last modified:   2024/04/18
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -27,12 +27,12 @@ def module_header():
     namespace py = pybind11;
 
 
-    double endfstr2float(const std::string& str) {
-        char tbuf[str.size()+1];
+    double endfstr2float(const char* str) {
+        char tbuf[13];
         int j = 0;
         bool in_number = false;
         bool in_exponent = false;
-        for (int i=0; i < (int)str.size(); i++) {
+        for (int i=0; i < 11; i++) {
             char c = str[i];
             if (c == ' ') continue;
             if (in_number) {
@@ -66,7 +66,7 @@ def module_header():
 
 
     double cpp_read_float_field(const std::string& str, const char fieldnum) {
-        return endfstr2float(str.substr(fieldnum*11, 11));
+        return endfstr2float(str.substr(fieldnum*11, 11).c_str());
     }
 
 

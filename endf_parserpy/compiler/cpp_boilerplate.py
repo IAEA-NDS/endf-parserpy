@@ -65,8 +65,8 @@ def module_header():
     }
 
 
-    double cpp_read_float_field(const std::string& str, const char fieldnum) {
-        return endfstr2float(str.substr(fieldnum*11, 11).c_str());
+    double cpp_read_float_field(const char *str, const char fieldnum) {
+        return endfstr2float(str+fieldnum*11);
     }
 
 
@@ -90,8 +90,8 @@ def module_header():
     void cpp_read_send(std::istream& cont) {
         std::string line = cpp_read_line(cont);
         int mtnum = std::stoi(line.substr(72, 3));
-        if (cpp_read_float_field(line, 0) != 0.0 ||
-            cpp_read_float_field(line, 1) != 0.0 ||
+        if (cpp_read_float_field(line.c_str(), 0) != 0.0 ||
+            cpp_read_float_field(line.c_str(), 1) != 0.0 ||
             cpp_read_int_field(line, 2) != 0 ||
             cpp_read_int_field(line, 3) != 0 ||
             cpp_read_int_field(line, 4) != 0 ||
@@ -124,7 +124,7 @@ def module_header():
         std::vector<double> res;
         std::string line = cpp_read_line(cont);
         for (int i=0; i < numel; i++) {
-            res.push_back(cpp_read_float_field(line, j++));
+            res.push_back(cpp_read_float_field(line.c_str(), j++));
             if (j > 5 && i+1 < numel) {
                 line = cpp_read_line(cont);
                 j = 0;

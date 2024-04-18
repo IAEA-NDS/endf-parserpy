@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/17
+# Last modified:   2024/04/18
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -57,9 +57,10 @@ def get_float_vec(numel):
 def get_numeric_field(fieldpos, dtype):
     if dtype == float:
         readfun = "cpp_read_float_field"
+        code = f"{readfun}(cpp_line.c_str(), {fieldpos})"
     elif dtype == int:
         readfun = "cpp_read_int_field"
-    code = f"{readfun}(cpp_line, {fieldpos})"
+        code = f"{readfun}(cpp_line, {fieldpos})"
     return code
 
 

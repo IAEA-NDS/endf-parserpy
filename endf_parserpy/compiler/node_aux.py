@@ -3,13 +3,15 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/13
+# Last modified:   2024/04/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+from typing import Optional, Union
 from lark.tree import Tree
+from lark.tree import _Leaf_T, Branch, Meta  # for type checking
 from lark.lexer import Token
 from .expr_utils.node_trafos import node2str
 from .expr_utils.conversion import convert_to_exprtree, VariableToken
@@ -17,6 +19,44 @@ from .expr_utils.node_checks import is_variable
 from .expr_utils.equation_utils import solve_equation
 from .node_checks import is_expr
 from . import endf2cpp_aux as aux
+
+
+class ParseNode(Tree):
+
+    parent: Union[Tree, None]
+
+    def __init__(
+        self,
+        data: str,
+        children: "List[Branch[_Leaf_T]]",
+        meta: Optional[Meta] = None,
+        parent: Optional[Tree] = None,
+    ):
+        super().__init__(data, children, meta)
+        self.parent = parent
+
+    def __deepcopy__(self, memo):
+        node_copy = self.__deepcopy__(self, memo)
+        node_copy.parent = self.parent
+        return node_copy
+
+    def copy(self):
+        node_copy = super().copy()
+        node_copy.parent = self.parent
+        return node_copy
+
+
+def node_and_kids_to_ParseNode(node):
+    if not isinstance(node, Tree):
+        return node
+    new_children = []
+    for c in node.children:
+        if isinstance(c, Tree):
+            new_child = ParseNode(c.data, c.children, c._meta, parent=node)
+        else:
+            new_child = c
+        new_children.append(new_child)
+    return ParseNode(node.data, new_children, node._meta)
 
 
 def simplify_expr_node(node):

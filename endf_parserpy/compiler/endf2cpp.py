@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/17
+# Last modified:   2024/04/19
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -376,7 +376,9 @@ def _generate_code_for_varassign(
     return code
 
 
-def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
+def generate_code_for_varassign(
+    node, vardict, valcode, dtype, throw_cpp=False, noassign_code=""
+):
     code = ""
     node = transform_nodes(node, expand_abbreviation, vardict)
     variables = get_variables_in_expr(node)
@@ -384,7 +386,7 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
         raise IndexError("more than one unencountered variables")
     if len(variables) == 0:
         # NOTE: consistency checking could be done here
-        return cpp.statement(valcode)
+        return noassign_code
 
     exprstr = transform_nodes(node, node2str)
     code = cpp.conditional_branches(
@@ -607,7 +609,11 @@ def generate_code_for_list_body(node, vardict):
         child_name = get_name(child)
         if child_name == "expr":
             code += generate_code_for_varassign(
-                child, vardict, "cpp_floatvec[cpp_j++]", float
+                child,
+                vardict,
+                "cpp_floatvec[cpp_j++]",
+                float,
+                noassign_code=cpp.statement("cpp_j++"),
             )
         elif child_name == "list_loop":
             code += generate_code_for_list_loop(child, vardict)

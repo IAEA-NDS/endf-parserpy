@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/18
+# Last modified:   2024/04/19
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -194,6 +194,15 @@ def get_cpp_varname(vartok, quote=False):
     return varname
 
 
+def get_ptr_varname(vartok, i):
+    if not isinstance(vartok, VariableToken):
+        raise TypeError("expect vartok of type VariableToken")
+    if i < 0 or i + 1 >= len(vartok.indices):
+        raise IndexError(f"index i={i} out of range")
+    varname = f"ptr_{vartok}_{len(vartok.indices)}d_idx{i}"
+    return varname
+
+
 def get_cpp_extvarname(vartok):
     varname = get_cpp_varname(vartok)
     for i, idxtok in enumerate(vartok.indices):
@@ -250,19 +259,22 @@ def define_var(vartok, dtype, save_state=False):
         dtype = "std::vector<int>"
     else:
         raise TypeError(f"unknown dtype {dtype}")
+    varname = get_cpp_varname(vartok)
     num_indices = len(vartok.indices)
+    ptr_vardefs = ""
     if num_indices > 0:
         for i in range(num_indices):
-            dtype = "CustomVector<" + dtype
-        for i in range(num_indices):
-            dtype += ">"
-    varname = get_cpp_varname(vartok)
+            dtype = "CustomVector<" + dtype + ">"
+            if i + 1 < num_indices:
+                cur_ptr_var = get_ptr_varname(vartok, num_indices - i - 2)
+                ptr_vardefs += cpp.statement(f"{dtype}* {cur_ptr_var}")
     code = ""
     if save_state:
         code += _init_local_var_from_global_var(varname, dtype)
     else:
         code += cpp.statement(f"{dtype} {varname}")
     code += _initialize_aux_read_vars(vartok, save_state)
+    code += ptr_vardefs
     return code
 
 
@@ -316,24 +328,19 @@ def assign_exprstr_to_var(
         code += mark_var_as_read(vartok)
     if len(vartok.indices) == 0:
         code += cpp.statement(f"{cpp_varname} = {exprstr}")
-    else:
-        indices = vartok.indices
-        most_outer_code = cpp.statement(f"auto& cpp_curvar = {cpp_varname}")
-        outer_code = cpp.concat(
-            [
-                cpp.statement("auto& cpp_lastcurvar = cpp_curvar"),
-                cpp.statement("auto& cpp_curvar = cpp_lastcurvar.prepare({idxstr})"),
-            ]
-        )
-        inner_code = cpp.statement("cpp_curvar.set({idxstr}, {exprstr})")
-        nested_codes = (
-            [most_outer_code] + [outer_code] * (len(indices) - 1) + [inner_code]
-        )
-        extra_params = {
-            **{"exprstr": {len(indices): exprstr}},
-            **{"idxstr": {i + 1: get_idxstr(vartok, i) for i in range(len(indices))}},
-        }
-        code += cpp.nested_block_repeat(nested_codes, len(indices) + 1, extra_params)
+        return code
+
+    indices = vartok.indices
+    ptrvar_old = cpp_varname
+    for i in range(0, len(indices) - 1):
+        idxstr = get_idxstr(vartok, i)
+        ptrvar_new = get_ptr_varname(vartok, i)
+        dot = "." if i == 0 else "->"
+        code += cpp.statement(f"{ptrvar_new} = {ptrvar_old}{dot}prepare({idxstr})")
+        ptrvar_old = ptrvar_new
+    idxstr = get_idxstr(vartok, len(indices) - 1)
+    dot = "." if len(indices) == 1 else "->"
+    code += cpp.statement(f"{ptrvar_old}{dot}set({idxstr}, {exprstr})")
     return code
 
 

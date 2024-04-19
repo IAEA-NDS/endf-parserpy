@@ -186,11 +186,11 @@ def module_header():
                 return std::vector<T>::at(index - startIndex);
             }
 
-            T& prepare(int index) {
-                if (contains(index)) return (*this)[index];
+            T* prepare(int index) {
+                if (contains(index)) return &((*this)[index]);
                 T cpp_curel;
                 set(index, cpp_curel);
-                return (*this)[index];
+                return &(*this)[index];
             }
 
             void set(int index, const T& value) {

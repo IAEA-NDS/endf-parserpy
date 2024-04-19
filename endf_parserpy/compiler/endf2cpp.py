@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/19
+# Last modified:   2024/04/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -37,6 +37,7 @@ from .variable_management import (
 )
 from .node_aux import (
     simplify_expr_node,
+    node_and_kids_to_ParseNode,
     get_varassign_from_expr,
     get_variables_in_expr,
     expr2str_shiftidx,
@@ -100,6 +101,7 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
         parser = Lark(endf_recipe_grammar, start="endf_recipe", keep_all_tokens=True)
     parsetree = parser.parse(endf_recipe)
     parsetree = transform_nodes(parsetree, simplify_expr_node)
+    parsetree = transform_nodes(parsetree, node_and_kids_to_ParseNode)
     var_mat = VariableToken(Token("VARNAME", "MAT"))
     var_mf = VariableToken(Token("VARNAME", "MF"))
     var_mt = VariableToken(Token("VARNAME", "MT"))

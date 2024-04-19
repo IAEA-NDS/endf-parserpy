@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/18
+# Last modified:   2024/04/19
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -271,6 +271,8 @@ def generate_cmake_content():
 
     # Create the C++ executable
     pybind11_add_module(cpp_parsefuns SHARED cpp_parsefuns.cpp)
+
+    add_compile_options(-O3)
 
     # Link against Python libraries
     # target_link_libraries(example PRIVATE Python::Python)

@@ -316,7 +316,7 @@ def any_unread_vars(vartoks, glob=False):
 
 
 def assign_exprstr_to_var(
-    vartok, exprstr, vardict, use_cpp_name=True, mark_as_read=True
+    vartok, exprstr, vardict, use_cpp_name=True, mark_as_read=True, node=None
 ):
     _check_variable(vartok, vardict)
     if use_cpp_name:

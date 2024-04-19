@@ -354,7 +354,7 @@ def _generate_code_for_varassign(
     cpp_val_tok = Token("VARIABLE", "cpp_val")
     code = ""
     if expr == cpp_val_tok:
-        code += aux.assign_exprstr_to_var(vartok, valcode, vardict)
+        code += aux.assign_exprstr_to_var(vartok, valcode, vardict, node=node)
     else:
         if dtype == float:
             cpp_newval_tok = Token("VARNAME", "cpp_float_val")
@@ -367,12 +367,17 @@ def _generate_code_for_varassign(
         cpp_newval_tok = VariableToken(cpp_newval_tok)
         expr = transform_nodes(expr, replace_node, cpp_val_tok, cpp_newval_tok)
         code += aux.assign_exprstr_to_var(
-            cpp_newval_tok, valcode, vardict, use_cpp_name=False, mark_as_read=False
+            cpp_newval_tok,
+            valcode,
+            vardict,
+            use_cpp_name=False,
+            mark_as_read=False,
+            node=node,
         )
         exprstr = transform_nodes(
             expr, expr2str_shiftidx, vardict, rawvars=(cpp_newval_tok,)
         )
-        code += aux.assign_exprstr_to_var(vartok, exprstr, vardict)
+        code += aux.assign_exprstr_to_var(vartok, exprstr, vardict, node=node)
 
     register_var(vartok, dtype, vardict)
     return code

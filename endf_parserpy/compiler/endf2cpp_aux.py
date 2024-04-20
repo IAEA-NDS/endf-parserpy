@@ -359,9 +359,11 @@ def _moveup_ptrassign(vartok, idx, node, limit_node=None):
     return checkpoint
 
 
-def assign_exprstr_to_var(
+def _assign_exprstr_to_nested_vector(
     vartok, exprstr, vardict, use_cpp_name=True, mark_as_read=True, node=None
 ):
+    if len(vartok.indices) == 0:
+        return ""
     _check_variable(vartok, vardict)
     if use_cpp_name:
         cpp_varname = get_cpp_varname(vartok)
@@ -370,9 +372,6 @@ def assign_exprstr_to_var(
     code = cpp.comment(f"assign expression to variable {vartok}")
     if mark_as_read and len(vartok.indices) == 0:
         code += mark_var_as_read(vartok)
-    if len(vartok.indices) == 0:
-        code += cpp.statement(f"{cpp_varname} = {exprstr}")
-        return code
 
     indices = vartok.indices
     ptrvar_old = cpp_varname
@@ -394,6 +393,42 @@ def assign_exprstr_to_var(
     idxstr = get_idxstr(vartok, len(indices) - 1)
     dot = "." if len(indices) == 1 else "->"
     code += cpp.statement(f"{ptrvar_old}{dot}set({idxstr}, {exprstr})")
+    return code
+
+
+def _assign_exprstr_to_scalar_var(
+    vartok, exprstr, vardict, use_cpp_name=True, mark_as_read=True, node=None
+):
+    if len(vartok.indices) > 0:
+        return ""
+    _check_variable(vartok, vardict)
+    if use_cpp_name:
+        cpp_varname = get_cpp_varname(vartok)
+    else:
+        cpp_varname = str(vartok)
+    code = cpp.comment(f"assign expression to variable {vartok}")
+    if mark_as_read and len(vartok.indices) == 0:
+        code += mark_var_as_read(vartok)
+    code += cpp.statement(f"{cpp_varname} = {exprstr}")
+    return code
+
+
+def assign_exprstr_to_var(
+    vartok, exprstr, vardict, use_cpp_name=True, mark_as_read=True, node=None
+):
+    code = cpp.comment(f"assign expression to variable {vartok}")
+    new_code = ""
+    if new_code == "":
+        new_code = _assign_exprstr_to_scalar_var(
+            vartok, exprstr, vardict, use_cpp_name, mark_as_read, node
+        )
+    if new_code == "":
+        new_code = _assign_exprstr_to_nested_vector(
+            vartok, exprstr, vardict, use_cpp_name, mark_as_read, node
+        )
+    if new_code == "":
+        raise NotImplementedError("no varassign function matches")
+    code += new_code
     return code
 
 

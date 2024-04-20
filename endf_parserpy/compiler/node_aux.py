@@ -34,16 +34,29 @@ class ParseNode(Tree):
     ):
         super().__init__(data, children, meta)
         self.parent = parent
+        self.precode = ""
+        self._trackid = id(self)
 
     def __deepcopy__(self, memo):
-        node_copy = self.__deepcopy__(self, memo)
-        node_copy.parent = self.parent
-        return node_copy
+        raise NotImplementedError("deepcopy not implemented")
 
     def copy(self):
         node_copy = super().copy()
         node_copy.parent = self.parent
+        node_copy.precode = self.precode
+        node_copy._trackid = self._trackid
         return node_copy
+
+    def append_precode(self, code):
+        self.precode += code
+
+    def check_my_identity(self):
+        if self._trackid != id(self):
+            raise TypeError("Damn, I lost my identity!")
+        for c in self.children:
+            if isinstance(c, ParseNode):
+                if c.parent is not self:
+                    raise TypeError("My children get my identity wrong")
 
 
 def node_and_kids_to_ParseNode(node):

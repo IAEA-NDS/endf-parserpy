@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/28
+# Last modified:   2024/04/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -23,10 +23,13 @@ from .node_trafos import (
 from .tree_trafos import normalize_exprtree, simplify_for_readability
 
 
-def contains_variable(node, vartok):
+def contains_variable(node, vartok, skip_nodes=None):
+    if skip_nodes is not None:
+        if any(n is node for n in skip_nodes):
+            return False
     if isinstance(node, Token):
         return node == vartok
-    return any(contains_variable(c, vartok) for c in node.children)
+    return any(contains_variable(c, vartok, skip_nodes) for c in node.children)
 
 
 def _move_constants_to_rhs(lhs, rhs, vartok):

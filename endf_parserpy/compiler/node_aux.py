@@ -62,14 +62,19 @@ class ParseNode(Tree):
 def node_and_kids_to_ParseNode(node):
     if not isinstance(node, Tree):
         return node
+    new_node = ParseNode(node.data, [], node._meta)
     new_children = []
     for c in node.children:
-        if isinstance(c, Tree):
-            new_child = ParseNode(c.data, c.children, c._meta, parent=node)
+        if type(c) == Tree:
+            new_child = ParseNode(c.data, c.children, c._meta, parent=new_node)
+        elif type(c) == ParseNode:
+            new_child = c
+            new_child.parent = new_node
         else:
             new_child = c
         new_children.append(new_child)
-    return ParseNode(node.data, new_children, node._meta)
+    new_node.children = new_children
+    return new_node
 
 
 def simplify_expr_node(node):

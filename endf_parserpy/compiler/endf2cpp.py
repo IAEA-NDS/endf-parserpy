@@ -15,7 +15,10 @@ from lark import Lark
 from ..tree_utils import get_child, get_name
 from ..endf_lark import endf_recipe_grammar
 from .expr_utils.conversion import VariableToken
-from .expr_utils.tree_walkers import transform_nodes
+from .expr_utils.tree_walkers import (
+    transform_nodes,
+    transform_nodes_inplace,
+)
 from .expr_utils.node_trafos import node2str, replace_node
 from . import cpp_primitives as cpp
 from . import cpp_boilerplate
@@ -101,7 +104,7 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
         parser = Lark(endf_recipe_grammar, start="endf_recipe", keep_all_tokens=True)
     parsetree = parser.parse(endf_recipe)
     parsetree = transform_nodes(parsetree, simplify_expr_node)
-    parsetree = transform_nodes(parsetree, node_and_kids_to_ParseNode)
+    parsetree = transform_nodes_inplace(parsetree, node_and_kids_to_ParseNode)
     var_mat = VariableToken(Token("VARNAME", "MAT"))
     var_mf = VariableToken(Token("VARNAME", "MF"))
     var_mt = VariableToken(Token("VARNAME", "MT"))

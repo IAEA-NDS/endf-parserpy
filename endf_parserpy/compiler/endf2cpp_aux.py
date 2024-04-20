@@ -3,15 +3,18 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/19
+# Last modified:   2024/04/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+from ..tree_utils import get_name, get_child
 from .expr_utils.conversion import VariableToken
 from .expr_utils.node_checks import is_number
 from . import cpp_primitives as cpp
+from .expr_utils.equation_utils import contains_variable
+from .node_aux import get_variables_in_expr
 
 
 def _check_variable(vartok, vardict):
@@ -315,6 +318,42 @@ def any_unread_vars(vartoks, glob=False):
         return cpp.logical_or(did_not_read_var(v, v.indices) for v in vartoks)
 
 
+def _can_moveup_ptrassign(vartok, idxexpr, orig_node, dest_node):
+    if dest_node is None:
+        return False
+    if contains_variable(dest_node, vartok, skip_nodes=[orig_node]):
+        return False
+    variables = get_variables_in_expr(idxexpr)
+    for v in variables:
+        if contains_variable(dest_node, v, skip_nodes=[orig_node]):
+            return False
+
+    dest_node_name = get_name(dest_node)
+    if dest_node_name in ("list_loop", "for_loop"):
+        if dest_node_name == "list_loop":
+            loop_head = get_child(dest_node, "list_for_head")
+        elif dest_node_name == "for_loop":
+            loop_head = get_child(dest_node, "for_head")
+        loopvar = VariableToken(get_child(loop_head, "VARNAME"))
+        if contains_variable(idxexpr, loopvar):
+            return False
+    return True
+
+
+def _moveup_ptrassign(vartok, idx, node, limit_node=None):
+    idxexpr = vartok.indices[idx]
+    checkpoint = node
+    curnode = node
+    parent_node = curnode.parent
+    while curnode.parent is not None and curnode is not limit_node:
+        if not _can_moveup_ptrassign(vartok, idxexpr, curnode, curnode.parent):
+            break
+        curnode = curnode.parent
+        if get_name(curnode) in ("list_loop", "for_loop"):
+            checkpoint = curnode
+    return checkpoint
+
+
 def assign_exprstr_to_var(
     vartok, exprstr, vardict, use_cpp_name=True, mark_as_read=True, node=None
 ):
@@ -332,11 +371,20 @@ def assign_exprstr_to_var(
 
     indices = vartok.indices
     ptrvar_old = cpp_varname
+    limit_node = None
     for i in range(0, len(indices) - 1):
         idxstr = get_idxstr(vartok, i)
         ptrvar_new = get_ptr_varname(vartok, i)
         dot = "." if i == 0 else "->"
-        code += cpp.statement(f"{ptrvar_new} = {ptrvar_old}{dot}prepare({idxstr})")
+        new_code = cpp.statement(f"{ptrvar_new} = {ptrvar_old}{dot}prepare({idxstr})")
+        if node is not None:
+            destnode = _moveup_ptrassign(vartok, i, node, limit_node)
+            if destnode is not node:
+                destnode.check_my_identity()
+                destnode.append_precode(new_code)
+                limit_node = destnode
+            else:
+                code += new_code
         ptrvar_old = ptrvar_new
     idxstr = get_idxstr(vartok, len(indices) - 1)
     dot = "." if len(indices) == 1 else "->"

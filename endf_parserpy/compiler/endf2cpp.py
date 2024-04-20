@@ -214,7 +214,7 @@ def generate_code_for_loop(node, vardict):
     stop_expr_node = get_child(get_child(for_head, "for_stop"), "expr").children[0]
     parsefun = generate_code_from_parsetree
     code = _generate_code_for_loop(
-        vardict, parsefun, for_body, loopvar_node, start_expr_node, stop_expr_node
+        node, vardict, parsefun, for_body, loopvar_node, start_expr_node, stop_expr_node
     )
     return code
 
@@ -390,7 +390,7 @@ def generate_code_for_varassign(
     node, vardict, valcode, dtype, throw_cpp=False, noassign_code=""
 ):
     code = ""
-    node = transform_nodes(node, expand_abbreviation, vardict)
+    node = transform_nodes_inplace(node, expand_abbreviation, vardict)
     variables = get_variables_in_expr(node)
     if count_not_encountered_vars(node, vardict) > 1:
         raise IndexError("more than one unencountered variables")
@@ -640,13 +640,13 @@ def generate_code_for_list_loop(node, vardict):
     stop_expr_node = get_child(get_child(for_head, "for_stop"), "expr").children[0]
     parsefun = generate_code_for_list_body
     code = _generate_code_for_loop(
-        vardict, parsefun, for_body, loopvar_node, start_expr_node, stop_expr_node
+        node, vardict, parsefun, for_body, loopvar_node, start_expr_node, stop_expr_node
     )
     return code
 
 
 def _generate_code_for_loop(
-    vardict, parsefun, for_body, loopvar_node, start_expr_node, stop_expr_node
+    node, vardict, parsefun, for_body, loopvar_node, start_expr_node, stop_expr_node
 ):
     start_expr_node = transform_nodes(start_expr_node, expand_abbreviation, vardict)
     stop_expr_node = transform_nodes(stop_expr_node, expand_abbreviation, vardict)
@@ -670,6 +670,8 @@ def _generate_code_for_loop(
     code += cpp.indent_code(body_code, 4)
     code += "}\n"
     unregister_var(loopvar, vardict)
+    # add code propagated upward from downstream nodes
+    code = node.precode + code
     return code
 
 

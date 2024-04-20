@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2024/04/20
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -24,7 +24,10 @@ def is_tree(tree):
 def get_name(tree, nofail=False):
     if type(tree) == Token:
         return str(tree.type)
-    if type(tree) == Tree:
+    elif type(tree) == Tree:
+        return str(tree.data)
+    # instance check slower but kept for dealing OOP inheritance
+    elif isinstance(tree, Tree):
         return str(tree.data)
     else:
         if nofail:

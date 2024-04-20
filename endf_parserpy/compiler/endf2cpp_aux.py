@@ -359,20 +359,12 @@ def _moveup_ptrassign(vartok, idx, node, limit_node=None):
     return checkpoint
 
 
-def _assign_exprstr_to_nested_vector(
-    vartok, exprstr, vardict, use_cpp_name=True, mark_as_read=True, node=None
-):
+def _assign_exprstr_to_nested_vector(vartok, exprstr, vardict, node):
     if len(vartok.indices) == 0:
         return ""
     _check_variable(vartok, vardict)
-    if use_cpp_name:
-        cpp_varname = get_cpp_varname(vartok)
-    else:
-        cpp_varname = str(vartok)
+    cpp_varname = get_cpp_varname(vartok)
     code = cpp.comment(f"assign expression to variable {vartok}")
-    if mark_as_read and len(vartok.indices) == 0:
-        code += mark_var_as_read(vartok)
-
     indices = vartok.indices
     ptrvar_old = cpp_varname
     limit_node = None
@@ -396,9 +388,7 @@ def _assign_exprstr_to_nested_vector(
     return code
 
 
-def _assign_exprstr_to_scalar_var(
-    vartok, exprstr, vardict, use_cpp_name=True, mark_as_read=True, node=None
-):
+def _assign_exprstr_to_scalar_var(vartok, exprstr, vardict, use_cpp_name, mark_as_read):
     if len(vartok.indices) > 0:
         return ""
     _check_variable(vartok, vardict)
@@ -416,16 +406,20 @@ def _assign_exprstr_to_scalar_var(
 def assign_exprstr_to_var(
     vartok, exprstr, vardict, use_cpp_name=True, mark_as_read=True, node=None
 ):
+    if len(vartok.indices) > 0:
+        if not use_cpp_name:
+            raise NotImplementedError("use_cpp_name=False only available for 1d var")
+        if not mark_as_read:
+            raise NotImplementedError("mark_as_read=False only available for 1d var")
+
     code = cpp.comment(f"assign expression to variable {vartok}")
     new_code = ""
     if new_code == "":
         new_code = _assign_exprstr_to_scalar_var(
-            vartok, exprstr, vardict, use_cpp_name, mark_as_read, node
+            vartok, exprstr, vardict, use_cpp_name, mark_as_read
         )
     if new_code == "":
-        new_code = _assign_exprstr_to_nested_vector(
-            vartok, exprstr, vardict, use_cpp_name, mark_as_read, node
-        )
+        new_code = _assign_exprstr_to_nested_vector(vartok, exprstr, vardict, node)
     if new_code == "":
         raise NotImplementedError("no varassign function matches")
     code += new_code

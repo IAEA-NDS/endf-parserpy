@@ -243,6 +243,9 @@ def init_readflag(vartok, glob=True, val=False):
 
 
 def _initialize_aux_read_vars(vartok, save_state=False):
+    if len(vartok.indices) > 0:
+        # CustomVector class manages the read state itself
+        return ""
     varname = get_cpp_varname(vartok)
     glob = not save_state
     code = init_readflag(vartok, glob)
@@ -289,9 +292,11 @@ def mark_var_as_read(vartok, prefix=""):
 
 def _did_read_var(vartok, indices=None):
     varname = get_cpp_varname(vartok)
-    if len(vartok.indices) == 0 or indices is None:
-        code = f"(aux_{varname}_read == true)"
-        return code
+    if indices is None or len(vartok.indices) == 0:
+        if len(vartok.indices) == 0:
+            return f"(aux_{varname}_read == true)"
+        else:
+            return f"({varname}.get_last_index() != -1)"
     idxstr = get_cpp_objstr(indices[0])
     code = f"{varname}.contains({idxstr})"
     lastidxstr = idxstr
@@ -363,7 +368,7 @@ def assign_exprstr_to_var(
     else:
         cpp_varname = str(vartok)
     code = cpp.comment(f"assign expression to variable {vartok}")
-    if mark_as_read:
+    if mark_as_read and len(vartok.indices) == 0:
         code += mark_var_as_read(vartok)
     if len(vartok.indices) == 0:
         code += cpp.statement(f"{cpp_varname} = {exprstr}")

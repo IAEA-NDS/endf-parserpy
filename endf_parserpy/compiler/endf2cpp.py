@@ -399,6 +399,17 @@ def generate_code_for_varassign(
         return noassign_code
 
     exprstr = transform_nodes(node, node2str)
+
+    # acceleration: skip read check for arrays that
+    # do appear solo, i.e. not in arithmetic expressions
+    if len(variables) == 1:
+        vartok = tuple(variables)[0]
+        if len(vartok.indices) > 0:
+            code += _generate_code_for_varassign(
+                vartok, node, vardict, valcode, dtype, throw_cpp=throw_cpp
+            )
+            return code
+
     code = cpp.conditional_branches(
         conditions=[aux.did_not_read_var(v, v.indices) for v in variables],
         codes=[

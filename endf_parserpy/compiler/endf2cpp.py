@@ -411,12 +411,14 @@ def generate_code_for_varassign(
             return code
 
     code = cpp.conditional_branches(
-        conditions=[aux.did_not_read_var(v, v.indices) for v in variables],
+        conditions=[aux.did_not_read_var(v, vardict, v.indices) for v in variables],
         codes=[
             cpp.concat(
                 [
                     cpp.pureif(
-                        condition=aux.any_unread_vars(variables.difference((v,))),
+                        condition=aux.any_unread_vars(
+                            variables.difference((v,)), vardict
+                        ),
                         code=cpp.throw_runtime_error(
                             "some of the required variables "
                             + f"""{", ".join(variables.difference((v,)))} """

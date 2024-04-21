@@ -177,9 +177,9 @@ def close_section():
     return code
 
 
-def get_cpp_objstr(tok):
+def get_cpp_objstr(tok, vardict):
     if isinstance(tok, VariableToken):
-        return get_cpp_extvarname(tok)
+        return get_cpp_extvarname(tok, vardict)
     elif is_number(tok):
         varname = str(tok)
         return varname
@@ -202,17 +202,17 @@ def get_ptr_varname(vartok, i):
     return varname
 
 
-def get_cpp_extvarname(vartok):
+def get_cpp_extvarname(vartok, vardict):
     varname = get_cpp_varname(vartok)
     for i, idxtok in enumerate(vartok.indices):
-        idxstr = get_idxstr(vartok, i)
+        idxstr = get_idxstr(vartok, i, vardict)
         varname += f"[{idxstr}]"
     return varname
 
 
-def get_idxstr(vartok, i):
+def get_idxstr(vartok, i, vardict):
     idxtok = vartok.indices[i]
-    cpp_idxstr = get_cpp_objstr(idxtok)
+    cpp_idxstr = get_cpp_objstr(idxtok, vardict)
     return cpp_idxstr
 
 
@@ -286,37 +286,37 @@ def mark_var_as_read(vartok, prefix=""):
     return code
 
 
-def _did_read_var(vartok, indices=None):
+def _did_read_var(vartok, vardict, indices=None):
     varname = get_cpp_varname(vartok)
     if indices is None or len(vartok.indices) == 0:
         if len(vartok.indices) == 0:
             return f"(aux_{varname}_read == true)"
         else:
             return f"({varname}.get_last_index() != -1)"
-    idxstr = get_cpp_objstr(indices[0])
+    idxstr = get_cpp_objstr(indices[0], vardict)
     code = f"{varname}.contains({idxstr})"
     lastidxstr = idxstr
     for idx in indices[1:]:
-        idxstr = get_cpp_objstr(idx)
+        idxstr = get_cpp_objstr(idx, vardict)
         varname += f"[{lastidxstr}]"
         code = cpp.logical_and([code, f"{varname}.contains({idxstr})"])
         lastidxstr = idxstr
     return code
 
 
-def did_read_var(vartok, indices=None):
-    return _did_read_var(vartok, indices)
+def did_read_var(vartok, vardict, indices=None):
+    return _did_read_var(vartok, vardict, indices)
 
 
-def did_not_read_var(vartok, indices=None):
-    return "(! " + _did_read_var(vartok, indices) + ")"
+def did_not_read_var(vartok, vardict, indices=None):
+    return "(! " + _did_read_var(vartok, vardict, indices) + ")"
 
 
-def any_unread_vars(vartoks, glob=False):
+def any_unread_vars(vartoks, vardict, glob=False):
     if glob:
-        return cpp.logical_or(did_not_read_var(v) for v in vartoks)
+        return cpp.logical_or(did_not_read_var(v, vardict) for v in vartoks)
     else:
-        return cpp.logical_or(did_not_read_var(v, v.indices) for v in vartoks)
+        return cpp.logical_or(did_not_read_var(v, vardict, v.indices) for v in vartoks)
 
 
 def _is_loop(node):
@@ -405,7 +405,7 @@ def _assign_exprstr_to_nested_vector(vartok, exprstr, vardict, node):
     ptrvar_old = cpp_varname
     limit_node = None
     for i in range(0, len(indices) - 1):
-        idxstr = get_idxstr(vartok, i)
+        idxstr = get_idxstr(vartok, i, vardict)
         ptrvar_new = get_ptr_varname(vartok, i)
         dot = "." if i == 0 else "->"
         new_code = cpp.statement(f"{ptrvar_new} = {ptrvar_old}{dot}prepare({idxstr})")
@@ -418,7 +418,7 @@ def _assign_exprstr_to_nested_vector(vartok, exprstr, vardict, node):
             else:
                 code += new_code
         ptrvar_old = ptrvar_new
-    idxstr = get_idxstr(vartok, len(indices) - 1)
+    idxstr = get_idxstr(vartok, len(indices) - 1, vardict)
     dot = "." if len(indices) == 1 else "->"
     code += cpp.statement(f"{ptrvar_old}{dot}set({idxstr}, {exprstr})")
     return code
@@ -464,8 +464,8 @@ def assign_exprstr_to_var(
 
 def store_var_in_endf_dict(vartok, vardict):
     _check_variable(vartok, vardict)
-    src_varname = get_cpp_extvarname(vartok)
-    indices_str = [f'"{vartok}"'] + [get_cpp_objstr(v) for v in vartok.indices]
+    src_varname = get_cpp_extvarname(vartok, vardict)
+    indices_str = [f'"{vartok}"'] + [get_cpp_objstr(v, vardict) for v in vartok.indices]
     code = cpp.comment(f"store variable {vartok} in endf dictionary")
     code += dict_assign("cpp_current_dict", indices_str, src_varname)
     return code
@@ -479,7 +479,7 @@ def store_var_in_endf_dict2(vartok, vardict):
     src_varname = get_cpp_varname(vartok)
     if len(vartok.indices) == 0:
         assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')
-        code = cpp.pureif(did_read_var(vartok), assigncode)
+        code = cpp.pureif(did_read_var(vartok, vardict), assigncode)
         return code
 
     code = ""
@@ -514,5 +514,5 @@ def store_var_in_endf_dict2(vartok, vardict):
         f'py::dict cpp_curdict0 = cpp_current_dict["{vartok}"]', 4
     )
     assigncode += cpp.indent_code(newcode, 4)
-    code = cpp.pureif(did_read_var(vartok), assigncode)
+    code = cpp.pureif(did_read_var(vartok, vardict), assigncode)
     return code

@@ -212,7 +212,7 @@ def get_cpp_extvarname(vartok, vardict):
         idxstrs.append(get_idxstr(vartok, i, vardict))
     special_type = get_special_type(vartok, vardict)
     if special_type == "Matrix2d":
-        extvarname = varname + "(" + ",".join(idxstrs) + ")"
+        extvarname = varname + "(" + ", ".join(idxstrs) + ")"
     else:
         extvarname = varname + "".join(f"[{s}]" for s in idxstrs)
     return extvarname
@@ -271,6 +271,11 @@ def define_var(vartok, dtype, vardict, save_state=False):
         raise TypeError(f"unknown dtype {dtype}")
     varname = get_cpp_varname(vartok)
     num_indices = len(vartok.indices)
+    special_type = get_special_type(vartok, vardict)
+    if special_type == "Matrix2d":
+        code = cpp.statement(f"Matrix2d<{dtype}> {varname}")
+        return code
+
     ptr_vardefs = ""
     if num_indices > 0:
         for i in range(num_indices):

@@ -408,8 +408,8 @@ def _assign_exprstr_to_nested_vector(vartok, exprstr, vardict, node):
     if len(vartok.indices) == 0:
         return ""
     _check_variable(vartok, vardict)
+    code = ""
     cpp_varname = get_cpp_varname(vartok)
-    code = cpp.comment(f"assign expression to variable {vartok}")
     indices = vartok.indices
     ptrvar_old = cpp_varname
     limit_node = None
@@ -437,11 +437,11 @@ def _assign_exprstr_to_scalar_var(vartok, exprstr, vardict, use_cpp_name, mark_a
     if len(vartok.indices) > 0:
         return ""
     _check_variable(vartok, vardict)
+    code = ""
     if use_cpp_name:
         cpp_varname = get_cpp_varname(vartok)
     else:
         cpp_varname = str(vartok)
-    code = cpp.comment(f"assign expression to variable {vartok}")
     if mark_as_read and len(vartok.indices) == 0:
         code += mark_var_as_read(vartok)
     code += cpp.statement(f"{cpp_varname} = {exprstr}")

@@ -30,6 +30,11 @@ def register_special_type(vartok, vardict, special_type):
     special_types[vartok] = special_type
 
 
+def get_special_type(vartok, vardict):
+    special_types = vardict.get("__special_types", {})
+    return special_types.get(vartok, None)
+
+
 def did_encounter_var(vartok, vardict):
     while vartok not in vardict and "__up" in vardict:
         vardict = vardict["__up"]

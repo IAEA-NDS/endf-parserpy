@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/20
+# Last modified:   2024/04/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -780,6 +780,7 @@ def generate_cpp_module_code(recipes):
     recipefuns = {}
     for mf, mt_recipes in recipes.items():
         if isinstance(mt_recipes, str):
+            print(mf)
             func_name = _mf_mt_parsefun_name(mf, None)
             func_names.append(func_name)
             recipe = mt_recipes

@@ -14,8 +14,14 @@ from .expr_utils.conversion import VariableToken
 from .expr_utils.node_checks import is_number
 from . import cpp_primitives as cpp
 from .expr_utils.equation_utils import contains_variable
-from .node_aux import get_variables_in_expr
+from .expr_utils.node_trafos import replace_node
+from .expr_utils.tree_walkers import transform_nodes
+from .node_aux import (
+    get_variables_in_expr,
+    expr2str_shiftidx,
+)
 from .variable_management import get_special_type
+from .variable_management import register_special_type
 
 
 def _check_variable(vartok, vardict):
@@ -450,6 +456,90 @@ def _assign_exprstr_to_scalar_var(vartok, exprstr, vardict, use_cpp_name, mark_a
         code += mark_var_as_read(vartok)
     code += cpp.statement(f"{cpp_varname} = {exprstr}")
     return code
+
+
+def _find_enclosing_loop(node):
+    curnode = node
+    while curnode is not None and not _is_loop(curnode):
+        curnode = curnode.parent
+    return curnode
+
+
+def _contains_any_of_vars(node, variables, skip_nodes=None, scan_indices=False):
+    skip_nodes = skip_nodes if skip_nodes is not None else []
+    for v in variables:
+        if contains_variable(node, v, skip_nodes, scan_indices):
+            return True
+    return False
+
+
+def _assign_exprstr_to_matrix2d(vartok, exprstr, vardict, node):
+
+    def return_fail():
+        if vardict.get(vartok, None) == "matrix2d":
+            raise TypeError(
+                "recipe contains contradicting definitions of "
+                + f"{vartok}, one where it can be interpreted "
+                + "as a matrix and another one where it cannot"
+            )
+        return False
+
+    if len(vartok.indices) != 2:
+        return return_fail()
+    if node is None:
+        return return_fail()
+    _check_variable(vartok, vardict)
+    indices = vartok.indices
+
+    tmp = _moveup_ptrassign(vartok, 0, node, limit_node=None, only_checkpoints=False)
+    if not _is_loop(tmp.parent):
+        return return_fail()
+    outer_loop = tmp.parent
+    tmp = _moveup_ptrassign(
+        vartok, 1, node, limit_node=outer_loop, only_checkpoints=False
+    )
+    if not _is_loop(tmp.parent):
+        return return_fail()
+    inner_loop = tmp.parent
+    # try to move it up even more
+    outer_loop2 = _moveup_ptrassign(
+        vartok, 1, inner_loop, limit_node=outer_loop, only_checkpoints=True
+    )
+
+    inner_loopvar = _get_loopvar(inner_loop)
+    outer_loopvar = _get_loopvar(outer_loop)
+    inner_start = _get_loop_start(inner_loop)
+    inner_stop = _get_loop_stop(inner_loop)
+    outer_start = _get_loop_start(outer_loop)
+    outer_stop = _get_loop_stop(outer_loop)
+
+    # for triangular matrices, find the real inner limits
+    real_inner_start = transform_nodes(
+        inner_start, replace_node, outer_loopvar, outer_start
+    )
+    real_inner_stop = transform_nodes(
+        inner_stop, replace_node, outer_loopvar, outer_stop
+    )
+    register_special_type(vartok, vardict, "Matrix2d")
+    varname = get_cpp_varname(vartok)
+    c = (
+        f"{varname}.init("
+        + ", ".join(
+            [
+                transform_nodes(outer_start, expr2str_shiftidx, vardict),
+                transform_nodes(outer_stop, expr2str_shiftidx, vardict),
+                transform_nodes(real_inner_start, expr2str_shiftidx, vardict),
+                transform_nodes(real_inner_stop, expr2str_shiftidx, vardict),
+            ]
+        )
+        + ")"
+    )
+    precode = cpp.statement(c)
+    outer_loop.append_precode(precode)
+
+    extvarname = get_cpp_extvarname(vartok, vardict)
+    assigncode = cpp.statement(f"{extvarname} = {exprstr}")
+    return assigncode
 
 
 def assign_exprstr_to_var(

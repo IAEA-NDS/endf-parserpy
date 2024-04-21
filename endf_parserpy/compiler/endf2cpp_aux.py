@@ -15,6 +15,7 @@ from .expr_utils.node_checks import is_number
 from . import cpp_primitives as cpp
 from .expr_utils.equation_utils import contains_variable
 from .node_aux import get_variables_in_expr
+from .variable_management import get_special_type
 
 
 def _check_variable(vartok, vardict):
@@ -204,10 +205,17 @@ def get_ptr_varname(vartok, i):
 
 def get_cpp_extvarname(vartok, vardict):
     varname = get_cpp_varname(vartok)
+    if len(vartok.indices) == 0:
+        return varname
+    idxstrs = []
     for i, idxtok in enumerate(vartok.indices):
-        idxstr = get_idxstr(vartok, i, vardict)
-        varname += f"[{idxstr}]"
-    return varname
+        idxstrs.append(get_idxstr(vartok, i, vardict))
+    special_type = get_special_type(vartok, vardict)
+    if special_type == "Matrix2d":
+        extvarname = varname + "(" + ",".join(idxstrs) + ")"
+    else:
+        extvarname = varname + "".join(f"[{s}]" for s in idxstrs)
+    return extvarname
 
 
 def get_idxstr(vartok, i, vardict):

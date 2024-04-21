@@ -179,7 +179,7 @@ def close_section():
 
 def get_cpp_objstr(tok):
     if isinstance(tok, VariableToken):
-        return get_cpp_varname(tok)
+        return get_cpp_extvarname(tok)
     elif is_number(tok):
         varname = str(tok)
         return varname

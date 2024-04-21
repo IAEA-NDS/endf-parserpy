@@ -3,13 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/19
+# Last modified:   2024/04/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from . import cpp_primitives as cpp
+from . import cpp_custom_classes
 
 
 def module_header():
@@ -216,10 +217,11 @@ def module_header():
                 return (this->startIndex <= index && index <= this->lastIndex);
             }
     };
-
-
     """
-    return cpp.indent_code(code, -4)
+    code = cpp.indent_code(code, -4)
+    code += cpp_custom_classes.matrix2d_definition_code
+    code += cpp_custom_classes.trimatrix2d_definition_code
+    return code
 
 
 def parsefun_header(fun_name):

@@ -391,7 +391,7 @@ def _moveup_ptrassign(vartok, idx, node, limit_node=None, only_checkpoints=True)
         if not _can_moveup_ptrassign(vartok, idxexpr, curnode, curnode.parent):
             break
         curnode = curnode.parent
-        if get_name(curnode) in ("list_loop", "for_loop"):
+        if _is_loop(curnode):
             checkpoint = curnode
     if only_checkpoints:
         return checkpoint

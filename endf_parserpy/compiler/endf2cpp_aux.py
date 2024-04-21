@@ -387,7 +387,7 @@ def _can_moveup_ptrassign(vartok, idxexpr, orig_node, dest_node):
     return True
 
 
-def _moveup_ptrassign(vartok, idx, node, limit_node=None):
+def _moveup_ptrassign(vartok, idx, node, limit_node=None, only_checkpoints=True):
     idxexpr = vartok.indices[idx]
     checkpoint = node
     curnode = node
@@ -398,7 +398,10 @@ def _moveup_ptrassign(vartok, idx, node, limit_node=None):
         curnode = curnode.parent
         if get_name(curnode) in ("list_loop", "for_loop"):
             checkpoint = curnode
-    return checkpoint
+    if only_checkpoints:
+        return checkpoint
+    else:
+        return curnode
 
 
 def _assign_exprstr_to_nested_vector(vartok, exprstr, vardict, node):

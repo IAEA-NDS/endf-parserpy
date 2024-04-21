@@ -351,12 +351,12 @@ def _get_loopvar(node):
 
 def _get_loop_start(node):
     node = _get_loop_head(node)
-    return get_child(node, "for_start")
+    return get_child(get_child(node, "for_start"), "expr")
 
 
 def _get_loop_stop(node):
     node = _get_loop_head(node)
-    return get_child(node, "for_stop")
+    return get_child(get_child(node, "for_stop"), "expr")
 
 
 def _get_loop_body(node):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/21
+# Last modified:   2024/04/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -12,11 +12,19 @@
 from ..tree_utils import get_child
 from .expr_utils.conversion import VariableToken
 from .expr_utils.node_checks import is_variable
-from .node_aux import get_variables_in_expr
 
 
-def register_var(vartok, dtype, vardict):
-    vardict[vartok] = dtype
+def register_var(vartok, dtype, special_type, vardict):
+    if vartok in vardict:
+        if vardict[vartok] != (dtype, special_type):
+            previous_dtype = vardict[vartok][0]
+            previous_special_type = vardict[vartok][1]
+            raise TypeError(
+                f"{vartok} was previously associated with "
+                + f"datatype ({previous_dtype}, {previous_special_type}) but "
+                + f"now should be associated with ({dtype}, {special_type})"
+            )
+    vardict[vartok] = (dtype, special_type)
 
 
 def unregister_var(vartok, vardict):
@@ -25,25 +33,22 @@ def unregister_var(vartok, vardict):
     del vardict[vartok]
 
 
-def register_special_type(vartok, vardict, special_type):
-    special_types = vardict.setdefault("__special_types", {})
-    special_types[vartok] = special_type
+def get_var_type(vartok, vardict):
+    pardict = find_parent_dict(vartok, vardict)
+    if pardict is None:
+        return None
+    return pardict[vartok]
 
 
-def get_special_type(vartok, vardict):
-    special_types = vardict.get("__special_types", {})
-    return special_types.get(vartok, None)
-
-
-def did_encounter_var(vartok, vardict):
-    while vartok not in vardict and "__up" in vardict:
-        vardict = vardict["__up"]
-    return vartok in vardict
-
-
-def count_not_encountered_vars(node, vardict):
-    varset = get_variables_in_expr(node)
-    return sum(not did_encounter_var(v, vardict) for v in varset)
+def find_parent_dict(vartok, vardict, fail=False):
+    d = vardict
+    while vartok not in d and "__up" in d:
+        d = d["__up"]
+    if vartok in d:
+        return d
+    if fail:
+        raise IndexError(f"{vartok} not found in vardict and parents")
+    return None
 
 
 def register_abbreviation(node, vardict):

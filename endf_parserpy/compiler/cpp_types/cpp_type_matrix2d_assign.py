@@ -1,0 +1,262 @@
+############################################################
+#
+# Author(s):       Georg Schnabel
+# Email:           g.schnabel@iaea.org
+# Creation date:   2024/04/22
+# Last modified:   2024/04/23
+# License:         MIT
+# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+#
+############################################################
+
+from lark.lexer import Token
+from ..expr_utils.tree_walkers import transform_nodes
+from ..expr_utils.conversion import VariableToken
+from ..expr_utils.node_trafos import replace_node
+from ..expr_utils.equation_utils import (
+    get_variables_in_expr,
+    contains_variable,
+)
+from .. import cpp_primitives as cpp
+from ..variable_management import (
+    register_var,
+    get_var_type,
+    find_parent_dict,
+)
+from .cpp_varaux import (
+    map_dtype,
+    check_variable,
+    is_loop,
+    get_loopvar,
+    get_loop_body,
+    get_loop_start,
+    get_loop_stop,
+    get_cpp_varname,
+    init_local_var_from_global_var,
+)
+from .cpp_varops_query import expr2str_shiftidx
+from .cpp_type_matrix2d_query import (
+    did_read_var,
+    assemble_extvarname,
+)
+
+
+def define_var(vartok, vardict, save_state=False):
+    pardict = find_parent_dict(vartok, vardict, fail=True)
+    dtype = map_dtype(pardict[vartok][0])
+    dtype = f"Matrix2d<{dtype}>"
+    varname = get_cpp_varname(vartok)
+    code = ""
+    if save_state:
+        code += init_local_var_from_global_var(varname, dtype)
+    else:
+        code += cpp.statement(f"{dtype} {varname}")
+    return code
+
+
+# from . import cpp_type_nested_vector_assign as debug_assign
+#
+# def debug_assign_wrap(vartok, indices, exprstr, dtype, vardict, node):
+#     assigncode = debug_assign.assign_exprstr_to_var(
+#         vartok, indices, exprstr, dtype, vardict, node
+#     )
+#     # debug
+#     if str(vartok) == "RV":
+#         assigncode += cpp.statement(
+#             f'std::cout << "{vartok} --- i: " << {indices[0]} '
+#             + f'<< " j: " << {indices[1]} << std::endl'
+#         )
+#     return assigncode
+
+
+def assign_exprstr_to_var(vartok, indices, exprstr, dtype, vardict, node):
+
+    def return_fail():
+        if vardict.get(vartok, None) == "matrix2d":
+            raise TypeError(
+                "recipe contains contradicting definitions of "
+                + f"{vartok}, one where it can be interpreted "
+                + "as a matrix and another one where it cannot"
+            )
+        return False
+
+    # sometimes things are defined piece-wise
+    # using several consecutive loops. In this
+    # case we give up on an array definition
+    # and fall back to a NestedVector
+    vartype = get_var_type(vartok, vardict)
+    if vartype is not None:
+        if vartype[0] == dtype and vartype[1] == "NestedVector":
+            return return_fail()
+
+    if len(vartok.indices) != 2 or node is None:
+        return return_fail()
+    check_variable(vartok, vardict)
+
+    curnode = node.parent
+    inner_loop = None
+    outer_loop = None
+    while curnode is not None:
+        if is_loop(curnode):
+            curloopvar = get_loopvar(curnode)
+            if any(contains_variable(idx, curloopvar) for idx in vartok.indices):
+                if inner_loop is None:
+                    inner_loop = curnode
+                elif outer_loop is None:
+                    outer_loop = curnode
+                    break
+        curnode = curnode.parent
+
+    if curnode is None:
+        # can happen if one index contains a number
+        # or a loop is missing in the recipe
+        return return_fail()
+
+    # ensure that vartok does not appear anywhere
+    # else in the nested loop
+    outer_body = get_loop_body(outer_loop)
+    if contains_variable(outer_body, vartok, skip_nodes=[node]):
+        return return_fail()
+
+    # ensure that indices of vartok do not appear
+    # in variable assignments in the loop body
+    # and are not
+    inner_body = get_loop_body(inner_loop)
+    for idx in vartok.indices:
+        vs = get_variables_in_expr(idx)
+        for v in vs:
+            # indices are not allowed to contain arrays
+            # (ragged arrays are not supported)
+            if len(v.indices) > 0:
+                return return_fail()
+            if contains_variable(outer_body, v, skip_nodes=[inner_loop]):
+                return return_fail()
+            if contains_variable(inner_body, v, skip_nodes=[node]):
+                return return_fail()
+
+    # now let the magic start
+    inner_loopvar = get_loopvar(inner_loop)
+    outer_loopvar = get_loopvar(outer_loop)
+    inner_start = get_loop_start(inner_loop)
+    inner_stop = get_loop_stop(inner_loop)
+    outer_start = get_loop_start(outer_loop)
+    outer_stop = get_loop_stop(outer_loop)
+
+    outer_lims = (outer_start, outer_stop)
+    inner_lims = (inner_start, inner_stop)
+
+    is_triagonal = False
+    is_lower = False
+    lims = (outer_lims, inner_lims)
+    lvars = (inner_loopvar, outer_loopvar)
+    depends = [False] * 2
+    for i in range(2):
+        curlims = lims[i]
+        depends[i] = False
+    for j, lim in enumerate(curlims):
+        vs = get_variables_in_expr(lim)
+        # ensure that no arrays are in the
+        # limits of the loop variable
+        if any(len(w.indices) > 0 for w in vs):
+            return return_fail()
+        if lvars[i] in vs:
+            depends[i] = True
+            is_triagonal = True
+            if i == 0:
+                is_lower = j == 0
+            else:
+                is_lower = j != 0
+
+    # we only allow full and triagonal matrices
+    num_depends = sum(depends)
+    if num_depends > 1:
+        return return_fail()
+
+    real_outer_start = transform_nodes(
+        outer_start, replace_node, inner_loopvar, inner_start
+    )
+    real_outer_stop = transform_nodes(
+        outer_stop, replace_node, inner_loopvar, inner_stop
+    )
+    real_inner_start = transform_nodes(
+        inner_start, replace_node, outer_loopvar, outer_start
+    )
+    real_inner_stop = transform_nodes(
+        inner_stop, replace_node, outer_loopvar, outer_stop
+    )
+
+    varname = get_cpp_varname(vartok)
+    c = (
+        f"{varname}.init("
+        + ", ".join(
+            [
+                transform_nodes(real_outer_start, expr2str_shiftidx, vardict),
+                transform_nodes(real_outer_stop, expr2str_shiftidx, vardict),
+                transform_nodes(real_inner_start, expr2str_shiftidx, vardict),
+                transform_nodes(real_inner_stop, expr2str_shiftidx, vardict),
+                f"{str(is_triagonal).lower()}",
+                f"{str(is_lower).lower()}",
+            ]
+        )
+        + ")"
+    )
+    precode = cpp.statement(c)
+    outer_loop.append_precode(precode)
+
+    extvarname = assemble_extvarname(varname, indices)
+    assigncode = cpp.statement(f"{extvarname} = {exprstr}")
+
+    register_var(vartok, dtype, "Matrix2d", vardict)
+    return assigncode
+
+
+def store_var_in_endf_dict2(vartok, vardict):
+    assert len(vartok.indices) == 2
+    # counter variables are not stored in the endf dictionary
+    if vardict[vartok] == "loopvartype":
+        return ""
+
+    src_varname = get_cpp_varname(vartok)
+    src_extvarname = assemble_extvarname(src_varname, ["cpp_i1", "cpp_i2"])
+    if len(vartok.indices) == 0:
+        assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')
+        code = cpp.pureif(did_read_var(vartok, vardict), assigncode)
+        return code
+
+    code = ""
+    for curlev in range(len(vartok.indices), 0, -1):
+        newcode = ""
+        if curlev < len(vartok.indices):
+            newcode += cpp.statement(
+                f"cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})] = py::dict()"
+            )
+            newcode += cpp.statement(
+                f"py::dict cpp_curdict{curlev} = cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})]"
+            )
+        else:
+            newcode = cpp.statement(
+                f"cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})] = {src_extvarname}"
+            )
+        newcode = newcode + code
+        if curlev == 2:
+            curstart = f"{src_varname}.get_col_start_index(cpp_i1)"
+            curstop = f"{src_varname}.get_col_last_index(cpp_i1)"
+        elif curlev == 1:
+            curstart = f"{src_varname}.get_row_start_index()"
+            curstop = f"{src_varname}.get_row_last_index()"
+
+        newcode = cpp.forloop(
+            f"int cpp_i{curlev} = {curstart}",
+            f"cpp_i{curlev} <= {curstop}",
+            f"cpp_i{curlev}++",
+            newcode,
+        )
+        code = newcode
+
+    assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = py::dict()', 4)
+    assigncode += cpp.statement(
+        f'py::dict cpp_curdict0 = cpp_current_dict["{vartok}"]', 4
+    )
+    assigncode += cpp.indent_code(newcode, 4)
+    code = cpp.pureif(did_read_var(vartok, vardict), assigncode)
+    return code

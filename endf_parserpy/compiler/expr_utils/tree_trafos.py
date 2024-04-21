@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/28
+# Last modified:   2024/04/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,7 +11,7 @@
 
 from .tree_walkers import transform_nodes
 
-
+from .node_checks import is_modulo
 from .node_trafos import (
     eliminate_subtraction,
     eliminate_minusexpr,

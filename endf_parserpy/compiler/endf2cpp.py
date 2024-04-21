@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/21
+# Last modified:   2024/04/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -15,14 +15,26 @@ from lark import Lark
 from ..tree_utils import get_child, get_name
 from ..endf_lark import endf_recipe_grammar
 from .expr_utils.conversion import VariableToken
+from .expr_utils.equation_utils import (
+    get_variables_in_expr,
+    get_varassign_from_expr,
+)
 from .expr_utils.tree_walkers import (
     transform_nodes,
     transform_nodes_inplace,
 )
-from .expr_utils.node_trafos import node2str, replace_node
+from .expr_utils.node_trafos import (
+    node2str,
+    replace_node,
+    node_contains_modulo,
+)
+from .expr_utils.exceptions import VariableMissingError
 from . import cpp_primitives as cpp
 from . import cpp_boilerplate
-from . import endf2cpp_aux as aux
+from .cpp_types import cpp_varops_query
+from .cpp_types import cpp_varops_assign
+from .cpp_types import cpp_varaux
+from .cpp_types.cpp_type_scalar_assign import init_readflag
 from .lookahead_management import (
     init_lookahead_counter,
     remove_lookahead_counter,
@@ -34,17 +46,18 @@ from .variable_management import (
     register_abbreviation,
     unregister_abbreviations,
     expand_abbreviation,
-    count_not_encountered_vars,
     register_var,
     unregister_var,
+    find_parent_dict,
+)
+from . import endf2cpp_aux as aux
+from .cpp_types.cpp_varops_query import (
+    expr2str_shiftidx,
+    logical_expr2cppstr,
 )
 from .node_aux import (
     simplify_expr_node,
     node_and_kids_to_ParseNode,
-    get_varassign_from_expr,
-    get_variables_in_expr,
-    expr2str_shiftidx,
-    logical_expr2cppstr,
 )
 from .node_checks import (
     is_expr,
@@ -63,6 +76,12 @@ from .node_checks import (
     is_if_clause,
     is_abbreviation,
 )
+from .expr_utils.exceptions import (
+    EquationSolveError,
+    ModuloEquationError,
+    MultipleVariableOccurrenceError,
+    SeveralUnknownVariablesError,
+)
 
 
 def generate_vardefs(vardict, save_state=False):
@@ -70,7 +89,7 @@ def generate_vardefs(vardict, save_state=False):
     for vartok, dtype in vardict.items():
         if vartok.startswith("__"):
             continue
-        code += aux.define_var(vartok, dtype, vardict, save_state=save_state)
+        code += cpp_varops_assign.define_var(vartok, vardict, save_state=save_state)
     return code
 
 
@@ -79,7 +98,8 @@ def generate_endf_dict_assignments(vardict):
     for vartok in vardict:
         if vartok.startswith("__"):
             continue
-        code += aux.store_var_in_endf_dict2(vartok, vardict)
+        if not vartok.cpp_namespace:
+            code += cpp_varops_assign.store_var_in_endf_dict2(vartok, vardict)
     return code
 
 
@@ -94,7 +114,7 @@ def generate_mark_vars_as_unread(vardict, prefix=""):
         # at the cpp level.
         if vardict[vartok] == "loopvartype":
             continue
-        code += aux.mark_var_as_unread(vartok, prefix)
+        code += cpp_varops_assign.mark_var_as_unread(vartok, prefix)
         unregister_var(vartok, vardict)
     return code
 
@@ -105,29 +125,36 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
     parsetree = parser.parse(endf_recipe)
     parsetree = transform_nodes(parsetree, simplify_expr_node)
     parsetree = transform_nodes_inplace(parsetree, node_and_kids_to_ParseNode)
+
+    vardict = {}
+
+    ctrl_code = ""
     var_mat = VariableToken(Token("VARNAME", "MAT"))
     var_mf = VariableToken(Token("VARNAME", "MF"))
     var_mt = VariableToken(Token("VARNAME", "MT"))
-    vardict = {var_mat: int, var_mf: int, var_mt: int}
+    ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
+    ctrl_code += aux.read_line()
+    ctrl_code += cpp_varops_assign.assign_exprstr_to_var(
+        var_mat, "std::stoi(cpp_line.substr(66, 4))", int, vardict
+    )
+    ctrl_code += cpp_varops_assign.assign_exprstr_to_var(
+        var_mf, "std::stoi(cpp_line.substr(70, 2))", int, vardict
+    )
+    ctrl_code += cpp_varops_assign.assign_exprstr_to_var(
+        var_mt, "std::stoi(cpp_line.substr(72, 3))", int, vardict
+    )
+    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mat, vardict)
+    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mf, vardict)
+    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mt, vardict)
+    ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
 
     code = generate_code_from_parsetree(parsetree, vardict)
 
+    # must be after traversing the tree because assign_exprstr_to_var
+    # populates vardict and type info therein
     vardefs = generate_vardefs(vardict)
-    ctrl_code = cpp.statement("std::streampos cpp_startpos = cont.tellg()")
-    ctrl_code += aux.read_line()
-    ctrl_code += aux.assign_exprstr_to_var(
-        var_mat, "std::stoi(cpp_line.substr(66, 4))", vardict
-    )
-    ctrl_code += aux.assign_exprstr_to_var(
-        var_mf, "std::stoi(cpp_line.substr(70, 2))", vardict
-    )
-    ctrl_code += aux.assign_exprstr_to_var(
-        var_mt, "std::stoi(cpp_line.substr(72, 3))", vardict
-    )
-    ctrl_code += aux.store_var_in_endf_dict(var_mat, vardict)
-    ctrl_code += aux.store_var_in_endf_dict(var_mf, vardict)
-    ctrl_code += aux.store_var_in_endf_dict(var_mt, vardict)
-    ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
+
+    # print_mfmt_info = cpp.statement('std::cout << var_MF_0d << " --- " << var_MT_0d << std::endl')
 
     fun_header = cpp_boilerplate.parsefun_header(name)
     fun_footer = cpp.indent_code(generate_endf_dict_assignments(vardict), 4)
@@ -343,21 +370,35 @@ def _generate_code_for_varassign(
 ):
     try:
         vartok, expr = get_varassign_from_expr(vartok, node, vardict)
-    except Exception as exc:
+    except ModuloEquationError as exc:
+        if not throw_cpp:
+            raise exc
+        special_type = "Scalar" if len(vartok.indices) == 0 else "NestedVector"
+        register_var(vartok, dtype, special_type, vardict)
         exprstr = transform_nodes(node, node2str)
-        errmsg = (
-            f"except for {vartok}, all variables appearing "
-            + "in the recipe field expression are available but not able "
-            + f"to solve the equation {exprstr}==value for {vartok}"
+        return cpp.throw_runtime_error(
+            f"The equation {exprstr}==value cannot be solved "
+            + f"for {vartok} because the modulo operator is not "
+            + "supported."
         )
-        if throw_cpp:
-            return cpp.throw_runtime_error(errmsg)
-        raise exc
+    except MultipleVariableOccurrenceError as exc:
+        if not throw_cpp:
+            raise exc
+        special_type = "Scalar" if len(vartok.indices) == 0 else "NestedVector"
+        register_var(vartok, dtype, special_type, vardict)
+        exprstr = transform_nodes(node, node2str)
+        return cpp.throw_runtime_error(
+            f"The equation {exprstr}==value cannot be solved "
+            + f"for {vartok} because this variable could not "
+            + "be isolated."
+        )
 
     cpp_val_tok = Token("VARIABLE", "cpp_val")
     code = ""
     if expr == cpp_val_tok:
-        code += aux.assign_exprstr_to_var(vartok, valcode, vardict, node=node)
+        code += cpp_varops_assign.assign_exprstr_to_var(
+            vartok, valcode, dtype, vardict, node=node
+        )
     else:
         if dtype == float:
             cpp_newval_tok = Token("VARNAME", "cpp_float_val")
@@ -367,73 +408,96 @@ def _generate_code_for_varassign(
             cpp_newval_tok = Token("VARNAME", "cpp_intvec")
         else:
             raise NotImplementedError(f"unknown node type {dtype}")
-        cpp_newval_tok = VariableToken(cpp_newval_tok)
+        cpp_newval_tok = VariableToken(cpp_newval_tok, cpp_namespace=True)
         expr = transform_nodes(expr, replace_node, cpp_val_tok, cpp_newval_tok)
-        code += aux.assign_exprstr_to_var(
+        code += cpp_varops_assign.assign_exprstr_to_var(
             cpp_newval_tok,
             valcode,
+            dtype,
             vardict,
-            use_cpp_name=False,
-            mark_as_read=False,
             node=node,
         )
         exprstr = transform_nodes(
             expr, expr2str_shiftidx, vardict, rawvars=(cpp_newval_tok,)
         )
-        code += aux.assign_exprstr_to_var(vartok, exprstr, vardict, node=node)
-
-    register_var(vartok, dtype, vardict)
+        code += cpp_varops_assign.assign_exprstr_to_var(
+            vartok, exprstr, dtype, vardict, node=node
+        )
     return code
 
 
 def generate_code_for_varassign(
-    node, vardict, valcode, dtype, throw_cpp=False, noassign_code=""
+    node, vardict, valcode, dtype, noassign_code="", throw_cpp=False
 ):
     code = ""
     node = transform_nodes_inplace(node, expand_abbreviation, vardict)
+    exprstr = transform_nodes(node, node2str)
     variables = get_variables_in_expr(node)
-    if count_not_encountered_vars(node, vardict) > 1:
-        raise IndexError("more than one unencountered variables")
+
     if len(variables) == 0:
         # NOTE: consistency checking could be done here
         return noassign_code
 
-    exprstr = transform_nodes(node, node2str)
+    if aux.count_not_encountered_vars(node, vardict) > 1:
+        raise SeveralUnknownVariablesError(
+            f"more than one unencountered variables in {exprstr}"
+        )
 
-    # acceleration: skip read check for arrays that
-    # do appear solo, i.e. not in arithmetic expressions
-    if len(variables) == 1:
-        vartok = tuple(variables)[0]
-        if len(vartok.indices) > 0:
-            code += _generate_code_for_varassign(
-                vartok, node, vardict, valcode, dtype, throw_cpp=throw_cpp
-            )
-            return code
+    # acceleration/line reduction: skip read check for
+    # solo arrays, i.e. not appearing in a slot with other vars,
+    # if len(variables) == 1:
+    #     vartok = tuple(variables)[0]
+    #     code += _generate_code_for_varassign(
+    #         vartok, node, vardict, valcode, dtype
+    #     )
+    #     return code
 
-    code = cpp.conditional_branches(
-        conditions=[aux.did_not_read_var(v, vardict, v.indices) for v in variables],
-        codes=[
-            cpp.concat(
-                [
-                    cpp.pureif(
-                        condition=aux.any_unread_vars(
-                            variables.difference((v,)), vardict
-                        ),
-                        code=cpp.throw_runtime_error(
-                            "some of the required variables "
-                            + f"""{", ".join(variables.difference((v,)))} """
-                            + f"to solve the equation {exprstr}=val "
-                            + f"for variable {v} are missing"
-                        ),
-                    ),
-                    _generate_code_for_varassign(
-                        v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
-                    ),
-                ]
+    # only try to solve for variables for which all remaining variables
+    # have appeared before in recipe logic
+
+    for v in variables:
+        other_vars = variables.difference((v,))
+        some_other_unavail = any(
+            find_parent_dict(w, vardict) is None for w in other_vars
+        )
+        if some_other_unavail:
+            continue
+        if cpp_varops_query.need_read_check(v, vardict, v.indices):
+            code += cpp.pureif(
+                condition=aux.did_not_read_var(v, vardict, v.indices),
+                code=_generate_code_for_varassign(
+                    v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
+                ),
             )
-            for v in variables
-        ],
-    )
+        else:
+            code = _generate_code_for_varassign(
+                v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
+            )
+
+    # code = cpp.conditional_branches(
+    #     conditions=[aux.did_not_read_var(v, vardict, v.indices) for v in variables],
+    #     codes=[
+    #         cpp.concat(
+    #             [
+    #                 cpp.pureif(
+    #                     condition=aux.any_unread_vars(
+    #                         variables.difference((v,)), vardict
+    #                     ),
+    #                     code=cpp.throw_runtime_error(
+    #                         "some of the required variables "
+    #                         + f"""{", ".join(variables.difference((v,)))} """
+    #                         + f"to solve the equation {exprstr}=val "
+    #                         + f"for variable {v} are missing"
+    #                     ),
+    #                 ),
+    #                 _generate_code_for_varassign(
+    #                     v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
+    #                 ),
+    #             ]
+    #         )
+    #         for v in variables
+    #     ],
+    # )
     return code
 
 
@@ -457,12 +521,15 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
             code += generate_code_for_varassign(
                 child, vardict, valcode, dtype, throw_cpp=throw_cpp
             )
-        except Exception as exc:
+        except (ModuloEquationError, MultipleVariableOccurrenceError) as exc:
+            indexed_children.append(indexed_child)
+            num_failures += 1
+            if num_failures > 15:
+                throw_cpp = True
+        except SeveralUnknownVariablesError as exc:
             indexed_children.append(indexed_child)
             num_failures += 1
             if num_failures > 10:
-                throw_cpp = True
-            elif throw_cpp:
                 raise exc
     return code
 
@@ -488,7 +555,6 @@ def generate_code_for_text(node, vardict):
         length = int(txtlen) if txtlen is not None else 66
         vartok = VariableToken(v)
         dtype = str
-        register_var(vartok, dtype, vardict)
         valcode = aux.get_text_field(vartok, ofs, length, vardict)
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         ofs += length
@@ -666,10 +732,10 @@ def _generate_code_for_loop(
     start_expr_str = transform_nodes(start_expr_node, expr2str_shiftidx, vardict)
     stop_expr_str = transform_nodes(stop_expr_node, expr2str_shiftidx, vardict)
     loopvar = VariableToken(loopvar_node)
-    cpp_loopvar = aux.get_cpp_varname(loopvar)
+    cpp_loopvar = cpp_varops_query.get_cpp_varname(loopvar)
     if loopvar in vardict:
         raise TypeError(f"variable {loopvar} already declared")
-    register_var(loopvar, "loopvartype", vardict)
+    register_var(loopvar, "loopvartype", "Scalar", vardict)
 
     code = cpp.indent_code(
         rf"""
@@ -678,7 +744,7 @@ def _generate_code_for_loop(
     """,
         -4,
     )
-    code += cpp.indent_code(aux.init_readflag(loopvar, val=True), 4)
+    code += cpp.indent_code(init_readflag(loopvar, val=True), 4)
     body_code = parsefun(for_body, vardict)
     code += cpp.indent_code(body_code, 4)
     code += "}\n"
@@ -720,12 +786,14 @@ def generate_master_parsefun(name, recipefuns):
     conditions = []
     statements = []
     for mf, mfdic in recipefuns.items():
+        # if mf == 2:
+        #     continue  # debug
         if isinstance(mfdic, str):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic
             conditions.append(f"mf == {mf}")
             curstat = cpp.statement("cont.seekg(curpos)")
-            curstat += aux.dict_assign(
+            curstat += cpp_varaux.dict_assign(
                 "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont)"
             )
             statements.append(curstat)
@@ -740,7 +808,7 @@ def generate_master_parsefun(name, recipefuns):
             if mt == 0 and mt == 0:
                 curcond = cpp.logical_and([curcond, "is_firstline"])
             curstat = cpp.statement("cont.seekg(curpos)")
-            curstat += aux.dict_assign(
+            curstat += cpp_varaux.dict_assign(
                 "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont)"
             )
             statements.append(curstat)
@@ -782,7 +850,7 @@ def generate_cpp_module_code(recipes):
     recipefuns = {}
     for mf, mt_recipes in recipes.items():
         if isinstance(mt_recipes, str):
-            print(mf)
+            print(f"MF: {mf}")
             func_name = _mf_mt_parsefun_name(mf, None)
             func_names.append(func_name)
             recipe = mt_recipes
@@ -790,7 +858,7 @@ def generate_cpp_module_code(recipes):
             recipefuns[mf] = func_name
             continue
         for mt, recipe in mt_recipes.items():
-            print((mf, mt))
+            print(f"MF: {mf} MT: {mt}")
             func_name = _mf_mt_parsefun_name(mf, mt)
             func_names.append(func_name)
             parsefuns_code += generate_cpp_parsefun(func_name + "_istream", recipe)

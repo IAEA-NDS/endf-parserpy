@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/21
+# Last modified:   2024/04/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -220,7 +220,6 @@ def module_header():
     """
     code = cpp.indent_code(code, -4)
     code += cpp_custom_classes.matrix2d_definition_code
-    code += cpp_custom_classes.trimatrix2d_definition_code
     return code
 
 
@@ -234,7 +233,6 @@ def parsefun_header(fun_name):
         py::dict cpp_current_dict;
         py::dict cpp_workdict;
         int cpp_idxnum;
-        int cpp_int_val;
         std::string cpp_line;
         double cpp_float_val;
     """,

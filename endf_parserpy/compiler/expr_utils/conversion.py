@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/28
+# Last modified:   2024/04/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -15,10 +15,12 @@ from .tree_walkers import transform_nodes
 
 
 class VariableToken(Token):
-    def __new__(cls, node):
+    def __new__(cls, node, cpp_namespace=False):
         if isinstance(node, Token) and node.type in ("INDEXVAR", "VARNAME"):
             inst = super().__new__(cls, "VARIABLE", node.value)
+            inst.extvarname = str(node)
             inst.indices = tuple()
+            inst.cpp_namespace = cpp_namespace
             return inst
 
         if not isinstance(node, Tree) or node.data != "extvarname":
@@ -40,10 +42,11 @@ class VariableToken(Token):
         inst = super().__new__(cls, "VARIABLE", varname)
         inst.extvarname = varname_str
         inst.indices = tuple(idxquants)
+        inst.cpp_namespace = cpp_namespace
         return inst
 
     def __hash__(self):
-        return hash((str(self), len(self.indices)))
+        return hash((str(self), len(self.indices), self.cpp_namespace))
 
 
 def _simplify_token(token):

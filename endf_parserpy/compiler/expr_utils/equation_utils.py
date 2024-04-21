@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/20
+# Last modified:   2024/04/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,16 +11,29 @@
 
 from lark.tree import Tree
 from lark.lexer import Token
+from .conversion import VariableToken
 from .tree_walkers import transform_nodes
-from .node_checks import is_addition, is_multiplication
+from .node_checks import (
+    is_addition,
+    is_multiplication,
+    is_variable,
+    is_expr,
+)
 from .node_trafos import (
     eliminate_subtraction,
     eliminate_minusexpr,
     flatten_multiplication,
     flatten_addition,
     extract_factor,
+    node_contains_modulo,
 )
 from .tree_trafos import normalize_exprtree, simplify_for_readability
+from .exceptions import (
+    EquationSolveError,
+    ModuloEquationError,
+    MultipleVariableOccurrenceError,
+    VariableMissingError,
+)
 
 
 def contains_variable(node, vartok, skip_nodes=None):
@@ -30,6 +43,17 @@ def contains_variable(node, vartok, skip_nodes=None):
     if isinstance(node, Token):
         return node == vartok
     return any(contains_variable(c, vartok, skip_nodes) for c in node.children)
+
+
+def get_variables_in_expr(node):
+    if is_variable(node):
+        return set((node,))
+    varset = set()
+    if isinstance(node, Tree):
+        for child in node.children:
+            curset = get_variables_in_expr(child)
+            varset.update(curset)
+    return varset
 
 
 def _move_constants_to_rhs(lhs, rhs, vartok):
@@ -59,7 +83,7 @@ def _move_constfact_to_rhs(lhs, rhs, vartok):
     if not is_multiplication(lhs):
         if lhs == vartok:
             return lhs, rhs
-        raise TypeError(f"lhs does not contain {vartok}")
+        raise VariableMissingError(f"lhs does not contain {vartok}")
 
     const_factors = []
     var_factors = []
@@ -70,7 +94,9 @@ def _move_constfact_to_rhs(lhs, rhs, vartok):
             var_factors.append(child)
 
     if len(var_factors) != 1:
-        raise TypeError(f"variable {vartok} expected to appear exactly once")
+        raise MultipleVariableOccurrenceError(
+            f"variable {vartok} expected to appear exactly once"
+        )
     else:
         rhs_divisor = Tree("multiplication", const_factors)
 
@@ -80,6 +106,10 @@ def _move_constfact_to_rhs(lhs, rhs, vartok):
 
 
 def solve_equation(lhs, rhs, vartok):
+    modulo_on_lhs = transform_nodes(lhs, node_contains_modulo)
+    modulo_on_rhs = transform_nodes(rhs, node_contains_modulo)
+    if modulo_on_lhs or modulo_on_rhs:
+        raise ModuloEquationError("equation contains modulo operator")
     new_lhs = normalize_exprtree(lhs)
     new_rhs = normalize_exprtree(rhs)
     new_lhs, new_rhs = _move_constants_to_rhs(new_lhs, new_rhs, vartok)
@@ -89,3 +119,14 @@ def solve_equation(lhs, rhs, vartok):
     new_lhs = simplify_for_readability(new_lhs)
     new_rhs = simplify_for_readability(new_rhs)
     return new_lhs, new_rhs
+
+
+def get_varassign_from_expr(vartok, node, vardict):
+    if is_expr(node):
+        node = node.children[0]
+    elif not isinstance(node, VariableToken):
+        raise TypeError("expect `expr` node or VariableToken")
+    lhs = node
+    rhs = Token("VARIABLE", "cpp_val")
+    vartok, expr = solve_equation(lhs, rhs, vartok)
+    return vartok, expr

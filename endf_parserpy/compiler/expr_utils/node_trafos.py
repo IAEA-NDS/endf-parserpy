@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/29
+# Last modified:   2024/04/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -317,3 +317,11 @@ def node2str(node):
         raise TypeError(f"unknown node type `{node_name}`")
 
     return "(" + exprstr + ")"
+
+
+def node_contains_modulo(tree):
+    if is_modulo(tree):
+        return True
+    if not isinstance(tree, Tree):
+        return False
+    return any(tree.children)

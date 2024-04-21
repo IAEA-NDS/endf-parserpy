@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/20
+# Last modified:   2024/04/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -321,6 +321,48 @@ def any_unread_vars(vartoks, glob=False):
         return cpp.logical_or(did_not_read_var(v) for v in vartoks)
     else:
         return cpp.logical_or(did_not_read_var(v, v.indices) for v in vartoks)
+
+
+def _is_loop(node):
+    if node is None:
+        return False
+    node_name = get_name(node)
+    return node_name in ("for_loop", "list_loop")
+
+
+def _get_loop_head(node):
+    node_name = get_name(node)
+    if node_name == "for_loop":
+        return get_child(node, "for_head")
+    elif node_name == "list_loop":
+        return get_child(node, "list_for_head")
+    else:
+        NotImplementedError("node not recognized as loop node")
+
+
+def _get_loopvar(node):
+    node = _get_loop_head(node)
+    return VariableToken(get_child(node, "VARNAME"))
+
+
+def _get_loop_start(node):
+    node = _get_loop_head(node)
+    return get_child(node, "for_start")
+
+
+def _get_loop_stop(node):
+    node = _get_loop_head(node)
+    return get_child(node, "for_stop")
+
+
+def _get_loop_body(node):
+    node_name = get_name(node)
+    if node_name == "list_loop":
+        return get_child(node, "list_body")
+    elif node_name == "for_loop":
+        return get_child(node, "for_body")
+    else:
+        raise TypeError("not a loop node")
 
 
 def _can_moveup_ptrassign(vartok, idxexpr, orig_node, dest_node):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/12
+# Last modified:   2024/04/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -23,6 +23,11 @@ def unregister_var(vartok, vardict):
     if vartok.startswith("__"):
         raise TypeError("not a valid variable")
     del vardict[vartok]
+
+
+def register_special_type(vartok, vardict, special_type):
+    special_types = vardict.get("__special_types", {})
+    special_types[vartok] = special_type
 
 
 def did_encounter_var(vartok, vardict):

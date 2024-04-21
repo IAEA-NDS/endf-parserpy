@@ -177,23 +177,19 @@ def close_section():
     return code
 
 
-def get_cpp_objstr(tok, quote=False):
+def get_cpp_objstr(tok):
     if isinstance(tok, VariableToken):
-        return get_cpp_varname(tok, quote)
+        return get_cpp_varname(tok)
     elif is_number(tok):
         varname = str(tok)
-        if quote:
-            varname = '"' + varname + '"'
         return varname
     raise NotImplementedError("evil programmer, what did you do?")
 
 
-def get_cpp_varname(vartok, quote=False):
+def get_cpp_varname(vartok):
     if not isinstance(vartok, VariableToken):
         raise TypeError("expect vartok of type VariableToken")
     varname = f"var_{vartok}_{len(vartok.indices)}d"
-    if quote:
-        varname = '"' + varname + '"'
     return varname
 
 

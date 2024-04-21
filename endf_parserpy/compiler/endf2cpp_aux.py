@@ -375,13 +375,8 @@ def _can_moveup_ptrassign(vartok, idxexpr, orig_node, dest_node):
         if contains_variable(dest_node, v, skip_nodes=[orig_node]):
             return False
 
-    dest_node_name = get_name(dest_node)
-    if dest_node_name in ("list_loop", "for_loop"):
-        if dest_node_name == "list_loop":
-            loop_head = get_child(dest_node, "list_for_head")
-        elif dest_node_name == "for_loop":
-            loop_head = get_child(dest_node, "for_head")
-        loopvar = VariableToken(get_child(loop_head, "VARNAME"))
+    if _is_loop(dest_node):
+        loopvar = _get_loopvar(dest_node)
         if contains_variable(idxexpr, loopvar):
             return False
     return True

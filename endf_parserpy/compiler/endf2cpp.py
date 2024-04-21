@@ -70,7 +70,7 @@ def generate_vardefs(vardict, save_state=False):
     for vartok, dtype in vardict.items():
         if vartok.startswith("__"):
             continue
-        code += aux.define_var(vartok, dtype, save_state=save_state)
+        code += aux.define_var(vartok, dtype, vardict, save_state=save_state)
     return code
 
 

@@ -256,7 +256,7 @@ def _initialize_aux_read_vars(vartok, save_state=False):
     return code
 
 
-def define_var(vartok, dtype, save_state=False):
+def define_var(vartok, dtype, vardict, save_state=False):
     if dtype == float:
         dtype = "double"
     elif dtype == int:

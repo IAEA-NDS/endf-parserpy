@@ -401,7 +401,7 @@ def _moveup_ptrassign(vartok, idx, node, limit_node=None, only_checkpoints=True)
 
 def _assign_exprstr_to_nested_vector(vartok, exprstr, vardict, node):
     if len(vartok.indices) == 0:
-        return ""
+        return False
     _check_variable(vartok, vardict)
     code = ""
     cpp_varname = get_cpp_varname(vartok)
@@ -430,7 +430,7 @@ def _assign_exprstr_to_nested_vector(vartok, exprstr, vardict, node):
 
 def _assign_exprstr_to_scalar_var(vartok, exprstr, vardict, use_cpp_name, mark_as_read):
     if len(vartok.indices) > 0:
-        return ""
+        return False
     _check_variable(vartok, vardict)
     code = ""
     if use_cpp_name:
@@ -453,14 +453,14 @@ def assign_exprstr_to_var(
             raise NotImplementedError("mark_as_read=False only available for 1d var")
 
     code = cpp.comment(f"assign expression to variable {vartok}")
-    new_code = ""
-    if new_code == "":
+    new_code = False
+    if new_code is False:
         new_code = _assign_exprstr_to_scalar_var(
             vartok, exprstr, vardict, use_cpp_name, mark_as_read
         )
-    if new_code == "":
+    if new_code is False:
         new_code = _assign_exprstr_to_nested_vector(vartok, exprstr, vardict, node)
-    if new_code == "":
+    if new_code is False:
         raise NotImplementedError("no varassign function matches")
     code += new_code
     return code

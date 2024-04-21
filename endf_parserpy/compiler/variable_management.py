@@ -26,7 +26,7 @@ def unregister_var(vartok, vardict):
 
 
 def register_special_type(vartok, vardict, special_type):
-    special_types = vardict.get("__special_types", {})
+    special_types = vardict.setdefault("__special_types", {})
     special_types[vartok] = special_type
 
 

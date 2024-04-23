@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/12
-# Last modified:   2022/11/12
+# Last modified:   2024/04/23
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -127,7 +127,7 @@ for i=1 to NIS:
             [MAT,32,151/ 0.0, 0.0, IFG, LCOMP, NJS, ISR ]CONT
             if ISR > 0:
                 [MAT,32,151/ 0.0, 0.0, 0, 0, NJCH, (1+(NJCH-1)/6) /
-                    {{DAP[m,n]}{n=1 to NCH}}{m=1 to NCH} ] LIST
+                    {{DAP[m,n]}{n=1 to NJCH/NJS}}{m=1 to NJCH/NJS} ] LIST
             endif
             [MAT,32,151/ 0.0, 0.0, NPP, NJSX, 12*NPP, 2*NPP/
                 {MA[k], MB[k],  ZA[k],  ZB[k], IA[k], IB[k],

@@ -347,7 +347,7 @@ def generate_code_for_if_statement(node, vardict):
             ),
             indent=4,
         )
-        code += "}\n"
+        code += cpp.close_block()
     else:
         logical_expr_str = logical_expr2cppstr(if_head, vardict)
         code += cpp.pureif(
@@ -583,7 +583,7 @@ def generate_code_for_dir(node, vardict):
 
 
 def generate_code_for_tab1(node, vardict):
-    code = "\n// read TAB1 record\n"
+    code = cpp.comment("read TAB1 record")
     code += aux.read_line()
     tab1_fields = get_child(node, "tab1_fields")
     table_name = get_child(node, "table_name", nofail=True)
@@ -612,7 +612,7 @@ def generate_code_for_tab1(node, vardict):
 
 
 def generate_code_for_tab2(node, vardict):
-    code = "\n// read TAB2 record\n"
+    code = cpp.comment("read TAB2 record")
     code += aux.read_line()
     tab2_fields = get_child(node, "tab2_fields")
     table_name = get_child(node, "table_name", nofail=True)
@@ -710,7 +710,7 @@ def _generate_code_for_loop(
     code += cpp.indent_code(init_readflag(loopvar, val=True), 4)
     body_code = parsefun(for_body, vardict)
     code += cpp.indent_code(body_code, 4)
-    code += "}\n"
+    code += cpp.close_block()
     unregister_var(loopvar, vardict)
     # add code propagated upward from downstream nodes
     code = node.precode + code

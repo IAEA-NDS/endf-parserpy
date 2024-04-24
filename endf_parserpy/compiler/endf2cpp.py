@@ -103,22 +103,6 @@ def generate_endf_dict_assignments(vardict):
     return code
 
 
-def generate_mark_vars_as_unread(vardict, prefix=""):
-    code = cpp.comment("accept new variable state")
-    for vartok in tuple(vardict):
-        if vartok.startswith("__"):
-            continue
-        # loop variables are not read in from the file
-        # so even in lookahead we neither want to remove
-        # their type information nor mark them as unread
-        # at the cpp level.
-        if vardict[vartok] == "loopvartype":
-            continue
-        code += cpp_varops_assign.mark_var_as_unread(vartok, prefix)
-        unregister_var(vartok, vardict)
-    return code
-
-
 def generate_cpp_parsefun(name, endf_recipe, parser=None):
     if parser is None:
         parser = Lark(endf_recipe_grammar, start="endf_recipe", keep_all_tokens=True)

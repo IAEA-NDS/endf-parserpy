@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/23
+# Last modified:   2024/04/24
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -373,8 +373,6 @@ def _generate_code_for_varassign(
     except ModuloEquationError as exc:
         if not throw_cpp:
             raise exc
-        special_type = "Scalar" if len(vartok.indices) == 0 else "NestedVector"
-        register_var(vartok, dtype, special_type, vardict)
         exprstr = transform_nodes(node, node2str)
         return cpp.throw_runtime_error(
             f"The equation {exprstr}==value cannot be solved "

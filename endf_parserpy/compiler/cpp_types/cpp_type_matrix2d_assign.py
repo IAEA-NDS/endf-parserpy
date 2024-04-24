@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/04/23
+# Last modified:   2024/04/24
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -52,21 +52,6 @@ def define_var(vartok, vardict, save_state=False):
     else:
         code += cpp.statement(f"{dtype} {varname}")
     return code
-
-
-# from . import cpp_type_nested_vector_assign as debug_assign
-#
-# def debug_assign_wrap(vartok, indices, exprstr, dtype, vardict, node):
-#     assigncode = debug_assign.assign_exprstr_to_var(
-#         vartok, indices, exprstr, dtype, vardict, node
-#     )
-#     # debug
-#     if str(vartok) == "RV":
-#         assigncode += cpp.statement(
-#             f'std::cout << "{vartok} --- i: " << {indices[0]} '
-#             + f'<< " j: " << {indices[1]} << std::endl'
-#         )
-#     return assigncode
 
 
 def assign_exprstr_to_var(vartok, indices, exprstr, dtype, vardict, node):

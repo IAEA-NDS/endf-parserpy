@@ -441,18 +441,8 @@ def generate_code_for_varassign(
             f"more than one unencountered variables in {exprstr}"
         )
 
-    # acceleration/line reduction: skip read check for
-    # solo arrays, i.e. not appearing in a slot with other vars,
-    # if len(variables) == 1:
-    #     vartok = tuple(variables)[0]
-    #     code += _generate_code_for_varassign(
-    #         vartok, node, vardict, valcode, dtype
-    #     )
-    #     return code
-
     # only try to solve for variables for which all remaining variables
     # have appeared before in recipe logic
-
     for v in variables:
         other_vars = variables.difference((v,))
         some_other_unavail = any(
@@ -471,31 +461,6 @@ def generate_code_for_varassign(
             code = _generate_code_for_varassign(
                 v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
             )
-
-    # code = cpp.conditional_branches(
-    #     conditions=[aux.did_not_read_var(v, vardict, v.indices) for v in variables],
-    #     codes=[
-    #         cpp.concat(
-    #             [
-    #                 cpp.pureif(
-    #                     condition=aux.any_unread_vars(
-    #                         variables.difference((v,)), vardict
-    #                     ),
-    #                     code=cpp.throw_runtime_error(
-    #                         "some of the required variables "
-    #                         + f"""{", ".join(variables.difference((v,)))} """
-    #                         + f"to solve the equation {exprstr}=val "
-    #                         + f"for variable {v} are missing"
-    #                     ),
-    #                 ),
-    #                 _generate_code_for_varassign(
-    #                     v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
-    #                 ),
-    #             ]
-    #         )
-    #         for v in variables
-    #     ],
-    # )
     return code
 
 
@@ -784,8 +749,6 @@ def generate_master_parsefun(name, recipefuns):
     conditions = []
     statements = []
     for mf, mfdic in recipefuns.items():
-        # if mf == 2:
-        #     continue  # debug
         if isinstance(mfdic, str):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic

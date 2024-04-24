@@ -337,8 +337,8 @@ def generate_code_for_if_statement(node, vardict):
             ),
             indent=4,
         )
-        remove_lookahead_counter(vardict)
         if lookahead_option is not None:
+            remove_lookahead_counter(vardict)
             vardict = orig_vardict
         code += cpp.indent_code(
             code=cpp.pureif(

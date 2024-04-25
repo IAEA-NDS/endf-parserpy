@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/04/24
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -13,6 +13,7 @@ from lark.lexer import Token
 from ..expr_utils.tree_walkers import transform_nodes
 from ..expr_utils.conversion import VariableToken
 from ..expr_utils.node_trafos import replace_node
+from ..expr_utils.node_checks import is_variable, is_number
 from ..expr_utils.equation_utils import (
     get_variables_in_expr,
     contains_variable,
@@ -65,18 +66,21 @@ def assign_exprstr_to_var(vartok, indices, exprstr, dtype, vardict, node):
             )
         return False
 
-    # sometimes things are defined piece-wise
-    # using several consecutive loops. In this
-    # case we give up on an array definition
-    # and fall back to a NestedVector
-    vartype = get_var_type(vartok, vardict)
-    if vartype is not None:
-        if vartype[0] == dtype and vartype[1] == "NestedVector":
-            return return_fail()
-
     if len(vartok.indices) != 2 or node is None:
         return return_fail()
     check_variable(vartok, vardict)
+
+    # ensure that indices contain only
+    # a single number or a single (non-array) variable
+    if not all(is_variable(v) or is_number(v) for v in vartok.indices):
+        return return_fail()
+
+    # sometimes things are defined piece-wise
+    # using several consecutive loops.
+    # In this case we give up on an array definition here.
+    vartype = get_var_type(vartok, vardict)
+    if vartype is not None:
+        return return_fail()
 
     curnode = node.parent
     inner_loop = None
@@ -105,7 +109,6 @@ def assign_exprstr_to_var(vartok, indices, exprstr, dtype, vardict, node):
 
     # ensure that indices of vartok do not appear
     # in variable assignments in the loop body
-    # and are not
     inner_body = get_loop_body(inner_loop)
     for idx in vartok.indices:
         vs = get_variables_in_expr(idx)
@@ -170,15 +173,24 @@ def assign_exprstr_to_var(vartok, indices, exprstr, dtype, vardict, node):
         inner_stop, replace_node, outer_loopvar, outer_stop
     )
 
+    # it may be that the outer loop variable appears as second
+    # index and in that case we need to switch variables
+    if vartok.indices[0] == outer_loopvar and vartok.indices[1] == inner_loopvar:
+        first_idx_range = (real_outer_start, real_outer_stop)
+        second_idx_range = (real_inner_start, real_inner_stop)
+    if vartok.indices[0] == inner_loopvar and vartok.indices[1] == outer_loopvar:
+        first_idx_range = (real_inner_start, real_inner_stop)
+        second_idx_range = (real_outer_start, real_outer_stop)
+
     varname = get_cpp_varname(vartok)
     c = (
         f"{varname}.init("
         + ", ".join(
             [
-                transform_nodes(real_outer_start, expr2str_shiftidx, vardict),
-                transform_nodes(real_outer_stop, expr2str_shiftidx, vardict),
-                transform_nodes(real_inner_start, expr2str_shiftidx, vardict),
-                transform_nodes(real_inner_stop, expr2str_shiftidx, vardict),
+                transform_nodes(first_idx_range[0], expr2str_shiftidx, vardict),
+                transform_nodes(first_idx_range[1], expr2str_shiftidx, vardict),
+                transform_nodes(second_idx_range[0], expr2str_shiftidx, vardict),
+                transform_nodes(second_idx_range[1], expr2str_shiftidx, vardict),
                 f"{str(is_triagonal).lower()}",
                 f"{str(is_lower).lower()}",
             ]

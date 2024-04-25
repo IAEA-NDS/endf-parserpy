@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 import logging
-from .tree_utils import reconstruct_tree_str
+from endf_parserpy.utils.tree_utils import reconstruct_tree_str
 
 
 def write_info(message, ofs=None):

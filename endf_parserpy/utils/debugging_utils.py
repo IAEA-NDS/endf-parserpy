@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2024/02/19
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from collections.abc import MutableMapping
-from .math_utils import math_allclose
+from endf_parserpy.utils.math_utils import math_allclose
 
 
 def smart_is_equal(x, y, atol=1e-8, rtol=1e-6):

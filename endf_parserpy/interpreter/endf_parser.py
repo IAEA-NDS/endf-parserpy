@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/14
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -15,7 +15,13 @@ import re
 from .logging_utils import write_info, RingBuffer
 from appdirs import user_cache_dir
 from os.path import exists as file_exists
-from .tree_utils import is_tree, get_child, get_child_value, retrieve_value
+from endf_parserpy.utils.tree_utils import (
+    is_tree,
+    get_child,
+    get_child_value,
+    retrieve_value,
+)
+from endf_parserpy.utils.accessories import EndfDict, EndfPath
 from .endf_mappings import (
     map_cont_dic,
     map_head_dic,
@@ -77,9 +83,8 @@ from .endf_recipe_utils import (
     get_responsible_recipe_parsetree,
     get_responsible_recipe_parsefun,
 )
-from .endf_recipes import endf_recipe_dictionary
-from .debugging_utils import TrackingDict
-from .accessories import EndfDict, EndfPath
+from endf_parserpy.endf_recipes import endf_recipe_dictionary
+from endf_parserpy.utils.debugging_utils import TrackingDict
 
 
 class EndfParser:

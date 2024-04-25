@@ -3,12 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2022/11/15
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
 ############################################################
-from .custom_exceptions import InvalidIntegerError
+
+from endf_parserpy.interpreter.custom_exceptions import InvalidIntegerError
 
 
 def math_isclose(x, y, rtol=1e-5, atol=1e-8):

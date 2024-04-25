@@ -9,7 +9,7 @@
 #
 ############################################################
 
-from endf_parserpy.tree_utils import (
+from endf_parserpy.utils.tree_utils import (
     get_name,
     get_child,
 )

@@ -3,13 +3,28 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/05/30
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
-from .tree_utils import is_tree, get_name, get_value, is_token, get_child, get_value
+from endf_parserpy.utils.tree_utils import (
+    is_tree,
+    get_name,
+    get_value,
+    is_token,
+    get_child,
+    get_value,
+)
+from endf_parserpy.utils.math_utils import (
+    math_add,
+    math_sub,
+    math_mul,
+    math_div,
+    math_mod,
+    math_neg,
+)
 from .logging_utils import write_info
 from .custom_exceptions import (
     VariableInDenominatorError,
@@ -19,7 +34,6 @@ from .custom_exceptions import (
     InvalidIntegerError,
     SeveralUnboundVariablesError,
 )
-from .math_utils import math_add, math_sub, math_mul, math_div, math_mod, math_neg
 import re
 
 

@@ -3,12 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2024/01/26
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+from endf_parserpy.utils.tree_utils import is_token, get_name, search_name, get_value
+from endf_parserpy.utils.math_utils import math_allclose
 from .logging_utils import logging, abbreviate_valstr, should_skip_logging_info
 from .custom_exceptions import (
     NumberMismatchError,
@@ -28,8 +30,6 @@ from .endf_mapping_utils import (
     get_varval,
     generate_varname_str,
 )
-from .tree_utils import is_token, get_name, search_name, get_value
-from .math_utils import math_allclose
 
 
 # TODO: Need to refactor the error message stuff

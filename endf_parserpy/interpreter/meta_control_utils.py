@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/18
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 import traceback
-from .tree_utils import (
+from endf_parserpy.utils.tree_utils import (
     get_child,
     get_child_value,
     get_name,

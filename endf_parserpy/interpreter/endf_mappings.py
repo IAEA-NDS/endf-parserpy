@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2022/02/01
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from lark.lexer import Token
-from .tree_utils import is_tree, get_name, get_child, get_child_value
+from endf_parserpy.utils.tree_utils import is_tree, get_name, get_child, get_child_value
 from .meta_control_utils import cycle_for_loop, should_proceed
 from .meta_control_utils import open_section, close_section
 from .custom_exceptions import (
@@ -20,7 +20,7 @@ from .custom_exceptions import (
     UnconsumedListElementsError,
 )
 from .endf_mapping_core import map_record_helper, map_text_record_helper
-from .accessories import EndfPath
+from endf_parserpy.utils.accessories import EndfPath
 
 
 def check_ctrl_spec(record_line_node, record_dic, datadic, rwmode):

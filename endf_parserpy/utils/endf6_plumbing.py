@@ -9,7 +9,7 @@
 #
 ############################################################
 
-from .endf_utils import split_sections
+from endf_parserpy.interpreter.endf_utils import split_sections
 import re
 
 

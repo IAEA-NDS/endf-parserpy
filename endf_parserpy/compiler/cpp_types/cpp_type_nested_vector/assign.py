@@ -42,7 +42,7 @@ class Assign:
         num_indices = len(vartok.indices)
         ptr_vardefs = ""
         for i in range(num_indices):
-            dtype = "CustomVector<" + dtype + ">"
+            dtype = "NestedVector<" + dtype + ">"
             if i + 1 < num_indices:
                 cur_ptr_var = get_ptr_varname(vartok, num_indices - i - 2)
                 ptr_vardefs += cpp.statement(f"{dtype}* {cur_ptr_var}")

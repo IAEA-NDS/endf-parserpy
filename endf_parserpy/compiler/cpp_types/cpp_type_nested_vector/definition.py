@@ -12,22 +12,22 @@
 
 definition_code = """
 template<typename T>
-class CustomVector : public std::vector<T> {
+class NestedVector : public std::vector<T> {
     private:
         int startIndex;
         int lastIndex;
 
     public:
         // default constructor
-        CustomVector() : startIndex(0), lastIndex(-1) {}
+        NestedVector() : startIndex(0), lastIndex(-1) {}
 
         // copy constructor
-        CustomVector(const CustomVector<T>& other) :
+        NestedVector(const NestedVector<T>& other) :
             std::vector<T>(other), startIndex(other.startIndex),
             lastIndex(other.lastIndex) {}
 
         // assignment constructor
-        CustomVector<T>& operator=(const CustomVector<T>& other) {
+        NestedVector<T>& operator=(const NestedVector<T>& other) {
             if (this != &other) {
                 std::vector<T>::operator=(other);
                 startIndex = other.startIndex;

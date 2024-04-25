@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/04/23
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,22 +11,17 @@
 
 from lark.lexer import Token
 from lark.tree import Tree
-from ..expr_utils.conversion import VariableToken
-from ..expr_utils.node_trafos import node2str
-from ..expr_utils.node_checks import is_number
-from ..expr_utils.exceptions import VariableMissingError
-from ..variable_management import find_parent_dict
-from . import cpp_type_matrix2d_query as matrix2d_type_query
-from . import cpp_type_scalar_query as scalar_type_query
-from . import cpp_type_nested_vector_query as nested_vector_type_query
+from endf_parserpy.compiler.expr_utils.conversion import VariableToken
+from endf_parserpy.compiler.expr_utils.node_trafos import node2str
+from endf_parserpy.compiler.expr_utils.node_checks import is_number
+from endf_parserpy.compiler.expr_utils.exceptions import VariableMissingError
+from endf_parserpy.compiler.variable_management import find_parent_dict
 from .cpp_varaux import get_cpp_varname
-
-
-VARTYPES = {
-    "Matrix2d": matrix2d_type_query,
-    "NestedVector": nested_vector_type_query,
-    "Scalar": scalar_type_query,
-}
+from .cpp_type_information import (
+    get_query_modules,
+    get_assign_modules,
+    get_vartype_modules,
+)
 
 
 def need_read_check(vartok, vardict, indices=None):
@@ -50,7 +45,7 @@ def did_read_var(vartok, vardict, indices=None):
         idxstrs = []
         for i, idxtok in enumerate(vartok.indices):
             idxstrs.append(get_idxstr(vartok, i, vardict))
-    for query in VARTYPES.values():
+    for query in get_query_modules():
         if query.is_responsible(vartok, vardict):
             return query.did_read_var(vartok, vardict, idxstrs)
     raise TypeError(f"{vartok} has unknown type")
@@ -63,7 +58,7 @@ def get_cpp_extvarname(vartok, vardict):
     idxstrs = []
     for i, idxtok in enumerate(vartok.indices):
         idxstrs.append(get_idxstr(vartok, i, vardict))
-    for query in VARTYPES.values():
+    for query in get_query_modules():
         if query.is_responsible(vartok, vardict):
             return query.assemble_extvarname(varname, idxstrs)
     raise TypeError(f"{vartok} has unknown datatype")

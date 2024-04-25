@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/20
-# Last modified:   2024/04/23
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 
-matrix2d_definition_code = """
+definition_code = """
 template<typename T>
 class Matrix2d {
 

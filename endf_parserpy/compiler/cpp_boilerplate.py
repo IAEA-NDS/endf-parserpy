@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/23
+# Last modified:   2024/04/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from . import cpp_primitives as cpp
-from . import cpp_custom_classes
+from .cpp_types.cpp_type_information import get_vartype_definitions
 
 
 def module_header():
@@ -133,93 +133,10 @@ def module_header():
         }
         return res;
     }
-
-
-    template<typename T>
-    class CustomVector : public std::vector<T> {
-        private:
-            int startIndex;
-            int lastIndex;
-
-        public:
-            // default constructor
-            CustomVector() : startIndex(0), lastIndex(-1) {}
-
-            // copy constructor
-            CustomVector(const CustomVector<T>& other) :
-                std::vector<T>(other), startIndex(other.startIndex),
-                lastIndex(other.lastIndex) {}
-
-            // assignment constructor
-            CustomVector<T>& operator=(const CustomVector<T>& other) {
-                if (this != &other) {
-                    std::vector<T>::operator=(other);
-                    startIndex = other.startIndex;
-                    lastIndex = other.lastIndex;
-                }
-                return *this;
-            }
-
-            void set_start_index(int start) {
-                this->startIndex = start;
-            }
-
-            int get_start_index() {
-                return this->startIndex;
-            }
-
-            void set_last_index(int lastIndex) {
-                this->lastIndex = lastIndex;
-            }
-
-            int get_last_index() {
-                return this->lastIndex;
-            }
-
-            T& operator[](int index) {
-                if (! contains(index)) {
-                    throw std::out_of_range("index out of range 1");
-                }
-                return std::vector<T>::operator[](index - startIndex);
-            }
-
-            T& at(int index) {
-                return std::vector<T>::at(index - startIndex);
-            }
-
-            T* prepare(int index) {
-                if (contains(index)) return &((*this)[index]);
-                T cpp_curel;
-                set(index, cpp_curel);
-                return &(*this)[index];
-            }
-
-            void set(int index, const T& value) {
-                bool is_first = false;
-                if (this->lastIndex == -1) {
-                    this->startIndex = index;
-                    this->lastIndex = index;
-                    is_first = true;
-                }
-                if (index == startIndex + (int)this->size()) {
-                    std::vector<T>::push_back(value);
-                    if (! is_first) {
-                        this->lastIndex++;
-                    }
-                } else if (index >= startIndex && index < startIndex + (int)this->size())  {
-                    std::vector<T>::operator[](index - startIndex) = value;
-                } else {
-                    throw std::out_of_range("index out of range 2");
-                }
-            }
-
-            bool contains(int index) {
-                return (this->startIndex <= index && index <= this->lastIndex);
-            }
-    };
     """
     code = cpp.indent_code(code, -4)
-    code += cpp_custom_classes.matrix2d_definition_code
+    for vartype_definition in get_vartype_definitions():
+        code += vartype_definition
     return code
 
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/02/05
-# Last modified:   2024/04/25
+# Last modified:   2024/04/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -16,13 +16,13 @@ import platform
 from glob import glob
 import os
 from endf_parserpy.utils.accessories import EndfPath
-from .endf_parser import EndfParser
+from endf_parserpy.interpreter.endf_parser import EndfParser
 from endf_parserpy.utils.debugging_utils import compare_objects
-from .endf6_plumbing import (
+from endf_parserpy.utils.endf6_plumbing import (
     update_directory,
     insert_description,
 )
-from .user_tools import show_content
+from endf_parserpy.utils.user_tools import show_content
 
 
 os_name = platform.system()

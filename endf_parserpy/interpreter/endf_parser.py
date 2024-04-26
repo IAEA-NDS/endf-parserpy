@@ -83,7 +83,7 @@ from .endf_recipe_utils import (
     get_responsible_recipe_parsetree,
     get_responsible_recipe_parsefun,
 )
-from endf_parserpy.endf_recipes.endf6 import endf_recipe_dictionary
+from endf_parserpy.endf_recipes import get_recipe_dict
 from endf_parserpy.utils.debugging_utils import TrackingDict
 
 
@@ -120,6 +120,7 @@ class EndfParser:
         explain_missing_variable=True,
         cache_dir=None,
         print_cache_info=True,
+        endf_format="endf6",
         recipes=None,
         parsing_funs=None,
     ):
@@ -215,6 +216,9 @@ class EndfParser:
         print_cache_info : bool
             If `true`, print out a message regarding the location of the
             cache directory if it was automatically determined.
+        endf_format : str
+            Allow the user to pick specific ENDF format flavors.
+            The default `endf6` strictly follows the ENDF-6 formats manual.
         recipes : dict_like
             The default ENDF-6 recipes can be overrided by providing a
             nested dictionary with custom recipes. Inspect the default
@@ -235,7 +239,7 @@ class EndfParser:
                 )
 
         if recipes is None:
-            recipes = endf_recipe_dictionary
+            recipes = get_recipe_dict(endf_format)
         self.tree_dic = get_recipe_parsetree_dic(recipes, cache_dir)
         self.parsing_funs = parsing_funs if parsing_funs is not None else {}
 

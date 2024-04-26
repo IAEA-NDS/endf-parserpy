@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/02/17
+# Last modified:   2024/04/26
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -85,7 +85,7 @@ tab2_def : extvarname
 
 // LIST record
 list_line : "[" ctrl_spec "/" record_fields "/"  list_body  "]" "LIST" ("(" list_name ")")?
-list_body : (expr | list_loop | LINEPADDING | "," | NEWLINE)+
+list_body : (expr | list_loop | LINEPADDING | "," | NEWLINE)*
 list_name : extvarname
 LINEPADDING : "PADLINE"
 

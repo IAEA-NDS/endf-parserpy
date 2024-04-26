@@ -160,6 +160,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-s", "--strict", action="store_true", help="switch to enable strict mode"
     )
+    parser.add_argument(
+        "-f", "--format", type=str, default="endf6", help="ENDF format flavor"
+    )
 
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = True
@@ -231,6 +234,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     strict_mode = args.strict
+    endf_format = args.format
 
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
@@ -249,6 +253,7 @@ if __name__ == "__main__":
         ignore_send_records=False,
         ignore_missing_tpid=False,
         print_cache_info=print_cache_info,
+        endf_format=endf_format,
     )
 
     if args.subcommand == "validate":

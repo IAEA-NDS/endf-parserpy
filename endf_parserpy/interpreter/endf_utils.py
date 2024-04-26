@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/25
+# Last modified:   2024/04/26
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -277,7 +277,6 @@ def read_list(lines, ofs=0, with_ctrl=True, callback=None, **read_opts):
     NPL = dic["N1"]
     if NPL == 0:
         dic["vals"] = []
-        ofs += 1
     else:
         vals, ofs = read_endf_numbers(lines, NPL, ofs, **read_opts)
         dic["vals"] = vals

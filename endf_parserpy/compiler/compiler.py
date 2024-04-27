@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/23
-# Last modified:   2024/04/26
+# Last modified:   2024/04/27
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 import os
-from endf_parserpy.endf_recipes.endf6 import endf_recipe_dictionary
+from endf_parserpy.endf_recipes.endf6_ext import endf_recipe_dictionary
 from .endf2cpp import generate_cpp_module_code
 from .cpp_boilerplate import generate_cmake_content
 

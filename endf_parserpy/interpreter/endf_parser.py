@@ -120,7 +120,7 @@ class EndfParser:
         explain_missing_variable=True,
         cache_dir=None,
         print_cache_info=True,
-        endf_format="endf6",
+        endf_format="endf6-ext",
         recipes=None,
         parsing_funs=None,
     ):

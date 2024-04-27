@@ -1,8 +1,10 @@
+from .endf6_ext import endf_recipe_dictionary as endf6_ext_recipes
 from .endf6 import endf_recipe_dictionary as endf6_recipes
 from .jendl import endf_recipe_dictionary as jendl_recipes
 
 
 _FORMAT_DICT = {
+    "endf6-ext": endf6_ext_recipes,
     "endf6": endf6_recipes,
     "jendl": jendl_recipes,
 }

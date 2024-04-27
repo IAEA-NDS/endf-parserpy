@@ -26,27 +26,29 @@ if NST==0 [lookahead=1]:
         if LCON != 1:
             (discrete)
                 for i=1 to NER:
+                  (energysec[i])
                     # NT[i] == 4 seems to be JENDL speciic
-                    if NT[i] == 4 [lookahead=1]:
-                        [MAT, 8,457/ ER[i] , dER[i], 0, 0, NT[i], 0/
-                        RTYP[i] , TYPE[i] , RI[i] , dRI[i] ]LIST
-                    elif NT[i] == 6 [lookahead=1]:
-                        [MAT, 8,457/ ER[i] , dER[i], 0, 0, NT[i], 0/
-                        RTYP[i] , TYPE[i] , RI[i] , dRI[i],   RIS[i] , dRIS[i] ]LIST
-                    elif NT[i] == 8 [lookahead=1]:
-                        [MAT, 8,457/ ER[i] , dER[i], 0, 0, NT[i], 0/
-                        RTYP[i] , TYPE[i] , RI[i] , dRI[i],   RIS[i] , dRIS[i],
-                        RICC[i], dRICC[i] ]LIST
-                    # NT[i] == 10 seems to be JENDL specific
-                    elif NT[i] == 10 [lookahead=1]:
-                        [MAT, 8,457/ ER[i] , dER[i], 0, 0, NT[i], 0/
-                        RTYP[i] , TYPE[i] , RI[i] , dRI[i],   RIS[i] , dRIS[i] ,
-                        RICC[i] ,dRICC[i] , RICK[i],dRICK[i] ] LIST
-                    elif NT[i] == 12 [lookahead=1]:
-                        [MAT, 8,457/ ER[i] , dER[i], 0, 0, NT[i], 0/
-                        RTYP[i] , TYPE[i] , RI[i] , dRI[i],   RIS[i] , dRIS[i] ,
-                        RICC[i] ,dRICC[i] , RICK[i],dRICK[i], RICL[i] ,dRICL[i] ] LIST
+                    if NT == 4 [lookahead=1]:
+                        [MAT, 8,457/ ER , dER, 0, 0, NT, 0/
+                        RTYP , TYPE , RI , dRI ]LIST
+                    elif NT == 6 [lookahead=1]:
+                        [MAT, 8,457/ ER , dER, 0, 0, NT, 0/
+                        RTYP , TYPE , RI , dRI,   RIS , dRIS ]LIST
+                    elif NT == 8 [lookahead=1]:
+                        [MAT, 8,457/ ER , dER, 0, 0, NT, 0/
+                        RTYP , TYPE , RI , dRI,   RIS , dRIS,
+                        RICC, dRICC ]LIST
+                    # NT == 10 seems to be JENDL specific
+                    elif NT == 10 [lookahead=1]:
+                        [MAT, 8,457/ ER , dER, 0, 0, NT, 0/
+                        RTYP , TYPE , RI , dRI,   RIS , dRIS ,
+                        RICC ,dRICC , RICK,dRICK ] LIST
+                    elif NT == 12 [lookahead=1]:
+                        [MAT, 8,457/ ER , dER, 0, 0, NT, 0/
+                        RTYP , TYPE , RI , dRI,   RIS , dRIS ,
+                        RICC ,dRICC , RICK,dRICK, RICL ,dRICL ] LIST
                     endif
+                  (/energysec[i])
                 endfor
             (/discrete)
         endif
@@ -62,8 +64,10 @@ if NST==0 [lookahead=1]:
         endif
         if LCOV != 0 and LCOV != 1:
             (discrete)
+              (cov)
                 [MAT, 8,457/ 0.0, 0.0, LS, 5, NE, NERP/
                     {E[m]}{m=1 to NERP}, {{F[m,n]}{n=m to NERP-2}}{m=1 to NERP-2} ] LIST
+              (/cov)
             (/discrete)
         endif
     (/spectrum[k])

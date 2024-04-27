@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/26
+# Last modified:   2024/04/27
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -393,6 +393,10 @@ class EndfParser:
             idx += 1
 
     def process_stop_line(self, tree):
+        if self.rwmode == "read":
+            self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
+        else:
+            self.logbuffer.save_reduced_record_log(tree)
         stop_message = retrieve_value(tree, "STOP_MESSAGE")
         stop_message = stop_message if stop_message is not None else "stop instruction"
         raise StopException(stop_message)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/25
+# Last modified:   2024/04/27
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -200,7 +200,7 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
     elif name == "comparison":
         # we strip away brackets because the information they
         # encode has already been considered in the tree generation process,
-        # see grammar rule for "comparison" in endf_lark.py
+        # see grammar rule for "comparison" in endf_recipes/endf_lark_ebnf.py
         trimmed_children = [
             ch for ch in node.children if get_name(ch) not in ("LPAR", "RPAR")
         ]

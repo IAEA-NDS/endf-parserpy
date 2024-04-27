@@ -1,5 +1,5 @@
 from lark import Lark
-from endf_parserpy.endf_lark import endf_recipe_grammar
+from endf_parserpy.endf_recipes.endf_lark_ebnf import endf_recipe_grammar
 from endf_parserpy.utils.tree_utils import is_tree
 from hashlib import md5
 import os

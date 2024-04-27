@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/27
+# Last modified:   2024/04/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -34,7 +34,7 @@ from . import cpp_boilerplate
 from .cpp_types import cpp_varops_query
 from .cpp_types import cpp_varops_assign
 from .cpp_types import cpp_varaux
-from .cpp_types.cpp_type_scalar.aux import init_readflag
+from .cpp_types.cpp_type_scalar.auxiliary import init_readflag
 from .lookahead_management import (
     init_lookahead_counter,
     remove_lookahead_counter,

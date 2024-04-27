@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/25
+# Last modified:   2024/04/27
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -143,58 +143,51 @@ def module_header():
 def parsefun_header(fun_name):
     code = cpp.indent_code(
         rf"""
-    py::dict {fun_name}(std::istream& cont) {{
-        std::vector<int> cpp_intvec;
-        std::vector<double> cpp_floatvec;
-        py::dict cpp_parent_dict;
-        py::dict cpp_current_dict;
-        py::dict cpp_workdict;
-        int cpp_idxnum;
-        std::string cpp_line;
-        double cpp_float_val;
-    """,
-        -4,
+        py::dict {fun_name}(std::istream& cont) {{
+            std::vector<int> cpp_intvec;
+            std::vector<double> cpp_floatvec;
+            py::dict cpp_parent_dict;
+            py::dict cpp_current_dict;
+            py::dict cpp_workdict;
+            int cpp_idxnum;
+            std::string cpp_line;
+            double cpp_float_val;
+        """,
+        -8,
     )
     return code
 
 
 def parsefun_footer():
-    code = cpp.indent_code(
-        """
-        return cpp_current_dict;
-    }
-    """,
-        -4,
-    )
+    code = cpp.statement("return cpp_current_dict", 4)
+    code += cpp.close_block()
     return code
 
 
-def register_cpp_parsefuns(parsefuns):
-    code = "\n\nPYBIND11_MODULE(cpp_parsefuns, m) {\n"
+def register_cpp_parsefuns(parsefuns, module_name):
+    code = cpp.line("") + cpp.line("")
+    code += cpp.line(f"PYBIND11_MODULE({module_name}, m) {{")
     for parsefun in parsefuns:
-        curcode = f"""m.def("{parsefun}", &{parsefun}, "parsing function");\n"""
+        curcode = cpp.statement(f'm.def("{parsefun}", &{parsefun}, "parsing function")')
         code += cpp.indent_code(curcode, 4)
     code += "\n}"
     return code
 
 
-def generate_cmake_content():
+def generate_cmake_content(module_name):
     code = cpp.indent_code(
-        """
-    cmake_minimum_required(VERSION 3.12)
-    project(cpp_parsefuns)
+        f"""
+        cmake_minimum_required(VERSION 3.12)
+        project({module_name})
 
-    find_package(pybind11 REQUIRED)
+        find_package(pybind11 REQUIRED)
 
-    # Create the C++ executable
-    pybind11_add_module(cpp_parsefuns SHARED cpp_parsefuns.cpp)
+        # Create the C++ executable
+        pybind11_add_module({module_name} SHARED {module_name}.cpp)
 
-    add_compile_options(-O3)
-
-    # Link against Python libraries
-    # target_link_libraries(example PRIVATE Python::Python)
-    set_property(TARGET cpp_parsefuns PROPERTY CXX_STANDARD 11)
-    """,
-        -4,
+        add_compile_options(-O3)
+        set_property(TARGET {module_name} PROPERTY CXX_STANDARD 11)
+        """,
+        -8,
     )
     return code

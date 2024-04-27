@@ -788,7 +788,7 @@ def generate_cpp_parsefun_wrappers_file(parsefuns):
     return code
 
 
-def generate_cpp_module_code(recipes):
+def generate_cpp_module_code(recipes, module_name):
     module_header = cpp_boilerplate.module_header()
     parsefuns_code = ""
     func_names = []
@@ -814,7 +814,7 @@ def generate_cpp_module_code(recipes):
     parsefun_wrappers_code1 = generate_cpp_parsefun_wrappers_string(func_names)
     parsefun_wrappers_code2 = generate_cpp_parsefun_wrappers_file(func_names)
     func_names.append("parse_endf_file")
-    pybind_glue = cpp_boilerplate.register_cpp_parsefuns(func_names)
+    pybind_glue = cpp_boilerplate.register_cpp_parsefuns(func_names, module_name)
     code = (
         module_header
         + parsefuns_code

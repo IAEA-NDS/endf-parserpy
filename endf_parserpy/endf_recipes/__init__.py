@@ -15,3 +15,7 @@ def get_recipe_dict(format_spec):
             + "associated with the name `{format_spec}`"
         )
     return _FORMAT_DICT[format_spec]
+
+
+def list_recipe_flavors():
+    return tuple(_FORMAT_DICT.keys())

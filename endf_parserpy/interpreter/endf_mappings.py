@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/25
+# Last modified:   2024/04/27
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -292,6 +292,7 @@ def map_list_dic(
         nonlocal list_dic
         node_type = get_name(node)
 
+        list_dic.setdefault("vals", [])
         if node_type == "expr":
             if rwmode == "read":
                 vals = list_dic["vals"]
@@ -317,7 +318,6 @@ def map_list_dic(
                 list_val = map_record_helper(
                     [node], ("val",), {}, datadic, loop_vars, rwmode, parse_opts
                 )
-                list_dic.setdefault("vals", [])
                 list_dic["vals"].append(list_val["val"])
 
             val_idx += 1

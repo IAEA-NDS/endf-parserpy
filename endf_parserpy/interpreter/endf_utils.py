@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/26
+# Last modified:   2024/04/27
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -295,9 +295,8 @@ def write_list(dic, with_ctrl=True, **write_opts):
             f"NPL={NPL} (N1 slot) indicates more elements than present ({num_vals})"
         )
     lines = write_cont(dic, with_ctrl, **write_opts)
-    if NPL == 0:
-        body_lines = write_endf_numbers([0.0 for i in range(6)], **write_opts)
-    else:
+    body_lines = []
+    if NPL > 0:
         ext_vals = dic["vals"].copy()
         if NPL % 6 != 0:
             ext_vals += [0.0 for i in range(6 - NPL % 6)]

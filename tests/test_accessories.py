@@ -1,6 +1,6 @@
 import pytest
 from copy import deepcopy
-from endf_parserpy.accessories import EndfPath, EndfVariable, EndfDict
+from endf_parserpy.utils.accessories import EndfPath, EndfVariable, EndfDict
 
 
 @pytest.fixture(scope="function")

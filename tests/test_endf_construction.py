@@ -1,7 +1,7 @@
 import pytest
-from endf_parserpy.endf_parser import EndfParser
-from endf_parserpy.accessories import EndfDict
-from endf_parserpy.custom_exceptions import (
+from endf_parserpy.interpreter.endf_parser import EndfParser
+from endf_parserpy.utils.accessories import EndfDict
+from endf_parserpy.interpreter.custom_exceptions import (
     InvalidIntegerError,
     VariableNotFoundError,
     UnavailableIndexError,
@@ -9,7 +9,7 @@ from endf_parserpy.custom_exceptions import (
     UnexpectedEndOfInputError,
     UnexpectedControlRecordError,
 )
-from endf_parserpy.debugging_utils import compare_objects
+from endf_parserpy.utils.debugging_utils import compare_objects
 
 
 @pytest.fixture(scope="function")

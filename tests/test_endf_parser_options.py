@@ -1,7 +1,7 @@
 from pathlib import Path
-from endf_parserpy import EndfParser
-from endf_parserpy.debugging_utils import compare_objects
-from endf_parserpy.user_tools import list_parsed_sections
+from endf_parserpy.interpreter import EndfParser
+from endf_parserpy.utils.debugging_utils import compare_objects
+from endf_parserpy.utils.user_tools import list_parsed_sections
 
 
 def test_parsefile_include_single_mf_option():

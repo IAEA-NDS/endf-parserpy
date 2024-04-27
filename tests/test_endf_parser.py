@@ -2,9 +2,9 @@ from pathlib import Path
 import os
 import pytest
 import json
-from endf_parserpy.endf_parser import EndfParser
-from endf_parserpy.debugging_utils import smart_is_equal, compare_objects
-from endf_parserpy.user_tools import sanitize_fieldname_types
+from endf_parserpy.interpreter.endf_parser import EndfParser
+from endf_parserpy.utils.debugging_utils import smart_is_equal, compare_objects
+from endf_parserpy.utils.user_tools import sanitize_fieldname_types
 
 
 @pytest.fixture(scope="module")

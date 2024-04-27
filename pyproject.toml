@@ -16,6 +16,10 @@ appdirs = ">=1.4.0"
 pytest = ">=4.0"
 pre-commit = "2.15.0"
 
+[tool.poetry.build]
+script = "build.py"
+generate-setup-file = true
+
 [build-system]
-requires = ["poetry>=1.0"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0", "setuptools", "pybind11>=2.10.0"]
+# build-backend = "poetry.masonry.api"

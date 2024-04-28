@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/23
+# Last modified:   2024/04/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -157,3 +157,7 @@ def did_encounter_var(vartok, vardict):
 def count_not_encountered_vars(node, vardict):
     varset = get_variables_in_expr(node)
     return sum(not did_encounter_var(v, vardict) for v in varset)
+
+
+def should_parse_section(mf, mt, exclude, include):
+    return f"should_parse_section({mf}, {mt}, {exclude}, {include})"

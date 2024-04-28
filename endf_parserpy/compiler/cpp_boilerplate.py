@@ -180,7 +180,14 @@ def module_header():
         std::vector<std::string> secvec;
         int curmf;
         int curmt;
+        size_t lastpos;
         while (std::getline(cont, line)) {
+            // remove trailing \r that we may
+            // get from reading win-style line endings
+            lastpos = line.size() - 1;
+            if (line[lastpos] == '\r') {
+                line.erase(lastpos);
+            }
             curmf = std::stoi(line.substr(70, 2));
             curmt = std::stoi(line.substr(72, 3));
             if (curmf != mf || curmt != mt) break;

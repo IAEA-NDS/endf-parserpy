@@ -164,7 +164,14 @@ std::vector<std::string> read_section_verbatim(
     std::vector<std::string> secvec;
     int curmf;
     int curmt;
+    size_t lastpos;
     while (std::getline(cont, line)) {
+        // remove trailing \r that we may
+        // get from reading win-style line endings
+        lastpos = line.size() - 1;
+        if (line[lastpos] == '\r') {
+            line.erase(lastpos);
+        }
         curmf = std::stoi(line.substr(70, 2));
         curmt = std::stoi(line.substr(72, 3));
         if (curmf != mf || curmt != mt) break;
@@ -10957,6 +10964,14 @@ py::dict parse_mf12_istream(std::istream& cont) {
                                         // assign expression to variable NT
                                         var_NT_0d = (cpp_int_val/(var_LG_0d+1));
                                         aux_var_NT_0d_read = true;
+                                        if ((! (aux_var_LG_0d_read == true))) {
+                                            // assign expression to variable cpp_int_val
+                                            cpp_int_val = cpp_read_int_field(cpp_line, 4);
+                                            aux_cpp_int_val_read = true;
+                                            // assign expression to variable LG
+                                            var_LG_0d = ((cpp_int_val+(var_NT_0d*(-1)))/var_NT_0d);
+                                            aux_var_LG_0d_read = true;
+                                        }
                                         if ((! (aux_var_NT_0d_read == true))) {
                                             // assign expression to variable NT
                                             var_NT_0d = cpp_read_int_field(cpp_line, 5);
@@ -13038,6 +13053,14 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                                     // assign expression to variable NEC
                                                     var_NEC_0d = ((cpp_int_val+(-1))/var_NER_0d);
                                                     aux_var_NEC_0d_read = true;
+                                                    if ((! (aux_var_NER_0d_read == true))) {
+                                                        // assign expression to variable cpp_int_val
+                                                        cpp_int_val = cpp_read_int_field(cpp_line, 4);
+                                                        aux_cpp_int_val_read = true;
+                                                        // assign expression to variable NER
+                                                        var_NER_0d = ((cpp_int_val+(-1))/var_NEC_0d);
+                                                        aux_var_NER_0d_read = true;
+                                                    }
                                                     if (((((((var_LB_0d)==(6))))))) {
                                                         cpp_found_match = true;
                                                     }
@@ -13058,6 +13081,14 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                                     // assign expression to variable NEC
                                                     var_NEC_0d = ((cpp_int_val+(-1))/var_NER_0d);
                                                     aux_var_NEC_0d_read = true;
+                                                    if ((! (aux_var_NER_0d_read == true))) {
+                                                        // assign expression to variable cpp_int_val
+                                                        cpp_int_val = cpp_read_int_field(cpp_line, 4);
+                                                        aux_cpp_int_val_read = true;
+                                                        // assign expression to variable NER
+                                                        var_NER_0d = ((cpp_int_val+(-1))/var_NEC_0d);
+                                                        aux_var_NER_0d_read = true;
+                                                    }
                                                     {
                                                         int cpp_npl = cpp_read_int_field(cpp_line, 4);
                                                         cpp_floatvec = cpp_read_float_vec(cont, cpp_npl);
@@ -14115,11 +14146,11 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                 // assign expression to variable NRB
                                                 var_NRB_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NRB_0d_read = true;
-                                                if ((! (aux_var_MPAR_0d_read == true))) {
-                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
-                                                }
                                                 if ((! (aux_var_NRB_0d_read == true))) {
                                                     throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
+                                                }
+                                                if ((! (aux_var_MPAR_0d_read == true))) {
+                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
                                                 }
                                                 {
                                                     int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14405,11 +14436,11 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                 // assign expression to variable NRB
                                                 var_NRB_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NRB_0d_read = true;
-                                                if ((! (aux_var_MPAR_0d_read == true))) {
-                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
-                                                }
                                                 if ((! (aux_var_NRB_0d_read == true))) {
                                                     throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
+                                                }
+                                                if ((! (aux_var_MPAR_0d_read == true))) {
+                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
                                                 }
                                                 {
                                                     int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14702,17 +14733,17 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                         // assign expression to variable NRB
                                                         var_NRB_0d = cpp_read_int_field(cpp_line, 3);
                                                         aux_var_NRB_0d_read = true;
-                                                        if ((! (aux_var_NCH_0d_read == true))) {
-                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
-                                                        }
                                                         if ((! (aux_var_NRB_0d_read == true))) {
                                                             throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NRB because the modulo operator is not supported.");
                                                         }
                                                         if ((! (aux_var_NCH_0d_read == true))) {
-                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
+                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
                                                         }
                                                         if ((! (aux_var_NRB_0d_read == true))) {
                                                             throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NRB because the modulo operator is not supported.");
+                                                        }
+                                                        if ((! (aux_var_NCH_0d_read == true))) {
+                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
                                                         }
                                                         {
                                                             int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -17007,6 +17038,14 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                                     // assign expression to variable NEC
                                                     var_NEC_0d = ((cpp_int_val+(-1))/var_NER_0d);
                                                     aux_var_NEC_0d_read = true;
+                                                    if ((! (aux_var_NER_0d_read == true))) {
+                                                        // assign expression to variable cpp_int_val
+                                                        cpp_int_val = cpp_read_int_field(cpp_line, 4);
+                                                        aux_cpp_int_val_read = true;
+                                                        // assign expression to variable NER
+                                                        var_NER_0d = ((cpp_int_val+(-1))/var_NEC_0d);
+                                                        aux_var_NER_0d_read = true;
+                                                    }
                                                     if (((((((var_LB_0d)==(6))))))) {
                                                         cpp_found_match = true;
                                                     }
@@ -17027,6 +17066,14 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                                     // assign expression to variable NEC
                                                     var_NEC_0d = ((cpp_int_val+(-1))/var_NER_0d);
                                                     aux_var_NEC_0d_read = true;
+                                                    if ((! (aux_var_NER_0d_read == true))) {
+                                                        // assign expression to variable cpp_int_val
+                                                        cpp_int_val = cpp_read_int_field(cpp_line, 4);
+                                                        aux_cpp_int_val_read = true;
+                                                        // assign expression to variable NER
+                                                        var_NER_0d = ((cpp_int_val+(-1))/var_NEC_0d);
+                                                        aux_var_NER_0d_read = true;
+                                                    }
                                                     {
                                                         int cpp_npl = cpp_read_int_field(cpp_line, 4);
                                                         cpp_floatvec = cpp_read_float_vec(cont, cpp_npl);

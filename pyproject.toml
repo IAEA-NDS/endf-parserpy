@@ -22,4 +22,5 @@ generate-setup-file = true
 
 [build-system]
 requires = ["poetry-core>=1.0", "setuptools", "pybind11>=2.10.0"]
-# build-backend = "poetry.masonry.api"
+build-backend = "poetry.core.masonry.api"
+# build-backend = "setuptools.build_meta"

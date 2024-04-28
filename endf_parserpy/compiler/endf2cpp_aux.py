@@ -161,3 +161,14 @@ def count_not_encountered_vars(node, vardict):
 
 def should_parse_section(mf, mt, exclude, include):
     return f"should_parse_section({mf}, {mt}, {exclude}, {include})"
+
+
+def should_not_parse_section(mf, mt, exclude, include):
+    return cpp.logical_not(should_parse_section(mf, mt, exclude, include))
+
+
+def read_section_verbatim(tarvec, mf, mt, cont, is_firstline):
+    code = cpp.statement(
+        f"{tarvec} = read_section_verbatim({mf}, {mt}, {cont}, {is_firstline})"
+    )
+    return code

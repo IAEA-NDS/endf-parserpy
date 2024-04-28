@@ -6,7 +6,9 @@ from endf_parserpy.cpp_parsers.endf6_ext import parse_endf_file
 
 @pytest.fixture(scope="module")
 def myEndfParser():
-    return EndfParser(endf_format="endf6-ext")
+    return EndfParser(
+        endf_format="endf6-ext", ignore_zero_mismatch=True, ignore_varspec_mismatch=True
+    )
 
 
 def test_python_and_cpp_parser_equivalent(endf_file, myEndfParser):

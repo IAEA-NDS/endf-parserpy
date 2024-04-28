@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/23
-# Last modified:   2024/04/27
+# Last modified:   2024/04/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -69,4 +69,6 @@ def _prepare_cpp_parsers_subpackage(overwrite=False):
         if not overwrite and os.path.exists(cpp_module_path):
             raise FileExistsError(f"The module {cpp_module_path} exists already!")
         recipe = get_recipe_dict(endf_flavor)
-        create_cpp_parser_module(cpp_module_path, module_name, recipe)
+        create_cpp_parser_module(
+            cpp_module_path, module_name, recipe, overwrite=overwrite
+        )

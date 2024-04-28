@@ -834,7 +834,7 @@ py::dict parse_mf1mt452_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if (((((((var_LNU_0d)==(1))))))) {
+            if ((((((((aux_var_LNU_0d_read == true)) && ((var_LNU_0d)==(1)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
                 cpp_line = cpp_read_line(cont);
@@ -860,7 +860,7 @@ py::dict parse_mf1mt452_istream(std::istream& cont) {
         }
         if (! cpp_found_match) {
             if (! cpp_found_match) {
-                if (((((((var_LNU_0d)==(2))))))) {
+                if ((((((((aux_var_LNU_0d_read == true)) && ((var_LNU_0d)==(2)))))))) {
                     // if statement evaluation
                     cpp_found_match = true;
                     // read TAB1 record
@@ -1010,7 +1010,7 @@ py::dict parse_mf1mt455_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if ((((((((var_LDG_0d)==(0))))&&(((var_LNU_0d)==(2))))))) {
+            if (((((((((aux_var_LDG_0d_read == true)) && ((var_LDG_0d)==(0)))))&&((((aux_var_LNU_0d_read == true)) && ((var_LNU_0d)==(2)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
                 cpp_line = cpp_read_line(cont);
@@ -1068,7 +1068,7 @@ py::dict parse_mf1mt455_istream(std::istream& cont) {
         }
         if (! cpp_found_match) {
             if (! cpp_found_match) {
-                if ((((((((var_LDG_0d)==(1))))&&(((var_LNU_0d)==(2))))))) {
+                if (((((((((aux_var_LDG_0d_read == true)) && ((var_LDG_0d)==(1)))))&&((((aux_var_LNU_0d_read == true)) && ((var_LNU_0d)==(2)))))))) {
                     // if statement evaluation
                     cpp_found_match = true;
                     // read TAB2 record
@@ -1164,7 +1164,7 @@ py::dict parse_mf1mt455_istream(std::istream& cont) {
         }
         if (! cpp_found_match) {
             if (! cpp_found_match) {
-                if ((((((((var_LDG_0d)==(0))))&&(((var_LNU_0d)==(1))))))) {
+                if (((((((((aux_var_LDG_0d_read == true)) && ((var_LDG_0d)==(0)))))&&((((aux_var_LNU_0d_read == true)) && ((var_LNU_0d)==(1)))))))) {
                     // if statement evaluation
                     cpp_found_match = true;
                     cpp_line = cpp_read_line(cont);
@@ -1202,7 +1202,7 @@ py::dict parse_mf1mt455_istream(std::istream& cont) {
         }
         if (! cpp_found_match) {
             if (! cpp_found_match) {
-                if ((((((((var_LDG_0d)==(1))))&&(((var_LNU_0d)==(1))))))) {
+                if (((((((((aux_var_LDG_0d_read == true)) && ((var_LDG_0d)==(1)))))&&((((aux_var_LNU_0d_read == true)) && ((var_LNU_0d)==(1)))))))) {
                     // if statement evaluation
                     cpp_found_match = true;
                     // read TAB2 record
@@ -1429,7 +1429,7 @@ py::dict parse_mf1mt456_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if (((((((var_LNU_0d)==(2))))))) {
+            if ((((((((aux_var_LNU_0d_read == true)) && ((var_LNU_0d)==(2)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
                 // read TAB1 record
@@ -1468,7 +1468,7 @@ py::dict parse_mf1mt456_istream(std::istream& cont) {
         }
         if (! cpp_found_match) {
             if (! cpp_found_match) {
-                if (((((((var_LNU_0d)==(1))))))) {
+                if ((((((((aux_var_LNU_0d_read == true)) && ((var_LNU_0d)==(1)))))))) {
                     // if statement evaluation
                     cpp_found_match = true;
                     cpp_line = cpp_read_line(cont);
@@ -1667,7 +1667,7 @@ py::dict parse_mf1mt458_istream(std::istream& cont) {
                     // assign expression to variable NPLY
                     var_NPLY_0d = cpp_read_int_field(cpp_line, 3);
                     aux_var_NPLY_0d_read = true;
-                    if ((((((((var_LFC_0d)==(0))))&&(((var_NPLY_0d)==(0))))))) {
+                    if (((((((((aux_var_LFC_0d_read == true)) && ((var_LFC_0d)==(0)))))&&((((aux_var_NPLY_0d_read == true)) && ((var_NPLY_0d)==(0)))))))) {
                         cpp_found_match = true;
                     }
                     cont.seekg(cpp_old_streampos);
@@ -1823,7 +1823,7 @@ py::dict parse_mf1mt458_istream(std::istream& cont) {
                             var_NPLY_0d = ((cpp_int_val+(-9))/9);
                             aux_var_NPLY_0d_read = true;
                         }
-                        if ((((((((var_LFC_0d)==(0))))&&(((var_NPLY_0d)>(0))))))) {
+                        if (((((((((aux_var_LFC_0d_read == true)) && ((var_LFC_0d)==(0)))))&&((((aux_var_NPLY_0d_read == true)) && ((var_NPLY_0d)>(0)))))))) {
                             cpp_found_match = true;
                         }
                         cont.seekg(cpp_old_streampos);
@@ -1971,7 +1971,7 @@ py::dict parse_mf1mt458_istream(std::istream& cont) {
                         // assign expression to variable NPLY
                         var_NPLY_0d = cpp_read_int_field(cpp_line, 3);
                         aux_var_NPLY_0d_read = true;
-                        if ((((((((var_LFC_0d)==(1))))&&(((var_NPLY_0d)==(0))))))) {
+                        if (((((((((aux_var_LFC_0d_read == true)) && ((var_LFC_0d)==(1)))))&&((((aux_var_NPLY_0d_read == true)) && ((var_NPLY_0d)==(0)))))))) {
                             cpp_found_match = true;
                         }
                         cont.seekg(cpp_old_streampos);
@@ -2456,7 +2456,7 @@ py::dict parse_mf1mt460_istream(std::istream& cont) {
                     // assign expression to variable NG
                     var_NG_0d = cpp_read_int_field(cpp_line, 4);
                     aux_var_NG_0d_read = true;
-                    if (((((((var_LO_0d)==(1))))))) {
+                    if ((((((((aux_var_LO_0d_read == true)) && ((var_LO_0d)==(1)))))))) {
                         cpp_found_match = true;
                     }
                     cont.seekg(cpp_old_streampos);
@@ -2563,7 +2563,7 @@ py::dict parse_mf1mt460_istream(std::istream& cont) {
                         // assign expression to variable LO
                         var_LO_0d = cpp_read_int_field(cpp_line, 2);
                         aux_var_LO_0d_read = true;
-                        if (((((((var_LO_0d)==(2))))))) {
+                        if ((((((((aux_var_LO_0d_read == true)) && ((var_LO_0d)==(2)))))))) {
                             cpp_found_match = true;
                         }
                         cont.seekg(cpp_old_streampos);
@@ -2833,14 +2833,14 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                     {
                         bool cpp_found_match = false;
                         if (! cpp_found_match) {
-                            if (((((((((((var_NIS_0d)==(1))))&&(((var_ZAI_0d)==(var_ZA_0d))))&&(((var_ABN_0d)==(1))))&&(((var_LFW_0d)==(0))))&&(((var_NER_0d)==(1))))))) {
+                            if ((((((((((((aux_var_NIS_0d_read == true)) && ((var_NIS_0d)==(1)))))&&((((aux_var_ZAI_0d_read == true)) && ((var_ZAI_0d)==(var_ZA_0d)))))&&((((aux_var_ABN_0d_read == true)) && ((var_ABN_0d)==(1)))))&&((((aux_var_LFW_0d_read == true)) && ((var_LFW_0d)==(0)))))&&((((aux_var_NER_0d_read == true)) && ((var_NER_0d)==(1)))))))) {
                                 // if statement evaluation
                                 cpp_found_match = true;
                                 // evaluate if-elif-else clause
                                 {
                                     bool cpp_found_match = false;
                                     if (! cpp_found_match) {
-                                        if ((((((((((var_LRU_0d)==(0))))&&(((var_LRF_0d)==(0))))&&(((var_NRO_0d)==(0))))&&(((var_NAPS_0d)==(0))))))) {
+                                        if (((((((((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(0)))))&&((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(0)))))&&((((aux_var_NRO_0d_read == true)) && ((var_NRO_0d)==(0)))))&&((((aux_var_NAPS_0d_read == true)) && ((var_NAPS_0d)==(0)))))))) {
                                             // if statement evaluation
                                             cpp_found_match = true;
                                             // evaluate if-elif-else clause
@@ -2899,7 +2899,7 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                                             // assign expression to variable NLS
                                                             var_NLS_0d = cpp_read_int_field(cpp_line, 4);
                                                             aux_var_NLS_0d_read = true;
-                                                            if (((((((var_NLS_0d)==(0))))))) {
+                                                            if ((((((((aux_var_NLS_0d_read == true)) && ((var_NLS_0d)==(0)))))))) {
                                                                 cpp_found_match = true;
                                                             }
                                                             cont.seekg(cpp_old_streampos);
@@ -2930,21 +2930,21 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                     {
                         bool cpp_found_match = false;
                         if (! cpp_found_match) {
-                            if (((((((var_LRU_0d)==(1))))))) {
+                            if ((((((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(1)))))))) {
                                 // if statement evaluation
                                 cpp_found_match = true;
                                 // evaluate if-elif-else clause
                                 {
                                     bool cpp_found_match = false;
                                     if (! cpp_found_match) {
-                                        if ((((((((var_LRF_0d)==(1)))))||((((var_LRF_0d)==(2))))))) {
+                                        if (((((((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(1))))))||(((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(2)))))))) {
                                             // if statement evaluation
                                             cpp_found_match = true;
                                             // evaluate if-elif-else clause
                                             {
                                                 bool cpp_found_match = false;
                                                 if (! cpp_found_match) {
-                                                    if (((((((var_NRO_0d)!=(0))))))) {
+                                                    if ((((((((aux_var_NRO_0d_read == true)) && ((var_NRO_0d)!=(0)))))))) {
                                                         // if statement evaluation
                                                         cpp_found_match = true;
                                                         // read TAB1 record
@@ -2986,7 +2986,7 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                             {
                                                 bool cpp_found_match = false;
                                                 if (! cpp_found_match) {
-                                                    if ((((((((var_NRO_0d)!=(0))))&&((((((((var_NAPS_0d)==(0)))))||((((var_NAPS_0d)==(1))))))))))) {
+                                                    if (((((((((aux_var_NRO_0d_read == true)) && ((var_NRO_0d)!=(0)))))&&(((((((((aux_var_NAPS_0d_read == true)) && ((var_NAPS_0d)==(0))))))||(((((aux_var_NAPS_0d_read == true)) && ((var_NAPS_0d)==(1)))))))))))) {
                                                         // if statement evaluation
                                                         cpp_found_match = true;
                                                         cpp_line = cpp_read_line(cont);
@@ -3179,14 +3179,14 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                     }
                                     if (! cpp_found_match) {
                                         if (! cpp_found_match) {
-                                            if (((((((var_LRF_0d)==(3))))))) {
+                                            if ((((((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(3)))))))) {
                                                 // if statement evaluation
                                                 cpp_found_match = true;
                                                 // evaluate if-elif-else clause
                                                 {
                                                     bool cpp_found_match = false;
                                                     if (! cpp_found_match) {
-                                                        if (((((((var_NRO_0d)!=(0))))))) {
+                                                        if ((((((((aux_var_NRO_0d_read == true)) && ((var_NRO_0d)!=(0)))))))) {
                                                             // if statement evaluation
                                                             cpp_found_match = true;
                                                             // read TAB1 record
@@ -3228,7 +3228,7 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                                 {
                                                     bool cpp_found_match = false;
                                                     if (! cpp_found_match) {
-                                                        if ((((((((var_NRO_0d)!=(0))))&&((((((((var_NAPS_0d)==(0)))))||((((var_NAPS_0d)==(1))))))))))) {
+                                                        if (((((((((aux_var_NRO_0d_read == true)) && ((var_NRO_0d)!=(0)))))&&(((((((((aux_var_NAPS_0d_read == true)) && ((var_NAPS_0d)==(0))))))||(((((aux_var_NAPS_0d_read == true)) && ((var_NAPS_0d)==(1)))))))))))) {
                                                             // if statement evaluation
                                                             cpp_found_match = true;
                                                             cpp_line = cpp_read_line(cont);
@@ -3426,7 +3426,7 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                     }
                                     if (! cpp_found_match) {
                                         if (! cpp_found_match) {
-                                            if (((((((var_LRF_0d)==(7))))))) {
+                                            if ((((((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(7)))))))) {
                                                 // if statement evaluation
                                                 cpp_found_match = true;
                                                 cpp_line = cpp_read_line(cont);
@@ -3645,19 +3645,19 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                                                         // assign expression to variable NRS
                                                                         var_NRS_0d = cpp_read_int_field(cpp_line, 3);
                                                                         aux_var_NRS_0d_read = true;
-                                                                        if ((! (aux_var_NRS_0d_read == true))) {
-                                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NRS because the modulo operator is not supported.");
-                                                                        }
                                                                         if ((! (aux_var_NCH_0d_read == true))) {
                                                                             throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
                                                                         }
                                                                         if ((! (aux_var_NRS_0d_read == true))) {
-                                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NRS because the modulo operator is not supported.");
+                                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NRS because the modulo operator is not supported.");
                                                                         }
                                                                         if ((! (aux_var_NCH_0d_read == true))) {
                                                                             throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
                                                                         }
-                                                                        if (((((((var_NRS_0d)>(0))))))) {
+                                                                        if ((! (aux_var_NRS_0d_read == true))) {
+                                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NRS because the modulo operator is not supported.");
+                                                                        }
+                                                                        if ((((((((aux_var_NRS_0d_read == true)) && ((var_NRS_0d)>(0)))))))) {
                                                                             cpp_found_match = true;
                                                                         }
                                                                         cont.seekg(cpp_old_streampos);
@@ -3668,17 +3668,17 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                                                         // assign expression to variable NRS
                                                                         var_NRS_0d = cpp_read_int_field(cpp_line, 3);
                                                                         aux_var_NRS_0d_read = true;
-                                                                        if ((! (aux_var_NRS_0d_read == true))) {
-                                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NRS because the modulo operator is not supported.");
-                                                                        }
                                                                         if ((! (aux_var_NCH_0d_read == true))) {
                                                                             throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
                                                                         }
                                                                         if ((! (aux_var_NRS_0d_read == true))) {
-                                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NRS because the modulo operator is not supported.");
+                                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NRS because the modulo operator is not supported.");
                                                                         }
                                                                         if ((! (aux_var_NCH_0d_read == true))) {
                                                                             throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
+                                                                        }
+                                                                        if ((! (aux_var_NRS_0d_read == true))) {
+                                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NRS because the modulo operator is not supported.");
                                                                         }
                                                                         {
                                                                             int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -3789,7 +3789,7 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                                                             var_NX_0d = cpp_read_int_field(cpp_line, 5);
                                                                             aux_var_NX_0d_read = true;
                                                                         }
-                                                                        if ((((((((var_NRS_0d)==(0))))&&(((var_NX_0d)==(1))))))) {
+                                                                        if (((((((((aux_var_NRS_0d_read == true)) && ((var_NRS_0d)==(0)))))&&((((aux_var_NX_0d_read == true)) && ((var_NX_0d)==(1)))))))) {
                                                                             cpp_found_match = true;
                                                                         }
                                                                         cont.seekg(cpp_old_streampos);
@@ -3930,21 +3930,21 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                         }
                         if (! cpp_found_match) {
                             if (! cpp_found_match) {
-                                if (((((((var_LRU_0d)==(2))))))) {
+                                if ((((((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(2)))))))) {
                                     // if statement evaluation
                                     cpp_found_match = true;
                                     // evaluate if-elif-else clause
                                     {
                                         bool cpp_found_match = false;
                                         if (! cpp_found_match) {
-                                            if ((((((((var_LFW_0d)==(0))))&&(((var_LRF_0d)==(1))))))) {
+                                            if (((((((((aux_var_LFW_0d_read == true)) && ((var_LFW_0d)==(0)))))&&((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(1)))))))) {
                                                 // if statement evaluation
                                                 cpp_found_match = true;
                                                 // evaluate if-elif-else clause
                                                 {
                                                     bool cpp_found_match = false;
                                                     if (! cpp_found_match) {
-                                                        if (((((((var_NRO_0d)!=(0))))))) {
+                                                        if ((((((((aux_var_NRO_0d_read == true)) && ((var_NRO_0d)!=(0)))))))) {
                                                             // if statement evaluation
                                                             cpp_found_match = true;
                                                             // read TAB1 record
@@ -3986,7 +3986,7 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                                 {
                                                     bool cpp_found_match = false;
                                                     if (! cpp_found_match) {
-                                                        if ((((((((var_NRO_0d)!=(0))))&&((((((((var_NAPS_0d)==(0)))))||((((var_NAPS_0d)==(1))))))))))) {
+                                                        if (((((((((aux_var_NRO_0d_read == true)) && ((var_NRO_0d)!=(0)))))&&(((((((((aux_var_NAPS_0d_read == true)) && ((var_NAPS_0d)==(0))))))||(((((aux_var_NAPS_0d_read == true)) && ((var_NAPS_0d)==(1)))))))))))) {
                                                             // if statement evaluation
                                                             cpp_found_match = true;
                                                             cpp_line = cpp_read_line(cont);
@@ -4159,7 +4159,7 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                         }
                                         if (! cpp_found_match) {
                                             if (! cpp_found_match) {
-                                                if ((((((((var_LFW_0d)==(1))))&&(((var_LRF_0d)==(1))))))) {
+                                                if (((((((((aux_var_LFW_0d_read == true)) && ((var_LFW_0d)==(1)))))&&((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(1)))))))) {
                                                     // if statement evaluation
                                                     cpp_found_match = true;
                                                     cpp_line = cpp_read_line(cont);
@@ -4373,14 +4373,14 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                         }
                                         if (! cpp_found_match) {
                                             if (! cpp_found_match) {
-                                                if (((((((((((((var_LFW_0d)==(0)))))||((((var_LFW_0d)==(1))))))))&&(((var_LRF_0d)==(2))))))) {
+                                                if ((((((((((((((aux_var_LFW_0d_read == true)) && ((var_LFW_0d)==(0))))))||(((((aux_var_LFW_0d_read == true)) && ((var_LFW_0d)==(1)))))))))&&((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(2)))))))) {
                                                     // if statement evaluation
                                                     cpp_found_match = true;
                                                     // evaluate if-elif-else clause
                                                     {
                                                         bool cpp_found_match = false;
                                                         if (! cpp_found_match) {
-                                                            if (((((((var_NRO_0d)!=(0))))))) {
+                                                            if ((((((((aux_var_NRO_0d_read == true)) && ((var_NRO_0d)!=(0)))))))) {
                                                                 // if statement evaluation
                                                                 cpp_found_match = true;
                                                                 // read TAB1 record
@@ -4422,7 +4422,7 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                                     {
                                                         bool cpp_found_match = false;
                                                         if (! cpp_found_match) {
-                                                            if ((((((((var_NRO_0d)!=(0))))&&((((((((var_NAPS_0d)==(0)))))||((((var_NAPS_0d)==(1))))))))))) {
+                                                            if (((((((((aux_var_NRO_0d_read == true)) && ((var_NRO_0d)!=(0)))))&&(((((((((aux_var_NAPS_0d_read == true)) && ((var_NAPS_0d)==(0))))))||(((((aux_var_NAPS_0d_read == true)) && ((var_NAPS_0d)==(1)))))))))))) {
                                                                 // if statement evaluation
                                                                 cpp_found_match = true;
                                                                 cpp_line = cpp_read_line(cont);
@@ -5043,14 +5043,19 @@ py::dict parse_mf4_istream(std::istream& cont) {
     bool aux_var_ZA_0d_read = false;
     double var_AWR_0d;
     bool aux_var_AWR_0d_read = false;
+    int var_LVT_0d;
+    bool aux_var_LVT_0d_read = false;
     int var_LTT_0d;
     bool aux_var_LTT_0d_read = false;
     int var_LI_0d;
     bool aux_var_LI_0d_read = false;
     int var_LCT_0d;
     bool aux_var_LCT_0d_read = false;
+    int var_NK_0d;
+    bool aux_var_NK_0d_read = false;
     int var_NM_0d;
     bool aux_var_NM_0d_read = false;
+    NestedVector<double> var_V_1d;
     int var_NE_0d;
     bool aux_var_NE_0d_read = false;
     double var_T_0d;
@@ -5085,17 +5090,6 @@ py::dict parse_mf4_istream(std::istream& cont) {
     // store variable MT in endf dictionary
     cpp_current_dict[py::cast("MT")] = var_MT_0d;
     cont.seekg(cpp_startpos);
-    cpp_line = cpp_read_line(cont);
-    // read CONT record
-    // assign expression to variable ZA
-    var_ZA_0d = cpp_read_float_field(cpp_line.c_str(), 0);
-    aux_var_ZA_0d_read = true;
-    // assign expression to variable AWR
-    var_AWR_0d = cpp_read_float_field(cpp_line.c_str(), 1);
-    aux_var_AWR_0d_read = true;
-    // assign expression to variable LTT
-    var_LTT_0d = cpp_read_int_field(cpp_line, 3);
-    aux_var_LTT_0d_read = true;
     // evaluate if-elif-else clause
     {
         bool cpp_found_match = false;
@@ -5125,39 +5119,29 @@ py::dict parse_mf4_istream(std::istream& cont) {
                     double var_AWR_0d = glob_var_AWR_0d;
                     bool& glob_aux_var_AWR_0d_read = aux_var_AWR_0d_read;
                     bool aux_var_AWR_0d_read = glob_aux_var_AWR_0d_read;
+                    int& glob_var_LVT_0d = var_LVT_0d;
+                    int var_LVT_0d = glob_var_LVT_0d;
+                    bool& glob_aux_var_LVT_0d_read = aux_var_LVT_0d_read;
+                    bool aux_var_LVT_0d_read = glob_aux_var_LVT_0d_read;
                     int& glob_var_LTT_0d = var_LTT_0d;
                     int var_LTT_0d = glob_var_LTT_0d;
                     bool& glob_aux_var_LTT_0d_read = aux_var_LTT_0d_read;
                     bool aux_var_LTT_0d_read = glob_aux_var_LTT_0d_read;
-                    int& glob_var_LI_0d = var_LI_0d;
-                    int var_LI_0d = glob_var_LI_0d;
-                    bool& glob_aux_var_LI_0d_read = aux_var_LI_0d_read;
-                    bool aux_var_LI_0d_read = glob_aux_var_LI_0d_read;
-                    int& glob_var_LCT_0d = var_LCT_0d;
-                    int var_LCT_0d = glob_var_LCT_0d;
-                    bool& glob_aux_var_LCT_0d_read = aux_var_LCT_0d_read;
-                    bool aux_var_LCT_0d_read = glob_aux_var_LCT_0d_read;
-                    int& glob_var_NM_0d = var_NM_0d;
-                    int var_NM_0d = glob_var_NM_0d;
-                    bool& glob_aux_var_NM_0d_read = aux_var_NM_0d_read;
-                    bool aux_var_NM_0d_read = glob_aux_var_NM_0d_read;
                     cpp_line = cpp_read_line(cont);
                     // read CONT record
-                    if ((! (aux_var_AWR_0d_read == true))) {
-                        // assign expression to variable AWR
-                        var_AWR_0d = cpp_read_float_field(cpp_line.c_str(), 1);
-                        aux_var_AWR_0d_read = true;
-                    }
-                    // assign expression to variable LI
-                    var_LI_0d = cpp_read_int_field(cpp_line, 2);
-                    aux_var_LI_0d_read = true;
-                    // assign expression to variable LCT
-                    var_LCT_0d = cpp_read_int_field(cpp_line, 3);
-                    aux_var_LCT_0d_read = true;
-                    // assign expression to variable NM
-                    var_NM_0d = cpp_read_int_field(cpp_line, 5);
-                    aux_var_NM_0d_read = true;
-                    if ((((((((var_LTT_0d)==(3))))&&(((var_LI_0d)==(0))))))) {
+                    // assign expression to variable ZA
+                    var_ZA_0d = cpp_read_float_field(cpp_line.c_str(), 0);
+                    aux_var_ZA_0d_read = true;
+                    // assign expression to variable AWR
+                    var_AWR_0d = cpp_read_float_field(cpp_line.c_str(), 1);
+                    aux_var_AWR_0d_read = true;
+                    // assign expression to variable LVT
+                    var_LVT_0d = cpp_read_int_field(cpp_line, 2);
+                    aux_var_LVT_0d_read = true;
+                    // assign expression to variable LTT
+                    var_LTT_0d = cpp_read_int_field(cpp_line, 3);
+                    aux_var_LTT_0d_read = true;
+                    if ((((((((aux_var_LVT_0d_read == true)) && ((var_LVT_0d)>(0)))))))) {
                         cpp_found_match = true;
                     }
                     cont.seekg(cpp_old_streampos);
@@ -5165,20 +5149,163 @@ py::dict parse_mf4_istream(std::istream& cont) {
                 if (cpp_found_match) {
                     cpp_line = cpp_read_line(cont);
                     // read CONT record
-                    if ((! (aux_var_AWR_0d_read == true))) {
-                        // assign expression to variable AWR
-                        var_AWR_0d = cpp_read_float_field(cpp_line.c_str(), 1);
-                        aux_var_AWR_0d_read = true;
+                    // assign expression to variable ZA
+                    var_ZA_0d = cpp_read_float_field(cpp_line.c_str(), 0);
+                    aux_var_ZA_0d_read = true;
+                    // assign expression to variable AWR
+                    var_AWR_0d = cpp_read_float_field(cpp_line.c_str(), 1);
+                    aux_var_AWR_0d_read = true;
+                    // assign expression to variable LVT
+                    var_LVT_0d = cpp_read_int_field(cpp_line, 2);
+                    aux_var_LVT_0d_read = true;
+                    // assign expression to variable LTT
+                    var_LTT_0d = cpp_read_int_field(cpp_line, 3);
+                    aux_var_LTT_0d_read = true;
+                }
+            }
+        }
+        if (! cpp_found_match) {
+            cpp_line = cpp_read_line(cont);
+            // read CONT record
+            // assign expression to variable ZA
+            var_ZA_0d = cpp_read_float_field(cpp_line.c_str(), 0);
+            aux_var_ZA_0d_read = true;
+            // assign expression to variable AWR
+            var_AWR_0d = cpp_read_float_field(cpp_line.c_str(), 1);
+            aux_var_AWR_0d_read = true;
+            // assign expression to variable LTT
+            var_LTT_0d = cpp_read_int_field(cpp_line, 3);
+            aux_var_LTT_0d_read = true;
+        }
+    }
+    // evaluate if-elif-else clause
+    {
+        bool cpp_found_match = false;
+        if (! cpp_found_match) {
+            if ((((((((aux_var_LVT_0d_read == true)) && ((var_LVT_0d)>(0)))))))) {
+                // if statement evaluation
+                cpp_found_match = true;
+                cpp_line = cpp_read_line(cont);
+                // read LIST record
+                if ((! (aux_var_AWR_0d_read == true))) {
+                    // assign expression to variable AWR
+                    var_AWR_0d = cpp_read_float_field(cpp_line.c_str(), 1);
+                    aux_var_AWR_0d_read = true;
+                }
+                // assign expression to variable LI
+                var_LI_0d = cpp_read_int_field(cpp_line, 2);
+                aux_var_LI_0d_read = true;
+                // assign expression to variable LCT
+                var_LCT_0d = cpp_read_int_field(cpp_line, 3);
+                aux_var_LCT_0d_read = true;
+                // assign expression to variable NK
+                var_NK_0d = cpp_read_int_field(cpp_line, 4);
+                aux_var_NK_0d_read = true;
+                // assign expression to variable NM
+                var_NM_0d = cpp_read_int_field(cpp_line, 5);
+                aux_var_NM_0d_read = true;
+                {
+                    int cpp_npl = cpp_read_int_field(cpp_line, 4);
+                    cpp_floatvec = cpp_read_float_vec(cont, cpp_npl);
+                    int cpp_j = 0;
+                    // read LIST body
+
+                    for (int var_k_0d = 1;
+                         var_k_0d <= var_NK_0d; var_k_0d++) {
+                        bool aux_var_k_0d_read = true;
+                        // read LIST body
+                        // assign expression to variable V
+                        var_V_1d.set(var_k_0d, cpp_floatvec[cpp_j++]);
                     }
-                    // assign expression to variable LI
-                    var_LI_0d = cpp_read_int_field(cpp_line, 2);
-                    aux_var_LI_0d_read = true;
-                    // assign expression to variable LCT
-                    var_LCT_0d = cpp_read_int_field(cpp_line, 3);
-                    aux_var_LCT_0d_read = true;
-                    // assign expression to variable NM
-                    var_NM_0d = cpp_read_int_field(cpp_line, 5);
-                    aux_var_NM_0d_read = true;
+                }
+            }
+        }
+        if (! cpp_found_match) {
+            if (! cpp_found_match) {
+                // if statement evaluation with lookahead
+                {
+                    std::streampos cpp_old_streampos = cont.tellg();
+                    {
+                        // variable declarations
+                        int& glob_var_MAT_0d = var_MAT_0d;
+                        int var_MAT_0d = glob_var_MAT_0d;
+                        bool& glob_aux_var_MAT_0d_read = aux_var_MAT_0d_read;
+                        bool aux_var_MAT_0d_read = glob_aux_var_MAT_0d_read;
+                        int& glob_var_MF_0d = var_MF_0d;
+                        int var_MF_0d = glob_var_MF_0d;
+                        bool& glob_aux_var_MF_0d_read = aux_var_MF_0d_read;
+                        bool aux_var_MF_0d_read = glob_aux_var_MF_0d_read;
+                        int& glob_var_MT_0d = var_MT_0d;
+                        int var_MT_0d = glob_var_MT_0d;
+                        bool& glob_aux_var_MT_0d_read = aux_var_MT_0d_read;
+                        bool aux_var_MT_0d_read = glob_aux_var_MT_0d_read;
+                        double& glob_var_ZA_0d = var_ZA_0d;
+                        double var_ZA_0d = glob_var_ZA_0d;
+                        bool& glob_aux_var_ZA_0d_read = aux_var_ZA_0d_read;
+                        bool aux_var_ZA_0d_read = glob_aux_var_ZA_0d_read;
+                        double& glob_var_AWR_0d = var_AWR_0d;
+                        double var_AWR_0d = glob_var_AWR_0d;
+                        bool& glob_aux_var_AWR_0d_read = aux_var_AWR_0d_read;
+                        bool aux_var_AWR_0d_read = glob_aux_var_AWR_0d_read;
+                        int& glob_var_LVT_0d = var_LVT_0d;
+                        int var_LVT_0d = glob_var_LVT_0d;
+                        bool& glob_aux_var_LVT_0d_read = aux_var_LVT_0d_read;
+                        bool aux_var_LVT_0d_read = glob_aux_var_LVT_0d_read;
+                        int& glob_var_LTT_0d = var_LTT_0d;
+                        int var_LTT_0d = glob_var_LTT_0d;
+                        bool& glob_aux_var_LTT_0d_read = aux_var_LTT_0d_read;
+                        bool aux_var_LTT_0d_read = glob_aux_var_LTT_0d_read;
+                        int& glob_var_LI_0d = var_LI_0d;
+                        int var_LI_0d = glob_var_LI_0d;
+                        bool& glob_aux_var_LI_0d_read = aux_var_LI_0d_read;
+                        bool aux_var_LI_0d_read = glob_aux_var_LI_0d_read;
+                        int& glob_var_LCT_0d = var_LCT_0d;
+                        int var_LCT_0d = glob_var_LCT_0d;
+                        bool& glob_aux_var_LCT_0d_read = aux_var_LCT_0d_read;
+                        bool aux_var_LCT_0d_read = glob_aux_var_LCT_0d_read;
+                        int& glob_var_NM_0d = var_NM_0d;
+                        int var_NM_0d = glob_var_NM_0d;
+                        bool& glob_aux_var_NM_0d_read = aux_var_NM_0d_read;
+                        bool aux_var_NM_0d_read = glob_aux_var_NM_0d_read;
+                        cpp_line = cpp_read_line(cont);
+                        // read CONT record
+                        if ((! (aux_var_AWR_0d_read == true))) {
+                            // assign expression to variable AWR
+                            var_AWR_0d = cpp_read_float_field(cpp_line.c_str(), 1);
+                            aux_var_AWR_0d_read = true;
+                        }
+                        // assign expression to variable LI
+                        var_LI_0d = cpp_read_int_field(cpp_line, 2);
+                        aux_var_LI_0d_read = true;
+                        // assign expression to variable LCT
+                        var_LCT_0d = cpp_read_int_field(cpp_line, 3);
+                        aux_var_LCT_0d_read = true;
+                        // assign expression to variable NM
+                        var_NM_0d = cpp_read_int_field(cpp_line, 5);
+                        aux_var_NM_0d_read = true;
+                        if (((((((((aux_var_LTT_0d_read == true)) && ((var_LTT_0d)==(3)))))&&((((aux_var_LI_0d_read == true)) && ((var_LI_0d)==(0)))))))) {
+                            cpp_found_match = true;
+                        }
+                        cont.seekg(cpp_old_streampos);
+                    }
+                    if (cpp_found_match) {
+                        cpp_line = cpp_read_line(cont);
+                        // read CONT record
+                        if ((! (aux_var_AWR_0d_read == true))) {
+                            // assign expression to variable AWR
+                            var_AWR_0d = cpp_read_float_field(cpp_line.c_str(), 1);
+                            aux_var_AWR_0d_read = true;
+                        }
+                        // assign expression to variable LI
+                        var_LI_0d = cpp_read_int_field(cpp_line, 2);
+                        aux_var_LI_0d_read = true;
+                        // assign expression to variable LCT
+                        var_LCT_0d = cpp_read_int_field(cpp_line, 3);
+                        aux_var_LCT_0d_read = true;
+                        // assign expression to variable NM
+                        var_NM_0d = cpp_read_int_field(cpp_line, 5);
+                        aux_var_NM_0d_read = true;
+                    }
                 }
             }
         }
@@ -5202,7 +5329,7 @@ py::dict parse_mf4_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if ((((((((var_LTT_0d)==(1))))&&(((var_LI_0d)==(0))))))) {
+            if (((((((((aux_var_LTT_0d_read == true)) && ((var_LTT_0d)==(1)))))&&((((aux_var_LI_0d_read == true)) && ((var_LI_0d)==(0)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
                 // read TAB2 record
@@ -5264,7 +5391,7 @@ py::dict parse_mf4_istream(std::istream& cont) {
         }
         if (! cpp_found_match) {
             if (! cpp_found_match) {
-                if ((((((((var_LTT_0d)==(2))))&&(((var_LI_0d)==(0))))))) {
+                if (((((((((aux_var_LTT_0d_read == true)) && ((var_LTT_0d)==(2)))))&&((((aux_var_LI_0d_read == true)) && ((var_LI_0d)==(0)))))))) {
                     // if statement evaluation
                     cpp_found_match = true;
                     // read TAB2 record
@@ -5363,7 +5490,7 @@ py::dict parse_mf4_istream(std::istream& cont) {
         }
         if (! cpp_found_match) {
             if (! cpp_found_match) {
-                if ((((((((var_LTT_0d)==(3))))&&(((var_LI_0d)==(0))))))) {
+                if (((((((((aux_var_LTT_0d_read == true)) && ((var_LTT_0d)==(3)))))&&((((aux_var_LI_0d_read == true)) && ((var_LI_0d)==(0)))))))) {
                     // if statement evaluation
                     cpp_found_match = true;
                     // read TAB2 record
@@ -5548,6 +5675,9 @@ py::dict parse_mf4_istream(std::istream& cont) {
     if ((aux_var_AWR_0d_read == true)) {
         cpp_current_dict["AWR"] = var_AWR_0d;
     }
+    if ((aux_var_LVT_0d_read == true)) {
+        cpp_current_dict["LVT"] = var_LVT_0d;
+    }
     if ((aux_var_LTT_0d_read == true)) {
         cpp_current_dict["LTT"] = var_LTT_0d;
     }
@@ -5557,8 +5687,19 @@ py::dict parse_mf4_istream(std::istream& cont) {
     if ((aux_var_LCT_0d_read == true)) {
         cpp_current_dict["LCT"] = var_LCT_0d;
     }
+    if ((aux_var_NK_0d_read == true)) {
+        cpp_current_dict["NK"] = var_NK_0d;
+    }
     if ((aux_var_NM_0d_read == true)) {
         cpp_current_dict["NM"] = var_NM_0d;
+    }
+    if ((var_V_1d.get_last_index() != -1)) {
+            auto& cpp_curvar0 = var_V_1d;
+            cpp_current_dict["V"] = py::dict();
+            py::dict cpp_curdict0 = cpp_current_dict["V"];
+            for (int cpp_i1 = cpp_curvar0.get_start_index(); cpp_i1 <= cpp_curvar0.get_last_index(); cpp_i1++) {
+                cpp_curdict0[py::cast(cpp_i1)] = cpp_curvar0[cpp_i1];
+            }
     }
     if ((aux_var_NE_0d_read == true)) {
         cpp_current_dict["NE"] = var_NE_0d;
@@ -5714,7 +5855,7 @@ py::dict parse_mf5_istream(std::istream& cont) {
                             // assign expression to variable LF
                             var_LF_0d = cpp_read_int_field(cpp_line, 3);
                             aux_var_LF_0d_read = true;
-                            if (((((((var_LF_0d)==(1))))))) {
+                            if ((((((((aux_var_LF_0d_read == true)) && ((var_LF_0d)==(1)))))))) {
                                 cpp_found_match = true;
                             }
                             cont.seekg(cpp_old_streampos);
@@ -5875,7 +6016,7 @@ py::dict parse_mf5_istream(std::istream& cont) {
                                 // assign expression to variable LF
                                 var_LF_0d = cpp_read_int_field(cpp_line, 3);
                                 aux_var_LF_0d_read = true;
-                                if (((((((var_LF_0d)==(5))))))) {
+                                if ((((((((aux_var_LF_0d_read == true)) && ((var_LF_0d)==(5)))))))) {
                                     cpp_found_match = true;
                                 }
                                 cont.seekg(cpp_old_streampos);
@@ -6037,7 +6178,7 @@ py::dict parse_mf5_istream(std::istream& cont) {
                                 // assign expression to variable LF
                                 var_LF_0d = cpp_read_int_field(cpp_line, 3);
                                 aux_var_LF_0d_read = true;
-                                if (((((((var_LF_0d)==(7))))))) {
+                                if ((((((((aux_var_LF_0d_read == true)) && ((var_LF_0d)==(7)))))))) {
                                     cpp_found_match = true;
                                 }
                                 cont.seekg(cpp_old_streampos);
@@ -6158,7 +6299,7 @@ py::dict parse_mf5_istream(std::istream& cont) {
                                 // assign expression to variable LF
                                 var_LF_0d = cpp_read_int_field(cpp_line, 3);
                                 aux_var_LF_0d_read = true;
-                                if (((((((var_LF_0d)==(9))))))) {
+                                if ((((((((aux_var_LF_0d_read == true)) && ((var_LF_0d)==(9)))))))) {
                                     cpp_found_match = true;
                                 }
                                 cont.seekg(cpp_old_streampos);
@@ -6279,7 +6420,7 @@ py::dict parse_mf5_istream(std::istream& cont) {
                                 // assign expression to variable LF
                                 var_LF_0d = cpp_read_int_field(cpp_line, 3);
                                 aux_var_LF_0d_read = true;
-                                if (((((((var_LF_0d)==(11))))))) {
+                                if ((((((((aux_var_LF_0d_read == true)) && ((var_LF_0d)==(11)))))))) {
                                     cpp_found_match = true;
                                 }
                                 cont.seekg(cpp_old_streampos);
@@ -6343,7 +6484,7 @@ py::dict parse_mf5_istream(std::istream& cont) {
                                 // assign expression to variable LF
                                 var_LF_0d = cpp_read_int_field(cpp_line, 3);
                                 aux_var_LF_0d_read = true;
-                                if (((((((var_LF_0d)==(12))))))) {
+                                if ((((((((aux_var_LF_0d_read == true)) && ((var_LF_0d)==(12)))))))) {
                                     cpp_found_match = true;
                                 }
                                 cont.seekg(cpp_old_streampos);
@@ -6611,7 +6752,7 @@ py::dict parse_mf6_istream(std::istream& cont) {
             {
                 bool cpp_found_match = false;
                 if (! cpp_found_match) {
-                    if (((((((var_LAW_0d)==(1))))))) {
+                    if ((((((((aux_var_LAW_0d_read == true)) && ((var_LAW_0d)==(1)))))))) {
                         // if statement evaluation
                         cpp_found_match = true;
                         // read TAB2 record
@@ -6694,7 +6835,7 @@ py::dict parse_mf6_istream(std::istream& cont) {
                 }
                 if (! cpp_found_match) {
                     if (! cpp_found_match) {
-                        if (((((((var_LAW_0d)==(2))))))) {
+                        if ((((((((aux_var_LAW_0d_read == true)) && ((var_LAW_0d)==(2)))))))) {
                             // if statement evaluation
                             cpp_found_match = true;
                             // read TAB2 record
@@ -6756,7 +6897,7 @@ py::dict parse_mf6_istream(std::istream& cont) {
                 }
                 if (! cpp_found_match) {
                     if (! cpp_found_match) {
-                        if (((((((var_LAW_0d)==(5))))))) {
+                        if ((((((((aux_var_LAW_0d_read == true)) && ((var_LAW_0d)==(5)))))))) {
                             // if statement evaluation
                             cpp_found_match = true;
                             // read TAB2 record
@@ -6823,7 +6964,7 @@ py::dict parse_mf6_istream(std::istream& cont) {
                 }
                 if (! cpp_found_match) {
                     if (! cpp_found_match) {
-                        if (((((((var_LAW_0d)==(6))))))) {
+                        if ((((((((aux_var_LAW_0d_read == true)) && ((var_LAW_0d)==(6)))))))) {
                             // if statement evaluation
                             cpp_found_match = true;
                             cpp_line = cpp_read_line(cont);
@@ -6839,7 +6980,7 @@ py::dict parse_mf6_istream(std::istream& cont) {
                 }
                 if (! cpp_found_match) {
                     if (! cpp_found_match) {
-                        if (((((((var_LAW_0d)==(7))))))) {
+                        if ((((((((aux_var_LAW_0d_read == true)) && ((var_LAW_0d)==(7)))))))) {
                             // if statement evaluation
                             cpp_found_match = true;
                             // read TAB2 record
@@ -7242,7 +7383,7 @@ py::dict parse_mf7mt2_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if (((((((var_LTHR_0d)==(1))))))) {
+            if ((((((((aux_var_LTHR_0d_read == true)) && ((var_LTHR_0d)==(1)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
                 // read TAB1 record
@@ -7326,7 +7467,7 @@ py::dict parse_mf7mt2_istream(std::istream& cont) {
         }
         if (! cpp_found_match) {
             if (! cpp_found_match) {
-                if (((((((var_LTHR_0d)==(2))))))) {
+                if ((((((((aux_var_LTHR_0d_read == true)) && ((var_LTHR_0d)==(2)))))))) {
                     // if statement evaluation
                     cpp_found_match = true;
                     // read TAB1 record
@@ -7695,7 +7836,7 @@ py::dict parse_mf7mt4_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if ((((((((var_NI_0d)>=(7))))&&(((var_B_1d[7])==(0))))))) {
+            if (((((((((aux_var_NI_0d_read == true)) && ((var_NI_0d)>=(7)))))&&(((var_B_1d.contains(7)) && ((var_B_1d[7])==(0)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
                 // read TAB1 record
@@ -7746,7 +7887,7 @@ py::dict parse_mf7mt4_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if ((((((((var_NI_0d)>=(13))))&&(((var_B_1d[13])==(0.0))))))) {
+            if (((((((((aux_var_NI_0d_read == true)) && ((var_NI_0d)>=(13)))))&&(((var_B_1d.contains(13)) && ((var_B_1d[13])==(0.0)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
                 // read TAB1 record
@@ -7797,7 +7938,7 @@ py::dict parse_mf7mt4_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if ((((((((var_NI_0d)>=(19))))&&(((var_B_1d[19])==(0.0))))))) {
+            if (((((((((aux_var_NI_0d_read == true)) && ((var_NI_0d)>=(19)))))&&(((var_B_1d.contains(19)) && ((var_B_1d[19])==(0.0)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
                 // read TAB1 record
@@ -8016,7 +8157,7 @@ py::dict parse_mf8_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if (((((((var_NO_0d)==(0))))))) {
+            if ((((((((aux_var_NO_0d_read == true)) && ((var_NO_0d)==(0)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
 
@@ -8170,7 +8311,7 @@ py::dict parse_mf8_istream(std::istream& cont) {
         }
         if (! cpp_found_match) {
             if (! cpp_found_match) {
-                if (((((((var_NO_0d)==(1))))))) {
+                if ((((((((aux_var_NO_0d_read == true)) && ((var_NO_0d)==(1)))))))) {
                     // if statement evaluation
                     cpp_found_match = true;
 
@@ -8665,7 +8806,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                     // assign expression to variable NSP
                     var_NSP_0d = cpp_read_int_field(cpp_line, 5);
                     aux_var_NSP_0d_read = true;
-                    if (((((((var_NST_0d)==(0))))))) {
+                    if ((((((((aux_var_NST_0d_read == true)) && ((var_NST_0d)==(0)))))))) {
                         cpp_found_match = true;
                     }
                     cont.seekg(cpp_old_streampos);
@@ -8844,7 +8985,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                             {
                                 bool cpp_found_match = false;
                                 if (! cpp_found_match) {
-                                    if (((((((var_LCON_0d)!=(1))))))) {
+                                    if ((((((((aux_var_LCON_0d_read == true)) && ((var_LCON_0d)!=(1)))))))) {
                                         // if statement evaluation
                                         cpp_found_match = true;
                                         // open section discrete
@@ -8936,7 +9077,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                                                                     // assign expression to variable NT
                                                                     var_NT_0d = cpp_read_int_field(cpp_line, 4);
                                                                     aux_var_NT_0d_read = true;
-                                                                    if (((((((var_NT_0d)==(4))))))) {
+                                                                    if ((((((((aux_var_NT_0d_read == true)) && ((var_NT_0d)==(4)))))))) {
                                                                         cpp_found_match = true;
                                                                     }
                                                                     cont.seekg(cpp_old_streampos);
@@ -9004,7 +9145,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                                                                         // assign expression to variable NT
                                                                         var_NT_0d = cpp_read_int_field(cpp_line, 4);
                                                                         aux_var_NT_0d_read = true;
-                                                                        if (((((((var_NT_0d)==(6))))))) {
+                                                                        if ((((((((aux_var_NT_0d_read == true)) && ((var_NT_0d)==(6)))))))) {
                                                                             cpp_found_match = true;
                                                                         }
                                                                         cont.seekg(cpp_old_streampos);
@@ -9079,7 +9220,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                                                                         // assign expression to variable NT
                                                                         var_NT_0d = cpp_read_int_field(cpp_line, 4);
                                                                         aux_var_NT_0d_read = true;
-                                                                        if (((((((var_NT_0d)==(8))))))) {
+                                                                        if ((((((((aux_var_NT_0d_read == true)) && ((var_NT_0d)==(8)))))))) {
                                                                             cpp_found_match = true;
                                                                         }
                                                                         cont.seekg(cpp_old_streampos);
@@ -9160,7 +9301,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                                                                         // assign expression to variable NT
                                                                         var_NT_0d = cpp_read_int_field(cpp_line, 4);
                                                                         aux_var_NT_0d_read = true;
-                                                                        if (((((((var_NT_0d)==(10))))))) {
+                                                                        if ((((((((aux_var_NT_0d_read == true)) && ((var_NT_0d)==(10)))))))) {
                                                                             cpp_found_match = true;
                                                                         }
                                                                         cont.seekg(cpp_old_streampos);
@@ -9247,7 +9388,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                                                                         // assign expression to variable NT
                                                                         var_NT_0d = cpp_read_int_field(cpp_line, 4);
                                                                         aux_var_NT_0d_read = true;
-                                                                        if (((((((var_NT_0d)==(12))))))) {
+                                                                        if ((((((((aux_var_NT_0d_read == true)) && ((var_NT_0d)==(12)))))))) {
                                                                             cpp_found_match = true;
                                                                         }
                                                                         cont.seekg(cpp_old_streampos);
@@ -9370,7 +9511,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                             {
                                 bool cpp_found_match = false;
                                 if (! cpp_found_match) {
-                                    if (((((((var_LCON_0d)!=(0))))))) {
+                                    if ((((((((aux_var_LCON_0d_read == true)) && ((var_LCON_0d)!=(0)))))))) {
                                         // if statement evaluation
                                         cpp_found_match = true;
                                         // open section continuous
@@ -9432,7 +9573,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                             {
                                 bool cpp_found_match = false;
                                 if (! cpp_found_match) {
-                                    if (((((((((var_LCOV_0d)!=(0))))&&(((var_LCOV_0d)!=(2))))&&(((var_LCON_0d)!=(0))))))) {
+                                    if ((((((((((aux_var_LCOV_0d_read == true)) && ((var_LCOV_0d)!=(0)))))&&((((aux_var_LCOV_0d_read == true)) && ((var_LCOV_0d)!=(2)))))&&((((aux_var_LCON_0d_read == true)) && ((var_LCON_0d)!=(0)))))))) {
                                         // if statement evaluation
                                         cpp_found_match = true;
                                         // open section continuous
@@ -9508,7 +9649,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                             {
                                 bool cpp_found_match = false;
                                 if (! cpp_found_match) {
-                                    if ((((((((var_LCOV_0d)!=(0))))&&(((var_LCOV_0d)!=(1))))))) {
+                                    if (((((((((aux_var_LCOV_0d_read == true)) && ((var_LCOV_0d)!=(0)))))&&((((aux_var_LCOV_0d_read == true)) && ((var_LCOV_0d)!=(1)))))))) {
                                         // if statement evaluation
                                         cpp_found_match = true;
                                         // open section discrete
@@ -9707,7 +9848,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                         // assign expression to variable NST
                         var_NST_0d = cpp_read_int_field(cpp_line, 4);
                         aux_var_NST_0d_read = true;
-                        if (((((((var_NST_0d)==(1))))))) {
+                        if ((((((((aux_var_NST_0d_read == true)) && ((var_NST_0d)==(1)))))))) {
                             cpp_found_match = true;
                         }
                         cont.seekg(cpp_old_streampos);
@@ -9808,7 +9949,7 @@ py::dict parse_mf8mt457_istream(std::istream& cont) {
                                         // assign expression to variable JENDL_LIST_NPL
                                         var_JENDL_LIST_NPL_0d = cpp_read_int_field(cpp_line, 4);
                                         aux_var_JENDL_LIST_NPL_0d_read = true;
-                                        if (((((((var_JENDL_LIST_NPL_0d)!=(6))))))) {
+                                        if ((((((((aux_var_JENDL_LIST_NPL_0d_read == true)) && ((var_JENDL_LIST_NPL_0d)!=(6)))))))) {
                                             cpp_found_match = true;
                                         }
                                         cont.seekg(cpp_old_streampos);
@@ -10698,7 +10839,7 @@ py::dict parse_mf12_istream(std::istream& cont) {
                     // assign expression to variable NK
                     var_NK_0d = cpp_read_int_field(cpp_line, 4);
                     aux_var_NK_0d_read = true;
-                    if (((((((var_LO_0d)==(1))))))) {
+                    if ((((((((aux_var_LO_0d_read == true)) && ((var_LO_0d)==(1)))))))) {
                         cpp_found_match = true;
                     }
                     cont.seekg(cpp_old_streampos);
@@ -10722,7 +10863,7 @@ py::dict parse_mf12_istream(std::istream& cont) {
                     {
                         bool cpp_found_match = false;
                         if (! cpp_found_match) {
-                            if (((((((var_NK_0d)>(1))))))) {
+                            if ((((((((aux_var_NK_0d_read == true)) && ((var_NK_0d)>(1)))))))) {
                                 // if statement evaluation
                                 cpp_found_match = true;
                                 // read TAB1 record
@@ -10878,7 +11019,7 @@ py::dict parse_mf12_istream(std::istream& cont) {
                         // assign expression to variable NS
                         var_NS_0d = cpp_read_int_field(cpp_line, 4);
                         aux_var_NS_0d_read = true;
-                        if (((((((var_LO_0d)==(2))))))) {
+                        if ((((((((aux_var_LO_0d_read == true)) && ((var_LO_0d)==(2)))))))) {
                             cpp_found_match = true;
                         }
                         cont.seekg(cpp_old_streampos);
@@ -10905,7 +11046,7 @@ py::dict parse_mf12_istream(std::istream& cont) {
                         {
                             bool cpp_found_match = false;
                             if (! cpp_found_match) {
-                                if (((((((var_LG_0d)==(1))))))) {
+                                if ((((((((aux_var_LG_0d_read == true)) && ((var_LG_0d)==(1)))))))) {
                                     // if statement evaluation
                                     cpp_found_match = true;
                                     cpp_line = cpp_read_line(cont);
@@ -10947,7 +11088,7 @@ py::dict parse_mf12_istream(std::istream& cont) {
                             }
                             if (! cpp_found_match) {
                                 if (! cpp_found_match) {
-                                    if (((((((var_LG_0d)==(2))))))) {
+                                    if ((((((((aux_var_LG_0d_read == true)) && ((var_LG_0d)==(2)))))))) {
                                         // if statement evaluation
                                         cpp_found_match = true;
                                         cpp_line = cpp_read_line(cont);
@@ -10964,14 +11105,6 @@ py::dict parse_mf12_istream(std::istream& cont) {
                                         // assign expression to variable NT
                                         var_NT_0d = (cpp_int_val/(var_LG_0d+1));
                                         aux_var_NT_0d_read = true;
-                                        if ((! (aux_var_LG_0d_read == true))) {
-                                            // assign expression to variable cpp_int_val
-                                            cpp_int_val = cpp_read_int_field(cpp_line, 4);
-                                            aux_cpp_int_val_read = true;
-                                            // assign expression to variable LG
-                                            var_LG_0d = ((cpp_int_val+(var_NT_0d*(-1)))/var_NT_0d);
-                                            aux_var_LG_0d_read = true;
-                                        }
                                         if ((! (aux_var_NT_0d_read == true))) {
                                             // assign expression to variable NT
                                             var_NT_0d = cpp_read_int_field(cpp_line, 5);
@@ -11148,7 +11281,7 @@ py::dict parse_mf13_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if (((((((var_NK_0d)>(1))))))) {
+            if ((((((((aux_var_NK_0d_read == true)) && ((var_NK_0d)>(1)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
                 // read TAB1 record
@@ -11402,7 +11535,7 @@ py::dict parse_mf14_istream(std::istream& cont) {
                     // assign expression to variable NK
                     var_NK_0d = cpp_read_int_field(cpp_line, 4);
                     aux_var_NK_0d_read = true;
-                    if (((((((var_LI_0d)==(1))))))) {
+                    if ((((((((aux_var_LI_0d_read == true)) && ((var_LI_0d)==(1)))))))) {
                         cpp_found_match = true;
                     }
                     cont.seekg(cpp_old_streampos);
@@ -11488,7 +11621,7 @@ py::dict parse_mf14_istream(std::istream& cont) {
                         // assign expression to variable NI
                         var_NI_0d = cpp_read_int_field(cpp_line, 5);
                         aux_var_NI_0d_read = true;
-                        if ((((((((var_LI_0d)==(0))))&&(((var_LTT_0d)==(1))))))) {
+                        if (((((((((aux_var_LI_0d_read == true)) && ((var_LI_0d)==(0)))))&&((((aux_var_LTT_0d_read == true)) && ((var_LTT_0d)==(1)))))))) {
                             cpp_found_match = true;
                         }
                         cont.seekg(cpp_old_streampos);
@@ -11670,7 +11803,7 @@ py::dict parse_mf14_istream(std::istream& cont) {
                         // assign expression to variable NI
                         var_NI_0d = cpp_read_int_field(cpp_line, 5);
                         aux_var_NI_0d_read = true;
-                        if ((((((((var_LI_0d)==(0))))&&(((var_LTT_0d)==(2))))))) {
+                        if (((((((((aux_var_LI_0d_read == true)) && ((var_LI_0d)==(0)))))&&((((aux_var_LTT_0d_read == true)) && ((var_LTT_0d)==(2)))))))) {
                             cpp_found_match = true;
                         }
                         cont.seekg(cpp_old_streampos);
@@ -11893,7 +12026,7 @@ py::dict parse_mf15_istream(std::istream& cont) {
                             // assign expression to variable LF
                             var_LF_0d = cpp_read_int_field(cpp_line, 3);
                             aux_var_LF_0d_read = true;
-                            if (((((((var_LF_0d)==(1))))))) {
+                            if ((((((((aux_var_LF_0d_read == true)) && ((var_LF_0d)==(1)))))))) {
                                 cpp_found_match = true;
                             }
                             cont.seekg(cpp_old_streampos);
@@ -12440,7 +12573,7 @@ py::dict parse_mf31_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if (((((((var_MTL_0d)==(0))))))) {
+            if ((((((((aux_var_MTL_0d_read == true)) && ((var_MTL_0d)==(0)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
 
@@ -12544,7 +12677,7 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                 {
                                     bool cpp_found_match = false;
                                     if (! cpp_found_match) {
-                                        if (((((((var_LTY_0d)==(0))))))) {
+                                        if ((((((((aux_var_LTY_0d_read == true)) && ((var_LTY_0d)==(0)))))))) {
                                             // if statement evaluation
                                             cpp_found_match = true;
                                             cpp_line = cpp_read_line(cont);
@@ -12586,7 +12719,7 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                     }
                                     if (! cpp_found_match) {
                                         if (! cpp_found_match) {
-                                            if ((((((((var_LTY_0d)>=(1))))&&(((var_LTY_0d)<=(3))))))) {
+                                            if (((((((((aux_var_LTY_0d_read == true)) && ((var_LTY_0d)>=(1)))))&&((((aux_var_LTY_0d_read == true)) && ((var_LTY_0d)<=(3)))))))) {
                                                 // if statement evaluation
                                                 cpp_found_match = true;
                                                 cpp_line = cpp_read_line(cont);
@@ -12790,7 +12923,7 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                                     var_NP_0d = cpp_read_int_field(cpp_line, 5);
                                                     aux_var_NP_0d_read = true;
                                                 }
-                                                if ((((((((var_LB_0d)>=(0))))&&(((var_LB_0d)<=(4))))))) {
+                                                if (((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)>=(0)))))&&((((aux_var_LB_0d_read == true)) && ((var_LB_0d)<=(4)))))))) {
                                                     cpp_found_match = true;
                                                 }
                                                 cont.seekg(cpp_old_streampos);
@@ -12877,7 +13010,7 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                                     if ((! (aux_var_NE_0d_read == true))) {
                                                         throw std::runtime_error("The equation ((NE*(NE-1))+1)==value cannot be solved for NE because this variable could not be isolated.");
                                                     }
-                                                    if ((((((((var_LB_0d)==(5))))&&(((var_LS_0d)==(0))))))) {
+                                                    if (((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(5)))))&&((((aux_var_LS_0d_read == true)) && ((var_LS_0d)==(0)))))))) {
                                                         cpp_found_match = true;
                                                     }
                                                     cont.seekg(cpp_old_streampos);
@@ -12963,7 +13096,7 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                                     if ((! (aux_var_NE_0d_read == true))) {
                                                         throw std::runtime_error("The equation ((NE*(NE+1))/2)==value cannot be solved for NE because this variable could not be isolated.");
                                                     }
-                                                    if ((((((((var_LB_0d)==(5))))&&(((var_LS_0d)==(1))))))) {
+                                                    if (((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(5)))))&&((((aux_var_LS_0d_read == true)) && ((var_LS_0d)==(1)))))))) {
                                                         cpp_found_match = true;
                                                     }
                                                     cont.seekg(cpp_old_streampos);
@@ -13061,7 +13194,7 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                                         var_NER_0d = ((cpp_int_val+(-1))/var_NEC_0d);
                                                         aux_var_NER_0d_read = true;
                                                     }
-                                                    if (((((((var_LB_0d)==(6))))))) {
+                                                    if ((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(6)))))))) {
                                                         cpp_found_match = true;
                                                     }
                                                     cont.seekg(cpp_old_streampos);
@@ -13172,7 +13305,7 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                                         var_NP_0d = cpp_read_int_field(cpp_line, 5);
                                                         aux_var_NP_0d_read = true;
                                                     }
-                                                    if (((((((((((((var_LB_0d)==(8)))))||((((var_LB_0d)==(9))))))))&&(((var_LT_0d)==(0))))))) {
+                                                    if ((((((((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(8))))))||(((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(9)))))))))&&((((aux_var_LT_0d_read == true)) && ((var_LT_0d)==(0)))))))) {
                                                         cpp_found_match = true;
                                                     }
                                                     cont.seekg(cpp_old_streampos);
@@ -13604,7 +13737,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                     {
                         bool cpp_found_match = false;
                         if (! cpp_found_match) {
-                            if (((((((var_NRO_0d)!=(0))))))) {
+                            if ((((((((aux_var_NRO_0d_read == true)) && ((var_NRO_0d)!=(0)))))))) {
                                 // if statement evaluation
                                 cpp_found_match = true;
                                 cpp_line = cpp_read_line(cont);
@@ -13689,7 +13822,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                     // assign expression to variable ISR
                                     var_ISR_0d = cpp_read_int_field(cpp_line, 5);
                                     aux_var_ISR_0d_read = true;
-                                    if (((((((((var_LCOMP_0d)==(0))))&&(((var_LRU_0d)==(1))))&&((((((((var_LRF_0d)==(1)))))||((((var_LRF_0d)==(2))))))))))) {
+                                    if ((((((((((aux_var_LCOMP_0d_read == true)) && ((var_LCOMP_0d)==(0)))))&&((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(1)))))&&(((((((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(1))))))||(((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(2)))))))))))) {
                                         cpp_found_match = true;
                                     }
                                     cont.seekg(cpp_old_streampos);
@@ -13716,7 +13849,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                     {
                                         bool cpp_found_match = false;
                                         if (! cpp_found_match) {
-                                            if (((((((var_ISR_0d)!=(0))))))) {
+                                            if ((((((((aux_var_ISR_0d_read == true)) && ((var_ISR_0d)!=(0)))))))) {
                                                 // if statement evaluation
                                                 cpp_found_match = true;
                                                 cpp_line = cpp_read_line(cont);
@@ -14060,7 +14193,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         // assign expression to variable ISR
                                         var_ISR_0d = cpp_read_int_field(cpp_line, 5);
                                         aux_var_ISR_0d_read = true;
-                                        if (((((((((var_LCOMP_0d)==(1))))&&(((var_LRU_0d)==(1))))&&((((((((var_LRF_0d)==(1)))))||((((var_LRF_0d)==(2))))))))))) {
+                                        if ((((((((((aux_var_LCOMP_0d_read == true)) && ((var_LCOMP_0d)==(1)))))&&((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(1)))))&&(((((((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(1))))))||(((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(2)))))))))))) {
                                             cpp_found_match = true;
                                         }
                                         cont.seekg(cpp_old_streampos);
@@ -14087,7 +14220,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         {
                                             bool cpp_found_match = false;
                                             if (! cpp_found_match) {
-                                                if (((((((var_ISR_0d)>(0))))))) {
+                                                if ((((((((aux_var_ISR_0d_read == true)) && ((var_ISR_0d)>(0)))))))) {
                                                     // if statement evaluation
                                                     cpp_found_match = true;
                                                     cpp_line = cpp_read_line(cont);
@@ -14146,11 +14279,11 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                 // assign expression to variable NRB
                                                 var_NRB_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NRB_0d_read = true;
-                                                if ((! (aux_var_NRB_0d_read == true))) {
-                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
-                                                }
                                                 if ((! (aux_var_MPAR_0d_read == true))) {
                                                     throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
+                                                }
+                                                if ((! (aux_var_NRB_0d_read == true))) {
+                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
                                                 }
                                                 {
                                                     int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14336,7 +14469,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         // assign expression to variable ISR
                                         var_ISR_0d = cpp_read_int_field(cpp_line, 5);
                                         aux_var_ISR_0d_read = true;
-                                        if (((((((((var_LCOMP_0d)==(1))))&&(((var_LRU_0d)==(1))))&&(((var_LRF_0d)==(3))))))) {
+                                        if ((((((((((aux_var_LCOMP_0d_read == true)) && ((var_LCOMP_0d)==(1)))))&&((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(1)))))&&((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(3)))))))) {
                                             cpp_found_match = true;
                                         }
                                         cont.seekg(cpp_old_streampos);
@@ -14363,7 +14496,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         {
                                             bool cpp_found_match = false;
                                             if (! cpp_found_match) {
-                                                if (((((((var_ISR_0d)>(0))))))) {
+                                                if ((((((((aux_var_ISR_0d_read == true)) && ((var_ISR_0d)>(0)))))))) {
                                                     // if statement evaluation
                                                     cpp_found_match = true;
                                                     cpp_line = cpp_read_line(cont);
@@ -14436,11 +14569,11 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                 // assign expression to variable NRB
                                                 var_NRB_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NRB_0d_read = true;
-                                                if ((! (aux_var_NRB_0d_read == true))) {
-                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
-                                                }
                                                 if ((! (aux_var_MPAR_0d_read == true))) {
                                                     throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
+                                                }
+                                                if ((! (aux_var_NRB_0d_read == true))) {
+                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
                                                 }
                                                 {
                                                     int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14605,7 +14738,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         // assign expression to variable ISR
                                         var_ISR_0d = cpp_read_int_field(cpp_line, 5);
                                         aux_var_ISR_0d_read = true;
-                                        if (((((((((var_LCOMP_0d)==(1))))&&(((var_LRU_0d)==(1))))&&(((var_LRF_0d)==(7))))))) {
+                                        if ((((((((((aux_var_LCOMP_0d_read == true)) && ((var_LCOMP_0d)==(1)))))&&((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(1)))))&&((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(7)))))))) {
                                             cpp_found_match = true;
                                         }
                                         cont.seekg(cpp_old_streampos);
@@ -14623,7 +14756,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         {
                                             bool cpp_found_match = false;
                                             if (! cpp_found_match) {
-                                                if (((((((var_ISR_0d)>(0))))))) {
+                                                if ((((((((aux_var_ISR_0d_read == true)) && ((var_ISR_0d)>(0)))))))) {
                                                     // if statement evaluation
                                                     cpp_found_match = true;
                                                     cpp_line = cpp_read_line(cont);
@@ -14635,7 +14768,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                     cpp_int_val = cpp_read_int_field(cpp_line, 5);
                                                     aux_cpp_int_val_read = true;
                                                     // assign expression to variable NCH
-                                                    var_NCH_0d = ((((1/6)+(-1))+cpp_int_val)/(1/6));
+                                                    var_NCH_0d = ((((((1/6)*(-1))+1)*(-1))+cpp_int_val)/(1/6));
                                                     aux_var_NCH_0d_read = true;
                                                     {
                                                         int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14733,17 +14866,17 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                         // assign expression to variable NRB
                                                         var_NRB_0d = cpp_read_int_field(cpp_line, 3);
                                                         aux_var_NRB_0d_read = true;
-                                                        if ((! (aux_var_NRB_0d_read == true))) {
-                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NRB because the modulo operator is not supported.");
-                                                        }
                                                         if ((! (aux_var_NCH_0d_read == true))) {
                                                             throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
                                                         }
                                                         if ((! (aux_var_NRB_0d_read == true))) {
-                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NRB because the modulo operator is not supported.");
+                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NRB because the modulo operator is not supported.");
                                                         }
                                                         if ((! (aux_var_NCH_0d_read == true))) {
                                                             throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
+                                                        }
+                                                        if ((! (aux_var_NRB_0d_read == true))) {
+                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NRB because the modulo operator is not supported.");
                                                         }
                                                         {
                                                             int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14926,7 +15059,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         // assign expression to variable ISR
                                         var_ISR_0d = cpp_read_int_field(cpp_line, 5);
                                         aux_var_ISR_0d_read = true;
-                                        if (((((((((var_LCOMP_0d)==(2))))&&(((var_LRU_0d)==(1))))&&((((((((var_LRF_0d)==(1)))))||((((var_LRF_0d)==(2))))))))))) {
+                                        if ((((((((((aux_var_LCOMP_0d_read == true)) && ((var_LCOMP_0d)==(2)))))&&((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(1)))))&&(((((((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(1))))))||(((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(2)))))))))))) {
                                             cpp_found_match = true;
                                         }
                                         cont.seekg(cpp_old_streampos);
@@ -14950,7 +15083,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         {
                                             bool cpp_found_match = false;
                                             if (! cpp_found_match) {
-                                                if (((((((var_ISR_0d)>(0))))))) {
+                                                if ((((((((aux_var_ISR_0d_read == true)) && ((var_ISR_0d)>(0)))))))) {
                                                     // if statement evaluation
                                                     cpp_found_match = true;
                                                     cpp_line = cpp_read_line(cont);
@@ -15135,7 +15268,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         // assign expression to variable ISR
                                         var_ISR_0d = cpp_read_int_field(cpp_line, 5);
                                         aux_var_ISR_0d_read = true;
-                                        if (((((((((var_LCOMP_0d)==(2))))&&(((var_LRU_0d)==(1))))&&(((var_LRF_0d)==(3))))))) {
+                                        if ((((((((((aux_var_LCOMP_0d_read == true)) && ((var_LCOMP_0d)==(2)))))&&((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(1)))))&&((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(3)))))))) {
                                             cpp_found_match = true;
                                         }
                                         cont.seekg(cpp_old_streampos);
@@ -15162,7 +15295,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         {
                                             bool cpp_found_match = false;
                                             if (! cpp_found_match) {
-                                                if (((((((var_ISR_0d)>(0))))))) {
+                                                if ((((((((aux_var_ISR_0d_read == true)) && ((var_ISR_0d)>(0)))))))) {
                                                     // if statement evaluation
                                                     cpp_found_match = true;
                                                     cpp_line = cpp_read_line(cont);
@@ -15352,7 +15485,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         // assign expression to variable ISR
                                         var_ISR_0d = cpp_read_int_field(cpp_line, 5);
                                         aux_var_ISR_0d_read = true;
-                                        if (((((((((var_LCOMP_0d)==(2))))&&(((var_LRU_0d)==(1))))&&(((var_LRF_0d)==(7))))))) {
+                                        if ((((((((((aux_var_LCOMP_0d_read == true)) && ((var_LCOMP_0d)==(2)))))&&((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(1)))))&&((((aux_var_LRF_0d_read == true)) && ((var_LRF_0d)==(7)))))))) {
                                             cpp_found_match = true;
                                         }
                                         cont.seekg(cpp_old_streampos);
@@ -15376,7 +15509,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                         {
                                             bool cpp_found_match = false;
                                             if (! cpp_found_match) {
-                                                if (((((((var_ISR_0d)>(0))))))) {
+                                                if ((((((((aux_var_ISR_0d_read == true)) && ((var_ISR_0d)>(0)))))))) {
                                                     // if statement evaluation
                                                     cpp_found_match = true;
                                                     cpp_line = cpp_read_line(cont);
@@ -15389,7 +15522,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                         cpp_int_val = cpp_read_int_field(cpp_line, 5);
                                                         aux_cpp_int_val_read = true;
                                                         // assign expression to variable NJCH
-                                                        var_NJCH_0d = ((((1/6)+(-1))+cpp_int_val)/(1/6));
+                                                        var_NJCH_0d = ((((((1/6)*(-1))+1)*(-1))+cpp_int_val)/(1/6));
                                                         aux_var_NJCH_0d_read = true;
                                                     }
                                                     {
@@ -15772,7 +15905,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                         }
                         if (! cpp_found_match) {
                             if (! cpp_found_match) {
-                                if (((((((var_LRU_0d)==(2))))))) {
+                                if ((((((((aux_var_LRU_0d_read == true)) && ((var_LRU_0d)==(2)))))))) {
                                     // if statement evaluation
                                     cpp_found_match = true;
                                     cpp_line = cpp_read_line(cont);
@@ -16425,7 +16558,7 @@ py::dict parse_mf33_istream(std::istream& cont) {
     {
         bool cpp_found_match = false;
         if (! cpp_found_match) {
-            if (((((((var_MTL_0d)==(0))))))) {
+            if ((((((((aux_var_MTL_0d_read == true)) && ((var_MTL_0d)==(0)))))))) {
                 // if statement evaluation
                 cpp_found_match = true;
 
@@ -16529,7 +16662,7 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                 {
                                     bool cpp_found_match = false;
                                     if (! cpp_found_match) {
-                                        if (((((((var_LTY_0d)==(0))))))) {
+                                        if ((((((((aux_var_LTY_0d_read == true)) && ((var_LTY_0d)==(0)))))))) {
                                             // if statement evaluation
                                             cpp_found_match = true;
                                             cpp_line = cpp_read_line(cont);
@@ -16571,7 +16704,7 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                     }
                                     if (! cpp_found_match) {
                                         if (! cpp_found_match) {
-                                            if ((((((((var_LTY_0d)>=(1))))&&(((var_LTY_0d)<=(3))))))) {
+                                            if (((((((((aux_var_LTY_0d_read == true)) && ((var_LTY_0d)>=(1)))))&&((((aux_var_LTY_0d_read == true)) && ((var_LTY_0d)<=(3)))))))) {
                                                 // if statement evaluation
                                                 cpp_found_match = true;
                                                 cpp_line = cpp_read_line(cont);
@@ -16775,7 +16908,7 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                                     var_NP_0d = cpp_read_int_field(cpp_line, 5);
                                                     aux_var_NP_0d_read = true;
                                                 }
-                                                if ((((((((var_LB_0d)>=(0))))&&(((var_LB_0d)<=(4))))))) {
+                                                if (((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)>=(0)))))&&((((aux_var_LB_0d_read == true)) && ((var_LB_0d)<=(4)))))))) {
                                                     cpp_found_match = true;
                                                 }
                                                 cont.seekg(cpp_old_streampos);
@@ -16862,7 +16995,7 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                                     if ((! (aux_var_NE_0d_read == true))) {
                                                         throw std::runtime_error("The equation ((NE*(NE-1))+1)==value cannot be solved for NE because this variable could not be isolated.");
                                                     }
-                                                    if ((((((((var_LB_0d)==(5))))&&(((var_LS_0d)==(0))))))) {
+                                                    if (((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(5)))))&&((((aux_var_LS_0d_read == true)) && ((var_LS_0d)==(0)))))))) {
                                                         cpp_found_match = true;
                                                     }
                                                     cont.seekg(cpp_old_streampos);
@@ -16948,7 +17081,7 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                                     if ((! (aux_var_NE_0d_read == true))) {
                                                         throw std::runtime_error("The equation ((NE*(NE+1))/2)==value cannot be solved for NE because this variable could not be isolated.");
                                                     }
-                                                    if ((((((((var_LB_0d)==(5))))&&(((var_LS_0d)==(1))))))) {
+                                                    if (((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(5)))))&&((((aux_var_LS_0d_read == true)) && ((var_LS_0d)==(1)))))))) {
                                                         cpp_found_match = true;
                                                     }
                                                     cont.seekg(cpp_old_streampos);
@@ -17046,7 +17179,7 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                                         var_NER_0d = ((cpp_int_val+(-1))/var_NEC_0d);
                                                         aux_var_NER_0d_read = true;
                                                     }
-                                                    if (((((((var_LB_0d)==(6))))))) {
+                                                    if ((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(6)))))))) {
                                                         cpp_found_match = true;
                                                     }
                                                     cont.seekg(cpp_old_streampos);
@@ -17157,7 +17290,7 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                                         var_NP_0d = cpp_read_int_field(cpp_line, 5);
                                                         aux_var_NP_0d_read = true;
                                                     }
-                                                    if (((((((((((((var_LB_0d)==(8)))))||((((var_LB_0d)==(9))))))))&&(((var_LT_0d)==(0))))))) {
+                                                    if ((((((((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(8))))))||(((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(9)))))))))&&((((aux_var_LT_0d_read == true)) && ((var_LT_0d)==(0)))))))) {
                                                         cpp_found_match = true;
                                                     }
                                                     cont.seekg(cpp_old_streampos);
@@ -17489,7 +17622,7 @@ py::dict parse_mf34_istream(std::istream& cont) {
                                 var_NL_0d = cpp_read_int_field(cpp_line, 5);
                                 aux_var_NL_0d_read = true;
                             }
-                            if ((((((((var_MT1_0d)==(0)))))||((((var_MT_0d)==(var_MT1_0d))))))) {
+                            if (((((((((aux_var_MT1_0d_read == true)) && ((var_MT1_0d)==(0))))))||(((((aux_var_MT_0d_read == true)) && ((var_MT_0d)==(var_MT1_0d)))))))) {
                                 cpp_found_match = true;
                             }
                             cont.seekg(cpp_old_streampos);
@@ -17519,7 +17652,7 @@ py::dict parse_mf34_istream(std::istream& cont) {
                                 {
                                     bool cpp_found_match = false;
                                     if (! cpp_found_match) {
-                                        if (((((((var_n_0d)==(1))))))) {
+                                        if ((((((((aux_var_n_0d_read == true)) && ((var_n_0d)==(1)))))))) {
                                             // if statement evaluation
                                             cpp_found_match = true;
                                             cpp_line = cpp_read_line(cont);
@@ -17608,7 +17741,7 @@ py::dict parse_mf34_istream(std::istream& cont) {
                         {
                             bool cpp_found_match = false;
                             if (! cpp_found_match) {
-                                if (((((((var_n_0d)==(1))))))) {
+                                if ((((((((aux_var_n_0d_read == true)) && ((var_n_0d)==(1)))))))) {
                                     // if statement evaluation
                                     cpp_found_match = true;
                                     cpp_line = cpp_read_line(cont);
@@ -17948,7 +18081,7 @@ py::dict parse_mf35_istream(std::istream& cont) {
                             // assign expression to variable NE
                             var_NE_0d = cpp_read_int_field(cpp_line, 5);
                             aux_var_NE_0d_read = true;
-                            if ((((((((var_LS_0d)==(1))))&&(((var_LB_0d)==(7))))))) {
+                            if (((((((((aux_var_LS_0d_read == true)) && ((var_LS_0d)==(1)))))&&((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(7)))))))) {
                                 cpp_found_match = true;
                             }
                             cont.seekg(cpp_old_streampos);
@@ -18282,7 +18415,7 @@ py::dict parse_mf40_istream(std::istream& cont) {
                                             // assign expression to variable LTY
                                             var_LTY_0d = cpp_read_int_field(cpp_line, 3);
                                             aux_var_LTY_0d_read = true;
-                                            if (((((((var_LTY_0d)==(0))))))) {
+                                            if ((((((((aux_var_LTY_0d_read == true)) && ((var_LTY_0d)==(0)))))))) {
                                                 cpp_found_match = true;
                                             }
                                             cont.seekg(cpp_old_streampos);
@@ -18347,7 +18480,7 @@ py::dict parse_mf40_istream(std::istream& cont) {
                                                 // assign expression to variable LTY
                                                 var_LTY_0d = cpp_read_int_field(cpp_line, 3);
                                                 aux_var_LTY_0d_read = true;
-                                                if (((((((((var_LTY_0d)==(1)))))||((((var_LTY_0d)==(2)))))||((((var_LTY_0d)==(3))))))) {
+                                                if ((((((((((aux_var_LTY_0d_read == true)) && ((var_LTY_0d)==(1))))))||(((((aux_var_LTY_0d_read == true)) && ((var_LTY_0d)==(2))))))||(((((aux_var_LTY_0d_read == true)) && ((var_LTY_0d)==(3)))))))) {
                                                     cpp_found_match = true;
                                                 }
                                                 cont.seekg(cpp_old_streampos);
@@ -18560,7 +18693,7 @@ py::dict parse_mf40_istream(std::istream& cont) {
                                                 var_NP_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NP_0d_read = true;
                                             }
-                                            if ((((((((var_LB_0d)>=(0))))&&(((var_LB_0d)<=(4))))))) {
+                                            if (((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)>=(0)))))&&((((aux_var_LB_0d_read == true)) && ((var_LB_0d)<=(4)))))))) {
                                                 cpp_found_match = true;
                                             }
                                             cont.seekg(cpp_old_streampos);
@@ -18651,7 +18784,7 @@ py::dict parse_mf40_istream(std::istream& cont) {
                                                 // assign expression to variable NE
                                                 var_NE_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NE_0d_read = true;
-                                                if ((((((((var_LB_0d)==(5))))&&(((var_LS_0d)==(0))))))) {
+                                                if (((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(5)))))&&((((aux_var_LS_0d_read == true)) && ((var_LS_0d)==(0)))))))) {
                                                     cpp_found_match = true;
                                                 }
                                                 cont.seekg(cpp_old_streampos);
@@ -18741,7 +18874,7 @@ py::dict parse_mf40_istream(std::istream& cont) {
                                                 // assign expression to variable NE
                                                 var_NE_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NE_0d_read = true;
-                                                if ((((((((var_LB_0d)==(5))))&&(((var_LS_0d)==(1))))))) {
+                                                if (((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(5)))))&&((((aux_var_LS_0d_read == true)) && ((var_LS_0d)==(1)))))))) {
                                                     cpp_found_match = true;
                                                 }
                                                 cont.seekg(cpp_old_streampos);
@@ -18824,7 +18957,7 @@ py::dict parse_mf40_istream(std::istream& cont) {
                                                 // assign expression to variable NER
                                                 var_NER_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NER_0d_read = true;
-                                                if (((((((var_LB_0d)==(6))))))) {
+                                                if ((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(6)))))))) {
                                                     cpp_found_match = true;
                                                 }
                                                 cont.seekg(cpp_old_streampos);
@@ -18924,7 +19057,7 @@ py::dict parse_mf40_istream(std::istream& cont) {
                                                     var_NP_0d = cpp_read_int_field(cpp_line, 5);
                                                     aux_var_NP_0d_read = true;
                                                 }
-                                                if (((((((((((((var_LB_0d)==(8)))))||((((var_LB_0d)==(9))))))))&&(((var_LT_0d)==(0))))))) {
+                                                if ((((((((((((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(8))))))||(((((aux_var_LB_0d_read == true)) && ((var_LB_0d)==(9)))))))))&&((((aux_var_LT_0d_read == true)) && ((var_LT_0d)==(0)))))))) {
                                                     cpp_found_match = true;
                                                 }
                                                 cont.seekg(cpp_old_streampos);
@@ -20160,176 +20293,281 @@ py::dict parse_endf(std::string& strcont, py::object exclude, py::object include
 
 py::dict parse_mf0mt0_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf0mt0_istream(inpfile);
 }
 
 py::dict parse_mf1mt451_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf1mt451_istream(inpfile);
 }
 
 py::dict parse_mf1mt452_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf1mt452_istream(inpfile);
 }
 
 py::dict parse_mf1mt455_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf1mt455_istream(inpfile);
 }
 
 py::dict parse_mf1mt456_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf1mt456_istream(inpfile);
 }
 
 py::dict parse_mf1mt458_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf1mt458_istream(inpfile);
 }
 
 py::dict parse_mf1mt460_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf1mt460_istream(inpfile);
 }
 
 py::dict parse_mf2mt151_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf2mt151_istream(inpfile);
 }
 
 py::dict parse_mf3_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf3_istream(inpfile);
 }
 
 py::dict parse_mf4_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf4_istream(inpfile);
 }
 
 py::dict parse_mf5_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf5_istream(inpfile);
 }
 
 py::dict parse_mf6_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf6_istream(inpfile);
 }
 
 py::dict parse_mf7mt2_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf7mt2_istream(inpfile);
 }
 
 py::dict parse_mf7mt4_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf7mt4_istream(inpfile);
 }
 
 py::dict parse_mf8_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf8_istream(inpfile);
 }
 
 py::dict parse_mf8mt454_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf8mt454_istream(inpfile);
 }
 
 py::dict parse_mf8mt457_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf8mt457_istream(inpfile);
 }
 
 py::dict parse_mf8mt459_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf8mt459_istream(inpfile);
 }
 
 py::dict parse_mf9_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf9_istream(inpfile);
 }
 
 py::dict parse_mf10_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf10_istream(inpfile);
 }
 
 py::dict parse_mf12_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf12_istream(inpfile);
 }
 
 py::dict parse_mf13_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf13_istream(inpfile);
 }
 
 py::dict parse_mf14_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf14_istream(inpfile);
 }
 
 py::dict parse_mf15_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf15_istream(inpfile);
 }
 
 py::dict parse_mf23_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf23_istream(inpfile);
 }
 
 py::dict parse_mf26_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf26_istream(inpfile);
 }
 
 py::dict parse_mf27_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf27_istream(inpfile);
 }
 
 py::dict parse_mf28_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf28_istream(inpfile);
 }
 
 py::dict parse_mf31_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf31_istream(inpfile);
 }
 
 py::dict parse_mf32_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf32_istream(inpfile);
 }
 
 py::dict parse_mf33_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf33_istream(inpfile);
 }
 
 py::dict parse_mf34_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf34_istream(inpfile);
 }
 
 py::dict parse_mf35_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf35_istream(inpfile);
 }
 
 py::dict parse_mf40_file(std::string& filename) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_mf40_istream(inpfile);
 }
 
 py::dict parse_endf_file(std::string& filename, py::object exclude, py::object include) {
     std::ifstream inpfile(filename);
+if ((! inpfile.is_open())) {
+    throw std::ifstream::failure("failed to open file " + filename);
+}
     return parse_endf_istream(inpfile, exclude, include);
 }
 

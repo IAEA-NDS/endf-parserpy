@@ -774,10 +774,13 @@ def generate_master_parsefun(name, recipefuns):
             statements.append(curstat)
             conditions.append(curcond)
 
-    # if a function should not be parsed, we read it verbatim as list of strings
-    curcond = cpp.logical_and(
-        ["mt != 0", aux.should_not_parse_section("mf", "mt", "exclude", "include")]
+    # if no parser function is registered for an MF/MT section
+    # we read it in verbatim
+    curcond = cpp.logical_and([f"mf != 0", "mt != 0"])
+    curstat = aux.read_section_verbatim(
+        "verbatim_section", "mf", "mt", "cont", "is_firstline"
     )
+    curstat += cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section")
     statements.append(curstat)
     conditions.append(curcond)
 

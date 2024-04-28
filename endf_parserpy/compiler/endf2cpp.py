@@ -138,8 +138,6 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
     # populates vardict and type info therein
     vardefs = generate_vardefs(vardict)
 
-    # print_mfmt_info = cpp.statement('std::cout << var_MF_0d << " --- " << var_MT_0d << std::endl')
-
     fun_header = cpp_boilerplate.parsefun_header(name)
     fun_footer = cpp.indent_code(generate_endf_dict_assignments(vardict), 4)
     fun_footer += cpp_boilerplate.parsefun_footer()

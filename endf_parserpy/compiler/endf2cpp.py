@@ -714,7 +714,10 @@ def _mf_mt_dict_varname(mf, mt):
 
 
 def generate_master_parsefun(name, recipefuns):
-    header = cpp.line(f"py::dict {name}(std::istream& cont) {{")
+    header = cpp.line(
+        f"py::dict {name}(std::istream& cont, "
+        + "py::object exclude, py::object include) {"
+    )
     footer = cpp.statement("return mfmt_dict", 4)
     footer += cpp.close_block()
     body = ""
@@ -736,7 +739,14 @@ def generate_master_parsefun(name, recipefuns):
         if isinstance(mfdic, str):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic
-            conditions.append(f"mf == {mf}")
+            conditions.append(
+                cpp.logical_and(
+                    [
+                        f"mf == {mf}",
+                        aux.should_parse_section("mf", "mt", "exclude", "include"),
+                    ]
+                )
+            )
             curstat = cpp.statement("cont.seekg(curpos)")
             curstat += cpp_varaux.dict_assign(
                 "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont)"
@@ -752,13 +762,22 @@ def generate_master_parsefun(name, recipefuns):
                 curcond = f"mf == {mf} && mt == {mt}"
             if mt == 0 and mt == 0:
                 curcond = cpp.logical_and([curcond, "is_firstline"])
+            curcond = cpp.logical_and(
+                [curcond, aux.should_parse_section("mf", "mt", "exclude", "include")]
+            )
             curstat = cpp.statement("cont.seekg(curpos)")
             curstat += cpp_varaux.dict_assign(
                 "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont)"
             )
             statements.append(curstat)
             conditions.append(curcond)
-    body += cpp.indent_code(cpp.conditional_branches(conditions, statements), 4)
+
+    # default_code = cpp.statement('std::cout << "skipping mf/mt: " << mf << " --- " << mt << std::endl')
+    default_code = cpp.statement("")
+
+    body += cpp.indent_code(
+        cpp.conditional_branches(conditions, statements, default=default_code), 4
+    )
     body += cpp.statement("curpos = cont.tellg()", 4)
     body += cpp.statement("is_firstline = false", 4)
     body += cpp.close_block()
@@ -766,23 +785,31 @@ def generate_master_parsefun(name, recipefuns):
     return code
 
 
-def generate_cpp_parsefun_wrappers_string(parsefuns):
+def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
+    args_str = ", ".join(arg[0] + " " + arg[1] for arg in extra_args)
+    args_str = ", " + args_str if args_str != "" else args_str
+    args_str2 = ", ".join(arg[1] for arg in extra_args)
+    args_str2 = ", " + args_str2 if args_str2 != "" else args_str2
     code = ""
     for p in parsefuns:
-        code += cpp.line(f"py::dict {p}(std::string& strcont) {{")
+        code += cpp.line(f"py::dict {p}(std::string& strcont{args_str}) {{")
         code += cpp.statement("std::istringstream iss(strcont)", 4)
-        code += cpp.statement(f"return {p}_istream(iss)", 4)
+        code += cpp.statement(f"return {p}_istream(iss{args_str2})", 4)
         code += cpp.close_block()
         code += cpp.line("")
     return code
 
 
-def generate_cpp_parsefun_wrappers_file(parsefuns):
+def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
+    args_str = ", ".join(arg[0] + " " + arg[1] for arg in extra_args)
+    args_str = ", " + args_str if args_str != "" else args_str
+    args_str2 = ", ".join(arg[1] for arg in extra_args)
+    args_str2 = ", " + args_str2 if args_str2 != "" else args_str2
     code = ""
     for p in parsefuns:
-        code += cpp.line(f"py::dict {p}_file(std::string& filename) {{")
+        code += cpp.line(f"py::dict {p}_file(std::string& filename{args_str}) {{")
         code += cpp.statement("std::ifstream inpfile(filename)", 4)
-        code += cpp.statement(f"return {p}_istream(inpfile)", 4)
+        code += cpp.statement(f"return {p}_istream(inpfile{args_str2})", 4)
         code += cpp.close_block()
         code += cpp.line("")
     return code
@@ -809,12 +836,33 @@ def generate_cpp_module_code(recipes, module_name):
             parsefuns_code += generate_cpp_parsefun(func_name + "_istream", recipe)
             curdic = recipefuns.setdefault(mf, {})
             curdic[mt] = func_name
-    master_parsefun_code = generate_master_parsefun("parse_endf_istream", recipefuns)
-    func_names.append("parse_endf")
     parsefun_wrappers_code1 = generate_cpp_parsefun_wrappers_string(func_names)
     parsefun_wrappers_code2 = generate_cpp_parsefun_wrappers_file(func_names)
-    func_names.append("parse_endf_file")
     pybind_glue = cpp_boilerplate.register_cpp_parsefuns(func_names, module_name)
+    # special case for the master function calling the other mf/mt parser funs
+    master_parsefun_code = generate_master_parsefun("parse_endf_istream", recipefuns)
+    parsefun_wrappers_code1 += generate_cpp_parsefun_wrappers_string(
+        ["parse_endf"], ("py::object", "exclude"), ("py::object", "include")
+    )
+    parsefun_wrappers_code2 += generate_cpp_parsefun_wrappers_file(
+        ["parse_endf"], ("py::object", "exclude"), ("py::object", "include")
+    )
+    pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
+        ["parse_endf"],
+        module_name,
+        'py::arg("cont")',
+        'py::arg("exclude") = py::none()',
+        'py::arg("include") = py::none()',
+    )
+    pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
+        ["parse_endf_file"],
+        module_name,
+        'py::arg("filename")',
+        'py::arg("exclude") = py::none()',
+        'py::arg("include") = py::none()',
+    )
+
+    pybind_glue = cpp_boilerplate.register_pybind_module(module_name, pybind_glue)
     code = (
         module_header
         + parsefuns_code

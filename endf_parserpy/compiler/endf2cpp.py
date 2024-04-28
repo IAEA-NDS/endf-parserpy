@@ -425,8 +425,11 @@ def generate_code_for_varassign(
 
     # only try to solve for variables for which all remaining variables
     # have appeared before in recipe logic
-    for v in variables:
-        other_vars = variables.difference((v,))
+    # NOTE: sorted() is introduced to make the program output
+    #       deterministic/reproducible because iteration over
+    #       sets is not stable over program runs.
+    for v in sorted(variables):
+        other_vars = sorted(variables.difference((v,)))
         some_other_unavail = any(
             find_parent_dict(w, vardict) is None for w in other_vars
         )

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/23
+# Last modified:   2024/04/29
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -222,11 +222,14 @@ def _get_term_factor_sets(terms):
     """Determine the factors contributing to each term"""
     term_els = {}
     for term in terms:
-        curset = term_els.setdefault(term, set())
+        # use dict instead of set for stable ordering
+        # to ensure reproducible code generation
+        curset = term_els.setdefault(term, dict())
         if is_multiplication(term):
-            curset.update(term.children)
+            for c in term.children:
+                curset[c] = None
         else:
-            curset.add(term)
+            curset[term] = None
     return term_els
 
 

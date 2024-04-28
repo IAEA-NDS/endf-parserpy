@@ -3571,17 +3571,17 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                                                         // assign expression to variable NRS
                                                                         var_NRS_0d = cpp_read_int_field(cpp_line, 3);
                                                                         aux_var_NRS_0d_read = true;
-                                                                        if ((! (aux_var_NCH_0d_read == true))) {
-                                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
-                                                                        }
                                                                         if ((! (aux_var_NRS_0d_read == true))) {
                                                                             throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NRS because the modulo operator is not supported.");
                                                                         }
                                                                         if ((! (aux_var_NCH_0d_read == true))) {
-                                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
+                                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
                                                                         }
                                                                         if ((! (aux_var_NRS_0d_read == true))) {
                                                                             throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NRS because the modulo operator is not supported.");
+                                                                        }
+                                                                        if ((! (aux_var_NCH_0d_read == true))) {
+                                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
                                                                         }
                                                                         if (((((((var_NRS_0d)>(0))))))) {
                                                                             cpp_found_match = true;
@@ -3594,17 +3594,17 @@ py::dict parse_mf2mt151_istream(std::istream& cont) {
                                                                         // assign expression to variable NRS
                                                                         var_NRS_0d = cpp_read_int_field(cpp_line, 3);
                                                                         aux_var_NRS_0d_read = true;
-                                                                        if ((! (aux_var_NCH_0d_read == true))) {
-                                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
-                                                                        }
                                                                         if ((! (aux_var_NRS_0d_read == true))) {
                                                                             throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NRS because the modulo operator is not supported.");
                                                                         }
                                                                         if ((! (aux_var_NCH_0d_read == true))) {
-                                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
+                                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRS)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
                                                                         }
                                                                         if ((! (aux_var_NRS_0d_read == true))) {
                                                                             throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NRS because the modulo operator is not supported.");
+                                                                        }
+                                                                        if ((! (aux_var_NCH_0d_read == true))) {
+                                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRS)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
                                                                         }
                                                                         {
                                                                             int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -6586,6 +6586,13 @@ py::dict parse_mf6_istream(std::istream& cont) {
                             aux_cpp_int_val_read = true;
                             // assign expression to variable NEP
                             var_NEP_1d.set(var_j_0d, (cpp_int_val/(var_NA_1d[var_j_0d]+2)));
+                            if ((! var_NA_1d.contains(var_j_0d))) {
+                                // assign expression to variable cpp_int_val
+                                cpp_int_val = cpp_read_int_field(cpp_line, 4);
+                                aux_cpp_int_val_read = true;
+                                // assign expression to variable NA
+                                var_NA_1d.set(var_j_0d, ((cpp_int_val+(var_NEP_1d[var_j_0d]*(-2)))/var_NEP_1d[var_j_0d]));
+                            }
                             if ((! var_NEP_1d.contains(var_j_0d))) {
                                 // assign expression to variable NEP
                                 var_NEP_1d.set(var_j_0d, cpp_read_int_field(cpp_line, 5));
@@ -10629,14 +10636,6 @@ py::dict parse_mf12_istream(std::istream& cont) {
                                         // assign expression to variable NT
                                         var_NT_0d = (cpp_int_val/(var_LG_0d+1));
                                         aux_var_NT_0d_read = true;
-                                        if ((! (aux_var_LG_0d_read == true))) {
-                                            // assign expression to variable cpp_int_val
-                                            cpp_int_val = cpp_read_int_field(cpp_line, 4);
-                                            aux_cpp_int_val_read = true;
-                                            // assign expression to variable LG
-                                            var_LG_0d = ((cpp_int_val+(var_NT_0d*(-1)))/var_NT_0d);
-                                            aux_var_LG_0d_read = true;
-                                        }
                                         if ((! (aux_var_NT_0d_read == true))) {
                                             // assign expression to variable NT
                                             var_NT_0d = cpp_read_int_field(cpp_line, 5);
@@ -13811,11 +13810,11 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                 // assign expression to variable NRB
                                                 var_NRB_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NRB_0d_read = true;
-                                                if ((! (aux_var_MPAR_0d_read == true))) {
-                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
-                                                }
                                                 if ((! (aux_var_NRB_0d_read == true))) {
                                                     throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
+                                                }
+                                                if ((! (aux_var_MPAR_0d_read == true))) {
+                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
                                                 }
                                                 {
                                                     int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14101,11 +14100,11 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                 // assign expression to variable NRB
                                                 var_NRB_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NRB_0d_read = true;
-                                                if ((! (aux_var_MPAR_0d_read == true))) {
-                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
-                                                }
                                                 if ((! (aux_var_NRB_0d_read == true))) {
                                                     throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
+                                                }
+                                                if ((! (aux_var_MPAR_0d_read == true))) {
+                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
                                                 }
                                                 {
                                                     int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14300,7 +14299,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                     cpp_int_val = cpp_read_int_field(cpp_line, 5);
                                                     aux_cpp_int_val_read = true;
                                                     // assign expression to variable NCH
-                                                    var_NCH_0d = ((((1/6)+(-1))+cpp_int_val)/(1/6));
+                                                    var_NCH_0d = ((((((1/6)*(-1))+1)*(-1))+cpp_int_val)/(1/6));
                                                     aux_var_NCH_0d_read = true;
                                                     {
                                                         int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14398,17 +14397,17 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                         // assign expression to variable NRB
                                                         var_NRB_0d = cpp_read_int_field(cpp_line, 3);
                                                         aux_var_NRB_0d_read = true;
-                                                        if ((! (aux_var_NCH_0d_read == true))) {
-                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
-                                                        }
                                                         if ((! (aux_var_NRB_0d_read == true))) {
                                                             throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NRB because the modulo operator is not supported.");
                                                         }
                                                         if ((! (aux_var_NCH_0d_read == true))) {
-                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
+                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
                                                         }
                                                         if ((! (aux_var_NRB_0d_read == true))) {
                                                             throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NRB because the modulo operator is not supported.");
+                                                        }
+                                                        if ((! (aux_var_NCH_0d_read == true))) {
+                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
                                                         }
                                                         {
                                                             int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -15054,7 +15053,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                         cpp_int_val = cpp_read_int_field(cpp_line, 5);
                                                         aux_cpp_int_val_read = true;
                                                         // assign expression to variable NJCH
-                                                        var_NJCH_0d = ((((1/6)+(-1))+cpp_int_val)/(1/6));
+                                                        var_NJCH_0d = ((((((1/6)*(-1))+1)*(-1))+cpp_int_val)/(1/6));
                                                         aux_var_NJCH_0d_read = true;
                                                     }
                                                     {

@@ -170,6 +170,36 @@ def module_header():
             return true;
         }
     }
+
+
+    std::vector<std::string> read_section_verbatim(
+        int mf, int mt, std::istream& cont, bool is_first=false
+    ) {
+        std::streampos curpos;
+        std::string line;
+        std::vector<std::string> secvec;
+        int curmf;
+        int curmt;
+        while (std::getline(cont, line)) {
+            curmf = std::stoi(line.substr(70, 2));
+            curmt = std::stoi(line.substr(72, 3));
+            if (curmf != mf || curmt != mt) break;
+            // the newline for compatibility with the Python parser
+            secvec.push_back(line + "\n");
+            curpos = cont.tellg();
+        }
+        if (! is_first && (curmf != mf || curmt != 0)) {
+           std::string errmsg = "expected SEND of MF/MT " +
+                                std::to_string(mf) + "/" + std::to_string(mt);
+           throw std::runtime_error(errmsg);
+        }
+        if (is_first) {
+            // we rewind one line because in the case of MF0/MT0 (tapeid)
+            // we have also consumed the HEAD record of the next section
+            cont.seekg(curpos);
+        }
+        return secvec;
+    }
     """
     code = cpp.indent_code(code, -4)
     for vartype_definition in get_vartype_definitions():

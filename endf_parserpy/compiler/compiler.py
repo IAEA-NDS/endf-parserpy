@@ -31,9 +31,9 @@ def create_cpp_parser_module(
 
 
 def create_cmake_file(project_path, module_name, overwrite=False):
+    cmake_file = os.path.join(project_path, "CMakeLists.txt")
     if not overwrite and os.path.exists(cmake_file):
         raise FileExistsError(f"file {cmake_file} exists already!")
-    cmake_file = os.path.join(project_path, "CMakeLists.txt")
     cmake_content = generate_cmake_content(module_name)
     with open(cmake_file, "w") as f:
         f.write(cmake_content)
@@ -43,7 +43,7 @@ def create_project_files(
     project_path, module_name, recipes=None, path_exist_ok=False, overwrite_files=False
 ):
     if recipes is None:
-        recipes = endf_recipe_dictionary
+        recipes = get_recipe_dict("endf6-ext")
     try:
         os.makedirs(project_path, exist_ok=path_exist_ok)
         os.makedirs(os.path.join(project_path, "build"), exist_ok=path_exist_ok)

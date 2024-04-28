@@ -118,6 +118,73 @@ std::vector<double> cpp_read_float_vec(std::istream& cont, const int numel) {
     return res;
 }
 
+
+bool seq_contains(py::sequence seq, py::object value) {
+    int i = 0;
+    for (const auto& item : seq) {
+        if (py::cast<py::object>(item).equal(value)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+bool should_parse_section(int mf, int mt, py::object& exclude, py::object& include) {
+    py::tuple mf_mt_tup = py::make_tuple(mf, mt);
+    if (! exclude.is_none()) {
+        if (! py::isinstance<py::sequence>(exclude)) {
+            throw std::runtime_error("`exclude` argument must be of sequence type");
+        }
+        if (seq_contains(exclude, py::int_(mf)) || seq_contains(exclude, mf_mt_tup)) {
+            return false;
+        } else {
+            return true;
+        }
+    } else if (! include.is_none()) {
+        if (! py::isinstance<py::sequence>(include)) {
+            throw std::runtime_error("`include` argument must be of sequence type");
+        }
+        if (seq_contains(include, py::int_(mf)) || seq_contains(include, mf_mt_tup)) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return true;
+    }
+}
+
+
+std::vector<std::string> read_section_verbatim(
+    int mf, int mt, std::istream& cont, bool is_first=false
+) {
+    std::streampos curpos;
+    std::string line;
+    std::vector<std::string> secvec;
+    int curmf;
+    int curmt;
+    while (std::getline(cont, line)) {
+        curmf = std::stoi(line.substr(70, 2));
+        curmt = std::stoi(line.substr(72, 3));
+        if (curmf != mf || curmt != mt) break;
+        // the newline for compatibility with the Python parser
+        secvec.push_back(line + "\n");
+        curpos = cont.tellg();
+    }
+    if (! is_first && (curmf != mf || curmt != 0)) {
+       std::string errmsg = "expected SEND of MF/MT " +
+                            std::to_string(mf) + "/" + std::to_string(mt);
+       throw std::runtime_error(errmsg);
+    }
+    if (is_first) {
+        // we rewind one line because in the case of MF0/MT0 (tapeid)
+        // we have also consumed the HEAD record of the next section
+        cont.seekg(curpos);
+    }
+    return secvec;
+}
+
 template<typename T>
 class Matrix2d {
 
@@ -6586,13 +6653,6 @@ py::dict parse_mf6_istream(std::istream& cont) {
                             aux_cpp_int_val_read = true;
                             // assign expression to variable NEP
                             var_NEP_1d.set(var_j_0d, (cpp_int_val/(var_NA_1d[var_j_0d]+2)));
-                            if ((! var_NA_1d.contains(var_j_0d))) {
-                                // assign expression to variable cpp_int_val
-                                cpp_int_val = cpp_read_int_field(cpp_line, 4);
-                                aux_cpp_int_val_read = true;
-                                // assign expression to variable NA
-                                var_NA_1d.set(var_j_0d, ((cpp_int_val+(var_NEP_1d[var_j_0d]*(-2)))/var_NEP_1d[var_j_0d]));
-                            }
                             if ((! var_NEP_1d.contains(var_j_0d))) {
                                 // assign expression to variable NEP
                                 var_NEP_1d.set(var_j_0d, cpp_read_int_field(cpp_line, 5));
@@ -12978,14 +13038,6 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                                     // assign expression to variable NEC
                                                     var_NEC_0d = ((cpp_int_val+(-1))/var_NER_0d);
                                                     aux_var_NEC_0d_read = true;
-                                                    if ((! (aux_var_NER_0d_read == true))) {
-                                                        // assign expression to variable cpp_int_val
-                                                        cpp_int_val = cpp_read_int_field(cpp_line, 4);
-                                                        aux_cpp_int_val_read = true;
-                                                        // assign expression to variable NER
-                                                        var_NER_0d = ((cpp_int_val+(-1))/var_NEC_0d);
-                                                        aux_var_NER_0d_read = true;
-                                                    }
                                                     if (((((((var_LB_0d)==(6))))))) {
                                                         cpp_found_match = true;
                                                     }
@@ -13006,14 +13058,6 @@ py::dict parse_mf31_istream(std::istream& cont) {
                                                     // assign expression to variable NEC
                                                     var_NEC_0d = ((cpp_int_val+(-1))/var_NER_0d);
                                                     aux_var_NEC_0d_read = true;
-                                                    if ((! (aux_var_NER_0d_read == true))) {
-                                                        // assign expression to variable cpp_int_val
-                                                        cpp_int_val = cpp_read_int_field(cpp_line, 4);
-                                                        aux_cpp_int_val_read = true;
-                                                        // assign expression to variable NER
-                                                        var_NER_0d = ((cpp_int_val+(-1))/var_NEC_0d);
-                                                        aux_var_NER_0d_read = true;
-                                                    }
                                                     {
                                                         int cpp_npl = cpp_read_int_field(cpp_line, 4);
                                                         cpp_floatvec = cpp_read_float_vec(cont, cpp_npl);
@@ -14071,11 +14115,11 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                 // assign expression to variable NRB
                                                 var_NRB_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NRB_0d_read = true;
-                                                if ((! (aux_var_NRB_0d_read == true))) {
-                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
-                                                }
                                                 if ((! (aux_var_MPAR_0d_read == true))) {
                                                     throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
+                                                }
+                                                if ((! (aux_var_NRB_0d_read == true))) {
+                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
                                                 }
                                                 {
                                                     int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14361,11 +14405,11 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                 // assign expression to variable NRB
                                                 var_NRB_0d = cpp_read_int_field(cpp_line, 5);
                                                 aux_var_NRB_0d_read = true;
-                                                if ((! (aux_var_NRB_0d_read == true))) {
-                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
-                                                }
                                                 if ((! (aux_var_MPAR_0d_read == true))) {
                                                     throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for MPAR because this variable could not be isolated.");
+                                                }
+                                                if ((! (aux_var_NRB_0d_read == true))) {
+                                                    throw std::runtime_error("The equation ((6*NRB)+(((MPAR*NRB)*((MPAR*NRB)+1))/2))==value cannot be solved for NRB because this variable could not be isolated.");
                                                 }
                                                 {
                                                     int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14560,7 +14604,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                     cpp_int_val = cpp_read_int_field(cpp_line, 5);
                                                     aux_cpp_int_val_read = true;
                                                     // assign expression to variable NCH
-                                                    var_NCH_0d = ((((((1/6)*(-1))+1)*(-1))+cpp_int_val)/(1/6));
+                                                    var_NCH_0d = ((((1/6)+(-1))+cpp_int_val)/(1/6));
                                                     aux_var_NCH_0d_read = true;
                                                     {
                                                         int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -14658,17 +14702,17 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                         // assign expression to variable NRB
                                                         var_NRB_0d = cpp_read_int_field(cpp_line, 3);
                                                         aux_var_NRB_0d_read = true;
-                                                        if ((! (aux_var_NRB_0d_read == true))) {
-                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NRB because the modulo operator is not supported.");
-                                                        }
                                                         if ((! (aux_var_NCH_0d_read == true))) {
                                                             throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NCH because the modulo operator is not supported.");
                                                         }
                                                         if ((! (aux_var_NRB_0d_read == true))) {
-                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NRB because the modulo operator is not supported.");
+                                                            throw std::runtime_error("The equation (6*((((1+NCH)+((5-NCH)%6))*NRB)/6))==value cannot be solved for NRB because the modulo operator is not supported.");
                                                         }
                                                         if ((! (aux_var_NCH_0d_read == true))) {
                                                             throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NCH because the modulo operator is not supported.");
+                                                        }
+                                                        if ((! (aux_var_NRB_0d_read == true))) {
+                                                            throw std::runtime_error("The equation ((((1+NCH)+((5-NCH)%6))*NRB)/6)==value cannot be solved for NRB because the modulo operator is not supported.");
                                                         }
                                                         {
                                                             int cpp_npl = cpp_read_int_field(cpp_line, 4);
@@ -15314,7 +15358,7 @@ py::dict parse_mf32_istream(std::istream& cont) {
                                                         cpp_int_val = cpp_read_int_field(cpp_line, 5);
                                                         aux_cpp_int_val_read = true;
                                                         // assign expression to variable NJCH
-                                                        var_NJCH_0d = ((((((1/6)*(-1))+1)*(-1))+cpp_int_val)/(1/6));
+                                                        var_NJCH_0d = ((((1/6)+(-1))+cpp_int_val)/(1/6));
                                                         aux_var_NJCH_0d_read = true;
                                                     }
                                                     {
@@ -16963,14 +17007,6 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                                     // assign expression to variable NEC
                                                     var_NEC_0d = ((cpp_int_val+(-1))/var_NER_0d);
                                                     aux_var_NEC_0d_read = true;
-                                                    if ((! (aux_var_NER_0d_read == true))) {
-                                                        // assign expression to variable cpp_int_val
-                                                        cpp_int_val = cpp_read_int_field(cpp_line, 4);
-                                                        aux_cpp_int_val_read = true;
-                                                        // assign expression to variable NER
-                                                        var_NER_0d = ((cpp_int_val+(-1))/var_NEC_0d);
-                                                        aux_var_NER_0d_read = true;
-                                                    }
                                                     if (((((((var_LB_0d)==(6))))))) {
                                                         cpp_found_match = true;
                                                     }
@@ -16991,14 +17027,6 @@ py::dict parse_mf33_istream(std::istream& cont) {
                                                     // assign expression to variable NEC
                                                     var_NEC_0d = ((cpp_int_val+(-1))/var_NER_0d);
                                                     aux_var_NEC_0d_read = true;
-                                                    if ((! (aux_var_NER_0d_read == true))) {
-                                                        // assign expression to variable cpp_int_val
-                                                        cpp_int_val = cpp_read_int_field(cpp_line, 4);
-                                                        aux_cpp_int_val_read = true;
-                                                        // assign expression to variable NER
-                                                        var_NER_0d = ((cpp_int_val+(-1))/var_NEC_0d);
-                                                        aux_var_NER_0d_read = true;
-                                                    }
                                                     {
                                                         int cpp_npl = cpp_read_int_field(cpp_line, 4);
                                                         cpp_floatvec = cpp_read_float_vec(cont, cpp_npl);
@@ -19062,7 +19090,7 @@ py::dict parse_mf40_istream(std::istream& cont) {
     return cpp_current_dict;
 }
 
-py::dict parse_endf_istream(std::istream& cont) {
+py::dict parse_endf_istream(std::istream& cont, py::object exclude, py::object include) {
     bool is_firstline = true;
     std::streampos curpos;
     py::dict mfmt_dict;
@@ -19070,382 +19098,836 @@ py::dict parse_endf_istream(std::istream& cont) {
     int mf;
     int mt;
     std::string cpp_line;
+    std::vector<std::string> verbatim_section;
     curpos = cont.tellg();
     while (std::getline(cont, cpp_line)) {
         mf = std::stoi(cpp_line.substr(70, 2));
         mt = std::stoi(cpp_line.substr(72, 3));
         if ((mf == 0 && mt == 0 && is_firstline)) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf0mt0_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf0mt0_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 1 && mt == 460) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf1mt460_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf1mt460_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 1 && mt == 458) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf1mt458_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf1mt458_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 1 && mt == 456) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf1mt456_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf1mt456_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 1 && mt == 455) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf1mt455_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf1mt455_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 1 && mt == 452) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf1mt452_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf1mt452_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 1 && mt == 451) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf1mt451_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf1mt451_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 2 && mt == 151) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf2mt151_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf2mt151_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 3) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf3_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf3_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 4) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf4_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf4_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 5) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf5_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf5_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 6) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf6_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf6_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 7 && mt == 4) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf7mt4_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf7mt4_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 7 && mt == 2) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf7mt2_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf7mt2_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 8 && mt == 459) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf8mt459_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf8mt459_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 8 && mt == 457) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf8mt457_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf8mt457_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 8 && mt == 454) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf8mt454_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf8mt454_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 8) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf8_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf8_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 9) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf9_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf9_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 10) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf10_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf10_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 12) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf12_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf12_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 13) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf13_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf13_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 14) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf14_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf14_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 15) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf15_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf15_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 23) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf23_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf23_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 26) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf26_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf26_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 27) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf27_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf27_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 28) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf28_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf28_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 31) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf31_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf31_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 32) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf32_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf32_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 33) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf33_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf33_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 34) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf34_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf34_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 35) {
             cont.seekg(curpos);
-            {
-                py::dict curdict = mfmt_dict;
-                if (! curdict.contains(py::cast(mf))) {
-                    curdict[py::cast(mf)] = py::dict();
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf35_istream(cont);
                 }
-                curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf35_istream(cont);
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
             }
 
         } else if (mf == 40) {
             cont.seekg(curpos);
+            if (should_parse_section(mf, mt, exclude, include)) {
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = parse_mf40_istream(cont);
+                }
+
+            } else {
+                verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
+                {
+                    py::dict curdict = mfmt_dict;
+                    if (! curdict.contains(py::cast(mf))) {
+                        curdict[py::cast(mf)] = py::dict();
+                    }
+                    curdict = curdict[py::cast(mf)];
+                    curdict[py::cast(mt)] = verbatim_section;
+                }
+            }
+
+        } else if ((mf != 0 && mt != 0)) {
+            verbatim_section = read_section_verbatim(mf, mt, cont, is_firstline);
             {
                 py::dict curdict = mfmt_dict;
                 if (! curdict.contains(py::cast(mf))) {
                     curdict[py::cast(mf)] = py::dict();
                 }
                 curdict = curdict[py::cast(mf)];
-                curdict[py::cast(mt)] = parse_mf40_istream(cont);
+                curdict[py::cast(mt)] = verbatim_section;
             }
         }
         curpos = cont.tellg();
@@ -19624,9 +20106,9 @@ py::dict parse_mf40(std::string& strcont) {
     return parse_mf40_istream(iss);
 }
 
-py::dict parse_endf(std::string& strcont) {
+py::dict parse_endf(std::string& strcont, py::object exclude, py::object include) {
     std::istringstream iss(strcont);
-    return parse_endf_istream(iss);
+    return parse_endf_istream(iss, exclude, include);
 }
 
 py::dict parse_mf0mt0_file(std::string& filename) {
@@ -19799,9 +20281,9 @@ py::dict parse_mf40_file(std::string& filename) {
     return parse_mf40_istream(inpfile);
 }
 
-py::dict parse_endf_file(std::string& filename) {
+py::dict parse_endf_file(std::string& filename, py::object exclude, py::object include) {
     std::ifstream inpfile(filename);
-    return parse_endf_istream(inpfile);
+    return parse_endf_istream(inpfile, exclude, include);
 }
 
 
@@ -19841,7 +20323,6 @@ PYBIND11_MODULE(endf6_ext, m) {
     m.def("parse_mf34", &parse_mf34, "parsing function");
     m.def("parse_mf35", &parse_mf35, "parsing function");
     m.def("parse_mf40", &parse_mf40, "parsing function");
-    m.def("parse_endf", &parse_endf, "parsing function");
-    m.def("parse_endf_file", &parse_endf_file, "parsing function");
-
+    m.def("parse_endf", &parse_endf, "parsing function", py::arg("cont"), py::arg("exclude") = py::none(), py::arg("include") = py::none());
+    m.def("parse_endf_file", &parse_endf_file, "parsing function", py::arg("filename"), py::arg("exclude") = py::none(), py::arg("include") = py::none());
 }

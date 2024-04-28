@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/27
+# Last modified:   2024/04/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -133,6 +133,44 @@ def module_header():
         }
         return res;
     }
+
+
+    bool seq_contains(py::sequence seq, py::object value) {
+        int i = 0;
+        for (const auto& item : seq) {
+            if (py::cast<py::object>(item).equal(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    bool should_parse_section(int mf, int mt, py::object& exclude, py::object& include) {
+        py::tuple mf_mt_tup = py::make_tuple(mf, mt);
+        if (! exclude.is_none()) {
+            if (! py::isinstance<py::sequence>(exclude)) {
+                throw std::runtime_error("`exclude` argument must be of sequence type");
+            }
+            if (seq_contains(exclude, py::int_(mf)) || seq_contains(exclude, mf_mt_tup)) {
+                std::cout << "excluding: " << mf << " --- " << mt << std::endl;
+                return false;
+            } else {
+                return true;
+            }
+        } else if (! include.is_none()) {
+            if (! py::isinstance<py::sequence>(include)) {
+                throw std::runtime_error("`include` argument must be of sequence type");
+            }
+            if (seq_contains(include, py::int_(mf)) || seq_contains(include, mf_mt_tup)) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
     """
     code = cpp.indent_code(code, -4)
     for vartype_definition in get_vartype_definitions():
@@ -164,13 +202,23 @@ def parsefun_footer():
     return code
 
 
-def register_cpp_parsefuns(parsefuns, module_name):
+def register_pybind_module(module_name, inner_code):
     code = cpp.line("") + cpp.line("")
     code += cpp.line(f"PYBIND11_MODULE({module_name}, m) {{")
+    code += cpp.indent_code(inner_code, 4)
+    code += cpp.close_block()
+    return code
+
+
+def register_cpp_parsefuns(parsefuns, module_name, *extra_args):
+    args_str = ", ".join(arg for arg in extra_args)
+    args_str = ", " + args_str if args_str != "" else args_str
+    code = ""
     for parsefun in parsefuns:
-        curcode = cpp.statement(f'm.def("{parsefun}", &{parsefun}, "parsing function")')
-        code += cpp.indent_code(curcode, 4)
-    code += "\n}"
+        curcode = cpp.statement(
+            f'm.def("{parsefun}", &{parsefun}, "parsing function"{args_str})'
+        )
+        code += curcode
     return code
 
 

@@ -168,7 +168,7 @@ def module_header():
                 return false;
             }
         } else {
-            return false;
+            return true;
         }
     }
     """

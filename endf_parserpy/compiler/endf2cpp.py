@@ -713,6 +713,22 @@ def _mf_mt_dict_varname(mf, mt):
     return f"mf{mf}_mt{mt}_dict"
 
 
+def _generate_parse_or_read_verbatim(funname):
+    code = cpp.ifelse(
+        aux.should_parse_section("mf", "mt", "exclude", "include"),
+        cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont)"),
+        cpp.concat(
+            [
+                aux.read_section_verbatim(
+                    "verbatim_section", "mf", "mt", "cont", "is_firstline"
+                ),
+                cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section"),
+            ]
+        ),
+    )
+    return code
+
+
 def generate_master_parsefun(name, recipefuns):
     header = cpp.line(
         f"py::dict {name}(std::istream& cont, "
@@ -728,6 +744,7 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("int mf")
     body += cpp.statement("int mt")
     body += cpp.statement("std::string cpp_line")
+    body += cpp.statement("std::vector<std::string> verbatim_section")
     body += cpp.statement("curpos = cont.tellg()")
     body += cpp.line("while (std::getline(cont, cpp_line)) {")
     body += cpp.statement("mf = std::stoi(cpp_line.substr(70, 2))", 4)
@@ -739,18 +756,9 @@ def generate_master_parsefun(name, recipefuns):
         if isinstance(mfdic, str):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic
-            conditions.append(
-                cpp.logical_and(
-                    [
-                        f"mf == {mf}",
-                        aux.should_parse_section("mf", "mt", "exclude", "include"),
-                    ]
-                )
-            )
+            conditions.append(f"mf == {mf}")
             curstat = cpp.statement("cont.seekg(curpos)")
-            curstat += cpp_varaux.dict_assign(
-                "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont)"
-            )
+            curstat += _generate_parse_or_read_verbatim(funname)
             statements.append(curstat)
             continue
         for mt in reversed(sorted(mfdic.keys())):
@@ -762,22 +770,20 @@ def generate_master_parsefun(name, recipefuns):
                 curcond = f"mf == {mf} && mt == {mt}"
             if mt == 0 and mt == 0:
                 curcond = cpp.logical_and([curcond, "is_firstline"])
-            curcond = cpp.logical_and(
-                [curcond, aux.should_parse_section("mf", "mt", "exclude", "include")]
-            )
+
             curstat = cpp.statement("cont.seekg(curpos)")
-            curstat += cpp_varaux.dict_assign(
-                "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont)"
-            )
+            curstat += _generate_parse_or_read_verbatim(funname)
             statements.append(curstat)
             conditions.append(curcond)
 
-    # default_code = cpp.statement('std::cout << "skipping mf/mt: " << mf << " --- " << mt << std::endl')
-    default_code = cpp.statement("")
-
-    body += cpp.indent_code(
-        cpp.conditional_branches(conditions, statements, default=default_code), 4
+    # if a function should not be parsed, we read it verbatim as list of strings
+    curcond = cpp.logical_and(
+        ["mt != 0", aux.should_not_parse_section("mf", "mt", "exclude", "include")]
     )
+    statements.append(curstat)
+    conditions.append(curcond)
+
+    body += cpp.indent_code(cpp.conditional_branches(conditions, statements), 4)
     body += cpp.statement("curpos = cont.tellg()", 4)
     body += cpp.statement("is_firstline = false", 4)
     body += cpp.close_block()

@@ -153,7 +153,6 @@ def module_header():
                 throw std::runtime_error("`exclude` argument must be of sequence type");
             }
             if (seq_contains(exclude, py::int_(mf)) || seq_contains(exclude, mf_mt_tup)) {
-                std::cout << "excluding: " << mf << " --- " << mt << std::endl;
                 return false;
             } else {
                 return true;

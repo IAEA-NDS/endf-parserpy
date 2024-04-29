@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/04/25
+# Last modified:   2024/04/29
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -13,9 +13,12 @@ from lark.lexer import Token
 from lark.tree import Tree
 from endf_parserpy.compiler.expr_utils.conversion import VariableToken
 from endf_parserpy.compiler.expr_utils.node_trafos import node2str
-from endf_parserpy.compiler.expr_utils.node_checks import is_number
+from endf_parserpy.compiler.expr_utils.node_checks import is_number, is_expr
+from endf_parserpy.compiler.expr_utils.equation_utils import get_variables_in_expr
+from endf_parserpy.compiler.node_checks import is_if_condition
 from endf_parserpy.compiler.expr_utils.exceptions import VariableMissingError
 from endf_parserpy.compiler.variable_management import find_parent_dict
+import endf_parserpy.compiler.cpp_primitives as cpp
 from .cpp_varaux import get_cpp_varname
 from .cpp_type_information import (
     get_query_modules,
@@ -82,6 +85,37 @@ def get_idxstr(vartok, i, vardict):
 def logical_expr2cppstr(node, vardict):
     if isinstance(node, VariableToken):
         return get_cpp_extvarname(node, vardict)
+    elif is_if_condition(node):
+        # special treatment: if variables missing/not read,
+        # logical condition should evaluate to false
+        # reminder: if_condition: expr RELATION expr
+        relation = node.children[1]
+        expr1 = node.children[0]
+        expr2 = node.children[2]
+        assert is_expr(expr1)
+        assert is_expr(expr2)
+        vs = get_variables_in_expr(expr1)
+        vs.update(get_variables_in_expr(expr1))
+        # sorting for deterministic code generation
+        vs = sorted(vs)
+        raw_logical_expr = (
+            "("
+            + "".join(
+                [
+                    logical_expr2cppstr(expr1, vardict),
+                    str(relation),
+                    logical_expr2cppstr(expr2, vardict),
+                ]
+            )
+            + ")"
+        )
+        var_checks = []
+        for v in vs:
+            indices = [get_idxstr(v, i, vardict) for i in range(len(v.indices))]
+            var_checks.append(did_read_var(v, vardict, indices))
+        var_checks_expr = cpp.logical_and(var_checks)
+        composite_check = cpp.logical_and([var_checks_expr, raw_logical_expr])
+        return composite_check
     elif isinstance(node, Token):
         if node == "and":
             return "&&"

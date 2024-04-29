@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/28
+# Last modified:   2024/04/29
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -819,6 +819,12 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
     for p in parsefuns:
         code += cpp.line(f"py::dict {p}_file(std::string& filename{args_str}) {{")
         code += cpp.statement("std::ifstream inpfile(filename)", 4)
+        code += cpp.pureif(
+            cpp.logical_not("inpfile.is_open()"),
+            cpp.statement(
+                "throw std::ifstream::failure" + '("failed to open file " + filename)'
+            ),
+        )
         code += cpp.statement(f"return {p}_istream(inpfile{args_str2})", 4)
         code += cpp.close_block()
         code += cpp.line("")

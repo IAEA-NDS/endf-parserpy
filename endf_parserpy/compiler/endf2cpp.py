@@ -49,6 +49,7 @@ from .variable_management import (
     register_var,
     unregister_var,
     find_parent_dict,
+    should_track_read,
 )
 from . import endf2cpp_aux as aux
 from .cpp_types.cpp_varops_query import (
@@ -439,14 +440,28 @@ def generate_code_for_varassign(
         )
         if some_other_unavail:
             continue
+
         if cpp_varops_query.need_read_check(v, vardict, v.indices):
-            code += cpp.pureif(
-                condition=aux.did_not_read_var(v, vardict, v.indices),
-                code=_generate_code_for_varassign(
-                    v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
-                ),
+            # variable may read beore so we need to check
+            # that at cpp runtime
+            did_not_read_cond = aux.did_not_read_var(v, vardict, v.indices)
+            assigncode = _generate_code_for_varassign(
+                v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
             )
+            # we also need to check if the type of the
+            # variable has changed, which is not allowed.
+            # and indicates a problem with the ENDF recipe.
+            if not should_track_read(v, vardict):
+                code += cpp.pureif(condition=did_not_read_cond, code=assigncode)
+            else:
+                code += cpp.ifelse(
+                    condition=did_not_read_cond,
+                    code=assigncode,
+                    other_code=cpp_varaux.type_change_check(v, vardict),
+                )
         else:
+            # no possibility that variable has been read in beore
+            # hence no checks necessary
             code = _generate_code_for_varassign(
                 v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
             )

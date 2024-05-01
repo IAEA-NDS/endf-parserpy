@@ -687,7 +687,7 @@ def _generate_code_for_loop(
     if loopvar in vardict:
         raise TypeError(f"variable {loopvar} already declared")
 
-    register_var(loopvar, "loopvartype", "Scalar", vardict)
+    register_var(loopvar, "loopvartype", "Scalar", vardict, track_read=False)
     cpp_loopvar = cpp_varops_query.get_cpp_varname(loopvar, vardict)
 
     code = cpp.indent_code(

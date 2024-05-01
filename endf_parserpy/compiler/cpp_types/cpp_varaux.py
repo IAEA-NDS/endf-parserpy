@@ -97,6 +97,22 @@ def map_dtype(dtype):
     return dtype
 
 
+def get_dtype_str(dtype):
+    if dtype == float:
+        return "double"
+    elif dtype == int:
+        return "int"
+    elif dtype == str:
+        return "string"
+    elif dtype == "loopvartype":
+        return "int"
+    elif dtype == "intvec":
+        return "intvec"
+    elif dtype == "floatvec":
+        return "floatvec"
+    raise TypeError(f"unknown dtype {dtype}")
+
+
 def init_local_var_from_global_var(v, ctyp):
     return cpp.concat(
         [

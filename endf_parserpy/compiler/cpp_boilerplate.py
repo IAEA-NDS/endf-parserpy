@@ -135,6 +135,50 @@ def module_header():
     }
 
 
+    struct Tab1Body {
+      std::vector<int> INT;
+      std::vector<int> NBT;
+      std::vector<double> X;
+      std::vector<double> Y;
+    };
+
+
+    struct Tab2Body {
+      std::vector<int> INT;
+      std::vector<int> NBT;
+    };
+
+
+    Tab2Body read_tab2_body(std::istream& cont, int nr) {
+      Tab2Body tab_body;
+      std::vector<int> interp = cpp_read_int_vec(cont, nr);
+      int j = 0;
+      for (int i=0; i < nr; i++) {
+        tab_body.NBT.push_back(interp[j++]);
+        tab_body.INT.push_back(interp[j++]);
+      }
+      return tab_body;
+    }
+
+
+    Tab1Body read_tab1_body(std::istream& cont, int nr, int np) {
+      Tab1Body tab_body;
+      std::vector<int> interp = cpp_read_int_vec(cont, nr);
+      int j = 0;
+      for (int i=0; i < nr; i++) {
+        tab_body.NBT.push_back(interp[j++]);
+        tab_body.INT.push_back(interp[j++]);
+      }
+      std::vector<double> data = cpp_read_float_vec(cont, np);
+      j = 0;
+      for (int i=0; i < np; i++) {
+        tab_body.X.push_back(data[j++]);
+        tab_body.Y.push_back(data[j++]);
+      }
+      return tab_body;
+    }
+
+
     bool seq_contains(py::sequence seq, py::object value) {
       int i = 0;
       for (const auto& item : seq) {

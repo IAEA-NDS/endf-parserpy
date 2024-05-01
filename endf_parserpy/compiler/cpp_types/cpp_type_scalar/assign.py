@@ -40,7 +40,7 @@ class Assign:
             code += init_local_var_from_global_var(varname, dtype)
         else:
             code += cpp.statement(f"{dtype} {varname}")
-        code += initialize_aux_read_vars(vartok, save_state)
+        code += initialize_aux_read_vars(vartok, vardict, save_state)
         return code
 
     @staticmethod
@@ -53,11 +53,11 @@ class Assign:
             return False
 
         check_variable(vartok, vardict)
+        register_var(vartok, dtype, "Scalar", vardict)
         code = ""
         cpp_varname = get_cpp_varname(vartok, vardict)
         code += cpp.statement(f"{cpp_varname} = {exprstr}")
         code += mark_var_as_read(vartok, vardict)
-        register_var(vartok, dtype, "Scalar", vardict)
         return code
 
     @staticmethod

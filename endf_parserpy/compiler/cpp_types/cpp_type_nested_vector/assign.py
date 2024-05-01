@@ -58,6 +58,7 @@ class Assign:
         if len(indices) == 0:
             return False
 
+        register_var(vartok, dtype, "NestedVector", vardict)
         code = ""
         cpp_varname = get_cpp_varname(vartok, vardict)
         ptrvar_old = cpp_varname
@@ -81,7 +82,6 @@ class Assign:
         idxstr = indices[-1]
         dot = "." if len(indices) == 1 else "->"
         code += cpp.statement(f"{ptrvar_old}{dot}set({idxstr}, {exprstr})")
-        register_var(vartok, dtype, "NestedVector", vardict)
         return code
 
     def store_var_in_endf_dict2(vartok, vardict):

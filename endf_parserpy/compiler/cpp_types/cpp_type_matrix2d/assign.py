@@ -181,6 +181,7 @@ class Assign:
             first_idx_range = (real_inner_start, real_inner_stop)
             second_idx_range = (real_outer_start, real_outer_stop)
 
+        register_var(vartok, dtype, "Matrix2d", vardict)
         varname = get_cpp_varname(vartok, vardict)
         # must be here to avoid a circular import error
         from ..cpp_varops_query import expr2str_shiftidx
@@ -204,8 +205,6 @@ class Assign:
 
         extvarname = Query.assemble_extvarname(varname, indices)
         assigncode = cpp.statement(f"{extvarname} = {exprstr}")
-
-        register_var(vartok, dtype, "Matrix2d", vardict)
         return assigncode
 
     @staticmethod

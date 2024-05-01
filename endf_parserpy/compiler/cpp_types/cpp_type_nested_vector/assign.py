@@ -21,11 +21,11 @@ from endf_parserpy.compiler.variable_management import (
 )
 from ..cpp_varaux import (
     get_cpp_varname,
-    map_dtype,
     init_local_var_from_global_var,
     is_loop,
     get_loopvar,
 )
+from ..cpp_type_aux import map_dtype
 from .query import Query
 from .auxiliary import (
     get_ptr_varname,

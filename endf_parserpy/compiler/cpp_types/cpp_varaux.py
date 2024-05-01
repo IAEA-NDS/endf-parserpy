@@ -18,6 +18,7 @@ from endf_parserpy.compiler.expr_utils.conversion import VariableToken
 from endf_parserpy.compiler.expr_utils.node_trafos import node2str
 from endf_parserpy.compiler.expr_utils.equation_utils import contains_variable
 from endf_parserpy.compiler.variable_management import get_var_type
+from .cpp_type_aux import get_dtype_str
 
 
 def get_cpp_varname(vartok, vardict):
@@ -83,40 +84,6 @@ def get_loop_body(node):
         return get_child(node, "for_body")
     else:
         raise TypeError("not a loop node")
-
-
-def map_dtype(dtype):
-    if dtype == float:
-        dtype = "double"
-    elif dtype == int:
-        dtype = "int"
-    elif dtype == str:
-        dtype = "std::string"
-    elif dtype == "loopvartype":
-        dtype = "int"
-    elif dtype == "intvec":
-        dtype = "std::vector<int>"
-    elif dtype == "floatvec":
-        dtype = "std::vector<double>"
-    else:
-        raise TypeError(f"unknown dtype {dtype}")
-    return dtype
-
-
-def get_dtype_str(dtype):
-    if dtype == float:
-        return "double"
-    elif dtype == int:
-        return "int"
-    elif dtype == str:
-        return "string"
-    elif dtype == "loopvartype":
-        return "int"
-    elif dtype == "intvec":
-        return "intvec"
-    elif dtype == "floatvec":
-        return "floatvec"
-    raise TypeError(f"unknown dtype {dtype}")
 
 
 def init_local_var_from_global_var(v, ctyp):

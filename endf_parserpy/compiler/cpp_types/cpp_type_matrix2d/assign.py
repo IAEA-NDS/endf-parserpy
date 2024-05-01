@@ -25,7 +25,6 @@ from endf_parserpy.compiler.variable_management import (
     find_parent_dict,
 )
 from ..cpp_varaux import (
-    map_dtype,
     check_variable,
     is_loop,
     get_loopvar,
@@ -35,6 +34,7 @@ from ..cpp_varaux import (
     get_cpp_varname,
     init_local_var_from_global_var,
 )
+from ..cpp_type_aux import map_dtype
 from .query import Query
 
 

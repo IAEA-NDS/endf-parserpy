@@ -18,9 +18,9 @@ from endf_parserpy.compiler.variable_management import (
 from ..cpp_varaux import (
     get_cpp_varname,
     check_variable,
-    map_dtype,
     init_local_var_from_global_var,
 )
+from ..cpp_type_aux import map_dtype
 from .query import Query
 from .auxiliary import (
     initialize_aux_read_vars,

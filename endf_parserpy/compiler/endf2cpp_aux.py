@@ -35,6 +35,11 @@ def get_custom_int_field(start_pos, length):
     return code
 
 
+def get_int_vec(numel):
+    code = cpp.statement("cpp_read_int_vec(cont, {numel})")
+    return code
+
+
 def get_float_vec(numel):
     code = cpp.statement(f"cpp_read_float_vec(cont, {numel})")
     return code

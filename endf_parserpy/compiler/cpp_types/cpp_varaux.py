@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/04/28
+# Last modified:   2024/05/01
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -138,5 +138,5 @@ def dict_assign(dictvar, idcs, val):
         code += inner_code
     idxstr = f"py::cast({idcs[-1]})"
     code += cpp.statement(f"curdict[{idxstr}] = {val}")
-    code = cpp.open_block() + cpp.indent_code(code, 4) + cpp.close_block()
+    code = cpp.open_block() + cpp.indent_code(code, cpp.INDENT) + cpp.close_block()
     return code

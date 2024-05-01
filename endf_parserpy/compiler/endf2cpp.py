@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/29
+# Last modified:   2024/05/01
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -139,9 +139,9 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
     vardefs = generate_vardefs(vardict)
 
     fun_header = cpp_boilerplate.parsefun_header(name)
-    fun_footer = cpp.indent_code(generate_endf_dict_assignments(vardict), 4)
+    fun_footer = cpp.indent_code(generate_endf_dict_assignments(vardict), cpp.INDENT)
     fun_footer += cpp_boilerplate.parsefun_footer()
-    fun_body = cpp.indent_code(vardefs + ctrl_code + code, 4)
+    fun_body = cpp.indent_code(vardefs + ctrl_code + code, cpp.INDENT)
     code = fun_header + fun_body + fun_footer
     return code
 
@@ -196,9 +196,9 @@ def _generate_code_for_section(sectok, section_body, vardict, parsefun):
     vardef_code = generate_vardefs(vardict)
     code = cpp.comment(f"open section {sectok}")
     code += aux.open_section(sectok, vardict)
-    code += cpp.indent_code(vardef_code, 4)
-    code += cpp.indent_code(body_code, 4)
-    code += cpp.indent_code(generate_endf_dict_assignments(vardict), 4)
+    code += cpp.indent_code(vardef_code, cpp.INDENT)
+    code += cpp.indent_code(body_code, cpp.INDENT)
+    code += cpp.indent_code(generate_endf_dict_assignments(vardict), cpp.INDENT)
     code += aux.close_section()
     vardict = pardict
     return code
@@ -237,13 +237,13 @@ def generate_code_for_if_clause(node, vardict):
         [
             cpp.comment("evaluate if-elif-else clause"),
             cpp.open_block(),
-            cpp.statement("bool cpp_found_match = false", indent=4),
+            cpp.statement("bool cpp_found_match = false", indent=cpp.INDENT),
         ]
     )
     new_vardict = vardict.copy()
     if_statement_code = generate_code_for_if_statement(if_statement, new_vardict)
     add_vardict.update(new_vardict)
-    code += cpp.indent_code(if_statement_code, 4)
+    code += cpp.indent_code(if_statement_code, cpp.INDENT)
     for elif_statement in elif_statements:
         new_vardict = vardict.copy()
         code += cpp.indent_code(
@@ -251,18 +251,17 @@ def generate_code_for_if_clause(node, vardict):
                 condition="! cpp_found_match",
                 code=generate_code_for_if_statement(elif_statement, new_vardict),
             ),
-            indent=4,
+            indent=cpp.INDENT,
         )
         add_vardict.update(new_vardict)
     if else_statement is not None:
         else_code = get_child(else_statement, "if_body")
         new_vardict = vardict.copy()
         code += cpp.indent_code(
-            code=cpp.pureif(
+            cpp.pureif(
                 condition="! cpp_found_match",
                 code=generate_code_from_parsetree(else_code, new_vardict),
-            ),
-            indent=4,
+            )
         )
         add_vardict.update(new_vardict)
 
@@ -296,7 +295,9 @@ def generate_code_for_if_statement(node, vardict):
             [
                 cpp.comment("if statement evaluation with lookahead"),
                 cpp.open_block(),
-                cpp.statement("std::streampos cpp_old_streampos = cont.tellg()", 4),
+                cpp.statement(
+                    "std::streampos cpp_old_streampos = cont.tellg()", cpp.INDENT
+                ),
             ]
         )
 
@@ -304,7 +305,7 @@ def generate_code_for_if_statement(node, vardict):
         logical_expr_str = logical_expr2cppstr(if_head, vardict)
         vardef_code = generate_vardefs(vardict, save_state=True)
         code += cpp.indent_code(
-            code=cpp.block(
+            cpp.block(
                 cpp.concat(
                     [
                         vardef_code,
@@ -316,18 +317,16 @@ def generate_code_for_if_statement(node, vardict):
                         cpp.statement("cont.seekg(cpp_old_streampos)"),
                     ]
                 )
-            ),
-            indent=4,
+            )
         )
         if lookahead_option is not None:
             remove_lookahead_counter(vardict)
             vardict = orig_vardict
         code += cpp.indent_code(
-            code=cpp.pureif(
+            cpp.pureif(
                 condition="cpp_found_match",
                 code=generate_code_from_parsetree(if_body, vardict),
-            ),
-            indent=4,
+            )
         )
         code += cpp.close_block()
     else:
@@ -541,10 +540,10 @@ def generate_code_for_intg(node, vardict):
         "for (int cpp_i = cpp_start; cpp_i < cpp_end; cpp_i += cpp_step) {"
     )
     valcode = aux.get_custom_int_field("cpp_i", "cpp_step")
-    code += cpp.statement(f"cpp_intvec.push_back({valcode})", 4)
+    code += cpp.statement(f"cpp_intvec.push_back({valcode})", cpp.INDENT)
     code += cpp.close_block()
     code += generate_code_for_varassign(kij_expr, vardict, "cpp_intvec", "intvec")
-    return cpp.open_block() + cpp.indent_code(code, 4) + cpp.close_block()
+    return cpp.open_block() + cpp.indent_code(code, cpp.INDENT) + cpp.close_block()
 
 
 def generate_code_for_send(node, vardict):
@@ -591,7 +590,7 @@ def generate_code_for_tab1(node, vardict):
         else:
             code += aux.open_section(sectok, vardict)
             body_code = aux.read_tab_body(xvar, yvar)
-            code += cpp.indent_code(body_code, 4)
+            code += cpp.indent_code(body_code)
             code += aux.close_section()
     return code
 
@@ -615,7 +614,7 @@ def generate_code_for_tab2(node, vardict):
         else:
             code += aux.open_section(sectok, vardict)
             body_code = aux.read_tab_body(None, None)
-            code += cpp.indent_code(body_code, 4)
+            code += cpp.indent_code(body_code)
             code += aux.close_section()
     return code
 
@@ -629,12 +628,12 @@ def generate_code_for_list(node, vardict):
         return code
     list_body_node = get_child(node, "list_body")
     code += cpp.open_block()
-    code += cpp.statement(f"int cpp_npl = {aux.get_int_field(4)}", 4)
+    code += cpp.statement(f"int cpp_npl = {aux.get_int_field(4)}", cpp.INDENT)
     values = aux.get_float_vec("cpp_npl")
-    code += cpp.statement(f"cpp_floatvec = {values}", 4)
-    code += cpp.statement("int cpp_j = 0", 4)
+    code += cpp.statement(f"cpp_floatvec = {values}", cpp.INDENT)
+    code += cpp.statement("int cpp_j = 0", cpp.INDENT)
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
-    code += cpp.indent_code(list_body_code, 4)
+    code += cpp.indent_code(list_body_code)
     code += cpp.close_block()
     decrease_lookahead_counter(vardict)
     return code
@@ -688,13 +687,13 @@ def _generate_code_for_loop(
     code = cpp.indent_code(
         rf"""
     for (int {cpp_loopvar} = {start_expr_str};
-         {cpp_loopvar} <= {stop_expr_str}; {cpp_loopvar}++) {{
+       {cpp_loopvar} <= {stop_expr_str}; {cpp_loopvar}++) {{
     """,
         -4,
     )
-    code += cpp.indent_code(init_readflag(loopvar, val=True), 4)
+    code += cpp.indent_code(init_readflag(loopvar, val=True))
     body_code = parsefun(for_body, vardict)
-    code += cpp.indent_code(body_code, 4)
+    code += cpp.indent_code(body_code)
     code += cpp.close_block()
     unregister_var(loopvar, vardict)
     # add code propagated upward from downstream nodes
@@ -735,7 +734,7 @@ def generate_master_parsefun(name, recipefuns):
         f"py::dict {name}(std::istream& cont, "
         + "py::object exclude, py::object include) {"
     )
-    footer = cpp.statement("return mfmt_dict", 4)
+    footer = cpp.statement("return mfmt_dict", cpp.INDENT)
     footer += cpp.close_block()
     body = ""
     body += cpp.statement("bool is_firstline = true")
@@ -748,8 +747,8 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("std::vector<std::string> verbatim_section")
     body += cpp.statement("curpos = cont.tellg()")
     body += cpp.line("while (std::getline(cont, cpp_line)) {")
-    body += cpp.statement("mf = std::stoi(cpp_line.substr(70, 2))", 4)
-    body += cpp.statement("mt = std::stoi(cpp_line.substr(72, 3))", 4)
+    body += cpp.statement("mf = std::stoi(cpp_line.substr(70, 2))", cpp.INDENT)
+    body += cpp.statement("mt = std::stoi(cpp_line.substr(72, 3))", cpp.INDENT)
 
     conditions = []
     statements = []
@@ -787,11 +786,11 @@ def generate_master_parsefun(name, recipefuns):
     statements.append(curstat)
     conditions.append(curcond)
 
-    body += cpp.indent_code(cpp.conditional_branches(conditions, statements), 4)
-    body += cpp.statement("curpos = cont.tellg()", 4)
-    body += cpp.statement("is_firstline = false", 4)
+    body += cpp.indent_code(cpp.conditional_branches(conditions, statements))
+    body += cpp.statement("curpos = cont.tellg()", cpp.INDENT)
+    body += cpp.statement("is_firstline = false", cpp.INDENT)
     body += cpp.close_block()
-    code = cpp.line("") + header + cpp.indent_code(body, 4) + footer + cpp.line("")
+    code = cpp.line("") + header + cpp.indent_code(body) + footer + cpp.line("")
     return code
 
 
@@ -803,8 +802,8 @@ def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
     code = ""
     for p in parsefuns:
         code += cpp.line(f"py::dict {p}(std::string& strcont{args_str}) {{")
-        code += cpp.statement("std::istringstream iss(strcont)", 4)
-        code += cpp.statement(f"return {p}_istream(iss{args_str2})", 4)
+        code += cpp.statement("std::istringstream iss(strcont)", cpp.INDENT)
+        code += cpp.statement(f"return {p}_istream(iss{args_str2})", cpp.INDENT)
         code += cpp.close_block()
         code += cpp.line("")
     return code
@@ -818,14 +817,14 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
     code = ""
     for p in parsefuns:
         code += cpp.line(f"py::dict {p}_file(std::string& filename{args_str}) {{")
-        code += cpp.statement("std::ifstream inpfile(filename)", 4)
+        code += cpp.statement("std::ifstream inpfile(filename)", cpp.INDENT)
         code += cpp.pureif(
             cpp.logical_not("inpfile.is_open()"),
             cpp.statement(
                 "throw std::ifstream::failure" + '("failed to open file " + filename)'
             ),
         )
-        code += cpp.statement(f"return {p}_istream(inpfile{args_str2})", 4)
+        code += cpp.statement(f"return {p}_istream(inpfile{args_str2})", cpp.INDENT)
         code += cpp.close_block()
         code += cpp.line("")
     return code

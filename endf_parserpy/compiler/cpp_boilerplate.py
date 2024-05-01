@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/28
+# Last modified:   2024/05/01
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -29,183 +29,183 @@ def module_header():
 
 
     double endfstr2float(const char* str) {
-        char tbuf[13];
-        int j = 0;
-        bool in_number = false;
-        bool in_exponent = false;
-        for (int i=0; i < 11; i++) {
-            char c = str[i];
-            if (c == ' ') continue;
-            if (in_number) {
-                if (!in_exponent) {
-                    if (c=='+' || c=='-') {
-                        tbuf[j++] = 'e';
-                        in_exponent = true;
-                    } else if (c=='e' || c=='E') {
-                        in_exponent = true;
-                    }
-                }
-            } else {
-                if (c == '.' || (c >= '0' && c <= '9')) {
-                    in_number = true;
-                }
+      char tbuf[13];
+      int j = 0;
+      bool in_number = false;
+      bool in_exponent = false;
+      for (int i=0; i < 11; i++) {
+        char c = str[i];
+        if (c == ' ') continue;
+        if (in_number) {
+          if (!in_exponent) {
+            if (c=='+' || c=='-') {
+              tbuf[j++] = 'e';
+              in_exponent = true;
+            } else if (c=='e' || c=='E') {
+              in_exponent = true;
             }
-            tbuf[j++] = c;
+          }
+        } else {
+          if (c == '.' || (c >= '0' && c <= '9')) {
+            in_number = true;
+          }
         }
-        if (j==0) tbuf[j++] = '0';
-        tbuf[j++] = '\0';
-        return std::stod(tbuf);
+        tbuf[j++] = c;
+      }
+      if (j==0) tbuf[j++] = '0';
+      tbuf[j++] = '\0';
+      return std::stod(tbuf);
     }
 
 
     int endfstr2int(const std::string& str) {
-        if (str.find_first_not_of(' ') == std::string::npos) {
-            return 0;
-        }
-        return std::stoi(str);
+      if (str.find_first_not_of(' ') == std::string::npos) {
+        return 0;
+      }
+      return std::stoi(str);
     }
 
 
     double cpp_read_float_field(const char *str, const char fieldnum) {
-        return endfstr2float(str+fieldnum*11);
+      return endfstr2float(str+fieldnum*11);
     }
 
 
     double cpp_read_int_field(const std::string& str, const char fieldnum) {
-        return endfstr2int(str.substr(fieldnum*11, 11));
+      return endfstr2int(str.substr(fieldnum*11, 11));
     }
 
 
     double cpp_read_custom_int_field(const std::string& str, int start_pos, int length) {
-        return endfstr2int(str.substr(start_pos, length));
+      return endfstr2int(str.substr(start_pos, length));
     }
 
 
     std::string cpp_read_line(std::istream& cont) {
-        std::string line;
-        std::getline(cont, line);
-        return line;
+      std::string line;
+      std::getline(cont, line);
+      return line;
     }
 
 
     void cpp_read_send(std::istream& cont) {
-        std::string line = cpp_read_line(cont);
-        int mtnum = std::stoi(line.substr(72, 3));
-        if (cpp_read_float_field(line.c_str(), 0) != 0.0 ||
-            cpp_read_float_field(line.c_str(), 1) != 0.0 ||
-            cpp_read_int_field(line, 2) != 0 ||
-            cpp_read_int_field(line, 3) != 0 ||
-            cpp_read_int_field(line, 4) != 0 ||
-            cpp_read_int_field(line, 5) != 0 ||
-            mtnum != 0) {
+      std::string line = cpp_read_line(cont);
+      int mtnum = std::stoi(line.substr(72, 3));
+      if (cpp_read_float_field(line.c_str(), 0) != 0.0 ||
+        cpp_read_float_field(line.c_str(), 1) != 0.0 ||
+        cpp_read_int_field(line, 2) != 0 ||
+        cpp_read_int_field(line, 3) != 0 ||
+        cpp_read_int_field(line, 4) != 0 ||
+        cpp_read_int_field(line, 5) != 0 ||
+        mtnum != 0) {
 
-            std::cout << line << std::endl;  // debug
-            throw std::runtime_error("expected SEND record");
-        }
+        std::cout << line << std::endl;  // debug
+        throw std::runtime_error("expected SEND record");
+      }
     }
 
 
     std::vector<int> cpp_read_int_vec(std::istream& cont, const int numel) {
-        int j = 0;
-        std::vector<int> res;
-        std::string line = cpp_read_line(cont);
-        for (int i=0; i < numel; i++) {
-            res.push_back(cpp_read_int_field(line, j++));
-            if (j > 5 && i+1 < numel) {
-                line = cpp_read_line(cont);
-                j = 0;
-            }
+      int j = 0;
+      std::vector<int> res;
+      std::string line = cpp_read_line(cont);
+      for (int i=0; i < numel; i++) {
+        res.push_back(cpp_read_int_field(line, j++));
+        if (j > 5 && i+1 < numel) {
+          line = cpp_read_line(cont);
+          j = 0;
         }
-        return res;
+      }
+      return res;
     }
 
 
     std::vector<double> cpp_read_float_vec(std::istream& cont, const int numel) {
-        int j = 0;
-        std::vector<double> res;
-        std::string line = cpp_read_line(cont);
-        for (int i=0; i < numel; i++) {
-            res.push_back(cpp_read_float_field(line.c_str(), j++));
-            if (j > 5 && i+1 < numel) {
-                line = cpp_read_line(cont);
-                j = 0;
-            }
+      int j = 0;
+      std::vector<double> res;
+      std::string line = cpp_read_line(cont);
+      for (int i=0; i < numel; i++) {
+        res.push_back(cpp_read_float_field(line.c_str(), j++));
+        if (j > 5 && i+1 < numel) {
+          line = cpp_read_line(cont);
+          j = 0;
         }
-        return res;
+      }
+      return res;
     }
 
 
     bool seq_contains(py::sequence seq, py::object value) {
-        int i = 0;
-        for (const auto& item : seq) {
-            if (py::cast<py::object>(item).equal(value)) {
-                return true;
-            }
+      int i = 0;
+      for (const auto& item : seq) {
+        if (py::cast<py::object>(item).equal(value)) {
+          return true;
         }
-        return false;
+      }
+      return false;
     }
 
 
     bool should_parse_section(int mf, int mt, py::object& exclude, py::object& include) {
-        py::tuple mf_mt_tup = py::make_tuple(mf, mt);
-        if (! exclude.is_none()) {
-            if (! py::isinstance<py::sequence>(exclude)) {
-                throw std::runtime_error("`exclude` argument must be of sequence type");
-            }
-            if (seq_contains(exclude, py::int_(mf)) || seq_contains(exclude, mf_mt_tup)) {
-                return false;
-            } else {
-                return true;
-            }
-        } else if (! include.is_none()) {
-            if (! py::isinstance<py::sequence>(include)) {
-                throw std::runtime_error("`include` argument must be of sequence type");
-            }
-            if (seq_contains(include, py::int_(mf)) || seq_contains(include, mf_mt_tup)) {
-                return true;
-            } else {
-                return false;
-            }
-        } else {
-            return true;
+      py::tuple mf_mt_tup = py::make_tuple(mf, mt);
+      if (! exclude.is_none()) {
+        if (! py::isinstance<py::sequence>(exclude)) {
+          throw std::runtime_error("`exclude` argument must be of sequence type");
         }
+        if (seq_contains(exclude, py::int_(mf)) || seq_contains(exclude, mf_mt_tup)) {
+          return false;
+        } else {
+          return true;
+        }
+      } else if (! include.is_none()) {
+        if (! py::isinstance<py::sequence>(include)) {
+          throw std::runtime_error("`include` argument must be of sequence type");
+        }
+        if (seq_contains(include, py::int_(mf)) || seq_contains(include, mf_mt_tup)) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return true;
+      }
     }
 
 
     std::vector<std::string> read_section_verbatim(
         int mf, int mt, std::istream& cont, bool is_first=false
     ) {
-        std::streampos curpos;
-        std::string line;
-        std::vector<std::string> secvec;
-        int curmf;
-        int curmt;
-        size_t lastpos;
-        while (std::getline(cont, line)) {
-            // remove trailing \r that we may
-            // get from reading win-style line endings
-            lastpos = line.size() - 1;
-            if (line[lastpos] == '\r') {
-                line.erase(lastpos);
-            }
-            curmf = std::stoi(line.substr(70, 2));
-            curmt = std::stoi(line.substr(72, 3));
-            if (curmf != mf || curmt != mt) break;
-            // the newline for compatibility with the Python parser
-            secvec.push_back(line + "\n");
-            curpos = cont.tellg();
+      std::streampos curpos;
+      std::string line;
+      std::vector<std::string> secvec;
+      int curmf;
+      int curmt;
+      size_t lastpos;
+      while (std::getline(cont, line)) {
+        // remove trailing \r that we may
+        // get from reading win-style line endings
+        lastpos = line.size() - 1;
+        if (line[lastpos] == '\r') {
+          line.erase(lastpos);
         }
-        if (! is_first && (curmf != mf || curmt != 0)) {
-           std::string errmsg = "expected SEND of MF/MT " +
-                                std::to_string(mf) + "/" + std::to_string(mt);
-           throw std::runtime_error(errmsg);
-        }
-        if (is_first) {
-            // we rewind one line because in the case of MF0/MT0 (tapeid)
-            // we have also consumed the HEAD record of the next section
-            cont.seekg(curpos);
-        }
-        return secvec;
+        curmf = std::stoi(line.substr(70, 2));
+        curmt = std::stoi(line.substr(72, 3));
+        if (curmf != mf || curmt != mt) break;
+        // the newline for compatibility with the Python parser
+        secvec.push_back(line + "\n");
+        curpos = cont.tellg();
+      }
+      if (! is_first && (curmf != mf || curmt != 0)) {
+         std::string errmsg = "expected SEND of MF/MT " +
+                              std::to_string(mf) + "/" + std::to_string(mt);
+         throw std::runtime_error(errmsg);
+      }
+      if (is_first) {
+        // we rewind one line because in the case of MF0/MT0 (tapeid)
+        // we have also consumed the HEAD record of the next section
+        cont.seekg(curpos);
+      }
+      return secvec;
     }
     """
     code = cpp.indent_code(code, -4)
@@ -218,14 +218,14 @@ def parsefun_header(fun_name):
     code = cpp.indent_code(
         rf"""
         py::dict {fun_name}(std::istream& cont) {{
-            std::vector<int> cpp_intvec;
-            std::vector<double> cpp_floatvec;
-            py::dict cpp_parent_dict;
-            py::dict cpp_current_dict;
-            py::dict cpp_workdict;
-            int cpp_idxnum;
-            std::string cpp_line;
-            double cpp_float_val;
+          std::vector<int> cpp_intvec;
+          std::vector<double> cpp_floatvec;
+          py::dict cpp_parent_dict;
+          py::dict cpp_current_dict;
+          py::dict cpp_workdict;
+          int cpp_idxnum;
+          std::string cpp_line;
+          double cpp_float_val;
         """,
         -8,
     )
@@ -233,7 +233,7 @@ def parsefun_header(fun_name):
 
 
 def parsefun_footer():
-    code = cpp.statement("return cpp_current_dict", 4)
+    code = cpp.statement("return cpp_current_dict", cpp.INDENT)
     code += cpp.close_block()
     return code
 
@@ -241,7 +241,7 @@ def parsefun_footer():
 def register_pybind_module(module_name, inner_code):
     code = cpp.line("") + cpp.line("")
     code += cpp.line(f"PYBIND11_MODULE({module_name}, m) {{")
-    code += cpp.indent_code(inner_code, 4)
+    code += cpp.indent_code(inner_code, cpp.INDENT)
     code += cpp.close_block()
     return code
 

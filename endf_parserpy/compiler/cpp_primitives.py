@@ -3,11 +3,19 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/16
+# Last modified:   2024/05/01
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
+
+
+INDENT = 2
+
+
+def set_indent(indent):
+    global INDENT
+    INDENT = indent
 
 
 def fillout_template(template, params=None, idx=None):
@@ -21,7 +29,8 @@ def fillout_template(template, params=None, idx=None):
     return res
 
 
-def indent_code(code, indent):
+def indent_code(code, indent=None):
+    indent = INDENT if indent is None else indent
     if indent >= 0:
         code_lines = [" " * indent + s for s in code.split("\n")]
     else:
@@ -50,7 +59,8 @@ def close_block(indent=0):
     return " " * indent + "}\n"
 
 
-def block(code, indent=4, escape=False):
+def block(code, indent=None, escape=False):
+    indent = INDENT if indent is None else indent
     obr = "{\n" if not escape else "{{\n"
     cbr = "}\n" if not escape else "}}\n"
     return obr + indent_code(code, indent) + cbr
@@ -68,7 +78,8 @@ def block_repeat(code, num, extra_params=None, indent=0):
     return concat(code)
 
 
-def nested_block_repeat(code, num, extra_params=None, indent=4):
+def nested_block_repeat(code, num, extra_params=None, indent=None):
+    indent = INDENT if indent is None else indent
     if num <= 0:
         return ""
     if isinstance(code, str):
@@ -110,13 +121,13 @@ def conditional_branches(conditions, codes, default=None, escape=False):
     cbr = "}" if not escape else "}}"
     if_cond = conditions[0]
     code = f"if ({if_cond}) {obr}\n"
-    code += indent_code(codes[0], 4)
+    code += indent_code(codes[0], INDENT)
     for elif_cond, elif_body in zip(conditions[1:], codes[1:]):
         code += f"\n{cbr} else if ({elif_cond}) {obr}\n"
-        code += indent_code(elif_body, 4)
+        code += indent_code(elif_body, INDENT)
     if default is not None:
         code += f"\n{cbr} else {obr}\n"
-        code += indent_code(default, 4)
+        code += indent_code(default, INDENT)
     code += f"{cbr}\n"
     return code
 
@@ -133,6 +144,6 @@ def pureif(condition, code, escape=False):
 
 def forloop(start, stop, inc, body):
     code = line(f"for ({start}; {stop}; {inc}) {{")
-    code += indent_code(body, 4)
+    code += indent_code(body, INDENT)
     code += close_block()
     return code

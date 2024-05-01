@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/04/28
+# Last modified:   2024/05/01
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -112,11 +112,11 @@ class Assign:
             )
             code = newcode
 
-        assigncode = cpp.statement(f"auto& cpp_curvar0 = {src_varname}", 4)
-        assigncode += cpp.statement(f'cpp_current_dict["{vartok}"] = py::dict()', 4)
+        assigncode = cpp.statement(f"auto& cpp_curvar0 = {src_varname}")
+        assigncode += cpp.statement(f'cpp_current_dict["{vartok}"] = py::dict()')
         assigncode += cpp.statement(
-            f'py::dict cpp_curdict0 = cpp_current_dict["{vartok}"]', 4
+            f'py::dict cpp_curdict0 = cpp_current_dict["{vartok}"]'
         )
-        assigncode += cpp.indent_code(newcode, 4)
+        assigncode += newcode
         code = cpp.pureif(Query.did_read_var(vartok, vardict), assigncode)
         return code

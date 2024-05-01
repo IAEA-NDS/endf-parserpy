@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/28
+# Last modified:   2024/05/01
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -68,14 +68,14 @@ def read_tab_body(xvar, yvar):
         cpp_intvec = cpp_read_int_vec(cont, 2*cpp_nr);
         cpp_j = 0;
         for (int cpp_i=0; cpp_i < cpp_nr; cpp_i++) {
-            NBT.push_back(cpp_intvec[cpp_j++]);
-            INT.push_back(cpp_intvec[cpp_j++]);
+          NBT.push_back(cpp_intvec[cpp_j++]);
+          INT.push_back(cpp_intvec[cpp_j++]);
         }
 
         cpp_current_dict["NBT"] = NBT;
         cpp_current_dict["INT"] = INT;
         """,
-        -4,
+        -8 + cpp.INDENT,
     )
 
     if xvar is not None or yvar is not None:
@@ -83,19 +83,19 @@ def read_tab_body(xvar, yvar):
             raise ValueError("provide both xyvar with xvar")
         code += cpp.indent_code(
             f"""
-        std::vector<double> {xvar};
-        std::vector<double> {yvar};
-        cpp_floatvec = cpp_read_float_vec(cont, 2*cpp_np);
-        cpp_j = 0;
-        for (int cpp_i=0; cpp_i < cpp_np; cpp_i++) {{
-            {xvar}.push_back(cpp_floatvec[cpp_j++]);
-            {yvar}.push_back(cpp_floatvec[cpp_j++]);
-        }}
+            std::vector<double> {xvar};
+            std::vector<double> {yvar};
+            cpp_floatvec = cpp_read_float_vec(cont, 2*cpp_np);
+            cpp_j = 0;
+            for (int cpp_i=0; cpp_i < cpp_np; cpp_i++) {{
+              {xvar}.push_back(cpp_floatvec[cpp_j++]);
+              {yvar}.push_back(cpp_floatvec[cpp_j++]);
+            }}
 
-        cpp_current_dict["{xvar}"] = {xvar};
-        cpp_current_dict["{yvar}"] = {yvar};
-        """,
-            -8,
+            cpp_current_dict["{xvar}"] = {xvar};
+            cpp_current_dict["{yvar}"] = {yvar};
+            """,
+            -12 + cpp.INDENT,
         )
     code += cpp.close_block()
     return code
@@ -110,7 +110,7 @@ def open_section(vartok, vardict):
     {{
         py::dict cpp_parent_dict = cpp_current_dict;
         if (! cpp_parent_dict.contains("{secname}")) {{
-            cpp_parent_dict["{secname}"] = py::dict();
+          cpp_parent_dict["{secname}"] = py::dict();
         }}
         py::dict cpp_current_dict = cpp_parent_dict["{secname}"];
         """,
@@ -122,7 +122,7 @@ def open_section(vartok, vardict):
         code += cpp.indent_code(
             f"""
         if (! cpp_current_dict.contains({idxstr})) {{
-            cpp_current_dict[{idxstr}] = py::dict();
+          cpp_current_dict[{idxstr}] = py::dict();
         }}
         cpp_current_dict = cpp_current_dict[{idxstr}];
         """,
@@ -132,7 +132,7 @@ def open_section(vartok, vardict):
 
 
 def close_section():
-    code = cpp.statement("cpp_current_dict = cpp_parent_dict", 4)
+    code = cpp.statement("cpp_current_dict = cpp_parent_dict", cpp.INDENT)
     code += cpp.close_block()
     return code
 

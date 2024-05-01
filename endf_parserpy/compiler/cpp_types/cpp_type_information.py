@@ -44,6 +44,13 @@ def get_vartype_names():
     return tuple(VARTYPE_INFO.keys())
 
 
+def get_vartype_idx(vartype_name):
+    for i, vartype in enumerate(VARTYPE_INFO):
+        if vartype == vartype_name:
+            return i
+    return TypeError(f"unknown vartype `{vartype_name}`")
+
+
 def get_vartype_definition(vartype_name):
     return VARTYPE_INFO[vartype_name]().definition
 

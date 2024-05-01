@@ -3,16 +3,19 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/04/25
+# Last modified:   2024/05/01
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+from ..variable_management import should_track_read
 from .. import cpp_primitives as cpp
 from .cpp_varaux import (
     check_variable,
     dict_assign,
+    initialize_last_type_var,
+    update_last_type_var,
 )
 from .cpp_varops_query import (
     get_idxstr,
@@ -26,7 +29,13 @@ from .cpp_type_information import get_vartype_modules, get_assign_modules
 def define_var(vartok, vardict, save_state=False):
     for m in get_vartype_modules():
         if m.query.is_responsible(vartok, vardict):
-            return m.assign.define_var(vartok, vardict, save_state)
+            code = m.assign.define_var(vartok, vardict, save_state)
+            track_read = should_track_read(vartok, vardict)
+            vars_defined = vardict.setdefault("__defined", {})
+            if track_read and str(vartok) not in vars_defined:
+                code += initialize_last_type_var(vartok, vardict)
+                vars_defined[str(vartok)] = True
+            return code
     raise TypeError(f"{vartok} is of unknown type")
 
 
@@ -39,6 +48,9 @@ def assign_exprstr_to_var(vartok, exprstr, dtype, vardict, node=None):
         )
         if new_code is not False:
             code += new_code
+            track_read = should_track_read(vartok, vardict)
+            if track_read:
+                code += update_last_type_var(vartok, vardict)
             return code
     raise TypeError(f"{vartok} has unknown type")
 

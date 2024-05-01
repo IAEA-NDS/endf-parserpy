@@ -132,8 +132,8 @@ def conditional_branches(conditions, codes, default=None, escape=False):
     return code
 
 
-def ifelse(condition, code, other_code):
-    return conditional_branches([condition], [code], default=other_code)
+def ifelse(condition, code, other_code, escape=False):
+    return conditional_branches([condition], [code], default=other_code, escape=escape)
 
 
 def pureif(condition, code, escape=False):

@@ -18,7 +18,8 @@ from endf_parserpy.compiler.expr_utils.conversion import VariableToken
 from endf_parserpy.compiler.expr_utils.node_trafos import node2str
 from endf_parserpy.compiler.expr_utils.equation_utils import contains_variable
 from endf_parserpy.compiler.variable_management import get_var_type
-from .cpp_dtype_aux import get_dtype_str
+from .cpp_dtype_aux import get_dtype_str, get_dtype_idx
+from .cpp_type_information import get_vartype_idx
 
 
 def get_cpp_varname(vartok, vardict):
@@ -32,6 +33,33 @@ def get_cpp_varname(vartok, vardict):
     varname = f"var_{vartok}_{len(vartok.indices)}d"
     varname += f"_{dtypestr}_{vartype[1]}"
     return varname
+
+
+def get_dtype_vartype_idx(vartok, vardict):
+    vartype = get_var_type(vartok, vardict)
+    vartype_idx = get_vartype_idx(vartype[1])
+    dtype_idx = get_dtype_idx(vartype[0])
+    combined_idx = vartype_idx * 100 + dtype_idx
+    return combined_idx
+
+
+def get_last_type_varname(vartok, vardict):
+    varname = "aux_last_type_read_for_"
+    varname += str(vartok)
+    return varname
+
+
+def initialize_last_type_var(vartok, vardict):
+    varname = get_last_type_varname(vartok, vardict)
+    code = cpp.statement(f"int {varname} = -1")
+    return code
+
+
+def update_last_type_var(vartok, vardict):
+    idx = get_dtype_vartype_idx(vartok, vardict)
+    varname = get_last_type_varname(vartok, vardict)
+    code = cpp.statement(f"{varname} = {idx}")
+    return code
 
 
 def is_loop(node):

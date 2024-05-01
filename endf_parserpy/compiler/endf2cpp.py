@@ -86,7 +86,8 @@ from .expr_utils.exceptions import (
 
 def generate_vardefs(vardict, save_state=False):
     code = cpp.comment("variable declarations")
-    for vartok, dtype in vardict.items():
+    for vartok in tuple(vardict.keys()):
+        dtype = vardict[vartok]
         if vartok.startswith("__"):
             continue
         code += cpp_varops_assign.define_var(vartok, vardict, save_state=save_state)

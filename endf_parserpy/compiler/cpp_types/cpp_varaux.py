@@ -19,7 +19,7 @@ from endf_parserpy.compiler.expr_utils.node_trafos import node2str
 from endf_parserpy.compiler.expr_utils.equation_utils import contains_variable
 
 
-def get_cpp_varname(vartok):
+def get_cpp_varname(vartok, vardict):
     if not isinstance(vartok, VariableToken):
         raise TypeError("expect vartok of type VariableToken")
     if vartok.cpp_namespace:

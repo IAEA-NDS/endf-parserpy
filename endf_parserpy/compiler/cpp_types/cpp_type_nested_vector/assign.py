@@ -38,7 +38,7 @@ class Assign:
     def define_var(vartok, vardict, save_state=False):
         pardict = find_parent_dict(vartok, vardict, fail=True)
         dtype = map_dtype(pardict[vartok][0])
-        varname = get_cpp_varname(vartok)
+        varname = get_cpp_varname(vartok, vardict)
         num_indices = len(vartok.indices)
         ptr_vardefs = ""
         for i in range(num_indices):
@@ -59,7 +59,7 @@ class Assign:
             return False
 
         code = ""
-        cpp_varname = get_cpp_varname(vartok)
+        cpp_varname = get_cpp_varname(vartok, vardict)
         ptrvar_old = cpp_varname
         limit_node = None
         for i in range(0, len(indices) - 1):
@@ -85,7 +85,7 @@ class Assign:
         return code
 
     def store_var_in_endf_dict2(vartok, vardict):
-        src_varname = get_cpp_varname(vartok)
+        src_varname = get_cpp_varname(vartok, vardict)
         code = ""
         for curlev in range(len(vartok.indices), 0, -1):
             newcode = ""

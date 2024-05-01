@@ -681,7 +681,7 @@ def _generate_code_for_loop(
     start_expr_str = transform_nodes(start_expr_node, expr2str_shiftidx, vardict)
     stop_expr_str = transform_nodes(stop_expr_node, expr2str_shiftidx, vardict)
     loopvar = VariableToken(loopvar_node)
-    cpp_loopvar = cpp_varops_query.get_cpp_varname(loopvar)
+    cpp_loopvar = cpp_varops_query.get_cpp_varname(loopvar, vardict)
     if loopvar in vardict:
         raise TypeError(f"variable {loopvar} already declared")
     register_var(loopvar, "loopvartype", "Scalar", vardict)
@@ -693,7 +693,7 @@ def _generate_code_for_loop(
     """,
         -4,
     )
-    code += cpp.indent_code(init_readflag(loopvar, val=True))
+    code += cpp.indent_code(init_readflag(loopvar, vardict, val=True))
     body_code = parsefun(for_body, vardict)
     code += cpp.indent_code(body_code)
     code += cpp.close_block()

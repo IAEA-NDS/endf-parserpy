@@ -45,7 +45,7 @@ class Assign:
         pardict = find_parent_dict(vartok, vardict, fail=True)
         dtype = map_dtype(pardict[vartok][0])
         dtype = f"Matrix2d<{dtype}>"
-        varname = get_cpp_varname(vartok)
+        varname = get_cpp_varname(vartok, vardict)
         code = ""
         if save_state:
             code += init_local_var_from_global_var(varname, dtype)
@@ -181,7 +181,7 @@ class Assign:
             first_idx_range = (real_inner_start, real_inner_stop)
             second_idx_range = (real_outer_start, real_outer_stop)
 
-        varname = get_cpp_varname(vartok)
+        varname = get_cpp_varname(vartok, vardict)
         # must be here to avoid a circular import error
         from ..cpp_varops_query import expr2str_shiftidx
 
@@ -215,7 +215,7 @@ class Assign:
         if vardict[vartok] == "loopvartype":
             return ""
 
-        src_varname = get_cpp_varname(vartok)
+        src_varname = get_cpp_varname(vartok, vardict)
         src_extvarname = Query.assemble_extvarname(src_varname, ["cpp_i1", "cpp_i2"])
         if len(vartok.indices) == 0:
             assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')

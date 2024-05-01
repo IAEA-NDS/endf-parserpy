@@ -122,7 +122,7 @@ def open_section(vartok, vardict):
         -4,
     )
     for idx in indices:
-        cpp_idxstr = get_cpp_varname(idx)
+        cpp_idxstr = get_cpp_varname(idx, vardict)
         idxstr = f"py::cast({cpp_idxstr})"
         code += cpp.indent_code(
             f"""

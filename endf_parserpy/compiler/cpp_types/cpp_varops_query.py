@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/04/29
+# Last modified:   2024/05/01
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -57,7 +57,7 @@ def did_read_var(vartok, vardict, indices=None):
 def get_cpp_extvarname(vartok, vardict):
     if find_parent_dict(vartok, vardict) is None:
         raise VariableMissingError(f"variable {vartok} missing/not encountered")
-    varname = get_cpp_varname(vartok)
+    varname = get_cpp_varname(vartok, vardict)
     idxstrs = []
     for i, idxtok in enumerate(vartok.indices):
         idxstrs.append(get_idxstr(vartok, i, vardict))

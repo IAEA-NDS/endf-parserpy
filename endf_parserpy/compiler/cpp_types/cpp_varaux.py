@@ -17,6 +17,7 @@ from endf_parserpy.compiler import cpp_primitives as cpp
 from endf_parserpy.compiler.expr_utils.conversion import VariableToken
 from endf_parserpy.compiler.expr_utils.node_trafos import node2str
 from endf_parserpy.compiler.expr_utils.equation_utils import contains_variable
+from endf_parserpy.compiler.variable_management import get_var_type
 
 
 def get_cpp_varname(vartok, vardict):
@@ -24,7 +25,12 @@ def get_cpp_varname(vartok, vardict):
         raise TypeError("expect vartok of type VariableToken")
     if vartok.cpp_namespace:
         return str(vartok)
-    return f"var_{vartok}_{len(vartok.indices)}d"
+
+    vartype = get_var_type(vartok, vardict)
+    dtypestr = get_dtype_str(vartype[0])
+    varname = f"var_{vartok}_{len(vartok.indices)}d"
+    varname += f"_{dtypestr}_{vartype[1]}"
+    return varname
 
 
 def is_loop(node):

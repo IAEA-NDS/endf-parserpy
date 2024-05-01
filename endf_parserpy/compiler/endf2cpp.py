@@ -118,15 +118,17 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
     var_mt = VariableToken(Token("VARNAME", "MT"))
     ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
     ctrl_code += aux.read_line()
-    ctrl_code += cpp_varops_assign.assign_exprstr_to_var(
-        var_mat, "std::stoi(cpp_line.substr(66, 4))", int, vardict
+
+    ctrl_code += generate_code_for_varassign(
+        var_mat, vardict, "std::stoi(cpp_line.substr(66, 4))", int
     )
-    ctrl_code += cpp_varops_assign.assign_exprstr_to_var(
-        var_mf, "std::stoi(cpp_line.substr(70, 2))", int, vardict
+    ctrl_code += generate_code_for_varassign(
+        var_mf, vardict, "std::stoi(cpp_line.substr(70, 2))", int
     )
-    ctrl_code += cpp_varops_assign.assign_exprstr_to_var(
-        var_mt, "std::stoi(cpp_line.substr(72, 3))", int, vardict
+    ctrl_code += generate_code_for_varassign(
+        var_mt, vardict, "std::stoi(cpp_line.substr(72, 3))", int
     )
+
     ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mat, vardict)
     ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mf, vardict)
     ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mt, vardict)

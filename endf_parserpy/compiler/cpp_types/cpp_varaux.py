@@ -18,7 +18,7 @@ from endf_parserpy.compiler.expr_utils.conversion import VariableToken
 from endf_parserpy.compiler.expr_utils.node_trafos import node2str
 from endf_parserpy.compiler.expr_utils.equation_utils import contains_variable
 from endf_parserpy.compiler.variable_management import get_var_type
-from .cpp_type_aux import get_dtype_str
+from .cpp_dtype_aux import get_dtype_str
 
 
 def get_cpp_varname(vartok, vardict):

@@ -25,7 +25,7 @@ from ..cpp_varaux import (
     is_loop,
     get_loopvar,
 )
-from ..cpp_type_aux import map_dtype
+from ..cpp_dtype_aux import map_dtype
 from .query import Query
 from .auxiliary import (
     get_ptr_varname,

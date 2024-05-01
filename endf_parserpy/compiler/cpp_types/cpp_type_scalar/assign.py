@@ -20,7 +20,7 @@ from ..cpp_varaux import (
     check_variable,
     init_local_var_from_global_var,
 )
-from ..cpp_type_aux import map_dtype
+from ..cpp_dtype_aux import map_dtype
 from .query import Query
 from .auxiliary import (
     initialize_aux_read_vars,

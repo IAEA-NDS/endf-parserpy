@@ -385,6 +385,8 @@ def _generate_code_for_varassign(
             cpp_newval_tok = Token("VARNAME", "cpp_int_val")
         elif dtype == "intvec":
             cpp_newval_tok = Token("VARNAME", "cpp_intvec")
+        elif dtype == "floatvec":
+            cpp_newval_tok = Token("VARNAME", "cpp_floatvec")
         else:
             raise NotImplementedError(f"unknown node type {dtype}")
         cpp_newval_tok = VariableToken(cpp_newval_tok, cpp_namespace=True)

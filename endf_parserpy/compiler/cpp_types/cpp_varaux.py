@@ -90,6 +90,8 @@ def map_dtype(dtype):
         dtype = "int"
     elif dtype == "intvec":
         dtype = "std::vector<int>"
+    elif dtype == "floatvec":
+        dtype = "std::vector<double>"
     else:
         raise TypeError(f"unknown dtype {dtype}")
     return dtype

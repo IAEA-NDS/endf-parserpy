@@ -20,6 +20,11 @@ class Query:
         return "Matrix2d"
 
     @classmethod
+    def get_cpp_varname(cls, vartok, vardict):
+        specialtype = cls.get_specialtype_name()
+        return get_cpp_varname(vartok, vardict, specialtype=specialtype)
+
+    @classmethod
     def is_responsible(cls, vartok, vardict):
         pardict = find_parent_dict(vartok, vardict)
         return pardict[vartok][1] == "Matrix2d" if pardict is not None else False

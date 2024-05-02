@@ -20,6 +20,11 @@ class Query:
     def get_specialtype_name():
         return "NestedVector"
 
+    @classmethod
+    def get_cpp_varname(cls, vartok, vardict):
+        specialtype = cls.get_specialtype_name()
+        return get_cpp_varname(vartok, vardict, specialtype=specialtype)
+
     def is_responsible(vartok, vardict):
         pardict = find_parent_dict(vartok, vardict)
         return pardict[vartok][1] == "NestedVector" if pardict is not None else False

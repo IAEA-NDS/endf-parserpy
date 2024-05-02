@@ -11,26 +11,14 @@
 
 from endf_parserpy.compiler.variable_management import get_var_types
 from ..cpp_varaux import get_cpp_varname
+from ..cpp_type_template.query import Query as BaseQuery
 
 
-class Query:
+class Query(BaseQuery):
 
     @staticmethod
     def get_specialtype_name():
         return "Scalar"
-
-    @classmethod
-    def get_cpp_varname(cls, vartok, vardict):
-        specialtype = cls.get_specialtype_name()
-        return get_cpp_varname(vartok, vardict, specialtype=specialtype)
-
-    @classmethod
-    def is_responsible(cls, vartok, vardict):
-        specialtype = cls.get_specialtype_name()
-        vartypes = get_var_types(vartok, vardict)
-        if vartypes is None:
-            return False
-        return any(v[1] == specialtype for v in vartypes)
 
     @classmethod
     def assemble_extvarname(cls, varname, idxstrs):

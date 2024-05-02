@@ -15,6 +15,10 @@ from ..cpp_varaux import get_cpp_varname
 
 class Query:
 
+    @staticmethod
+    def get_specialtype_name():
+        return "Matrix2d"
+
     @classmethod
     def is_responsible(cls, vartok, vardict):
         pardict = find_parent_dict(vartok, vardict)

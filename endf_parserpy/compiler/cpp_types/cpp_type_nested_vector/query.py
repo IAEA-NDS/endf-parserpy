@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/05/01
+# Last modified:   2024/05/02
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -15,6 +15,10 @@ from ..cpp_varaux import get_cpp_varname
 
 
 class Query:
+
+    @staticmethod
+    def get_specialtype_name():
+        return "NestedVector"
 
     def is_responsible(vartok, vardict):
         pardict = find_parent_dict(vartok, vardict)

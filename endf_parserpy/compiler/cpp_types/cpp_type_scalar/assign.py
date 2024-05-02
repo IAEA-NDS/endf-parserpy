@@ -12,7 +12,6 @@
 import endf_parserpy.compiler.cpp_primitives as cpp
 from endf_parserpy.compiler.variable_management import (
     register_var,
-    get_var_type,
     find_parent_dict,
 )
 from ..cpp_varaux import (
@@ -46,7 +45,6 @@ class Assign:
 
     @classmethod
     def assign_exprstr_to_var(cls, vartok, indices, exprstr, dtype, vardict, node):
-        vartype = get_var_type(vartok, vardict)
         if has_loopvartype(vartok, vardict):
             return ""
 

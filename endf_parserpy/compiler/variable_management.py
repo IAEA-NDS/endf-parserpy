@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/01
+# Last modified:   2024/05/02
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -44,11 +44,11 @@ def should_track_read(vartok, vardict):
     return vartok not in track_dict
 
 
-def get_var_type(vartok, vardict):
+def get_var_types(vartok, vardict):
     pardict = find_parent_dict(vartok, vardict)
     if pardict is None:
         return None
-    return pardict[vartok]
+    return (pardict[vartok],)
 
 
 def find_parent_dict(vartok, vardict, fail=False):

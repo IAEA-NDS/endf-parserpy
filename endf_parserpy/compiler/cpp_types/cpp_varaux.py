@@ -17,7 +17,7 @@ from endf_parserpy.compiler import cpp_primitives as cpp
 from endf_parserpy.compiler.expr_utils.conversion import VariableToken
 from endf_parserpy.compiler.expr_utils.node_trafos import node2str
 from endf_parserpy.compiler.expr_utils.equation_utils import contains_variable
-from endf_parserpy.compiler.variable_management import get_var_type
+from endf_parserpy.compiler.variable_management import get_var_types
 from .cpp_dtype_aux import get_dtype_str, get_dtype_idx
 from .cpp_type_information import get_vartype_idx
 
@@ -28,7 +28,10 @@ def get_cpp_varname(vartok, vardict, specialtype=None, dtype=None):
     if vartok.cpp_namespace:
         return str(vartok)
 
-    vartype = get_var_type(vartok, vardict)
+    vartype = get_var_types(vartok, vardict)
+    # as an intermediate step we still expect just a single vartype
+    assert len(vartype) == 1
+    vartype = vartype[0]
     specialtype = vartype[1] if specialtype is None else specialtype
     dtype = vartype[0] if dtype is None else dtype
     dtypestr = get_dtype_str(vartype[0])
@@ -38,7 +41,10 @@ def get_cpp_varname(vartok, vardict, specialtype=None, dtype=None):
 
 
 def get_dtype_vartype_idx(vartok, vardict):
-    vartype = get_var_type(vartok, vardict)
+    vartype = get_var_types(vartok, vardict)
+    # as an intermediate step we still expect just a single vartype
+    assert len(vartype) == 1
+    vartype = vartype[0]
     vartype_idx = get_vartype_idx(vartype[1])
     dtype_idx = get_dtype_idx(vartype[0])
     combined_idx = vartype_idx * 100 + dtype_idx
@@ -81,10 +87,17 @@ def type_change_check(vartok, vardict):
 
 
 def has_loopvartype(vartok, vardict):
-    vartype = get_var_type(vartok, vardict)
-    if vartype is None:
+    vartypes = get_var_types(vartok, vardict)
+    if vartypes is None:
         return False
-    return vartype[0] == "loopvartype"
+    for vartype in vartypes:
+        if vartype[0] == "loopvartype":
+            if len(vartypes) != 1:
+                raise IndexError(
+                    f"variable `{vartok}` of loopvartype cannot be associated with other types"
+                )
+            return True
+    return False
 
 
 def is_loop(node):

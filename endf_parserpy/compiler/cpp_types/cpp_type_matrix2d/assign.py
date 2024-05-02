@@ -21,7 +21,7 @@ from endf_parserpy.compiler.expr_utils.equation_utils import (
 from endf_parserpy.compiler import cpp_primitives as cpp
 from endf_parserpy.compiler.variable_management import (
     register_var,
-    get_var_type,
+    get_var_types,
     find_parent_dict,
 )
 from ..cpp_varaux import (
@@ -78,8 +78,8 @@ class Assign:
         # sometimes things are defined piece-wise
         # using several consecutive loops.
         # In this case we give up on an array definition here.
-        vartype = get_var_type(vartok, vardict)
-        if vartype is not None:
+        vartypes = get_var_types(vartok, vardict)
+        if vartypes is not None:
             return return_fail()
 
         curnode = node.parent

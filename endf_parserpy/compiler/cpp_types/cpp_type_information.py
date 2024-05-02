@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/25
-# Last modified:   2024/05/01
+# Last modified:   2024/05/02
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -31,40 +31,53 @@ class LazyModuleClass:
         return getattr(self.module, self.class_name)
 
 
-VARTYPE_INFO = {
-    "Matrix2d": LazyModuleClass(f"{_THIS_PCKG}.cpp_type_matrix2d", "CppTypeMatrix2d"),
-    "NestedVector": LazyModuleClass(
-        f"{_THIS_PCKG}.cpp_type_nested_vector", "CppTypeNestedVector"
-    ),
-    "Scalar": LazyModuleClass(f"{_THIS_PCKG}.cpp_type_scalar", "CppTypeScalar"),
-}
+_SPECIALTYPE_MODULES = (
+    LazyModuleClass(f"{_THIS_PCKG}.cpp_type_matrix2d", "CppTypeMatrix2d"),
+    LazyModuleClass(f"{_THIS_PCKG}.cpp_type_nested_vector", "CppTypeNestedVector"),
+    LazyModuleClass(f"{_THIS_PCKG}.cpp_type_scalar", "CppTypeScalar"),
+)
+
+
+def _get_specialtype_module_map():
+    keys = []
+    modules = []
+    for mc in _SPECIALTYPE_MODULES:
+        keys.append(mc().query.get_specialtype_name())
+        modules.append(mc)
+    return {k: m for k, m in zip(keys, modules)}
 
 
 def get_vartype_names():
-    return tuple(VARTYPE_INFO.keys())
+    vartype_info = _get_specialtype_module_map()
+    return tuple(vartype_info.keys())
 
 
 def get_vartype_idx(vartype_name):
-    for i, vartype in enumerate(VARTYPE_INFO):
+    vartype_info = _get_specialtype_module_map()
+    for i, vartype in enumerate(vartype_info):
         if vartype == vartype_name:
             return i
     return TypeError(f"unknown vartype `{vartype_name}`")
 
 
 def get_vartype_definition(vartype_name):
-    return VARTYPE_INFO[vartype_name]().definition
+    vartype_info = _get_specialtype_module_map()
+    return vartype_info[vartype_name]().definition
 
 
 def get_query_module(vartype_name):
-    return VARTYPE_INFO[vartype_name]().query
+    vartype_info = _get_specialtype_module_map()
+    return vartype_info[vartype_name]().query
 
 
 def get_assign_module(vartype_name):
-    return VARTYPE_INFO[vartype_name]().assign
+    vartype_info = _get_specialtype_module_map()
+    return vartype_info[vartype_name]().assign
 
 
 def get_vartype_module(vartype_name):
-    return VARTYPE_INFO[vartype_name]()
+    vartype_info = _get_specialtype_module_map()
+    return vartype_info[vartype_name]()
 
 
 # tuples convenient for loops

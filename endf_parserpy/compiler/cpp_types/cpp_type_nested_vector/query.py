@@ -25,15 +25,18 @@ class Query:
         specialtype = cls.get_specialtype_name()
         return get_cpp_varname(vartok, vardict, specialtype=specialtype)
 
-    def is_responsible(vartok, vardict):
+    @classmethod
+    def is_responsible(cls, vartok, vardict):
         pardict = find_parent_dict(vartok, vardict)
         return pardict[vartok][1] == "NestedVector" if pardict is not None else False
 
-    def assemble_extvarname(varname, idxstrs):
+    @classmethod
+    def assemble_extvarname(cls, varname, idxstrs):
         return varname + "".join(f"[{s}]" for s in idxstrs)
 
-    def did_read_var(vartok, vardict, indices=None):
-        assert Query.is_responsible(vartok, vardict)
+    @classmethod
+    def did_read_var(cls, vartok, vardict, indices=None):
+        assert cls.is_responsible(vartok, vardict)
         varname = get_cpp_varname(vartok, vardict)
         if indices is None:
             return f"({varname}.get_last_index() != -1)"

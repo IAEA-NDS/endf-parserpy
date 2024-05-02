@@ -80,6 +80,13 @@ def type_change_check(vartok, vardict):
     return code
 
 
+def has_loopvartype(vartok, vardict):
+    vartype = get_var_type(vartok, vardict)
+    if vartype is None:
+        return False
+    return vartype[0] == "loopvartype"
+
+
 def is_loop(node):
     if node is None:
         return False

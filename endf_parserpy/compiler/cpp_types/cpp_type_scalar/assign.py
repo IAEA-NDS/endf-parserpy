@@ -17,6 +17,7 @@ from endf_parserpy.compiler.variable_management import (
 )
 from ..cpp_varaux import (
     get_cpp_varname,
+    has_loopvartype,
     check_variable,
     init_local_var_from_global_var,
 )
@@ -46,7 +47,7 @@ class Assign:
     @classmethod
     def assign_exprstr_to_var(cls, vartok, indices, exprstr, dtype, vardict, node):
         vartype = get_var_type(vartok, vardict)
-        if vartype is not None and vartype[0] == "loopvartype":
+        if has_loopvartype(vartok, vardict):
             return ""
 
         if len(indices) != 0:
@@ -63,7 +64,7 @@ class Assign:
     @classmethod
     def store_var_in_endf_dict2(cls, vartok, vardict):
         # counter variables are not stored in the endf dictionary
-        if vardict[vartok] == "loopvartype":
+        if has_loopvartype(vartok, vardict):
             return ""
         src_varname = get_cpp_varname(vartok, vardict)
         assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')

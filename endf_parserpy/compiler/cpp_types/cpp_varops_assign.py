@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/01
+# Last modified:   2024/05/02
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -12,6 +12,7 @@
 from ..variable_management import should_track_read
 from .. import cpp_primitives as cpp
 from .cpp_varaux import (
+    has_loopvartype,
     check_variable,
     dict_assign,
     initialize_last_type_var,
@@ -75,7 +76,7 @@ def store_var_in_endf_dict2(vartok, vardict):
         )
 
     # counter variables are not stored in the endf dictionary
-    if vardict[vartok] == "loopvartype":
+    if has_loopvartype(vartok, vardict):
         return ""
 
     for m in get_vartype_modules():

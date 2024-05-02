@@ -26,6 +26,7 @@ from endf_parserpy.compiler.variable_management import (
 )
 from ..cpp_varaux import (
     check_variable,
+    has_loopvartype,
     is_loop,
     get_loopvar,
     get_loop_body,
@@ -211,7 +212,7 @@ class Assign:
     def store_var_in_endf_dict2(cls, vartok, vardict):
         assert len(vartok.indices) == 2
         # counter variables are not stored in the endf dictionary
-        if vardict[vartok] == "loopvartype":
+        if has_loopvartype(vartok, vardict):
             return ""
 
         src_varname = get_cpp_varname(vartok, vardict)

@@ -15,7 +15,6 @@ from endf_parserpy.compiler.variable_management import (
     get_var_types,
 )
 from ..cpp_varaux import (
-    get_cpp_varname,
     has_loopvartype,
     check_variable,
     init_local_var_from_global_var,
@@ -26,6 +25,7 @@ from .auxiliary import (
     initialize_aux_read_vars,
     mark_var_as_read,
 )
+from .query import Query
 
 
 class Assign:
@@ -36,7 +36,7 @@ class Assign:
         vartypes = get_var_types(vartok, vardict)
         dtype = next(v[0] for v in vartypes if v[1] == specialtype)
         dtype = map_dtype(dtype)
-        varname = get_cpp_varname(vartok, vardict)
+        varname = Query.get_cpp_varname(vartok, vardict)
         code = ""
         if save_state:
             code += init_local_var_from_global_var(varname, dtype)
@@ -56,7 +56,7 @@ class Assign:
         check_variable(vartok, vardict)
         register_var(vartok, dtype, "Scalar", vardict)
         code = ""
-        cpp_varname = get_cpp_varname(vartok, vardict)
+        cpp_varname = Query.get_cpp_varname(vartok, vardict)
         code += cpp.statement(f"{cpp_varname} = {exprstr}")
         code += mark_var_as_read(vartok, vardict)
         return code
@@ -66,7 +66,7 @@ class Assign:
         # counter variables are not stored in the endf dictionary
         if has_loopvartype(vartok, vardict):
             return ""
-        src_varname = get_cpp_varname(vartok, vardict)
+        src_varname = Query.get_cpp_varname(vartok, vardict)
         assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')
         code = cpp.pureif(Query.did_read_var(vartok, vardict), assigncode)
         return code

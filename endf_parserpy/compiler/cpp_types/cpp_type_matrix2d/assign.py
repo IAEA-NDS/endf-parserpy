@@ -31,7 +31,6 @@ from ..cpp_varaux import (
     get_loop_body,
     get_loop_start,
     get_loop_stop,
-    get_cpp_varname,
     init_local_var_from_global_var,
 )
 from ..cpp_dtype_aux import map_dtype
@@ -47,7 +46,7 @@ class Assign:
         dtype = next(v[0] for v in vartypes if v[1] == specialtype)
         dtype = map_dtype(dtype)
         dtype = f"Matrix2d<{dtype}>"
-        varname = get_cpp_varname(vartok, vardict)
+        varname = Query.get_cpp_varname(vartok, vardict)
         code = ""
         if save_state:
             code += init_local_var_from_global_var(varname, dtype)
@@ -184,7 +183,7 @@ class Assign:
             second_idx_range = (real_outer_start, real_outer_stop)
 
         register_var(vartok, dtype, "Matrix2d", vardict)
-        varname = get_cpp_varname(vartok, vardict)
+        varname = Query.get_cpp_varname(vartok, vardict)
         # must be here to avoid a circular import error
         from ..cpp_varops_query import expr2str_shiftidx
 
@@ -216,7 +215,7 @@ class Assign:
         if has_loopvartype(vartok, vardict):
             return ""
 
-        src_varname = get_cpp_varname(vartok, vardict)
+        src_varname = Query.get_cpp_varname(vartok, vardict)
         src_extvarname = Query.assemble_extvarname(src_varname, ["cpp_i1", "cpp_i2"])
         if len(vartok.indices) == 0:
             assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')

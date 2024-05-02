@@ -20,7 +20,6 @@ from endf_parserpy.compiler.variable_management import (
     get_var_types,
 )
 from ..cpp_varaux import (
-    get_cpp_varname,
     init_local_var_from_global_var,
     is_loop,
     get_loopvar,
@@ -40,7 +39,7 @@ class Assign:
         vartypes = get_var_types(vartok, vardict)
         dtype = next(v[0] for v in vartypes if v[1] == specialtype)
         dtype = map_dtype(dtype)
-        varname = get_cpp_varname(vartok, vardict)
+        varname = Query.get_cpp_varname(vartok, vardict)
         num_indices = len(vartok.indices)
         ptr_vardefs = ""
         for i in range(num_indices):
@@ -62,7 +61,7 @@ class Assign:
 
         register_var(vartok, dtype, "NestedVector", vardict)
         code = ""
-        cpp_varname = get_cpp_varname(vartok, vardict)
+        cpp_varname = Query.get_cpp_varname(vartok, vardict)
         ptrvar_old = cpp_varname
         limit_node = None
         for i in range(0, len(indices) - 1):
@@ -87,7 +86,7 @@ class Assign:
         return code
 
     def store_var_in_endf_dict2(vartok, vardict):
-        src_varname = get_cpp_varname(vartok, vardict)
+        src_varname = Query.get_cpp_varname(vartok, vardict)
         code = ""
         for curlev in range(len(vartok.indices), 0, -1):
             newcode = ""

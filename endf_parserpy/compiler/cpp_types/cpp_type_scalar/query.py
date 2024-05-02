@@ -10,7 +10,6 @@
 ############################################################
 
 from endf_parserpy.compiler.variable_management import get_var_types
-from ..cpp_varaux import get_cpp_varname
 from ..cpp_type_template.query import Query as BaseQuery
 
 
@@ -27,5 +26,5 @@ class Query(BaseQuery):
     @classmethod
     def did_read_var(cls, vartok, vardict, indices=None):
         assert Query.is_responsible(vartok, vardict)
-        varname = get_cpp_varname(vartok, vardict)
+        varname = cls.get_cpp_varname(vartok, vardict)
         return f"(aux_{varname}_read == true)"

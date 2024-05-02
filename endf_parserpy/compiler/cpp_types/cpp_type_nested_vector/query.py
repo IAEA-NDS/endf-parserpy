@@ -12,8 +12,6 @@
 from endf_parserpy.compiler.variable_management import get_var_types
 import endf_parserpy.compiler.cpp_primitives as cpp
 from ..cpp_type_template.query import Query as BaseQuery
-from ..cpp_varaux import get_cpp_varname
-from ..cpp_type_template.query import Query as BaseQuery
 
 
 class Query(BaseQuery):
@@ -29,7 +27,7 @@ class Query(BaseQuery):
     @classmethod
     def did_read_var(cls, vartok, vardict, indices=None):
         assert cls.is_responsible(vartok, vardict)
-        varname = get_cpp_varname(vartok, vardict)
+        varname = cls.get_cpp_varname(vartok, vardict)
         if indices is None:
             return f"({varname}.get_last_index() != -1)"
         idxstr = indices[0]

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/01
+# Last modified:   2024/05/02
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -30,8 +30,8 @@ from .auxiliary import (
 
 class Assign:
 
-    @staticmethod
-    def define_var(vartok, vardict, save_state=False):
+    @classmethod
+    def define_var(cls, vartok, vardict, save_state=False):
         pardict = find_parent_dict(vartok, vardict, fail=True)
         dtype = map_dtype(pardict[vartok][0])
         varname = get_cpp_varname(vartok, vardict)
@@ -43,8 +43,8 @@ class Assign:
         code += initialize_aux_read_vars(vartok, vardict, save_state)
         return code
 
-    @staticmethod
-    def assign_exprstr_to_var(vartok, indices, exprstr, dtype, vardict, node):
+    @classmethod
+    def assign_exprstr_to_var(cls, vartok, indices, exprstr, dtype, vardict, node):
         vartype = get_var_type(vartok, vardict)
         if vartype is not None and vartype[0] == "loopvartype":
             return ""
@@ -60,8 +60,8 @@ class Assign:
         code += mark_var_as_read(vartok, vardict)
         return code
 
-    @staticmethod
-    def store_var_in_endf_dict2(vartok, vardict):
+    @classmethod
+    def store_var_in_endf_dict2(cls, vartok, vardict):
         # counter variables are not stored in the endf dictionary
         if vardict[vartok] == "loopvartype":
             return ""

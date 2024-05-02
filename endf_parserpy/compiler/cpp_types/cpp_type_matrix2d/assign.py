@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/01
+# Last modified:   2024/05/02
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -40,8 +40,8 @@ from .query import Query
 
 class Assign:
 
-    @staticmethod
-    def define_var(vartok, vardict, save_state=False):
+    @classmethod
+    def define_var(cls, vartok, vardict, save_state=False):
         pardict = find_parent_dict(vartok, vardict, fail=True)
         dtype = map_dtype(pardict[vartok][0])
         dtype = f"Matrix2d<{dtype}>"
@@ -53,8 +53,8 @@ class Assign:
             code += cpp.statement(f"{dtype} {varname}")
         return code
 
-    @staticmethod
-    def assign_exprstr_to_var(vartok, indices, exprstr, dtype, vardict, node):
+    @classmethod
+    def assign_exprstr_to_var(cls, vartok, indices, exprstr, dtype, vardict, node):
 
         def return_fail():
             if vardict.get(vartok, None) == "matrix2d":
@@ -207,8 +207,8 @@ class Assign:
         assigncode = cpp.statement(f"{extvarname} = {exprstr}")
         return assigncode
 
-    @staticmethod
-    def store_var_in_endf_dict2(vartok, vardict):
+    @classmethod
+    def store_var_in_endf_dict2(cls, vartok, vardict):
         assert len(vartok.indices) == 2
         # counter variables are not stored in the endf dictionary
         if vardict[vartok] == "loopvartype":

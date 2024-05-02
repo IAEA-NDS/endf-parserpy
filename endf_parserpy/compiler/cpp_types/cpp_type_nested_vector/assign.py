@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/01
+# Last modified:   2024/05/02
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -17,7 +17,7 @@ from endf_parserpy.compiler.expr_utils.equation_utils import (
 )
 from endf_parserpy.compiler.variable_management import (
     register_var,
-    find_parent_dict,
+    get_var_types,
 )
 from ..cpp_varaux import (
     get_cpp_varname,
@@ -36,8 +36,10 @@ from .auxiliary import (
 class Assign:
 
     def define_var(vartok, vardict, save_state=False):
-        pardict = find_parent_dict(vartok, vardict, fail=True)
-        dtype = map_dtype(pardict[vartok][0])
+        specialtype = Query.get_specialtype_name()
+        vartypes = get_var_types(vartok, vardict)
+        dtype = next(v[0] for v in vartypes if v[1] == specialtype)
+        dtype = map_dtype(dtype)
         varname = get_cpp_varname(vartok, vardict)
         num_indices = len(vartok.indices)
         ptr_vardefs = ""

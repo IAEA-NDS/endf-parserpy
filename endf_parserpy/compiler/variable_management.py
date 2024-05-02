@@ -15,16 +15,11 @@ from .expr_utils.node_checks import is_variable
 
 
 def register_var(vartok, dtype, special_type, vardict, track_read=True):
-    if vartok in vardict:
-        if vardict[vartok] != (dtype, special_type):
-            previous_dtype = vardict[vartok][0]
-            previous_special_type = vardict[vartok][1]
-            raise TypeError(
-                f"{vartok} was previously associated with "
-                + f"datatype ({previous_dtype}, {previous_special_type}) but "
-                + f"now should be associated with ({dtype}, {special_type})"
-            )
-    vardict[vartok] = (dtype, special_type)
+    reg_vartypes = vardict.setdefault(vartok, list())
+    vartype = (dtype, special_type)
+    if vartype in reg_vartypes:
+        return
+    reg_vartypes.append(vartype)
     track_dict = vardict.setdefault("__no_read_tracking", set())
     if not track_read:
         track_dict.add(vartok)
@@ -48,7 +43,7 @@ def get_var_types(vartok, vardict):
     pardict = find_parent_dict(vartok, vardict)
     if pardict is None:
         return None
-    return (pardict[vartok],)
+    return tuple(pardict[vartok])
 
 
 def find_parent_dict(vartok, vardict, fail=False):

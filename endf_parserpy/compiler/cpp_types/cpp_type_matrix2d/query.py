@@ -9,7 +9,7 @@
 #
 ############################################################
 
-from endf_parserpy.compiler.variable_management import find_parent_dict
+from endf_parserpy.compiler.variable_management import get_var_types
 from ..cpp_varaux import get_cpp_varname
 
 
@@ -26,8 +26,11 @@ class Query:
 
     @classmethod
     def is_responsible(cls, vartok, vardict):
-        pardict = find_parent_dict(vartok, vardict)
-        return pardict[vartok][1] == "Matrix2d" if pardict is not None else False
+        specialtype = cls.get_specialtype_name()
+        vartypes = get_var_types(vartok, vardict)
+        if vartypes is None:
+            return False
+        return any(v[1] == specialtype for v in vartypes)
 
     @classmethod
     def assemble_extvarname(cls, varname, idxstrs):

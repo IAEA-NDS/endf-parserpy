@@ -22,7 +22,6 @@ from endf_parserpy.compiler import cpp_primitives as cpp
 from endf_parserpy.compiler.variable_management import (
     register_var,
     get_var_types,
-    find_parent_dict,
 )
 from ..cpp_varaux import (
     check_variable,
@@ -43,8 +42,10 @@ class Assign:
 
     @classmethod
     def define_var(cls, vartok, vardict, save_state=False):
-        pardict = find_parent_dict(vartok, vardict, fail=True)
-        dtype = map_dtype(pardict[vartok][0])
+        specialtype = Query.get_specialtype_name()
+        vartypes = get_var_types(vartok, vardict)
+        dtype = next(v[0] for v in vartypes if v[1] == specialtype)
+        dtype = map_dtype(dtype)
         dtype = f"Matrix2d<{dtype}>"
         varname = get_cpp_varname(vartok, vardict)
         code = ""

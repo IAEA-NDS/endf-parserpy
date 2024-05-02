@@ -12,7 +12,7 @@
 import endf_parserpy.compiler.cpp_primitives as cpp
 from endf_parserpy.compiler.variable_management import (
     register_var,
-    find_parent_dict,
+    get_var_types,
 )
 from ..cpp_varaux import (
     get_cpp_varname,
@@ -32,8 +32,10 @@ class Assign:
 
     @classmethod
     def define_var(cls, vartok, vardict, save_state=False):
-        pardict = find_parent_dict(vartok, vardict, fail=True)
-        dtype = map_dtype(pardict[vartok][0])
+        specialtype = Query.get_specialtype_name()
+        vartypes = get_var_types(vartok, vardict)
+        dtype = next(v[0] for v in vartypes if v[1] == specialtype)
+        dtype = map_dtype(dtype)
         varname = get_cpp_varname(vartok, vardict)
         code = ""
         if save_state:

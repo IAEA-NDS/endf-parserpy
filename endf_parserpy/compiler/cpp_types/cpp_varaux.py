@@ -31,6 +31,7 @@ def get_cpp_varname(vartok, vardict, specialtype=None, dtype=None):
     vartype = get_var_types(vartok, vardict)
     # as an intermediate step we still expect just a single vartype
     assert len(vartype) == 1
+
     vartype = vartype[0]
     specialtype = vartype[1] if specialtype is None else specialtype
     dtype = vartype[0] if dtype is None else dtype

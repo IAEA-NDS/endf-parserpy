@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/05/01
+# Last modified:   2024/05/02
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -22,16 +22,18 @@ from .cpp_dtype_aux import get_dtype_str, get_dtype_idx
 from .cpp_type_information import get_vartype_idx
 
 
-def get_cpp_varname(vartok, vardict):
+def get_cpp_varname(vartok, vardict, specialtype=None, dtype=None):
     if not isinstance(vartok, VariableToken):
         raise TypeError("expect vartok of type VariableToken")
     if vartok.cpp_namespace:
         return str(vartok)
 
     vartype = get_var_type(vartok, vardict)
+    specialtype = vartype[1] if specialtype is None else specialtype
+    dtype = vartype[0] if dtype is None else dtype
     dtypestr = get_dtype_str(vartype[0])
     varname = f"var_{vartok}_{len(vartok.indices)}d"
-    varname += f"_{dtypestr}_{vartype[1]}"
+    varname += f"_{dtypestr}_{specialtype}"
     return varname
 
 

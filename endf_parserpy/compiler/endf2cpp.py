@@ -45,6 +45,7 @@ from .lookahead_management import (
 from .variable_management import (
     register_abbreviation,
     unregister_abbreviations,
+    update_vardict,
     expand_abbreviation,
     register_var,
     unregister_var,
@@ -246,7 +247,7 @@ def generate_code_for_if_clause(node, vardict):
     )
     new_vardict = vardict.copy()
     if_statement_code = generate_code_for_if_statement(if_statement, new_vardict)
-    add_vardict.update(new_vardict)
+    update_vardict(add_vardict, new_vardict)
     code += cpp.indent_code(if_statement_code, cpp.INDENT)
     for elif_statement in elif_statements:
         new_vardict = vardict.copy()
@@ -257,7 +258,7 @@ def generate_code_for_if_clause(node, vardict):
             ),
             indent=cpp.INDENT,
         )
-        add_vardict.update(new_vardict)
+        update_vardict(add_vardict, new_vardict)
     if else_statement is not None:
         else_code = get_child(else_statement, "if_body")
         new_vardict = vardict.copy()
@@ -267,13 +268,10 @@ def generate_code_for_if_clause(node, vardict):
                 code=generate_code_from_parsetree(else_code, new_vardict),
             )
         )
-        add_vardict.update(new_vardict)
+        update_vardict(add_vardict, new_vardict)
 
     code += cpp.close_block()
-    if "__up" in add_vardict:
-        del add_vardict["__up"]
-    unregister_abbreviations(add_vardict)
-    vardict.update(add_vardict)
+    update_vardict(vardict, add_vardict)
     return code
 
 

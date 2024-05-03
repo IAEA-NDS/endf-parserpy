@@ -44,6 +44,14 @@ def get_var_types(vartok, vardict):
     return tuple(pardict[vartok])
 
 
+def update_vardict(vardict, add_vardict):
+    for v in tuple(vardict) + tuple(add_vardict):
+        if v.startswith("__"):
+            continue
+        vartypes = vardict.setdefault(v, dict())
+        vartypes.update(add_vardict.get(v, {}))
+
+
 def find_parent_dict(vartok, vardict, fail=False):
     d = vardict
     while vartok not in d and "__up" in d:

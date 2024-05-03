@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/02
+# Last modified:   2024/05/03
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -15,11 +15,9 @@ from .expr_utils.node_checks import is_variable
 
 
 def register_var(vartok, dtype, special_type, vardict, track_read=True):
-    reg_vartypes = vardict.setdefault(vartok, list())
+    reg_vartypes = vardict.setdefault(vartok, dict())
     vartype = (dtype, special_type)
-    if vartype in reg_vartypes:
-        return
-    reg_vartypes.append(vartype)
+    reg_vartypes[vartype] = True
     track_dict = vardict.setdefault("__no_read_tracking", set())
     if not track_read:
         track_dict.add(vartok)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/01
+# Last modified:   2024/05/03
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -151,7 +151,7 @@ def module_header():
 
     Tab2Body read_tab2_body(std::istream& cont, int nr) {
       Tab2Body tab_body;
-      std::vector<int> interp = cpp_read_int_vec(cont, nr);
+      std::vector<int> interp = cpp_read_int_vec(cont, 2*nr);
       int j = 0;
       for (int i=0; i < nr; i++) {
         tab_body.NBT.push_back(interp[j++]);
@@ -163,13 +163,13 @@ def module_header():
 
     Tab1Body read_tab1_body(std::istream& cont, int nr, int np) {
       Tab1Body tab_body;
-      std::vector<int> interp = cpp_read_int_vec(cont, nr);
+      std::vector<int> interp = cpp_read_int_vec(cont, 2*nr);
       int j = 0;
       for (int i=0; i < nr; i++) {
         tab_body.NBT.push_back(interp[j++]);
         tab_body.INT.push_back(interp[j++]);
       }
-      std::vector<double> data = cpp_read_float_vec(cont, np);
+      std::vector<double> data = cpp_read_float_vec(cont, 2*np);
       j = 0;
       for (int i=0; i < np; i++) {
         tab_body.X.push_back(data[j++]);

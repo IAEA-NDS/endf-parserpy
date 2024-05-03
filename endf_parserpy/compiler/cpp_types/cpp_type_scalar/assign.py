@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/02
+# Last modified:   2024/05/03
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -42,7 +42,7 @@ class Assign:
             code += init_local_var_from_global_var(varname, dtype)
         else:
             code += cpp.statement(f"{dtype} {varname}")
-        code += initialize_aux_read_vars(vartok, vardict, save_state)
+        code += initialize_aux_read_vars(vartok, save_state)
         return code
 
     @classmethod
@@ -58,7 +58,7 @@ class Assign:
         code = ""
         cpp_varname = Query.get_cpp_varname(vartok, vardict)
         code += cpp.statement(f"{cpp_varname} = {exprstr}")
-        code += mark_var_as_read(vartok, vardict)
+        code += mark_var_as_read(vartok)
         return code
 
     @classmethod

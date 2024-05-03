@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/01
+# Last modified:   2024/05/03
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -712,7 +712,7 @@ def _generate_code_for_loop(
     """,
         -4,
     )
-    code += cpp.indent_code(init_readflag(loopvar, vardict, val=True))
+    code += cpp.indent_code(init_readflag(loopvar, val=True))
     body_code = parsefun(for_body, vardict)
     code += cpp.indent_code(body_code)
     code += cpp.close_block()

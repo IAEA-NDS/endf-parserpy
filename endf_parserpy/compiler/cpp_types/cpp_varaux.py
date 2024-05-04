@@ -83,16 +83,11 @@ def has_vartype(vartok, dtype, specialtype):
 def type_change_check(vartok, dtype, specialtype):
     last_type_varname = get_last_type_varname(vartok)
     typeidx = get_dtype_vartype_idx(dtype, specialtype)
-    logical_expr = f"{last_type_varname} != {typeidx}"
-    icode = cpp.line("std::string errmsg = ")
-    iicode = cpp.line(f'std::string("variable {vartok} now with different type ")')
-    iicode += cpp.line('+ "which must not happen. Either ENDF recipe wrong "')
-    iicode += cpp.line('+ "or the ENDF file has some forbidden flag values "')
-    iicode += cpp.line(
-        f'+ std::to_string({last_type_varname}) + " vs " + std::to_string({typeidx});'
-    )
-    icode += cpp.indent_code(iicode)
-    code = cpp.pureif(logical_expr, icode)
+    logical_expr1 = f"{last_type_varname} != {typeidx}"
+    logical_expr2 = f"{last_type_varname} != -1"
+    logical_expr = cpp.logical_and([logical_expr1, logical_expr2])
+    statement = cpp.statement("raise_vartype_mismatch()")
+    code = cpp.pureif(logical_expr, statement)
     return code
 
 

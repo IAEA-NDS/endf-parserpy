@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/03
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -250,6 +250,15 @@ def module_header():
         cont.seekg(curpos);
       }
       return secvec;
+    }
+
+
+    void raise_vartype_mismatch() {
+      std::string errmsg =
+        std::string("variable MF now with different type ")
+        + "which must not happen. Either ENDF recipe wrong "
+        + "or the ENDF file has some forbidden flag values.";
+      throw std::runtime_error(errmsg);
     }
     """
     code = cpp.indent_code(code, -4)

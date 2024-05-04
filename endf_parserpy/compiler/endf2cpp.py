@@ -446,17 +446,11 @@ def generate_code_for_varassign(
             assigncode = _generate_code_for_varassign(
                 v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
             )
-            # we also need to check if the type of the
-            # variable has changed, which is not allowed.
-            # and indicates a problem with the ENDF recipe.
-            if not should_track_read(v, vardict):
-                code += cpp.pureif(condition=did_not_read_cond, code=assigncode)
-            else:
-                code += cpp.pureif(condition=did_not_read_cond, code=assigncode)
+            code += cpp.pureif(condition=did_not_read_cond, code=assigncode)
         else:
             # no possibility that variable has been read in beore
             # hence no checks necessary
-            code = _generate_code_for_varassign(
+            code += _generate_code_for_varassign(
                 v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
             )
     return code

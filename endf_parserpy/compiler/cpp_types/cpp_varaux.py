@@ -105,13 +105,6 @@ def has_loopvartype(vartok, vardict):
     return False
 
 
-def is_loop(node):
-    if node is None:
-        return False
-    node_name = get_name(node)
-    return node_name in ("for_loop", "list_loop")
-
-
 def get_loop_head(node):
     node_name = get_name(node)
     if node_name == "for_loop":

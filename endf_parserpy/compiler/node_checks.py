@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/29
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -67,6 +67,10 @@ def is_textplaceholder(node):
 
 def is_for_loop(node):
     return isinstance(node, Tree) and node.data == "for_loop"
+
+
+def is_loop(node):
+    return isinstance(node, Tree) and node.data in ("for_loop", "list_loop")
 
 
 def is_if_clause(node):

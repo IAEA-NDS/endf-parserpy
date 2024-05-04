@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/25
-# Last modified:   2024/04/28
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -14,7 +14,8 @@ from endf_parserpy.compiler.expr_utils.equation_utils import (
     get_variables_in_expr,
     contains_variable,
 )
-from ..cpp_varaux import is_loop, get_loopvar
+from endf_parserpy.compiler.node_checks import is_loop
+from ..cpp_varaux import get_loopvar
 
 
 def can_moveup_ptrassign(vartok, idxexpr, orig_node, dest_node):

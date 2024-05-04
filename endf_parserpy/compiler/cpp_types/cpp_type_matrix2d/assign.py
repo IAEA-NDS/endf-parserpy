@@ -23,10 +23,10 @@ from endf_parserpy.compiler.variable_management import (
     register_var,
     get_var_types,
 )
+from endf_parserpy.compiler.node_checks import is_loop
 from ..cpp_varaux import (
     check_variable,
     has_loopvartype,
-    is_loop,
     get_loopvar,
     get_loop_body,
     get_loop_start,

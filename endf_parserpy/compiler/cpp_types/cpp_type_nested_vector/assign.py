@@ -19,9 +19,9 @@ from endf_parserpy.compiler.variable_management import (
     register_var,
     get_var_types,
 )
+from endf_parserpy.compiler.node_checks import is_loop
 from ..cpp_varaux import (
     init_local_var_from_global_var,
-    is_loop,
     get_loopvar,
 )
 from ..cpp_dtype_aux import map_dtype

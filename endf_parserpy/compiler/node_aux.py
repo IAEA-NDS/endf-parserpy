@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/04/21
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -13,6 +13,7 @@ from typing import Optional, Union
 from lark.tree import Tree
 from lark.tree import _Leaf_T, Branch, Meta  # for type checking
 from lark.lexer import Token
+from endf_parserpy.utils.tree_utils import get_name, get_child
 from .expr_utils.conversion import convert_to_exprtree, VariableToken
 from .expr_utils.node_checks import is_variable
 from .expr_utils.equation_utils import solve_equation
@@ -83,3 +84,48 @@ def simplify_expr_node(node):
     if not is_expr(new_node):
         new_node = Tree("expr", [new_node])
     return new_node
+
+
+def get_loop_head(node):
+    node_name = get_name(node)
+    if node_name == "for_loop":
+        return get_child(node, "for_head")
+    elif node_name == "list_loop":
+        return get_child(node, "list_for_head")
+    else:
+        NotImplementedError("node not recognized as loop node")
+
+
+def get_loop_body(node):
+    node_name = get_name(node)
+    if node_name == "for_loop":
+        return get_child(node, "for_body")
+    elif node_name == "list_loop":
+        return get_child(node, "list_body")
+    else:
+        NotImplementedError("node not recognized as loop node")
+
+
+def get_loopvar(node):
+    node = get_loop_head(node)
+    return VariableToken(get_child(node, "VARNAME"))
+
+
+def get_loop_start(node):
+    node = get_loop_head(node)
+    return get_child(get_child(node, "for_start"), "expr")
+
+
+def get_loop_stop(node):
+    node = get_loop_head(node)
+    return get_child(get_child(node, "for_stop"), "expr")
+
+
+def get_loop_body(node):
+    node_name = get_name(node)
+    if node_name == "list_loop":
+        return get_child(node, "list_body")
+    elif node_name == "for_loop":
+        return get_child(node, "for_body")
+    else:
+        raise TypeError("not a loop node")

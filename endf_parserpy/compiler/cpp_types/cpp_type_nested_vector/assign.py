@@ -20,9 +20,11 @@ from endf_parserpy.compiler.variable_management import (
     get_var_types,
 )
 from endf_parserpy.compiler.node_checks import is_loop
+from endf_parserpy.compiler.node_aux import (
+    get_loopvar,
+)
 from ..cpp_varaux import (
     init_local_var_from_global_var,
-    get_loopvar,
 )
 from ..cpp_dtype_aux import map_dtype
 from .query import Query

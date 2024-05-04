@@ -105,51 +105,6 @@ def has_loopvartype(vartok, vardict):
     return False
 
 
-def get_loop_head(node):
-    node_name = get_name(node)
-    if node_name == "for_loop":
-        return get_child(node, "for_head")
-    elif node_name == "list_loop":
-        return get_child(node, "list_for_head")
-    else:
-        NotImplementedError("node not recognized as loop node")
-
-
-def get_loop_body(node):
-    node_name = get_name(node)
-    if node_name == "for_loop":
-        return get_child(node, "for_body")
-    elif node_name == "list_loop":
-        return get_child(node, "list_body")
-    else:
-        NotImplementedError("node not recognized as loop node")
-
-
-def get_loopvar(node):
-    node = get_loop_head(node)
-    return VariableToken(get_child(node, "VARNAME"))
-
-
-def get_loop_start(node):
-    node = get_loop_head(node)
-    return get_child(get_child(node, "for_start"), "expr")
-
-
-def get_loop_stop(node):
-    node = get_loop_head(node)
-    return get_child(get_child(node, "for_stop"), "expr")
-
-
-def get_loop_body(node):
-    node_name = get_name(node)
-    if node_name == "list_loop":
-        return get_child(node, "list_body")
-    elif node_name == "for_loop":
-        return get_child(node, "for_body")
-    else:
-        raise TypeError("not a loop node")
-
-
 def init_local_var_from_global_var(v, ctyp):
     return cpp.concat(
         [

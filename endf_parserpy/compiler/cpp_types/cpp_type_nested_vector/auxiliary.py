@@ -15,7 +15,7 @@ from endf_parserpy.compiler.expr_utils.equation_utils import (
     contains_variable,
 )
 from endf_parserpy.compiler.node_checks import is_loop
-from ..cpp_varaux import get_loopvar
+from endf_parserpy.compiler.node_aux import get_loopvar
 
 
 def can_moveup_ptrassign(vartok, idxexpr, orig_node, dest_node):

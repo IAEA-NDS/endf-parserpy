@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/05/02
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -28,11 +28,18 @@ def get_cpp_varname(vartok, vardict, specialtype=None, dtype=None):
     if vartok.cpp_namespace:
         return str(vartok)
 
-    vartype = get_var_types(vartok, vardict)
-    # as an intermediate step we still expect just a single vartype
-    assert len(vartype) == 1
+    vartypes = get_var_types(vartok, vardict)
+    # select the appropriate variable type
+    if specialtype is not None:
+        vartypes = tuple(v for v in vartypes if v[1] == specialtype)
+    if dtype is not None:
+        vartypes = tuple(v for v in vartypes if v[0] == dtype)
+    if len(vartypes) == 0:
+        raise IndexError(f"no appropriate vartype for variable {vartok} registered")
+    if len(vartypes) > 1:
+        raise IndexError(f"could not resolve vartype for variable {vartok}")
 
-    vartype = vartype[0]
+    vartype = vartypes[0]
     specialtype = vartype[1] if specialtype is None else specialtype
     dtype = vartype[0] if dtype is None else dtype
     dtypestr = get_dtype_str(vartype[0])

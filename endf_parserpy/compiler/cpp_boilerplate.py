@@ -59,11 +59,16 @@ def module_header():
     }
 
 
-    int endfstr2int(const std::string& str) {
-      if (str.find_first_not_of(' ') == std::string::npos) {
-        return 0;
+    int endfstr2int(const char* str) {
+      char strzero[12];
+      std::memcpy(strzero, str, 11);
+      strzero[11] = '\0';
+      for (int i=0; i < 11; i++) {
+        if (str[i] != ' ') {
+          return std::atoi(strzero);
+        }
       }
-      return std::stoi(str);
+      return 0;
     }
 
 
@@ -72,13 +77,21 @@ def module_header():
     }
 
 
-    double cpp_read_int_field(const std::string& str, const char fieldnum) {
-      return endfstr2int(str.substr(fieldnum*11, 11));
+    double cpp_read_int_field(const char* str, const char fieldnum) {
+      return endfstr2int(str+fieldnum*11);
     }
 
 
-    double cpp_read_custom_int_field(const std::string& str, int start_pos, int length) {
-      return endfstr2int(str.substr(start_pos, length));
+    double cpp_read_custom_int_field(const char *str, int start_pos, int length) {
+      char strzero[length+1];
+      std::memcpy(strzero, str, length);
+      strzero[length] = '\0';
+      for (int i=0; i < length; i++) {
+        if (strzero[i] != ' ') {
+          return std::atoi(strzero);
+        }
+      }
+      return 0;
     }
 
 
@@ -94,10 +107,10 @@ def module_header():
       int mtnum = std::stoi(line.substr(72, 3));
       if (cpp_read_float_field(line.c_str(), 0) != 0.0 ||
         cpp_read_float_field(line.c_str(), 1) != 0.0 ||
-        cpp_read_int_field(line, 2) != 0 ||
-        cpp_read_int_field(line, 3) != 0 ||
-        cpp_read_int_field(line, 4) != 0 ||
-        cpp_read_int_field(line, 5) != 0 ||
+        cpp_read_int_field(line.c_str(), 2) != 0 ||
+        cpp_read_int_field(line.c_str(), 3) != 0 ||
+        cpp_read_int_field(line.c_str(), 4) != 0 ||
+        cpp_read_int_field(line.c_str(), 5) != 0 ||
         mtnum != 0) {
 
         std::cout << line << std::endl;  // debug
@@ -111,7 +124,7 @@ def module_header():
       std::vector<int> res;
       std::string line = cpp_read_line(cont);
       for (int i=0; i < numel; i++) {
-        res.push_back(cpp_read_int_field(line, j++));
+        res.push_back(cpp_read_int_field(line.c_str(), j++));
         if (j > 5 && i+1 < numel) {
           line = cpp_read_line(cont);
           j = 0;

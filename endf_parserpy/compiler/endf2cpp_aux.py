@@ -26,12 +26,12 @@ def read_line():
 
 
 def get_int_field(idx):
-    code = f"cpp_read_int_field(cpp_line, {idx})"
+    code = f"cpp_read_int_field(cpp_line.c_str(), {idx})"
     return code
 
 
 def get_custom_int_field(start_pos, length):
-    code = f"cpp_read_custom_int_field(cpp_line, {start_pos}, {length})"
+    code = f"cpp_read_custom_int_field(cpp_line.c_str(), {start_pos}, {length})"
     return code
 
 
@@ -51,7 +51,7 @@ def get_numeric_field(fieldpos, dtype):
         code = f"{readfun}(cpp_line.c_str(), {fieldpos})"
     elif dtype == int:
         readfun = "cpp_read_int_field"
-        code = f"{readfun}(cpp_line, {fieldpos})"
+        code = f"{readfun}(cpp_line.c_str(), {fieldpos})"
     return code
 
 

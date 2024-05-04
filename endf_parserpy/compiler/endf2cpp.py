@@ -590,47 +590,43 @@ def generate_code_for_tab1(node, vardict):
 
     code += generate_code_from_record_fields(record_fields, vardict, skip=(4, 5))
 
+    if not should_proceed(vardict):
+        return code
+    # reading the tab body counts as one lookahead step
+    decrease_lookahead_counter(vardict)
+
     sectok = None
     if table_name is not None:
         sectok = VariableToken(get_child(table_name, "extvarname"))
 
     colnodes = [v for v in tab1_def.children if is_extvar(v)]
     assert len(colnodes) == 2
-    if not in_lookahead(vardict):
-        xvar = VariableToken(colnodes[0])
-        yvar = VariableToken(colnodes[1])
-        nr = aux.get_int_field(4)
-        np = aux.get_int_field(5)
-        tabdata = aux.get_tab1_body(xvar, yvar, nr, np)
-        INTvar = VariableToken(Token("VARNAME", "INT"))
-        NBTvar = VariableToken(Token("VARNAME", "NBT"))
+    xvar = VariableToken(colnodes[0])
+    yvar = VariableToken(colnodes[1])
+    nr = aux.get_int_field(4)
+    np = aux.get_int_field(5)
+    tabdata = aux.get_tab1_body(xvar, yvar, nr, np)
+    INTvar = VariableToken(Token("VARNAME", "INT"))
+    NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
-        if sectok is not None:
-            vardict = {"__up": vardict}
+    if sectok is not None:
+        vardict = {"__up": vardict}
 
-        assigncode = cpp.statement(f"Tab1Body tab_body = {tabdata}")
-        assigncode += generate_code_for_varassign(
-            xvar, vardict, "tab_body.X", "floatvec"
-        )
-        assigncode += generate_code_for_varassign(
-            yvar, vardict, "tab_body.Y", "floatvec"
-        )
-        assigncode += generate_code_for_varassign(
-            INTvar, vardict, "tab_body.INT", "intvec"
-        )
-        assigncode += generate_code_for_varassign(
-            NBTvar, vardict, "tab_body.NBT", "intvec"
-        )
-        assigncode = cpp.block(assigncode)
+    assigncode = cpp.statement(f"Tab1Body tab_body = {tabdata}")
+    assigncode += generate_code_for_varassign(xvar, vardict, "tab_body.X", "floatvec")
+    assigncode += generate_code_for_varassign(yvar, vardict, "tab_body.Y", "floatvec")
+    assigncode += generate_code_for_varassign(INTvar, vardict, "tab_body.INT", "intvec")
+    assigncode += generate_code_for_varassign(NBTvar, vardict, "tab_body.NBT", "intvec")
+    assigncode = cpp.block(assigncode)
 
-        if sectok is not None:
-            vardefs = generate_vardefs(vardict)
-            dictassigns = generate_endf_dict_assignments(vardict)
-            code += aux.open_section(sectok, vardict)
-            code += cpp.indent_code(vardefs + assigncode + dictassigns)
-            code += aux.close_section()
-        else:
-            code += assigncode
+    if sectok is not None:
+        vardefs = generate_vardefs(vardict)
+        dictassigns = generate_endf_dict_assignments(vardict)
+        code += aux.open_section(sectok, vardict)
+        code += cpp.indent_code(vardefs + assigncode + dictassigns)
+        code += aux.close_section()
+    else:
+        code += assigncode
     return code
 
 
@@ -643,36 +639,36 @@ def generate_code_for_tab2(node, vardict):
 
     code += generate_code_from_record_fields(record_fields, vardict, skip=(4,))
 
+    if not should_proceed(vardict):
+        return code
+    # reading the tab body counts as one lookahead step
+    decrease_lookahead_counter(vardict)
+
     sectok = None
     if table_name is not None:
         sectok = VariableToken(get_child(table_name, "extvarname"))
 
-    if not in_lookahead(vardict):
-        nr = aux.get_int_field(4)
-        tabdata = aux.get_tab2_body(nr)
-        INTvar = VariableToken(Token("VARNAME", "INT"))
-        NBTvar = VariableToken(Token("VARNAME", "NBT"))
+    nr = aux.get_int_field(4)
+    tabdata = aux.get_tab2_body(nr)
+    INTvar = VariableToken(Token("VARNAME", "INT"))
+    NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
-        if sectok is not None:
-            vardict = {"__up": vardict}
+    if sectok is not None:
+        vardict = {"__up": vardict}
 
-        assigncode = cpp.statement(f"Tab2Body tab_body = {tabdata}")
-        assigncode += generate_code_for_varassign(
-            INTvar, vardict, "tab_body.INT", "intvec"
-        )
-        assigncode += generate_code_for_varassign(
-            NBTvar, vardict, "tab_body.NBT", "intvec"
-        )
-        assigncode = cpp.block(assigncode)
+    assigncode = cpp.statement(f"Tab2Body tab_body = {tabdata}")
+    assigncode += generate_code_for_varassign(INTvar, vardict, "tab_body.INT", "intvec")
+    assigncode += generate_code_for_varassign(NBTvar, vardict, "tab_body.NBT", "intvec")
+    assigncode = cpp.block(assigncode)
 
-        if sectok is not None:
-            vardefs = generate_vardefs(vardict)
-            dictassigns = generate_endf_dict_assignments(vardict)
-            code += aux.open_section(sectok, vardict)
-            code += cpp.indent_code(vardefs + assigncode + dictassigns)
-            code += aux.close_section()
-        else:
-            code += assigncode
+    if sectok is not None:
+        vardefs = generate_vardefs(vardict)
+        dictassigns = generate_endf_dict_assignments(vardict)
+        code += aux.open_section(sectok, vardict)
+        code += cpp.indent_code(vardefs + assigncode + dictassigns)
+        code += aux.close_section()
+    else:
+        code += assigncode
     return code
 
 

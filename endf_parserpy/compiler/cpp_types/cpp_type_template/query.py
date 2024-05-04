@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/05/02
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -36,6 +36,6 @@ class Query:
         return any(v[1] == specialtype for v in vartypes)
 
     @classmethod
-    def get_cpp_varname(cls, vartok, vardict):
+    def get_cpp_varname(cls, vartok, vardict, dtype=None):
         specialtype = cls.get_specialtype_name()
-        return get_cpp_varname(vartok, vardict, specialtype=specialtype)
+        return get_cpp_varname(vartok, vardict, specialtype=specialtype, dtype=dtype)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/02
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -61,7 +61,7 @@ class Assign:
 
         register_var(vartok, dtype, "NestedVector", vardict)
         code = ""
-        cpp_varname = Query.get_cpp_varname(vartok, vardict)
+        cpp_varname = Query.get_cpp_varname(vartok, vardict, dtype=dtype)
         ptrvar_old = cpp_varname
         limit_node = None
         for i in range(0, len(indices) - 1):

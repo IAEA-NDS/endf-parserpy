@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/02
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -183,7 +183,7 @@ class Assign:
             second_idx_range = (real_outer_start, real_outer_stop)
 
         register_var(vartok, dtype, "Matrix2d", vardict)
-        varname = Query.get_cpp_varname(vartok, vardict)
+        varname = Query.get_cpp_varname(vartok, vardict, dtype=dtype)
         # must be here to avoid a circular import error
         from ..cpp_varops_query import expr2str_shiftidx
 

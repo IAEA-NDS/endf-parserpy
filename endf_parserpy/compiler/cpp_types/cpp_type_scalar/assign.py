@@ -18,6 +18,7 @@ from ..cpp_varaux import (
     has_loopvartype,
     check_variable,
     init_local_var_from_global_var,
+    has_vartype,
 )
 from ..cpp_dtype_aux import map_dtype
 from .query import Query
@@ -34,14 +35,17 @@ class Assign:
     def define_var(cls, vartok, vardict, save_state=False):
         specialtype = Query.get_specialtype_name()
         vartypes = get_var_types(vartok, vardict)
-        dtype = next(v[0] for v in vartypes if v[1] == specialtype)
-        dtype = map_dtype(dtype)
-        varname = Query.get_cpp_varname(vartok, vardict)
+        dtypes = tuple(v[0] for v in vartypes if v[1] == specialtype)
+        varnames = tuple(
+            Query.get_cpp_varname(vartok, vardict, dtype=dt) for dt in dtypes
+        )
+        dtypes = tuple(map_dtype(dt) for dt in dtypes)
         code = ""
-        if save_state:
-            code += init_local_var_from_global_var(varname, dtype)
-        else:
-            code += cpp.statement(f"{dtype} {varname}")
+        for v, dt in zip(varnames, dtypes):
+            if save_state:
+                code += init_local_var_from_global_var(v, dt)
+            else:
+                code += cpp.statement(f"{dt} {v}")
         code += initialize_aux_read_vars(vartok, save_state)
         return code
 
@@ -66,7 +70,18 @@ class Assign:
         # counter variables are not stored in the endf dictionary
         if has_loopvartype(vartok, vardict):
             return ""
-        src_varname = Query.get_cpp_varname(vartok, vardict)
-        assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')
-        code = cpp.pureif(Query.did_read_var(vartok, vardict), assigncode)
+        specialtype = Query.get_specialtype_name()
+        vartypes = get_var_types(vartok, vardict)
+        dtypes = tuple(v[0] for v in vartypes if v[1] == specialtype)
+        code = ""
+        for dtype in dtypes:
+            src_varname = Query.get_cpp_varname(vartok, vardict, dtype=dtype)
+            assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')
+            cond = cpp.logical_and(
+                [
+                    has_vartype(vartok, dtype, specialtype),
+                    Query.did_read_var(vartok, vardict),
+                ]
+            )
+            code += cpp.pureif(cond, assigncode)
         return code

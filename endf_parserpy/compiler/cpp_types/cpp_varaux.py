@@ -48,39 +48,41 @@ def get_cpp_varname(vartok, vardict, specialtype=None, dtype=None):
     return varname
 
 
-def get_dtype_vartype_idx(vartok, vardict):
-    vartype = get_var_types(vartok, vardict)
-    # as an intermediate step we still expect just a single vartype
-    assert len(vartype) == 1
-    vartype = vartype[0]
-    vartype_idx = get_vartype_idx(vartype[1])
-    dtype_idx = get_dtype_idx(vartype[0])
+def get_dtype_vartype_idx(dtype, specialtype):
+    vartype_idx = get_vartype_idx(specialtype)
+    dtype_idx = get_dtype_idx(dtype)
     combined_idx = vartype_idx * 100 + dtype_idx
     return combined_idx
 
 
-def get_last_type_varname(vartok, vardict):
+def get_last_type_varname(vartok):
     varname = "aux_last_type_read_for_"
     varname += str(vartok)
     return varname
 
 
-def initialize_last_type_var(vartok, vardict):
-    varname = get_last_type_varname(vartok, vardict)
+def initialize_last_type_var(vartok):
+    varname = get_last_type_varname(vartok)
     code = cpp.statement(f"int {varname} = -1")
     return code
 
 
-def update_last_type_var(vartok, vardict):
-    idx = get_dtype_vartype_idx(vartok, vardict)
-    varname = get_last_type_varname(vartok, vardict)
+def update_last_type_var(vartok, dtype, specialtype):
+    idx = get_dtype_vartype_idx(dtype, specialtype)
+    varname = get_last_type_varname(vartok)
     code = cpp.statement(f"{varname} = {idx}")
     return code
 
 
-def type_change_check(vartok, vardict):
-    last_type_varname = get_last_type_varname(vartok, vardict)
-    typeidx = get_dtype_vartype_idx(vartok, vardict)
+def has_vartype(vartok, dtype, specialtype):
+    typeidx = get_dtype_vartype_idx(dtype, specialtype)
+    v = get_last_type_varname(vartok)
+    return f"({v} == {typeidx})"
+
+
+def type_change_check(vartok, dtype, specialtype):
+    last_type_varname = get_last_type_varname(vartok)
+    typeidx = get_dtype_vartype_idx(dtype, specialtype)
     logical_expr = f"{last_type_varname} != {typeidx}"
     icode = cpp.line("std::string errmsg = ")
     iicode = cpp.line(f'std::string("variable {vartok} now with different type ")')

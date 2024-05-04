@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/02
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -17,6 +17,7 @@ from .cpp_varaux import (
     dict_assign,
     initialize_last_type_var,
     update_last_type_var,
+    type_change_check,
 )
 from .cpp_varops_query import (
     get_idxstr,
@@ -34,7 +35,7 @@ def define_var(vartok, vardict, save_state=False):
             track_read = should_track_read(vartok, vardict)
             vars_defined = vardict.setdefault("__defined", {})
             if track_read and str(vartok) not in vars_defined:
-                code += initialize_last_type_var(vartok, vardict)
+                code += initialize_last_type_var(vartok)
                 vars_defined[str(vartok)] = True
             return code
     raise TypeError(f"{vartok} is of unknown type")
@@ -43,15 +44,19 @@ def define_var(vartok, vardict, save_state=False):
 def assign_exprstr_to_var(vartok, exprstr, dtype, vardict, node=None):
     indices = [get_idxstr(vartok, i, vardict) for i in range(len(vartok.indices))]
     code = cpp.comment(f"assign expression to variable {vartok}")
-    for assign in get_assign_modules():
-        new_code = assign.assign_exprstr_to_var(
+    for m in get_vartype_modules():
+        new_code = m.assign.assign_exprstr_to_var(
             vartok, indices, exprstr, dtype, vardict, node
         )
         if new_code is not False:
             code += new_code
             track_read = should_track_read(vartok, vardict)
             if track_read:
-                code += update_last_type_var(vartok, vardict)
+                specialtype = m.query.get_specialtype_name()
+                code += type_change_check(vartok, dtype, specialtype)
+                code += update_last_type_var(
+                    vartok, dtype=dtype, specialtype=specialtype
+                )
             return code
     raise TypeError(f"{vartok} has unknown type")
 

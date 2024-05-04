@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/03
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -452,11 +452,7 @@ def generate_code_for_varassign(
             if not should_track_read(v, vardict):
                 code += cpp.pureif(condition=did_not_read_cond, code=assigncode)
             else:
-                code += cpp.ifelse(
-                    condition=did_not_read_cond,
-                    code=assigncode,
-                    other_code=cpp_varaux.type_change_check(v, vardict),
-                )
+                code += cpp.pureif(condition=did_not_read_cond, code=assigncode)
         else:
             # no possibility that variable has been read in beore
             # hence no checks necessary

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/01
+# Last modified:   2024/05/04
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -60,49 +60,13 @@ def get_text_field(vartok, start, length, vardict):
     return code
 
 
-def read_tab_body(xvar, yvar):
-    code = cpp.open_block()
-    code += cpp.indent_code(
-        """
-        int cpp_j;
-        int cpp_nr = cpp_read_int_field(cpp_line, 4);
-        int cpp_np = cpp_read_int_field(cpp_line, 5);
+def get_tab1_body(xvar, yvar, nr, np):
+    code = cpp.statement(f"read_tab1_body(cont, {nr}, {np})")
+    return code
 
-        std::vector<int> NBT;
-        std::vector<int> INT;
-        cpp_intvec = cpp_read_int_vec(cont, 2*cpp_nr);
-        cpp_j = 0;
-        for (int cpp_i=0; cpp_i < cpp_nr; cpp_i++) {
-          NBT.push_back(cpp_intvec[cpp_j++]);
-          INT.push_back(cpp_intvec[cpp_j++]);
-        }
 
-        cpp_current_dict["NBT"] = NBT;
-        cpp_current_dict["INT"] = INT;
-        """,
-        -8 + cpp.INDENT,
-    )
-
-    if xvar is not None or yvar is not None:
-        if xvar is None or yvar is None:
-            raise ValueError("provide both xyvar with xvar")
-        code += cpp.indent_code(
-            f"""
-            std::vector<double> {xvar};
-            std::vector<double> {yvar};
-            cpp_floatvec = cpp_read_float_vec(cont, 2*cpp_np);
-            cpp_j = 0;
-            for (int cpp_i=0; cpp_i < cpp_np; cpp_i++) {{
-              {xvar}.push_back(cpp_floatvec[cpp_j++]);
-              {yvar}.push_back(cpp_floatvec[cpp_j++]);
-            }}
-
-            cpp_current_dict["{xvar}"] = {xvar};
-            cpp_current_dict["{yvar}"] = {yvar};
-            """,
-            -12 + cpp.INDENT,
-        )
-    code += cpp.close_block()
+def get_tab2_body(nr):
+    code = cpp.statement(f"read_tab2_body(cont, {nr})")
     return code
 
 

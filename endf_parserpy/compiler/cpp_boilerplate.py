@@ -72,13 +72,15 @@ def module_header():
     }
 
 
-    double cpp_read_float_field(const char *str, const char fieldnum) {
-      return endfstr2float(str+fieldnum*11);
-    }
+    template<typename T>
+    T cpp_read_field(const char *str, const char fieldnum) {
+      static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, "T must be int or double");
+      if (std::is_same<T, double>::value) {
+        return endfstr2float(str+fieldnum*11);
+      } else {
+        return endfstr2int(str+fieldnum*11);
 
-
-    double cpp_read_int_field(const char* str, const char fieldnum) {
-      return endfstr2int(str+fieldnum*11);
+      }
     }
 
 
@@ -105,12 +107,12 @@ def module_header():
     void cpp_read_send(std::istream& cont) {
       std::string line = cpp_read_line(cont);
       int mtnum = std::stoi(line.substr(72, 3));
-      if (cpp_read_float_field(line.c_str(), 0) != 0.0 ||
-        cpp_read_float_field(line.c_str(), 1) != 0.0 ||
-        cpp_read_int_field(line.c_str(), 2) != 0 ||
-        cpp_read_int_field(line.c_str(), 3) != 0 ||
-        cpp_read_int_field(line.c_str(), 4) != 0 ||
-        cpp_read_int_field(line.c_str(), 5) != 0 ||
+      if (cpp_read_field<double>(line.c_str(), 0) != 0.0 ||
+        cpp_read_field<double>(line.c_str(), 1) != 0.0 ||
+        cpp_read_field<int>(line.c_str(), 2) != 0 ||
+        cpp_read_field<int>(line.c_str(), 3) != 0 ||
+        cpp_read_field<int>(line.c_str(), 4) != 0 ||
+        cpp_read_field<int>(line.c_str(), 5) != 0 ||
         mtnum != 0) {
 
         std::cout << line << std::endl;  // debug
@@ -119,27 +121,13 @@ def module_header():
     }
 
 
-    std::vector<int> cpp_read_int_vec(std::istream& cont, const int numel) {
+    template<typename T>
+    std::vector<T> cpp_read_vec(std::istream& cont, const int numel) {
       int j = 0;
-      std::vector<int> res;
+      std::vector<T> res;
       std::string line = cpp_read_line(cont);
       for (int i=0; i < numel; i++) {
-        res.push_back(cpp_read_int_field(line.c_str(), j++));
-        if (j > 5 && i+1 < numel) {
-          line = cpp_read_line(cont);
-          j = 0;
-        }
-      }
-      return res;
-    }
-
-
-    std::vector<double> cpp_read_float_vec(std::istream& cont, const int numel) {
-      int j = 0;
-      std::vector<double> res;
-      std::string line = cpp_read_line(cont);
-      for (int i=0; i < numel; i++) {
-        res.push_back(cpp_read_float_field(line.c_str(), j++));
+        res.push_back(cpp_read_field<T>(line.c_str(), j++));
         if (j > 5 && i+1 < numel) {
           line = cpp_read_line(cont);
           j = 0;
@@ -165,7 +153,7 @@ def module_header():
 
     Tab2Body read_tab2_body(std::istream& cont, int nr) {
       Tab2Body tab_body;
-      std::vector<int> interp = cpp_read_int_vec(cont, 2*nr);
+      std::vector<int> interp = cpp_read_vec<int>(cont, 2*nr);
       int j = 0;
       for (int i=0; i < nr; i++) {
         tab_body.NBT.push_back(interp[j++]);
@@ -177,13 +165,13 @@ def module_header():
 
     Tab1Body read_tab1_body(std::istream& cont, int nr, int np) {
       Tab1Body tab_body;
-      std::vector<int> interp = cpp_read_int_vec(cont, 2*nr);
+      std::vector<int> interp = cpp_read_vec<int>(cont, 2*nr);
       int j = 0;
       for (int i=0; i < nr; i++) {
         tab_body.NBT.push_back(interp[j++]);
         tab_body.INT.push_back(interp[j++]);
       }
-      std::vector<double> data = cpp_read_float_vec(cont, 2*np);
+      std::vector<double> data = cpp_read_vec<double>(cont, 2*np);
       j = 0;
       for (int i=0; i < np; i++) {
         tab_body.X.push_back(data[j++]);

@@ -26,7 +26,7 @@ def read_line():
 
 
 def get_int_field(idx):
-    code = f"cpp_read_int_field(cpp_line.c_str(), {idx})"
+    code = f"cpp_read_field<int>(cpp_line.c_str(), {idx})"
     return code
 
 
@@ -36,22 +36,18 @@ def get_custom_int_field(start_pos, length):
 
 
 def get_int_vec(numel):
-    code = cpp.statement("cpp_read_int_vec(cont, {numel})")
+    code = cpp.statement("cpp_read_vec<int>(cont, {numel})")
     return code
 
 
 def get_float_vec(numel):
-    code = cpp.statement(f"cpp_read_float_vec(cont, {numel})")
+    code = cpp.statement(f"cpp_read_vec<double>(cont, {numel})")
     return code
 
 
 def get_numeric_field(fieldpos, dtype):
-    if dtype == float:
-        readfun = "cpp_read_float_field"
-        code = f"{readfun}(cpp_line.c_str(), {fieldpos})"
-    elif dtype == int:
-        readfun = "cpp_read_int_field"
-        code = f"{readfun}(cpp_line.c_str(), {fieldpos})"
+    dtypestr = {float: "double", int: "int"}[dtype]
+    code = f"cpp_read_field<{dtypestr}>(cpp_line.c_str(), {fieldpos})"
     return code
 
 

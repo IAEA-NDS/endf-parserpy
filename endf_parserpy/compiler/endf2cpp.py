@@ -673,17 +673,33 @@ def generate_code_for_list(node, vardict):
     code += generate_code_from_record_fields(record_fields, vardict)
     if not should_proceed(vardict):
         return code
-
-    list_body_node = get_child(node, "list_body")
-    code += cpp.open_block()
-    code += cpp.statement(f"int cpp_npl = {aux.get_int_field(4)}", cpp.INDENT)
-    values = aux.get_float_vec("cpp_npl")
-    code += cpp.statement(f"cpp_floatvec = {values}", cpp.INDENT)
-    code += cpp.statement("int cpp_j = 0", cpp.INDENT)
-    list_body_code = generate_code_for_list_body(list_body_node, vardict)
-    code += cpp.indent_code(list_body_code)
-    code += cpp.close_block()
+    # reading the list body is considered as one lookahead step
     decrease_lookahead_counter(vardict)
+
+    list_name_node = get_child(node, "list_name", nofail=True)
+    list_body_node = get_child(node, "list_body")
+    sectok = None
+    if list_name_node is not None:
+        sectok = VariableToken(get_child(list_name_node, "extvarname"))
+        vardict = {"__up": vardict}
+
+    icode = cpp.open_block()
+    icode += cpp.statement(f"int cpp_npl = {aux.get_int_field(4)}", cpp.INDENT)
+    values = aux.get_float_vec("cpp_npl")
+    icode += cpp.statement(f"cpp_floatvec = {values}", cpp.INDENT)
+    icode += cpp.statement("int cpp_j = 0", cpp.INDENT)
+    list_body_code = generate_code_for_list_body(list_body_node, vardict)
+    icode += cpp.indent_code(list_body_code)
+    icode += cpp.close_block()
+
+    if sectok is not None:
+        vardefs = generate_vardefs(vardict)
+        dictassigns = generate_endf_dict_assignments(vardict)
+        code += aux.open_section(sectok, vardict)
+        code += cpp.indent_code(vardefs + icode + dictassigns)
+        code += aux.close_section()
+    else:
+        code += icode
     return code
 
 

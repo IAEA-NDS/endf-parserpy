@@ -31,3 +31,7 @@ def map_dtype(dtype):
 
 def get_dtype_idx(dtype):
     return _DTYPE_INFO[dtype][2]
+
+
+def get_available_dtypes():
+    return tuple(_DTYPE_INFO)

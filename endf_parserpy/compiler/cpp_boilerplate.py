@@ -11,6 +11,7 @@
 
 from . import cpp_primitives as cpp
 from .cpp_types.cpp_type_information import get_vartype_definitions
+from .cpp_types.cpp_varaux import construct_vartype_dtype_enum
 
 
 def module_header():
@@ -262,6 +263,9 @@ def module_header():
     }
     """
     code = cpp.indent_code(code, -4)
+    code += cpp.line("")
+    code += construct_vartype_dtype_enum()
+    code += cpp.line("")
     for vartype_definition in get_vartype_definitions():
         code += vartype_definition
     return code

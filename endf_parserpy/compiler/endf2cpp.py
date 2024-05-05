@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/04
+# Last modified:   2024/05/05
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -510,7 +510,7 @@ def generate_code_for_text(node, vardict):
         length = int(txtlen) if txtlen is not None else 66
         vartok = VariableToken(v)
         dtype = str
-        valcode = aux.get_text_field(vartok, ofs, length, vardict)
+        valcode = aux.get_text_field(ofs, length)
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         ofs += length
     return code

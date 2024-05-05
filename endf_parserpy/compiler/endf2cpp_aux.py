@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/04
+# Last modified:   2024/05/05
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -51,7 +51,7 @@ def get_numeric_field(fieldpos, dtype):
     return code
 
 
-def get_text_field(vartok, start, length, vardict):
+def get_text_field(start, length):
     code = f"cpp_line.substr({start}, {length})"
     return code
 

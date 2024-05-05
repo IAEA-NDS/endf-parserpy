@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/04
+# Last modified:   2024/05/05
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -79,14 +79,13 @@ def module_header():
         return endfstr2float(str+fieldnum*11);
       } else {
         return endfstr2int(str+fieldnum*11);
-
       }
     }
 
 
     double cpp_read_custom_int_field(const char *str, int start_pos, int length) {
       char strzero[length+1];
-      std::memcpy(strzero, str, length);
+      std::memcpy(strzero, str+start_pos, length);
       strzero[length] = '\0';
       for (int i=0; i < length; i++) {
         if (strzero[i] != ' ') {

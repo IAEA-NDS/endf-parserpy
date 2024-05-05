@@ -122,15 +122,13 @@ def generate_cpp_parsefun(name, endf_recipe, parser=None):
     ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
     ctrl_code += aux.read_line()
 
-    ctrl_code += generate_code_for_varassign(
-        var_mat, vardict, "std::stoi(cpp_line.substr(66, 4))", int
-    )
-    ctrl_code += generate_code_for_varassign(
-        var_mf, vardict, "std::stoi(cpp_line.substr(70, 2))", int
-    )
-    ctrl_code += generate_code_for_varassign(
-        var_mt, vardict, "std::stoi(cpp_line.substr(72, 3))", int
-    )
+    matval = aux.get_custom_int_field(66, 4)
+    mfval = aux.get_custom_int_field(70, 2)
+    mtval = aux.get_custom_int_field(72, 3)
+
+    ctrl_code += generate_code_for_varassign(var_mat, vardict, matval, int)
+    ctrl_code += generate_code_for_varassign(var_mf, vardict, mfval, int)
+    ctrl_code += generate_code_for_varassign(var_mt, vardict, mtval, int)
 
     ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mat, vardict)
     ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mf, vardict)
@@ -812,8 +810,10 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("std::vector<std::string> verbatim_section")
     body += cpp.statement("curpos = cont.tellg()")
     body += cpp.line("while (std::getline(cont, cpp_line)) {")
-    body += cpp.statement("mf = std::stoi(cpp_line.substr(70, 2))", cpp.INDENT)
-    body += cpp.statement("mt = std::stoi(cpp_line.substr(72, 3))", cpp.INDENT)
+    mfval = aux.get_custom_int_field(70, 2)
+    mtval = aux.get_custom_int_field(72, 3)
+    body += cpp.statement(f"mf = {mfval}", cpp.INDENT)
+    body += cpp.statement(f"mt = {mtval}", cpp.INDENT)
 
     conditions = []
     statements = []

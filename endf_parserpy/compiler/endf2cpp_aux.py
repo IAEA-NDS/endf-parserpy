@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/05
+# Last modified:   2024/05/06
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -137,3 +137,52 @@ def read_section_verbatim(tarvec, mf, mt, cont, is_firstline):
         f"{tarvec} = read_section_verbatim({mf}, {mt}, {cont}, {is_firstline})"
     )
     return code
+
+
+class ListBodyRecorder:
+
+    @staticmethod
+    def start_list_body_loop():
+        code = cpp.open_block()
+        code += cpp.statement(f"int cpp_npl = {get_int_field(4)}", cpp.INDENT)
+        code += cpp.statement("int cpp_i = 0", cpp.INDENT)
+        code += cpp.statement("int cpp_j = 0", cpp.INDENT)
+        code += cpp.statement("std::string line = cpp_read_line(cont)", cpp.INDENT)
+        return code
+
+    @staticmethod
+    def finish_list_body_loop():
+        code = cpp.indent_code(
+            cpp.pureif(
+                "cpp_i != cpp_npl",
+                cpp.statement(
+                    'throw std::runtime_error("not exactly NPL elements consumed")'
+                ),
+            ),
+            4,
+        )
+        code += cpp.close_block()
+        return cpp.close_block()
+
+    @staticmethod
+    def get_element():
+        return "cpp_read_field<double>(line.c_str(), cpp_j)"
+
+    @staticmethod
+    def update_counters_and_line():
+        code = cpp.statement("cpp_i++")
+        code += cpp.statement("cpp_j++")
+        code += cpp.pureif(
+            cpp.logical_and(["cpp_j > 5", "cpp_i < cpp_npl"]),
+            cpp.concat(
+                [
+                    cpp.statement("line = cpp_read_line(cont)"),
+                    cpp.statement("cpp_j = 0"),
+                ]
+            ),
+        )
+        return code
+
+    @staticmethod
+    def indent(code):
+        return cpp.indent_code(code, cpp.INDENT)

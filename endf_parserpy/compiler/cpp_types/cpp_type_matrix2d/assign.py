@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/04
+# Last modified:   2024/05/06
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -30,9 +30,9 @@ from endf_parserpy.compiler.node_aux import (
     get_loop_start,
     get_loop_stop,
 )
+from ..cpp_vartype_handling import has_loopvartype
 from ..cpp_varaux import (
     check_variable,
-    has_loopvartype,
     init_local_var_from_global_var,
 )
 from ..cpp_dtype_aux import map_dtype

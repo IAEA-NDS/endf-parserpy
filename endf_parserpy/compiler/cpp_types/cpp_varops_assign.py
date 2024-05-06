@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/04
+# Last modified:   2024/05/06
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,13 +11,15 @@
 
 from ..variable_management import should_track_read
 from .. import cpp_primitives as cpp
-from .cpp_varaux import (
+from .cpp_vartype_handling import (
     has_loopvartype,
-    check_variable,
-    dict_assign,
     initialize_last_type_var,
     update_last_type_var,
     type_change_check,
+)
+from .cpp_varaux import (
+    check_variable,
+    dict_assign,
 )
 from .cpp_varops_query import (
     get_idxstr,

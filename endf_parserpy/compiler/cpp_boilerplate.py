@@ -11,7 +11,7 @@
 
 from . import cpp_primitives as cpp
 from .cpp_types.cpp_type_information import get_vartype_definitions
-from .cpp_types.cpp_varaux import (
+from .cpp_types.cpp_vartype_handling import (
     construct_vartype_dtype_enum,
     construct_vartype2str_func,
     construct_vartype_validation_func,

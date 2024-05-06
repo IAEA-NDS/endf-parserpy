@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/04
+# Last modified:   2024/05/06
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -14,11 +14,13 @@ from endf_parserpy.compiler.variable_management import (
     register_var,
     get_var_types,
 )
-from ..cpp_varaux import (
+from ..cpp_vartype_handling import (
     has_loopvartype,
+    has_vartype,
+)
+from ..cpp_varaux import (
     check_variable,
     init_local_var_from_global_var,
-    has_vartype,
 )
 from ..cpp_dtype_aux import map_dtype
 from .query import Query

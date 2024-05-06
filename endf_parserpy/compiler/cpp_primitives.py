@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/01
+# Last modified:   2024/05/06
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -108,8 +108,9 @@ def logical_and(logical_expressions):
     return "(" + " && ".join(logical_expressions) + ")"
 
 
-def throw_runtime_error(message):
-    return f"""throw std::runtime_error("{message}");\n"""
+def throw_runtime_error(message, indent=0):
+    code = statement(f'throw std::runtime_error("{message}")', indent)
+    return code
 
 
 def concat(codes):

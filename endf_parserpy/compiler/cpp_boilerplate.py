@@ -231,7 +231,8 @@ def module_header():
       int curmf;
       int curmt;
       size_t lastpos;
-      while (std::getline(cont, line)) {
+      while (! cont.eof()) {
+        line = cpp_read_line(cont);
         // remove trailing \r that we may
         // get from reading win-style line endings
         lastpos = line.size() - 1;

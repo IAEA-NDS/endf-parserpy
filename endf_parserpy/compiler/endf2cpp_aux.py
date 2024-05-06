@@ -147,7 +147,7 @@ class ListBodyRecorder:
         code += cpp.statement(f"int cpp_npl = {get_int_field(4)}", cpp.INDENT)
         code += cpp.statement("int cpp_i = 0", cpp.INDENT)
         code += cpp.statement("int cpp_j = 0", cpp.INDENT)
-        code += cpp.statement("std::string line = cpp_read_line(cont)", cpp.INDENT)
+        code += cpp.statement(f"std::string line = {read_line()}", cpp.INDENT)
         return code
 
     @staticmethod
@@ -176,7 +176,7 @@ class ListBodyRecorder:
             cpp.logical_and(["cpp_j > 5", "cpp_i < cpp_npl"]),
             cpp.concat(
                 [
-                    cpp.statement("line = cpp_read_line(cont)"),
+                    cpp.statement(f"line = {read_line()}"),
                     cpp.statement("cpp_j = 0"),
                 ]
             ),

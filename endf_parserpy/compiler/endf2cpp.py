@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/05
+# Last modified:   2024/05/06
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -681,14 +681,11 @@ def generate_code_for_list(node, vardict):
         sectok = VariableToken(get_child(list_name_node, "extvarname"))
         vardict = {"__up": vardict}
 
-    icode = cpp.open_block()
-    icode += cpp.statement(f"int cpp_npl = {aux.get_int_field(4)}", cpp.INDENT)
-    values = aux.get_float_vec("cpp_npl")
-    icode += cpp.statement(f"cpp_floatvec = {values}", cpp.INDENT)
-    icode += cpp.statement("int cpp_j = 0", cpp.INDENT)
+    lbr = aux.ListBodyRecorder
+    icode = lbr.start_list_body_loop()
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
-    icode += cpp.indent_code(list_body_code)
-    icode += cpp.close_block()
+    icode += lbr.indent(list_body_code)
+    icode += lbr.finish_list_body_loop()
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)
@@ -702,17 +699,16 @@ def generate_code_for_list(node, vardict):
 
 
 def generate_code_for_list_body(node, vardict):
+    lbr = aux.ListBodyRecorder
     code = cpp.comment("read LIST body")
     for child in node.children:
         child_name = get_name(child)
         if child_name == "expr":
+            current_value = lbr.get_element()
             code += generate_code_for_varassign(
-                child,
-                vardict,
-                "cpp_floatvec[cpp_j++]",
-                float,
-                noassign_code=cpp.statement("cpp_j++"),
+                child, vardict, current_value, float, noassign_code=""
             )
+            code += lbr.update_counters_and_line()
         elif child_name == "list_loop":
             code += generate_code_for_list_loop(child, vardict)
         elif child_name == "LINEPADDING":

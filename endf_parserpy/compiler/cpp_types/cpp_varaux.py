@@ -148,11 +148,9 @@ def has_vartype(vartok, dtype, specialtype):
 def type_change_check(vartok, dtype, specialtype):
     last_type_varname = get_last_type_varname(vartok)
     vartype = get_dtype_vartype_name(dtype, specialtype)
-    logical_expr1 = f"{last_type_varname} != {vartype}"
-    logical_expr2 = f"{last_type_varname} != UNKNOWN"
-    logical_expr = cpp.logical_and([logical_expr1, logical_expr2])
-    statement = cpp.statement("raise_vartype_mismatch()")
-    code = cpp.pureif(logical_expr, statement)
+    code = cpp.statement(
+        f'validate_vartype_consistency("{vartok}", {vartype}, {last_type_varname})'
+    )
     return code
 
 

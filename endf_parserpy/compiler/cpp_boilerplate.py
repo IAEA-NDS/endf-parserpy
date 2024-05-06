@@ -11,7 +11,11 @@
 
 from . import cpp_primitives as cpp
 from .cpp_types.cpp_type_information import get_vartype_definitions
-from .cpp_types.cpp_varaux import construct_vartype_dtype_enum
+from .cpp_types.cpp_varaux import (
+    construct_vartype_dtype_enum,
+    construct_vartype2str_func,
+    construct_vartype_validation_func,
+)
 
 
 def module_header():
@@ -253,20 +257,14 @@ def module_header():
       }
       return secvec;
     }
-
-
-    void raise_vartype_mismatch() {
-      std::string errmsg =
-        std::string("variable MF now with different type ")
-        + "which must not happen. Either ENDF recipe wrong "
-        + "or the ENDF file has some forbidden flag values.";
-      throw std::runtime_error(errmsg);
-    }
     """
     code = cpp.indent_code(code, -4)
     code += cpp.line("")
     code += construct_vartype_dtype_enum()
     code += cpp.line("")
+    code += construct_vartype2str_func()
+    code += cpp.line("")
+    code += construct_vartype_validation_func()
     for vartype_definition in get_vartype_definitions():
         code += vartype_definition
     return code

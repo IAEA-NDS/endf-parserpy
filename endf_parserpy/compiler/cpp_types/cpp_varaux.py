@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/05/04
+# Last modified:   2024/05/06
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -76,6 +76,48 @@ def construct_vartype_dtype_enum():
     code += cpp.line("")
     code += cpp.statement("}")
     return code
+
+
+def construct_vartype2str_func():
+    code = cpp.line("std::string vartype2str(vartype vt) {")
+    dtypes = get_available_dtypes()
+    specialtypes = get_vartype_names()
+    icode = cpp.line("switch (vt) {")
+    iicode = ""
+    typenames = set()
+    for st in specialtypes:
+        for dt in dtypes:
+            t = get_dtype_vartype_name(dt, st)
+            if t in typenames:
+                continue
+            iicode += cpp.statement(f'case {t}:  return "{t}"')
+            typenames.add(t)
+    icode += cpp.indent_code(iicode, 4)
+    icode += cpp.close_block()
+    code += cpp.indent_code(icode, 4)
+    code += cpp.throw_runtime_error("should not arrivere here", 4)
+    code += cpp.statement('return "should not arrive here"', 4)
+    code += cpp.close_block()
+    return code
+
+
+def construct_vartype_validation_func():
+    code = r"""
+    void validate_vartype_consistency(std::string varname, vartype current_type, vartype expected_type) {
+      if (current_type != expected_type && expected_type != UNKNOWN) {
+        std::string current_type_str = vartype2str(current_type);
+        std::string expected_type_str = vartype2str(expected_type);
+        std::stringstream errmsg;
+        errmsg << "variable `" << varname << "` is now encountered "
+              << "with type `" << current_type_str << "` but was "
+              << "previously encountered with type `" << expected_type_str << ". "
+              << "Either the ENDF recipe is wrongly specified or the ENDF file "
+              << "contains some forbidden flag values." << std::endl;
+        throw std::runtime_error(errmsg.str());
+      }
+    }
+    """
+    return cpp.indent_code(code, -4)
 
 
 def get_last_type_varname(vartok):

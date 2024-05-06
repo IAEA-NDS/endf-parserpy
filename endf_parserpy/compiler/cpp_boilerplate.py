@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/05
+# Last modified:   2024/05/06
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -103,9 +103,9 @@ def module_header():
     }
 
 
-    void cpp_read_send(std::istream& cont) {
+    std::string cpp_read_send(std::istream& cont) {
       std::string line = cpp_read_line(cont);
-      int mtnum = std::stoi(line.substr(72, 3));
+      int mtnum = cpp_read_custom_int_field(line.c_str(), 72, 3);
       if (cpp_read_field<double>(line.c_str(), 0) != 0.0 ||
         cpp_read_field<double>(line.c_str(), 1) != 0.0 ||
         cpp_read_field<int>(line.c_str(), 2) != 0 ||
@@ -117,6 +117,7 @@ def module_header():
         std::cout << line << std::endl;  // debug
         throw std::runtime_error("expected SEND record");
       }
+      return line;
     }
 
 

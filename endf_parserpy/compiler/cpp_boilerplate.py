@@ -149,9 +149,27 @@ def module_header():
       int j = 0;
       bool in_number = false;
       bool in_exponent = false;
-      for (int i=0; i < 11; i++) {
+      int first_nonspace_pos_after_num;
+      for (int i=10; i >= 0; i++) {
+        if (str[i] != ' ')
+          first_nonspace_pos_after_num = i+1;
+          break;
+      }
+      if (first_nonspace_pos_after_num == 0) {
+        return 0.0;
+      }
+      for (int i=0; i < first_nonspace_pos_after_num; i++) {
         char c = str[i];
-        if (c == ' ') continue;
+        if (c == ' ') {
+          if (parse_opts.accept_spaces || ! in_number) {
+            continue;
+          } else {
+            std::stringstream errmsg;
+            errmsg << "encontered number with spaces: \""
+                   << std::string(str, 11) << "\"" << std::endl;
+            throw std::runtime_error(errmsg.str());
+          }
+        }
         if (in_number) {
           if (!in_exponent) {
             if (c=='+' || c=='-') {

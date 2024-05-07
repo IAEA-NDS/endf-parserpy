@@ -13,6 +13,7 @@ from .expr_utils.equation_utils import get_variables_in_expr
 from . import cpp_primitives as cpp
 from .cpp_types.cpp_varops_query import did_read_var
 from .cpp_types.cpp_varaux import check_variable, get_cpp_varname
+from .lookahead_management import in_lookahead
 
 
 def read_raw_line():
@@ -29,6 +30,28 @@ def read_line(mat, mf, mt, parse_opts):
     code = cpp.statement(
         f"cpp_line = cpp_read_line(cont, {mat}, {mf}, {mt}, {parse_opts})"
     )
+    return code
+
+
+def read_line_la(mat, mf, mt, parse_opts, vardict):
+    if in_lookahead(vardict):
+        return read_raw_line()
+    else:
+        return read_line(mat, mf, mt, parse_opts)
+
+
+def get_mat_number():
+    code = "cpp_read_mat_number(cpp_line.c_str())"
+    return code
+
+
+def get_mf_number():
+    code = "cpp_read_mf_number(cpp_line.c_str())"
+    return code
+
+
+def get_mt_number():
+    code = "cpp_read_mt_number(cpp_line.c_str())"
     return code
 
 

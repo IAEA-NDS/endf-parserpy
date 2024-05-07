@@ -256,6 +256,17 @@ def module_header():
     ) {
       std::string line;
       std::getline(cont, line);
+      if (parse_opts.validate_control_records) {
+        int curmat = cpp_read_mat_number(line.c_str());
+        int curmf = cpp_read_mf_number(line.c_str());
+        int curmt = cpp_read_mt_number(line.c_str());
+        if (curmat != mat)
+          throw_mismatch_error("MAT", mat, curmat, line);
+        if (curmf != mf)
+          throw_mismatch_error("MF", mf, curmf, line);
+        if (curmt != mt)
+          throw_mismatch_error("MT", mt, curmt, line);
+      }
       return line;
     }
 
@@ -273,6 +284,14 @@ def module_header():
 
         std::cout << line << std::endl;  // debug
         throw std::runtime_error("expected SEND record");
+      }
+      if (parse_opts.validate_control_records) {
+        int curmat = cpp_read_mat_number(line.c_str());
+        int curmf = cpp_read_mf_number(line.c_str());
+        if (curmat != mat)
+          throw_mismatch_error("MAT", mat, curmat, line);
+        if (curmf != mf)
+          throw_mismatch_error("MF", mf, curmf, line);
       }
       return line;
     }

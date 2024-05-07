@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/06
+# Last modified:   2024/05/07
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -33,7 +33,7 @@ def module_header():
     namespace py = pybind11;
 
 
-    double endfstr2float(const char* str) {
+    double endfstr2float(const char* str, bool validate=false) {
       char tbuf[13];
       int j = 0;
       bool in_number = false;
@@ -63,7 +63,7 @@ def module_header():
     }
 
 
-    int endfstr2int(const char* str) {
+    int endfstr2int(const char* str, bool validate=false) {
       char strzero[12];
       std::memcpy(strzero, str, 11);
       strzero[11] = '\0';
@@ -77,12 +77,12 @@ def module_header():
 
 
     template<typename T>
-    T cpp_read_field(const char *str, const char fieldnum) {
+    T cpp_read_field(const char *str, const char fieldnum, bool validate=false) {
       static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, "T must be int or double");
       if (std::is_same<T, double>::value) {
-        return endfstr2float(str+fieldnum*11);
+        return endfstr2float(str+fieldnum*11, validate);
       } else {
-        return endfstr2int(str+fieldnum*11);
+        return endfstr2int(str+fieldnum*11, validate);
       }
     }
 
@@ -100,22 +100,24 @@ def module_header():
     }
 
 
-    std::string cpp_read_line(std::istream& cont) {
+    std::string cpp_read_line(
+      std::istream& cont, int mat=0, int mf=0, int mt=0, bool validate=false
+    ) {
       std::string line;
       std::getline(cont, line);
       return line;
     }
 
 
-    std::string cpp_read_send(std::istream& cont) {
-      std::string line = cpp_read_line(cont);
+    std::string cpp_read_send(std::istream& cont, int mat=0, int mf=0, bool validate=false) {
+      std::string line = cpp_read_line(cont, mat, mf, 0, validate);
       int mtnum = cpp_read_custom_int_field(line.c_str(), 72, 3);
-      if (cpp_read_field<double>(line.c_str(), 0) != 0.0 ||
-        cpp_read_field<double>(line.c_str(), 1) != 0.0 ||
-        cpp_read_field<int>(line.c_str(), 2) != 0 ||
-        cpp_read_field<int>(line.c_str(), 3) != 0 ||
-        cpp_read_field<int>(line.c_str(), 4) != 0 ||
-        cpp_read_field<int>(line.c_str(), 5) != 0 ||
+      if (cpp_read_field<double>(line.c_str(), 0, validate) != 0.0 ||
+        cpp_read_field<double>(line.c_str(), 1, validate) != 0.0 ||
+        cpp_read_field<int>(line.c_str(), 2, validate) != 0 ||
+        cpp_read_field<int>(line.c_str(), 3, validate) != 0 ||
+        cpp_read_field<int>(line.c_str(), 4, validate) != 0 ||
+        cpp_read_field<int>(line.c_str(), 5, validate) != 0 ||
         mtnum != 0) {
 
         std::cout << line << std::endl;  // debug
@@ -126,14 +128,16 @@ def module_header():
 
 
     template<typename T>
-    std::vector<T> cpp_read_vec(std::istream& cont, const int numel) {
+    std::vector<T> cpp_read_vec(
+      std::istream& cont, const int numel, int mat=0, int mf=0, int mt=0, bool validate=false
+    ) {
       int j = 0;
       std::vector<T> res;
-      std::string line = cpp_read_line(cont);
+      std::string line = cpp_read_line(cont, mat, mf, mt, validate);
       for (int i=0; i < numel; i++) {
-        res.push_back(cpp_read_field<T>(line.c_str(), j++));
+        res.push_back(cpp_read_field<T>(line.c_str(), j++, validate));
         if (j > 5 && i+1 < numel) {
-          line = cpp_read_line(cont);
+          line = cpp_read_line(cont, mat, mf, mt, validate);
           j = 0;
         }
       }
@@ -155,9 +159,11 @@ def module_header():
     };
 
 
-    Tab2Body read_tab2_body(std::istream& cont, int nr) {
+    Tab2Body read_tab2_body(
+      std::istream& cont, int nr, int mat=0, int mf=0, int mt=0, bool validate=false
+    ) {
       Tab2Body tab_body;
-      std::vector<int> interp = cpp_read_vec<int>(cont, 2*nr);
+      std::vector<int> interp = cpp_read_vec<int>(cont, 2*nr, mat, mf, mt, validate);
       int j = 0;
       for (int i=0; i < nr; i++) {
         tab_body.NBT.push_back(interp[j++]);
@@ -167,15 +173,18 @@ def module_header():
     }
 
 
-    Tab1Body read_tab1_body(std::istream& cont, int nr, int np) {
+    Tab1Body read_tab1_body(
+      std::istream& cont, int nr, int np,
+      int mat=0, int mf=0, int mt=0, bool validate=false
+    ) {
       Tab1Body tab_body;
-      std::vector<int> interp = cpp_read_vec<int>(cont, 2*nr);
+      std::vector<int> interp = cpp_read_vec<int>(cont, 2*nr, mat, mf, mt, validate);
       int j = 0;
       for (int i=0; i < nr; i++) {
         tab_body.NBT.push_back(interp[j++]);
         tab_body.INT.push_back(interp[j++]);
       }
-      std::vector<double> data = cpp_read_vec<double>(cont, 2*np);
+      std::vector<double> data = cpp_read_vec<double>(cont, 2*np, mat, mf, mt, validate);
       j = 0;
       for (int i=0; i < np; i++) {
         tab_body.X.push_back(data[j++]);
@@ -223,7 +232,7 @@ def module_header():
 
 
     std::vector<std::string> read_section_verbatim(
-        int mf, int mt, std::istream& cont, bool is_first=false
+        int mat, int mf, int mt, std::istream& cont, bool is_first=false, bool validate=false
     ) {
       std::streampos curpos;
       std::string line;
@@ -232,7 +241,7 @@ def module_header():
       int curmt;
       size_t lastpos;
       while (! cont.eof()) {
-        line = cpp_read_line(cont);
+        line = cpp_read_line(cont, mat, mf, mt, validate);
         // remove trailing \r that we may
         // get from reading win-style line endings
         lastpos = line.size() - 1;
@@ -274,7 +283,9 @@ def module_header():
 def parsefun_header(fun_name):
     code = cpp.indent_code(
         rf"""
-        py::dict {fun_name}(std::istream& cont) {{
+        py::dict {fun_name}(
+          std::istream& cont, bool validate=false
+        ) {{
           std::vector<int> cpp_intvec;
           std::vector<double> cpp_floatvec;
           py::dict cpp_parent_dict;

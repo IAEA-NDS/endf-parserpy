@@ -130,6 +130,20 @@ def module_header():
     }}
 
 
+    template<typename U, typename V, typename W>
+    void throw_mismatch_error(U quantity, V expected_value, W actual_value, std::string line) {
+      std::stringstream errmsg;
+      errmsg << "Invalid " << quantity << " encountered! "
+             << "Expected " << quantity << "=" << expected_value
+             << " but found " << quantity <<"=" << actual_value << std::endl;
+      if (line.size() > 0) {
+        errmsg << "This happened while processing the following line:" << std::endl
+               << line;
+      }
+      throw std::runtime_error(errmsg.str());
+    }
+
+
     double endfstr2float(const char* str, ParsingOptions &parse_opts) {
       char tbuf[13];
       int j = 0;

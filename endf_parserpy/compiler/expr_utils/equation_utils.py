@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/23
+# Last modified:   2024/05/07
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,7 +11,7 @@
 
 from lark.tree import Tree
 from lark.lexer import Token
-from .conversion import VariableToken
+from .custom_nodes import VariableToken
 from .tree_walkers import transform_nodes
 from .node_checks import (
     is_addition,

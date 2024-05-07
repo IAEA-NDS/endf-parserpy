@@ -14,7 +14,7 @@ from lark.lexer import Token
 from lark import Lark
 from endf_parserpy.utils.tree_utils import get_child, get_name
 from endf_parserpy.endf_recipes.endf_lark_ebnf import endf_recipe_grammar
-from .expr_utils.conversion import VariableToken
+from .expr_utils.custom_nodes import VariableToken
 from .expr_utils.equation_utils import (
     get_variables_in_expr,
     get_varassign_from_expr,

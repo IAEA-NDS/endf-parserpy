@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/05/06
+# Last modified:   2024/05/07
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -14,7 +14,7 @@ from endf_parserpy.utils.tree_utils import (
     get_child,
 )
 from endf_parserpy.compiler import cpp_primitives as cpp
-from endf_parserpy.compiler.expr_utils.conversion import VariableToken
+from endf_parserpy.compiler.expr_utils.custom_nodes import VariableToken
 from endf_parserpy.compiler.variable_management import get_var_types
 from .cpp_dtype_aux import get_dtype_str
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/05/01
+# Last modified:   2024/05/07
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,7 +11,7 @@
 
 from lark.lexer import Token
 from lark.tree import Tree
-from endf_parserpy.compiler.expr_utils.conversion import VariableToken
+from endf_parserpy.compiler.expr_utils.custom_nodes import VariableToken
 from endf_parserpy.compiler.expr_utils.node_trafos import node2str
 from endf_parserpy.compiler.expr_utils.node_checks import is_number, is_expr
 from endf_parserpy.compiler.expr_utils.equation_utils import get_variables_in_expr

@@ -129,7 +129,7 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     ctrl_code += cpp.statement(f"int mf = {mfval}")
     ctrl_code += cpp.statement(f"int mt = {mtval}")
     ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
-    ctrl_code += aux.read_line("mat", "mf", "mt", "parse_opts")
+    ctrl_code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
 
     ctrl_code += generate_code_for_varassign(var_mat, vardict, matval, int)
     ctrl_code += generate_code_for_varassign(var_mf, vardict, mfval, int)
@@ -493,7 +493,7 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
 
 
 def generate_code_for_text(node, vardict):
-    code = aux.read_line("mat", "mf", "mt", "parse_opts")
+    code = aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     text_fields = get_child(node, "text_fields")
     tphs = [v for v in text_fields.children if is_textplaceholder(v)]
     ofs = 0
@@ -528,7 +528,7 @@ def generate_code_for_intg(node, vardict):
     jj_expr = intg_fields_kids[1]
     kij_expr = intg_fields_kids[2]
 
-    code = aux.read_line("mat", "mf", "mt", "parse_opts")
+    code = aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     code += cpp.statement(f"int cpp_ndigit = {ndigit_exprstr}")
     code += cpp.pureif(
         cpp.logical_or(["cpp_ndigit < 2", "cpp_ndigit > 6"]),
@@ -562,7 +562,7 @@ def generate_code_for_send(node, vardict):
 
 
 def generate_code_for_cont(node, vardict):
-    code = aux.read_line("mat", "mf", "mt", "parse_opts")
+    code = aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     record_fields = get_child(node, "record_fields")
     code += cpp.comment("read CONT record")
     code += generate_code_from_record_fields(record_fields, vardict)
@@ -570,7 +570,7 @@ def generate_code_for_cont(node, vardict):
 
 
 def generate_code_for_dir(node, vardict):
-    code = aux.read_line("mat", "mf", "mt", "parse_opts")
+    code = aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     record_fields = get_child(node, "dir_fields")
     code += cpp.comment("read TEXT record")
     code += generate_code_from_record_fields(record_fields, vardict, skip=(0, 1), ofs=2)
@@ -579,7 +579,7 @@ def generate_code_for_dir(node, vardict):
 
 def generate_code_for_tab1(node, vardict):
     code = cpp.comment("read TAB1 record")
-    code += aux.read_line("mat", "mf", "mt", "parse_opts")
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     tab1_fields = get_child(node, "tab1_fields")
     table_name = get_child(node, "table_name", nofail=True)
     record_fields = get_child(tab1_fields, "record_fields")
@@ -629,7 +629,7 @@ def generate_code_for_tab1(node, vardict):
 
 def generate_code_for_tab2(node, vardict):
     code = cpp.comment("read TAB2 record")
-    code += aux.read_line("mat", "mf", "mt", "parse_opts")
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     tab2_fields = get_child(node, "tab2_fields")
     table_name = get_child(node, "table_name", nofail=True)
     record_fields = get_child(tab2_fields, "record_fields")
@@ -670,7 +670,7 @@ def generate_code_for_tab2(node, vardict):
 
 
 def generate_code_for_list(node, vardict):
-    code = aux.read_line("mat", "mf", "mt", "parse_opts")
+    code = aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     record_fields = get_child(node, "record_fields")
     code += cpp.comment("read LIST record")
     code += generate_code_from_record_fields(record_fields, vardict)
@@ -928,8 +928,9 @@ def generate_cpp_module_code(recipes, module_name):
             print(f"MF: {mf} MT: {mt}")
             func_name = _mf_mt_parsefun_name(mf, mt)
             func_names.append(func_name)
+            mt_ = mt if mt != -1 else None
             parsefuns_code += generate_cpp_parsefun(
-                func_name + "_istream", recipe, mf=mf, mt=mt
+                func_name + "_istream", recipe, mf=mf, mt=mt_
             )
             curdic = recipefuns.setdefault(mf, {})
             curdic[mt] = func_name

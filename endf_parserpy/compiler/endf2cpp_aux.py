@@ -201,7 +201,7 @@ class ListBodyRecorder:
 
     @staticmethod
     def get_element(parse_opts):
-        return "cpp_read_field<double>(line.c_str(), cpp_j, {parse_opts})"
+        return f"cpp_read_field<double>(line.c_str(), cpp_j, {parse_opts})"
 
     @staticmethod
     def update_counters_and_line(mat, mf, mt, parse_opts):

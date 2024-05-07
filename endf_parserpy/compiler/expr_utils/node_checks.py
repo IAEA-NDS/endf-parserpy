@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/03/28
+# Last modified:   2024/05/07
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,6 +11,7 @@
 
 from lark.tree import Tree
 from lark.lexer import Token
+from .custom_nodes import DesiredNumberToken
 
 
 def is_expr(node):
@@ -53,3 +54,11 @@ def has_factor(node, factor):
     if is_multiplication(node):
         return factor in node.children
     return node == factor
+
+
+def is_desired_number(node):
+    return isinstance(node, DesiredNumberToken)
+
+
+def is_inconsistent_variable(node):
+    return is_variable(node) and node.inconsistent

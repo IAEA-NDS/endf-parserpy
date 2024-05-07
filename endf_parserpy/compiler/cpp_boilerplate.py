@@ -162,7 +162,7 @@ def module_header():
             }
           }
         } else {
-          if (c == '.' || (c >= '0' && c <= '9')) {
+          if (c == '.' || (c >= '0' && c <= '9') || c == '-' || c == '+') {
             in_number = true;
           }
         }

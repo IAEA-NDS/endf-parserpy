@@ -40,7 +40,7 @@ def module_header():
       bool accept_spaces;
       bool ignore_send_records;
       bool ignore_missing_tpid;
-      bool validate_ctrl;
+      bool validate_control_records;
     };
 
 
@@ -52,7 +52,7 @@ def module_header():
         true,  // accept_spaces
         false,  // ignore_send_records
         false,  // ignore_missing_tpid
-        false  // validate_ctrl
+        false  // validate_control_records
       };
     }
 
@@ -104,6 +104,12 @@ def module_header():
             value.ignore_missing_tpid = false;
           }
 
+          if (d.contains("validate_control_records")) {
+            value.validate_control_records = d["validate_control_records"].cast<bool>();
+          } else {
+            value.validate_control_records = false;
+          }
+
           return true;
         }
 
@@ -116,6 +122,7 @@ def module_header():
           d["accept_spaces"] = src.accept_spaces;
           d["ignore_send_records"] = src.ignore_send_records;
           d["ignore_missing_tpid"] = src.ignore_missing_tpid;
+          d["validate_control_records"] = src.validate_control_records;
           return d.release();
         }
 
@@ -412,7 +419,8 @@ def _register_reading_options():
       .def_readwrite("ignore_varspec_mismatch", &ParsingOptions::ignore_varspec_mismatch)
       .def_readwrite("accept_spaces", &ParsingOptions::accept_spaces)
       .def_readwrite("ignore_send_records", &ParsingOptions::ignore_send_records)
-      .def_readwrite("ignore_missing_tpid", &ParsingOptions::ignore_missing_tpid);
+      .def_readwrite("ignore_missing_tpid", &ParsingOptions::ignore_missing_tpid)
+      .def_readwrite("validate_control_records", &ParsingOptions::validate_control_records);
     """
     return cpp.indent_code(code, -4)
 

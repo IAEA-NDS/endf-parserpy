@@ -59,6 +59,12 @@ class VariableToken(Token):
         return hash((str(self), len(self.indices), self.cpp_namespace))
 
 
+class DesiredNumberToken(Token):
+    def __new__(cls, valuestr):
+        inst = super().__new__(cls, "NUMBER", valuestr)
+        return inst
+
+
 def _simplify_token(token):
     if not isinstance(token, Token):
         return token

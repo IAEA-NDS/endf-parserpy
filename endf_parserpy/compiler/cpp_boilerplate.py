@@ -244,7 +244,7 @@ def module_header():
 
     std::string cpp_read_send(std::istream& cont, int mat, int mf, ParsingOptions &parse_opts) {
       std::string line = cpp_read_line(cont, mat, mf, 0, parse_opts);
-      int mtnum = cpp_read_custom_int_field(line.c_str(), 72, 3);
+      int mtnum = cpp_read_mt_number(line.c_str());
       if (cpp_read_field<double>(line.c_str(), 0, parse_opts) != 0.0 ||
         cpp_read_field<double>(line.c_str(), 1, parse_opts) != 0.0 ||
         cpp_read_field<int>(line.c_str(), 2, parse_opts) != 0 ||

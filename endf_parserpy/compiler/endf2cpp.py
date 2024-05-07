@@ -122,9 +122,9 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
     ctrl_code += aux.read_raw_line()
 
-    matval = aux.get_custom_int_field(66, 4) if mat is None else str(mat)
-    mfval = aux.get_custom_int_field(70, 2) if mf is None else str(mf)
-    mtval = aux.get_custom_int_field(72, 3) if mt is None else str(mt)
+    matval = aux.get_mat_number() if mat is None else str(mat)
+    mfval = aux.get_mf_number() if mf is None else str(mf)
+    mtval = aux.get_mt_number() if mt is None else str(mt)
     ctrl_code += cpp.statement(f"int mat = {matval}")
     ctrl_code += cpp.statement(f"int mf = {mfval}")
     ctrl_code += cpp.statement(f"int mt = {mtval}")

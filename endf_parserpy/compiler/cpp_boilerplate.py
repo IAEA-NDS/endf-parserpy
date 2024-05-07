@@ -33,6 +33,82 @@ def module_header():
     namespace py = pybind11;
 
 
+    struct ParsingOptions {
+      bool ignore_number_mismatch;
+      bool ignore_zero_mismatch;
+      bool ignore_varspec_mismatch;
+      bool accept_spaces;
+      bool ignore_send_records;
+      bool ignore_missing_tpid;
+    };
+
+
+    namespace pybind11 { namespace detail {
+      template <> struct type_caster<ParsingOptions> {
+      public:
+        PYBIND11_TYPE_CASTER(ParsingOptions, _("ParsingOptions"));
+
+        // conversion from Python to C++
+        bool load(handle src, bool) {
+          if (!py::isinstance<py::dict>(src))
+            return false;
+          auto d = reinterpret_borrow<py::dict>(src);
+
+          if (d.contains("ignore_number_mismatch")) {
+            value.ignore_number_mismatch = d["ignore_number_mismatch"].cast<bool>();
+          } else {
+            value.ignore_number_mismatch = false;
+          }
+
+          if (d.contains("ignore_zero_mismatch")) {
+            value.ignore_zero_mismatch = d["ignore_zero_mismatch"].cast<bool>();
+          } else {
+            value.ignore_zero_mismatch = true;
+          }
+
+          if (d.contains("ignore_varspec_mismatch")) {
+            value.ignore_varspec_mismatch = d["ignore_varspec_mismatch"].cast<bool>();
+          } else {
+            value.ignore_varspec_mismatch = false;
+          }
+
+          if (d.contains("accept_spaces")) {
+            value.accept_spaces = d["accept_spaces"].cast<bool>();
+          } else {
+            value.accept_spaces = true;
+          }
+
+          if (d.contains("ignore_send_records")) {
+            value.ignore_send_records = d["ignore_send_records"].cast<bool>();
+          } else {
+            value.ignore_send_records = false;
+          }
+
+          if (d.contains("ignore_missing_tpid")) {
+            value.ignore_missing_tpid = d["ignore_missing_tpid"].cast<bool>();
+          } else {
+            value.ignore_missing_tpid = false;
+          }
+
+          return true;
+        }
+
+        // conversion from C++ to Python
+        static handle cast(const ParsingOptions &src, return_value_policy, handle) {
+          py::dict d;
+          d["ignore_number_mismatch"] = src.ignore_number_mismatch;
+          d["ignore_zero_mismatch"] = src.ignore_zero_mismatch;
+          d["ignore_varspec_mismatch"] = src.ignore_varspec_mismatch;
+          d["accept_spaces"] = src.accept_spaces;
+          d["ignore_send_records"] = src.ignore_send_records;
+          d["ignore_missing_tpid"] = src.ignore_missing_tpid;
+          return d.release();
+        }
+
+      };
+    }}
+
+
     double endfstr2float(const char* str, bool validate=false) {
       char tbuf[13];
       int j = 0;
@@ -306,9 +382,24 @@ def parsefun_footer():
     return code
 
 
+def _register_reading_options():
+    code = r"""
+    py::class_<ParsingOptions>(m, "ParsingOptions")
+      .def(py::init<>())
+      .def_readwrite("ignore_number_mismatch", &ParsingOptions::ignore_number_mismatch)
+      .def_readwrite("ignore_zero_mismatch", &ParsingOptions::ignore_zero_mismatch)
+      .def_readwrite("ignore_varspec_mismatch", &ParsingOptions::ignore_varspec_mismatch)
+      .def_readwrite("accept_spaces", &ParsingOptions::accept_spaces)
+      .def_readwrite("ignore_send_records", &ParsingOptions::ignore_send_records)
+      .def_readwrite("ignore_missing_tpid", &ParsingOptions::ignore_missing_tpid);
+    """
+    return cpp.indent_code(code, -4)
+
+
 def register_pybind_module(module_name, inner_code):
     code = cpp.line("") + cpp.line("")
     code += cpp.line(f"PYBIND11_MODULE({module_name}, m) {{")
+    code += cpp.indent_code(_register_reading_options(), cpp.INDENT)
     code += cpp.indent_code(inner_code, cpp.INDENT)
     code += cpp.close_block()
     return code

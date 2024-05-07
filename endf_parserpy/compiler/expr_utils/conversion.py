@@ -82,13 +82,21 @@ def _simplify_variable(node):
         return node
     if node.data == "extvarname":
         return VariableToken(node)
+    elif node.data == "inconsistent_varspec":
+        # due to bottom-up conversion by transform_nodes
+        # we expect here a VariableToken
+        child = node.children[0]
+        assert isinstance(child, VariableToken)
+        return VariableToken(
+            child, cpp_namespace=child.cpp_namespace, inconsistent=child.inconsistent
+        )
     return node
 
 
 def _simplify_tree(node):
     if not isinstance(node, Tree):
         return node
-    skip_nodes = ("expr", "addpart", "mulpart", "bracketexpr", "inconsistent_varspec")
+    skip_nodes = ("expr", "addpart", "mulpart", "bracketexpr")
     if node.data in skip_nodes:
         assert len(node.children) == 1
         return node.children[0]

@@ -211,6 +211,21 @@ def module_header():
     }
 
 
+    int cpp_read_mat_number(const char *str) {
+      return cpp_read_custom_int_field(str, 66, 4);
+    }
+
+
+    int cpp_read_mf_number(const char *str) {
+      return cpp_read_custom_int_field(str, 70, 2);
+    }
+
+
+    int cpp_read_mt_number(const char *str) {
+      return cpp_read_custom_int_field(str, 72, 3);
+    }
+
+
     std::string cpp_read_raw_line(std::istream& cont) {
       std::string line;
       std::getline(cont, line);

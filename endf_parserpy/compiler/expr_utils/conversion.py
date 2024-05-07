@@ -69,7 +69,7 @@ def _simplify_token(token):
     if not isinstance(token, Token):
         return token
     if token.type == "DESIRED_NUMBER":
-        return Token("NUMBER", token.value.rstrip("?"))
+        return DesiredNumberToken("NUMBER", token.value.rstrip("?"))
     # hack: VARIABLE is not part of the grammar but is introduced
     #       as a token type in VariableToken, therefore added
     elif token.type in ("VARNAME", "INDEXVAR", "INDEXNUM", "NUMBER", "VARIABLE"):

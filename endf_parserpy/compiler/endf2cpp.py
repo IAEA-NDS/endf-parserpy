@@ -120,7 +120,7 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     var_mf = VariableToken(Token("VARNAME", "MF"))
     var_mt = VariableToken(Token("VARNAME", "MT"))
     ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
-    ctrl_code += aux.read_line()
+    ctrl_code += aux.read_raw_line()
 
     matval = aux.get_custom_int_field(66, 4) if mat is None else str(mat)
     mfval = aux.get_custom_int_field(70, 2) if mf is None else str(mf)
@@ -129,7 +129,7 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     ctrl_code += cpp.statement(f"int mf = {mfval}")
     ctrl_code += cpp.statement(f"int mt = {mtval}")
     ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
-    ctrl_code += aux.read_line("mat", "mf", "mt", "validate")
+    ctrl_code += aux.read_line("mat", "mf", "mt", "parse_opts")
 
     ctrl_code += generate_code_for_varassign(var_mat, vardict, matval, int)
     ctrl_code += generate_code_for_varassign(var_mf, vardict, mfval, int)
@@ -474,7 +474,7 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
         if skip is not None and idx in skip:
             continue
         dtype = float if idx < 2 else int
-        valcode = aux.get_numeric_field(idx, dtype, "validate")
+        valcode = aux.get_numeric_field(idx, dtype, "parse_opts")
         try:
             code += generate_code_for_varassign(
                 child, vardict, valcode, dtype, throw_cpp=throw_cpp
@@ -493,7 +493,7 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
 
 
 def generate_code_for_text(node, vardict):
-    code = aux.read_line("mat", "mf", "mt", "validate")
+    code = aux.read_line("mat", "mf", "mt", "parse_opts")
     text_fields = get_child(node, "text_fields")
     tphs = [v for v in text_fields.children if is_textplaceholder(v)]
     ofs = 0
@@ -528,7 +528,7 @@ def generate_code_for_intg(node, vardict):
     jj_expr = intg_fields_kids[1]
     kij_expr = intg_fields_kids[2]
 
-    code = aux.read_line("mat", "mf", "mt", "validate")
+    code = aux.read_line("mat", "mf", "mt", "parse_opts")
     code += cpp.statement(f"int cpp_ndigit = {ndigit_exprstr}")
     code += cpp.pureif(
         cpp.logical_or(["cpp_ndigit < 2", "cpp_ndigit > 6"]),
@@ -558,11 +558,11 @@ def generate_code_for_intg(node, vardict):
 
 
 def generate_code_for_send(node, vardict):
-    return aux.read_send()
+    return aux.read_send("mat", "mf", "parse_opts")
 
 
 def generate_code_for_cont(node, vardict):
-    code = aux.read_line("mat", "mf", "mt", "validate")
+    code = aux.read_line("mat", "mf", "mt", "parse_opts")
     record_fields = get_child(node, "record_fields")
     code += cpp.comment("read CONT record")
     code += generate_code_from_record_fields(record_fields, vardict)
@@ -570,7 +570,7 @@ def generate_code_for_cont(node, vardict):
 
 
 def generate_code_for_dir(node, vardict):
-    code = aux.read_line("mat", "mf", "mt", "validate")
+    code = aux.read_line("mat", "mf", "mt", "parse_opts")
     record_fields = get_child(node, "dir_fields")
     code += cpp.comment("read TEXT record")
     code += generate_code_from_record_fields(record_fields, vardict, skip=(0, 1), ofs=2)
@@ -579,7 +579,7 @@ def generate_code_for_dir(node, vardict):
 
 def generate_code_for_tab1(node, vardict):
     code = cpp.comment("read TAB1 record")
-    code += aux.read_line("mat", "mf", "mt", "validate")
+    code += aux.read_line("mat", "mf", "mt", "parse_opts")
     tab1_fields = get_child(node, "tab1_fields")
     table_name = get_child(node, "table_name", nofail=True)
     record_fields = get_child(tab1_fields, "record_fields")
@@ -600,9 +600,9 @@ def generate_code_for_tab1(node, vardict):
     assert len(colnodes) == 2
     xvar = VariableToken(colnodes[0])
     yvar = VariableToken(colnodes[1])
-    nr = aux.get_int_field(4, "validate")
-    np = aux.get_int_field(5, "validate")
-    tabdata = aux.get_tab1_body(xvar, yvar, nr, np, "mat", "mf", "mt", "validate")
+    nr = aux.get_int_field(4, "parse_opts")
+    np = aux.get_int_field(5, "parse_opts")
+    tabdata = aux.get_tab1_body(xvar, yvar, nr, np, "mat", "mf", "mt", "parse_opts")
     INTvar = VariableToken(Token("VARNAME", "INT"))
     NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
@@ -629,7 +629,7 @@ def generate_code_for_tab1(node, vardict):
 
 def generate_code_for_tab2(node, vardict):
     code = cpp.comment("read TAB2 record")
-    code += aux.read_line("mat", "mf", "mt", "validate")
+    code += aux.read_line("mat", "mf", "mt", "parse_opts")
     tab2_fields = get_child(node, "tab2_fields")
     table_name = get_child(node, "table_name", nofail=True)
     record_fields = get_child(tab2_fields, "record_fields")
@@ -645,8 +645,8 @@ def generate_code_for_tab2(node, vardict):
     if table_name is not None:
         sectok = VariableToken(get_child(table_name, "extvarname"))
 
-    nr = aux.get_int_field(4, "validate")
-    tabdata = aux.get_tab2_body(nr, "mat", "mf", "mt", "validate")
+    nr = aux.get_int_field(4, "parse_opts")
+    tabdata = aux.get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
     INTvar = VariableToken(Token("VARNAME", "INT"))
     NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
@@ -670,7 +670,7 @@ def generate_code_for_tab2(node, vardict):
 
 
 def generate_code_for_list(node, vardict):
-    code = aux.read_line("mat", "mf", "mt", "validate")
+    code = aux.read_line("mat", "mf", "mt", "parse_opts")
     record_fields = get_child(node, "record_fields")
     code += cpp.comment("read LIST record")
     code += generate_code_from_record_fields(record_fields, vardict)
@@ -687,7 +687,7 @@ def generate_code_for_list(node, vardict):
         vardict = {"__up": vardict}
 
     lbr = aux.ListBodyRecorder
-    icode = lbr.start_list_body_loop("mat", "mf", "mt", "validate")
+    icode = lbr.start_list_body_loop("mat", "mf", "mt", "parse_opts")
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
     icode += lbr.indent(list_body_code)
     icode += lbr.finish_list_body_loop()
@@ -709,11 +709,11 @@ def generate_code_for_list_body(node, vardict):
     for child in node.children:
         child_name = get_name(child)
         if child_name == "expr":
-            current_value = lbr.get_element()
+            current_value = lbr.get_element("parse_opts")
             code += generate_code_for_varassign(
                 child, vardict, current_value, float, noassign_code=""
             )
-            code += lbr.update_counters_and_line("mat", "mf", "mt", "validate")
+            code += lbr.update_counters_and_line("mat", "mf", "mt", "parse_opts")
         elif child_name == "list_loop":
             code += generate_code_for_list_loop(child, vardict)
         elif child_name == "LINEPADDING":
@@ -777,11 +777,11 @@ def _mf_mt_dict_varname(mf, mt):
     return f"mf{mf}_mt{mt}_dict"
 
 
-def _generate_parse_or_read_verbatim(funname, validate):
+def _generate_parse_or_read_verbatim(funname, parse_opts):
     code = cpp.ifelse(
         aux.should_parse_section("mf", "mt", "exclude", "include"),
         cpp_varaux.dict_assign(
-            "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont, {validate})"
+            "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont, {parse_opts})"
         ),
         cpp.concat(
             [
@@ -792,7 +792,7 @@ def _generate_parse_or_read_verbatim(funname, validate):
                     "mt",
                     "cont",
                     "is_firstline",
-                    validate,
+                    parse_opts,
                 ),
                 cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section"),
             ]
@@ -804,7 +804,8 @@ def _generate_parse_or_read_verbatim(funname, validate):
 def generate_master_parsefun(name, recipefuns):
     header = cpp.line(
         f"py::dict {name}(std::istream& cont, "
-        + "py::object exclude, py::object include, bool validate) {"
+        + "py::object exclude, py::object include, "
+        + "ParsingOptions parse_opts=default_parsing_options()) {"
     )
     footer = cpp.statement("return mfmt_dict", cpp.INDENT)
     footer += cpp.close_block()
@@ -835,7 +836,7 @@ def generate_master_parsefun(name, recipefuns):
             funname = mfdic
             conditions.append(f"mf == {mf}")
             curstat = cpp.statement("cont.seekg(curpos)")
-            curstat += _generate_parse_or_read_verbatim(funname, "validate")
+            curstat += _generate_parse_or_read_verbatim(funname, "parse_opts")
             statements.append(curstat)
             continue
         for mt in reversed(sorted(mfdic.keys())):
@@ -849,7 +850,7 @@ def generate_master_parsefun(name, recipefuns):
                 curcond = cpp.logical_and([curcond, "is_firstline"])
 
             curstat = cpp.statement("cont.seekg(curpos)")
-            curstat += _generate_parse_or_read_verbatim(funname, "validate")
+            curstat += _generate_parse_or_read_verbatim(funname, "parse_opts")
             statements.append(curstat)
             conditions.append(curcond)
 
@@ -857,7 +858,7 @@ def generate_master_parsefun(name, recipefuns):
     # we read it in verbatim
     curcond = cpp.logical_and([f"mf != 0", "mt != 0"])
     curstat = aux.read_section_verbatim(
-        "verbatim_section", "mat", "mf", "mt", "cont", "is_firstline", "validate"
+        "verbatim_section", "mat", "mf", "mt", "cont", "is_firstline", "parse_opts"
     )
     curstat += cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section")
     statements.append(curstat)
@@ -933,10 +934,10 @@ def generate_cpp_module_code(recipes, module_name):
             curdic = recipefuns.setdefault(mf, {})
             curdic[mt] = func_name
     parsefun_wrappers_code1 = generate_cpp_parsefun_wrappers_string(
-        func_names, ("bool", "validate")
+        func_names, ("ParsingOptions", "parse_opts")
     )
     parsefun_wrappers_code2 = generate_cpp_parsefun_wrappers_file(
-        func_names, ("bool", "validate")
+        func_names, ("ParsingOptions", "parse_opts")
     )
     pybind_glue = cpp_boilerplate.register_cpp_parsefuns(func_names, module_name)
     # special case for the master function calling the other mf/mt parser funs
@@ -945,13 +946,13 @@ def generate_cpp_module_code(recipes, module_name):
         ["parse_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),
-        ("bool", "validate"),
+        ("ParsingOptions", "parse_opts"),
     )
     parsefun_wrappers_code2 += generate_cpp_parsefun_wrappers_file(
         ["parse_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),
-        ("bool", "validate"),
+        ("ParsingOptions", "parse_opts"),
     )
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
         ["parse_endf"],
@@ -959,7 +960,7 @@ def generate_cpp_module_code(recipes, module_name):
         'py::arg("cont")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
-        'py::arg("validate") = false',
+        'py::arg("parse_opts") = false',
     )
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
         ["parse_endf_file"],
@@ -967,7 +968,7 @@ def generate_cpp_module_code(recipes, module_name):
         'py::arg("filename")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
-        'py::arg("validate") = false',
+        'py::arg("parse_opts") = default_parsing_options()',
     )
 
     pybind_glue = cpp_boilerplate.register_pybind_module(module_name, pybind_glue)

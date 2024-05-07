@@ -15,24 +15,25 @@ from .cpp_types.cpp_varops_query import did_read_var
 from .cpp_types.cpp_varaux import check_variable, get_cpp_varname
 
 
-def read_send():
-    code = cpp.statement("cpp_read_send(cont)")
+def read_raw_line():
+    code = cpp.statement("cpp_line = cpp_read_raw_line(cont)")
     return code
 
 
-def read_line(mat=None, mf=None, mt=None, validate=None):
-    if mat is None and mf is None and mt is None and validate is None:
-        return cpp.statement("cpp_line = cpp_read_line(cont)")
-    if mat is None or mf is None or mt is None or validate is None:
-        raise TypeError("all three `mat`, `mf` and `mt` must be specified")
-    return cpp.statement(
-        f"cpp_line = cpp_read_line(cont, {mat}, {mf}, {mt}, {validate})"
+def read_send(mat, mf, parse_opts):
+    code = cpp.statement(f"cpp_read_send(cont, {mat}, {mf}, {parse_opts})")
+    return code
+
+
+def read_line(mat, mf, mt, parse_opts):
+    code = cpp.statement(
+        f"cpp_line = cpp_read_line(cont, {mat}, {mf}, {mt}, {parse_opts})"
     )
+    return code
 
 
-def get_int_field(idx, validate=None):
-    validate = "false" if validate is None else str(validate)
-    code = f"cpp_read_field<int>(cpp_line.c_str(), {idx}, {validate})"
+def get_int_field(idx, parse_opts):
+    code = f"cpp_read_field<int>(cpp_line.c_str(), {idx}, {parse_opts})"
     return code
 
 
@@ -41,22 +42,19 @@ def get_custom_int_field(start_pos, length):
     return code
 
 
-def get_int_vec(numel, validate=None):
-    validate = "false" if validate is None else str(validate)
-    code = cpp.statement("cpp_read_vec<int>(cont, {numel}, {validate})")
+def get_int_vec(numel, parse_opts):
+    code = cpp.statement("cpp_read_vec<int>(cont, {numel}, {parse_opts})")
     return code
 
 
-def get_float_vec(nume, validate=None):
-    validate = "false" if validate is None else str(validate)
-    code = cpp.statement(f"cpp_read_vec<double>(cont, {numel})")
+def get_float_vec(nume, parse_opts):
+    code = cpp.statement(f"cpp_read_vec<double>(cont, {numel}, {parse_opts})")
     return code
 
 
-def get_numeric_field(fieldpos, dtype, validate=None):
-    validate = "false" if validate is None else str(validate)
+def get_numeric_field(fieldpos, dtype, parse_opts):
     dtypestr = {float: "double", int: "int"}[dtype]
-    code = f"cpp_read_field<{dtypestr}>(cpp_line.c_str(), {fieldpos}, {validate})"
+    code = f"cpp_read_field<{dtypestr}>(cpp_line.c_str(), {fieldpos}, {parse_opts})"
     return code
 
 
@@ -65,17 +63,15 @@ def get_text_field(start, length):
     return code
 
 
-def get_tab1_body(xvar, yvar, nr, np, mat, mf, mt, validate=None):
-    validate = "false" if validate is None else str(validate)
+def get_tab1_body(xvar, yvar, nr, np, mat, mf, mt, parse_opts):
     code = cpp.statement(
-        f"read_tab1_body(cont, {nr}, {np}, {mat}, {mf}, {mt}, {validate})"
+        f"read_tab1_body(cont, {nr}, {np}, {mat}, {mf}, {mt}, {parse_opts})"
     )
     return code
 
 
-def get_tab2_body(nr, mat, mf, mt, validate=None):
-    validate = "false" if validate is None else str(validate)
-    code = cpp.statement(f"read_tab2_body(cont, {nr}, {mat}, {mf}, {mt}, {validate})")
+def get_tab2_body(nr, mat, mf, mt, parse_opts):
+    code = cpp.statement(f"read_tab2_body(cont, {nr}, {mat}, {mf}, {mt}, {parse_opts})")
     return code
 
 
@@ -145,9 +141,10 @@ def should_not_parse_section(mf, mt, exclude, include):
     return cpp.logical_not(should_parse_section(mf, mt, exclude, include))
 
 
-def read_section_verbatim(tarvec, mat, mf, mt, cont, is_firstline, validate):
+def read_section_verbatim(tarvec, mat, mf, mt, cont, is_firstline, parse_opts):
     code = cpp.statement(
-        f"{tarvec} = read_section_verbatim({mat}, {mf}, {mt}, {cont}, {is_firstline}, {validate})"
+        f"{tarvec} = read_section_verbatim({mat}, {mf}, {mt}, {cont}, "
+        + "{is_firstline}, {parse_opts})"
     )
     return code
 
@@ -155,12 +152,13 @@ def read_section_verbatim(tarvec, mat, mf, mt, cont, is_firstline, validate):
 class ListBodyRecorder:
 
     @staticmethod
-    def start_list_body_loop(mat=None, mf=None, mt=None, validate=None):
+    def start_list_body_loop(mat, mf, mt, parse_opts):
         code = cpp.open_block()
-        code += cpp.statement(f"int cpp_npl = {get_int_field(4)}", cpp.INDENT)
+        cpp_npl_val = get_int_field(4, parse_opts)
+        code += cpp.statement(f"int cpp_npl = {cpp_npl_val}", cpp.INDENT)
         code += cpp.statement("int cpp_i = 0", cpp.INDENT)
         code += cpp.statement("int cpp_j = 0", cpp.INDENT)
-        read_line_call = read_line(mat, mf, mt, validate)
+        read_line_call = read_line(mat, mf, mt, parse_opts)
         code += cpp.statement(f"std::string line = {read_line_call}", cpp.INDENT)
         return code
 
@@ -179,14 +177,14 @@ class ListBodyRecorder:
         return cpp.close_block()
 
     @staticmethod
-    def get_element():
-        return "cpp_read_field<double>(line.c_str(), cpp_j)"
+    def get_element(parse_opts):
+        return "cpp_read_field<double>(line.c_str(), cpp_j, {parse_opts})"
 
     @staticmethod
-    def update_counters_and_line(mat=None, mf=None, mt=None, validate=None):
+    def update_counters_and_line(mat, mf, mt, parse_opts):
         code = cpp.statement("cpp_i++")
         code += cpp.statement("cpp_j++")
-        read_line_call = read_line(mat, mf, mt, validate)
+        read_line_call = read_line(mat, mf, mt, parse_opts)
         code += cpp.pureif(
             cpp.logical_and(["cpp_j > 5", "cpp_i < cpp_npl"]),
             cpp.concat(

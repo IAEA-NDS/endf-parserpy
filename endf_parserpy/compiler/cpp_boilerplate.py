@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/07
+# Last modified:   2024/05/08
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -131,14 +131,37 @@ def module_header():
 
 
     template<typename U, typename V, typename W>
-    void throw_mismatch_error(U quantity, V expected_value, W actual_value, std::string line) {
+    void throw_mismatch_error(
+      U quantity, V expected_value, W actual_value,
+      std::string line, std::string template_line
+    ) {
       std::stringstream errmsg;
       errmsg << "Invalid " << quantity << " encountered! "
              << "Expected " << quantity << "=" << expected_value
              << " but found " << quantity <<"=" << actual_value << std::endl;
+      if (template_line.size() > 0) {
+        errmsg << "Template: " << template_line << std::endl;
+      }
       if (line.size() > 0) {
-        errmsg << "This happened while processing the following line:" << std::endl
-               << line;
+        errmsg << "Line: " << line << std::endl;
+      }
+      throw std::runtime_error(errmsg.str());
+    }
+
+
+    template<typename V, typename W>
+    void throw_number_mismatch_error(
+      V expected_value, W actual_value,
+      std::string line, std::string template_line
+    ) {
+      std::stringstream errmsg;
+      errmsg << "Expected a field to contain the value " << expected_value
+             << " but found instead the value " << actual_value << "." << std::endl;
+      if (template_line.size() > 0) {
+        errmsg << "Template: " << template_line << std::endl;
+      }
+      if (line.size() > 0) {
+        errmsg << "Line: " << line << std::endl;
       }
       throw std::runtime_error(errmsg.str());
     }
@@ -215,6 +238,75 @@ def module_header():
       }
     }
 
+    // the next couple of functions are for handling
+    // are auxiliary functions to amek cpp_validate_field
+    // for different types (in particular std::vector and std::string)
+
+    template<typename T>
+    typename std::enable_if<std::is_scalar<T>::value, bool>::type
+    is_zero_check(const T value) {
+      return value == 0;
+    }
+
+
+    template<typename T>
+    typename std::enable_if<! std::is_scalar<T>::value, bool>::type
+    is_zero_check(const T value) {
+      return false;
+    }
+
+
+    template<typename U, typename V>
+    typename std::enable_if<!std::is_scalar<U>::value || !std::is_scalar<V>::value, void>::type
+    cpp_validate_field(
+      U expected_value,
+      V actual_value,
+      bool contains_variable,
+      bool contains_desired_number,
+      bool contains_inconsistent_varspec,
+      std::string exprstr,
+      std::string line_template,
+      std::string &line,
+      ParsingOptions &parse_opts
+    ) {
+      std::stringstream errmsg;
+      errmsg << "Both the expected and actual value are vectors --- "
+             << "not implemented at the moment" << std::endl;
+      throw std::runtime_error(errmsg.str());
+    }
+
+
+    template<typename U, typename V>
+    typename std::enable_if<std::is_scalar<U>::value && std::is_scalar<V>::value, void>::type
+    cpp_validate_field(
+      U expected_value,
+      V actual_value,
+      bool contains_variable,
+      bool contains_desired_number,
+      bool contains_inconsistent_varspec,
+      std::string exprstr,
+      std::string line_template,
+      std::string &line,
+      ParsingOptions &parse_opts
+    ) {
+      if (expected_value == actual_value) return;
+
+      // inconsistency detected
+      if (! contains_variable) {
+        // dealing with a number
+        // ignore zero mismatch only active for scalar data types
+        if (is_zero_check(expected_value) && parse_opts.ignore_zero_mismatch) return;
+        if (contains_desired_number && parse_opts.ignore_number_mismatch) return;
+        throw_number_mismatch_error(expected_value, actual_value, line, line_template);
+      } else {
+        // dealing with an expression with variables
+        if (contains_inconsistent_varspec && parse_opts.ignore_varspec_mismatch) return;
+        throw_mismatch_error(exprstr, expected_value, actual_value, line, line_template);
+      }
+    }
+
+    // we are done with the cpp_validate_field related functionality
+
 
     double cpp_read_custom_int_field(const char *str, int start_pos, int length) {
       char strzero[length+1];
@@ -261,11 +353,11 @@ def module_header():
         int curmf = cpp_read_mf_number(line.c_str());
         int curmt = cpp_read_mt_number(line.c_str());
         if (curmat != mat)
-          throw_mismatch_error("MAT", mat, curmat, line);
+          throw_mismatch_error("MAT", mat, curmat, line, "");
         if (curmf != mf)
-          throw_mismatch_error("MF", mf, curmf, line);
+          throw_mismatch_error("MF", mf, curmf, line, "");
         if (curmt != mt)
-          throw_mismatch_error("MT", mt, curmt, line);
+          throw_mismatch_error("MT", mt, curmt, line, "");
       }
       return line;
     }
@@ -289,9 +381,9 @@ def module_header():
         int curmat = cpp_read_mat_number(line.c_str());
         int curmf = cpp_read_mf_number(line.c_str());
         if (curmat != mat)
-          throw_mismatch_error("MAT", mat, curmat, line);
+          throw_mismatch_error("MAT", mat, curmat, line, "");
         if (curmf != mf)
-          throw_mismatch_error("MF", mf, curmf, line);
+          throw_mismatch_error("MF", mf, curmf, line, "");
       }
       return line;
     }

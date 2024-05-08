@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/07
+# Last modified:   2024/05/08
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -83,6 +83,33 @@ def get_numeric_field(fieldpos, dtype, parse_opts):
 
 def get_text_field(start, length):
     code = f"cpp_line.substr({start}, {length})"
+    return code
+
+
+def _map_bool(boolexpr):
+    return "true" if boolexpr else "false"
+
+
+def validate_field(
+    expected_value,
+    actual_value,
+    contains_variable,
+    contains_desired_number,
+    contains_inconsistent_varspec,
+    exprstr,
+    line_template,
+    parse_opts,
+):
+    cont_var = _map_bool(contains_variable)
+    cont_des_num = _map_bool(contains_desired_number)
+    cont_incons_var = _map_bool(contains_inconsistent_varspec)
+    code = cpp.statement(
+        f"cpp_validate_field({expected_value}, {actual_value}, "
+        + f" {cont_var}, {cont_des_num}, {cont_incons_var}, "
+        + f"{exprstr},"
+        + ("\n" + " " * cpp.INDENT if line_template else " ")
+        + f"{line_template}, cpp_line, {parse_opts})"
+    )
     return code
 
 

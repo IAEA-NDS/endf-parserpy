@@ -28,6 +28,15 @@ from .node_checks import (
 )
 
 
+# All the following node transformation functions
+# are based on the assumption that the children
+# of each untransformed node have already been
+# transformed by the same transformation function.
+# Effecting all transformations in this so-called
+# postorder traversal order is done by `transform_nodes`
+# in the `tree_walkers` module.
+
+
 def replace_node(node, old, new):
     if node == old:
         return new

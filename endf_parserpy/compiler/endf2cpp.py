@@ -3,12 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/07
+# Last modified:   2024/05/08
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+import itertools
 from lark.tree import Tree
 from lark.lexer import Token
 from lark import Lark
@@ -28,12 +29,19 @@ from .expr_utils.node_trafos import (
     replace_node,
     node_contains_modulo,
 )
+from .expr_utils.tree_trafos import (
+    contains_variables,
+    contains_desired_number,
+    contains_potentially_inconsistent_variable,
+    reconstruct_endf_line_template,
+)
 from .expr_utils.exceptions import VariableMissingError
 from . import cpp_primitives as cpp
 from . import cpp_boilerplate
 from .cpp_types import cpp_varops_query
 from .cpp_types import cpp_varops_assign
 from .cpp_types import cpp_varaux
+from .cpp_types.cpp_vartype_handling import has_vartype
 from .cpp_types.cpp_type_scalar.auxiliary import init_readflag
 from .lookahead_management import (
     init_lookahead_counter,
@@ -49,11 +57,13 @@ from .variable_management import (
     expand_abbreviation,
     register_var,
     unregister_var,
+    get_var_types,
     find_parent_dict,
     should_track_read,
 )
 from . import endf2cpp_aux as aux
 from .cpp_types.cpp_varops_query import (
+    get_cpp_objstr,
     expr2str_shiftidx,
     logical_expr2cppstr,
 )
@@ -103,6 +113,68 @@ def generate_endf_dict_assignments(vardict):
             continue
         if not vartok.cpp_namespace:
             code += cpp_varops_assign.store_var_in_endf_dict2(vartok, vardict)
+    return code
+
+
+def generate_expr_validation(actual_value, node, vardict):
+    # no validation in lookahead
+    if in_lookahead(vardict):
+        return ""
+
+    node = transform_nodes(node, expand_abbreviation, vardict)
+    cont_vars = contains_variables(node)
+    cont_des_num = contains_desired_number(node)
+    cont_incons_var = contains_potentially_inconsistent_variable(node)
+
+    # reconstruct the template for the current line
+    # which can be output by the C++ parsing function
+    # in the case of a validation error
+    line_template = '""'
+    parnode = node.parent if hasattr(node, "parent") else None
+    while parnode is not None:
+        parnode_name = get_name(parnode)
+        if parnode_name.endswith("_line"):
+            t = reconstruct_endf_line_template(parnode).replace("\n", r"\n")
+            line_template = f'"{t}"'
+            break
+        parnode = parnode.parent if hasattr(node, "parent") else None
+
+    # using sorted to have a stable ordering across distinct program runs
+    variables = sorted(get_variables_in_expr(node))
+    vartypes_dict = {v: get_var_types(v, vardict) for v in variables}
+    vartype_assignments = [
+        {k: v for k, v in zip(vartypes_dict.keys(), combination)}
+        for combination in itertools.product(*vartypes_dict.values())
+    ]
+    conditions = []
+    validation_codes = []
+    for vta in vartype_assignments:
+        vartype_checks = (
+            has_vartype(vartok, vta[vartok][0], vta[vartok][1]) for vartok in variables
+        )
+        conditions.append(cpp.logical_and(vartype_checks))
+        expected_value = transform_nodes(node, expr2str_shiftidx, vardict, vartypes=vta)
+        exprstr = transform_nodes(node, node2str)
+        quoted_exprstr = f'"{exprstr}"'
+        validation_code = aux.validate_field(
+            expected_value,
+            actual_value,
+            contains_variable=cont_vars,
+            contains_desired_number=cont_des_num,
+            contains_inconsistent_varspec=cont_incons_var,
+            exprstr=quoted_exprstr,
+            line_template=line_template,
+            parse_opts="parse_opts",
+        )
+        validation_codes.append(validation_code)
+
+    code = ""
+    if len(validation_codes) > 1:
+        code += cpp.conditional_branches(conditions, validation_codes)
+    elif len(validation_codes) == 1:
+        code += validation_codes[0]
+    else:
+        NotImplementedError("should not happen")
     return code
 
 
@@ -412,17 +484,15 @@ def _generate_code_for_varassign(
     return code
 
 
-def generate_code_for_varassign(
-    node, vardict, valcode, dtype, noassign_code="", throw_cpp=False
-):
+def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
     code = ""
     node = transform_nodes_inplace(node, expand_abbreviation, vardict)
     exprstr = transform_nodes(node, node2str)
     variables = get_variables_in_expr(node)
 
     if len(variables) == 0:
-        # NOTE: consistency checking could be done here
-        return noassign_code
+        code += generate_expr_validation(valcode, node, vardict)
+        return code
 
     if aux.count_not_encountered_vars(node, vardict) > 1:
         raise SeveralUnknownVariablesError(
@@ -449,7 +519,10 @@ def generate_code_for_varassign(
             assigncode = _generate_code_for_varassign(
                 v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
             )
-            code += cpp.pureif(condition=did_not_read_cond, code=assigncode)
+            validation_code = generate_expr_validation(valcode, node, vardict)
+            code += cpp.ifelse(
+                condition=did_not_read_cond, code=assigncode, other_code=validation_code
+            )
         else:
             # no possibility that variable has been read in beore
             # hence no checks necessary
@@ -710,9 +783,7 @@ def generate_code_for_list_body(node, vardict):
         child_name = get_name(child)
         if child_name == "expr":
             current_value = lbr.get_element("parse_opts")
-            code += generate_code_for_varassign(
-                child, vardict, current_value, float, noassign_code=""
-            )
+            code += generate_code_for_varassign(child, vardict, current_value, float)
             code += lbr.update_counters_and_line("mat", "mf", "mt", "parse_opts")
         elif child_name == "list_loop":
             code += generate_code_for_list_loop(child, vardict)

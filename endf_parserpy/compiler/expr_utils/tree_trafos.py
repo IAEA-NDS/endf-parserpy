@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/23
+# Last modified:   2024/05/08
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -21,6 +21,9 @@ from .node_trafos import (
     expand_product,
     factorout_common,
     evaluate_int_ops,
+    node_contains_variable,
+    node_contains_desired_number,
+    node_contains_potentially_inconsistent_variable,
 )
 
 
@@ -41,3 +44,15 @@ def simplify_for_readability(tree):
     new_tree = transform_nodes(new_tree, flatten_addition)
     new_tree = transform_nodes(new_tree, evaluate_int_ops)
     return new_tree
+
+
+def contains_desired_number(tree):
+    return transform_nodes(tree, node_contains_desired_number)
+
+
+def contains_potentially_inconsistent_variable(tree):
+    return transform_nodes(tree, node_contains_potentially_inconsistent_variable)
+
+
+def contains_variables(tree):
+    return transform_nodes(tree, node_contains_variable)

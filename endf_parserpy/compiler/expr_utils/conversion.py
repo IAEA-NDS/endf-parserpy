@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/07
+# Last modified:   2024/05/08
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -41,7 +41,7 @@ def _simplify_variable(node):
         child = node.children[0]
         assert isinstance(child, VariableToken)
         return VariableToken(
-            child, cpp_namespace=child.cpp_namespace, inconsistent=child.inconsistent
+            child, cpp_namespace=child.cpp_namespace, inconsistent=True
         )
     return node
 

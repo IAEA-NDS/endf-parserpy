@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/29
+# Last modified:   2024/05/08
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -23,6 +23,8 @@ from .node_checks import (
     is_number,
     is_variable,
     has_factor,
+    is_desired_number,
+    is_inconsistent_variable,
 )
 
 
@@ -328,3 +330,27 @@ def node_contains_modulo(tree):
     if not isinstance(tree, Tree):
         return False
     return any(tree.children)
+
+
+def node_contains_variable(node):
+    if is_variable(node):
+        return True
+    if not isinstance(node, Tree):
+        return False
+    return any(node.children)
+
+
+def node_contains_desired_number(node):
+    if is_desired_number(node):
+        return True
+    if not isinstance(node, Tree):
+        return False
+    return any(node.children)
+
+
+def node_contains_potentially_inconsistent_variable(node):
+    if is_inconsistent_variable(node):
+        return True
+    if not isinstance(node, Tree):
+        return False
+    return any(node.children)

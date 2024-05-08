@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/05/07
+# Last modified:   2024/05/08
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -54,31 +54,37 @@ def did_read_var(vartok, vardict, indices=None):
     raise TypeError(f"{vartok} has unknown type")
 
 
-def get_cpp_extvarname(vartok, vardict):
+def get_cpp_extvarname(vartok, vardict, vartypes=None):
+    vartypes = {} if vartypes is None else vartypes
     if find_parent_dict(vartok, vardict) is None:
         raise VariableMissingError(f"variable {vartok} missing/not encountered")
-    varname = get_cpp_varname(vartok, vardict)
+    vartype = vartypes.get(vartok, (None, None))
+    dtype = vartype[0]
+    specialtype = vartype[1]
+    varname = get_cpp_varname(vartok, vardict, specialtype=specialtype, dtype=dtype)
     idxstrs = []
     for i, idxtok in enumerate(vartok.indices):
-        idxstrs.append(get_idxstr(vartok, i, vardict))
+        idxstrs.append(get_idxstr(vartok, i, vardict, vartypes))
     for query in get_query_modules():
         if query.is_responsible(vartok, vardict):
             return query.assemble_extvarname(varname, idxstrs)
     raise TypeError(f"{vartok} has unknown datatype")
 
 
-def get_cpp_objstr(tok, vardict):
+def get_cpp_objstr(tok, vardict, vartypes=None):
+    vartypes = {} if vartypes is None else vartypes
     if isinstance(tok, VariableToken):
-        return get_cpp_extvarname(tok, vardict)
+        return get_cpp_extvarname(tok, vardict, vartypes)
     elif is_number(tok):
         varname = str(tok)
         return varname
     raise NotImplementedError("evil programmer, what did you do?")
 
 
-def get_idxstr(vartok, i, vardict):
+def get_idxstr(vartok, i, vardict, vartypes=None):
+    vartypes = {} if vartypes is None else vartypes
     idxtok = vartok.indices[i]
-    cpp_idxstr = get_cpp_objstr(idxtok, vardict)
+    cpp_idxstr = get_cpp_objstr(idxtok, vardict, vartypes)
     return cpp_idxstr
 
 
@@ -130,7 +136,8 @@ def logical_expr2cppstr(node, vardict):
     raise NotImplementedError("should not happen")
 
 
-def expr2str_shiftidx(node, vardict, rawvars=False):
+def expr2str_shiftidx(node, vardict, rawvars=False, vartypes=None):
+    vartypes = {} if vartypes is None else vartypes
     if not isinstance(node, VariableToken):
         return node2str(node)
     if rawvars in (True, False):
@@ -138,7 +145,7 @@ def expr2str_shiftidx(node, vardict, rawvars=False):
     else:
         use_cpp_name = node not in rawvars
     if use_cpp_name:
-        varname = get_cpp_extvarname(node, vardict)
+        varname = get_cpp_extvarname(node, vardict, vartypes)
     else:
         varname = str(node)
     return varname

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/08
+# Last modified:   2024/05/10
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -14,6 +14,16 @@ from . import cpp_primitives as cpp
 from .cpp_types.cpp_varops_query import did_read_var
 from .cpp_types.cpp_varaux import check_variable, get_cpp_varname
 from .lookahead_management import in_lookahead
+
+
+def define_current_template(template):
+    tmpl = template.replace("\n", r"\n")
+    code = cpp.statement(f'cpp_template = "{tmpl}"')
+    return code
+
+
+def get_current_template():
+    return "cpp_template"
 
 
 def read_raw_line():

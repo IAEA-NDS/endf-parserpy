@@ -266,7 +266,7 @@ def module_header():
       bool contains_desired_number,
       bool contains_inconsistent_varspec,
       std::string exprstr,
-      std::string line_template,
+      std::string &line_template,
       std::string &line,
       ParsingOptions &parse_opts
     ) {
@@ -286,7 +286,7 @@ def module_header():
       bool contains_desired_number,
       bool contains_inconsistent_varspec,
       std::string exprstr,
-      std::string line_template,
+      std::string &line_template,
       std::string &line,
       ParsingOptions &parse_opts
     ) {

@@ -172,16 +172,17 @@ def module_header():
       int j = 0;
       bool in_number = false;
       bool in_exponent = false;
-      int first_nonspace_pos_after_num;
-      for (int i=10; i >= 0; i++) {
-        if (str[i] != ' ')
-          first_nonspace_pos_after_num = i+1;
+      int last_nonspace_pos=-1;
+      for (int i=10; i >= 0; i--) {
+        if (str[i] != ' ') {
+          last_nonspace_pos = i;
           break;
+        }
       }
-      if (first_nonspace_pos_after_num == 0) {
+      if (last_nonspace_pos == -1) {
         return 0.0;
       }
-      for (int i=0; i < first_nonspace_pos_after_num; i++) {
+      for (int i=0; i <= last_nonspace_pos; i++) {
         char c = str[i];
         if (c == ' ') {
           if (parse_opts.accept_spaces || ! in_number) {

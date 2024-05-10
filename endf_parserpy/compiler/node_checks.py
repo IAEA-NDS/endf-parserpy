@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/04
+# Last modified:   2024/05/10
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -71,6 +71,10 @@ def is_for_loop(node):
 
 def is_loop(node):
     return isinstance(node, Tree) and node.data in ("for_loop", "list_loop")
+
+
+def is_loop_head(node):
+    return isinstance(node, Tree) and node.data in ("for_head", "list_for_head")
 
 
 def is_if_clause(node):

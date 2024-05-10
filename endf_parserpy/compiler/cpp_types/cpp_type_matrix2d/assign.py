@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/07
+# Last modified:   2024/05/10
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -23,7 +23,7 @@ from endf_parserpy.compiler.variable_management import (
     register_var,
     get_var_types,
 )
-from endf_parserpy.compiler.node_checks import is_loop
+from endf_parserpy.compiler.node_checks import is_loop, is_loop_head
 from endf_parserpy.compiler.node_aux import (
     get_loopvar,
     get_loop_body,
@@ -131,6 +131,18 @@ class Assign:
         inner_stop = get_loop_stop(inner_loop)
         outer_start = get_loop_start(outer_loop)
         outer_stop = get_loop_stop(outer_loop)
+
+        # ensure that loop boundaries do not appear
+        # as variables inside the loops
+        limit_vars = set()
+        limit_vars.update(get_variables_in_expr(outer_start))
+        limit_vars.update(get_variables_in_expr(outer_stop))
+        limit_vars.update(get_variables_in_expr(inner_start))
+        limit_vars.update(get_variables_in_expr(inner_stop))
+        if any(
+            contains_variable(outer_loop, v, filters=[is_loop_head]) for v in limit_vars
+        ):
+            return return_fail()
 
         outer_lims = (outer_start, outer_stop)
         inner_lims = (inner_start, inner_stop)

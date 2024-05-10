@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/08
+# Last modified:   2024/05/10
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -125,19 +125,7 @@ def generate_expr_validation(actual_value, node, vardict):
     cont_vars = contains_variables(node)
     cont_des_num = contains_desired_number(node)
     cont_incons_var = contains_potentially_inconsistent_variable(node)
-
-    # reconstruct the template for the current line
-    # which can be output by the C++ parsing function
-    # in the case of a validation error
-    line_template = '""'
-    parnode = node.parent if hasattr(node, "parent") else None
-    while parnode is not None:
-        parnode_name = get_name(parnode)
-        if parnode_name.endswith("_line"):
-            t = reconstruct_endf_line_template(parnode).replace("\n", r"\n")
-            line_template = f'"{t}"'
-            break
-        parnode = parnode.parent if hasattr(node, "parent") else None
+    current_template = aux.get_current_template()
 
     # using sorted to have a stable ordering across distinct program runs
     variables = sorted(get_variables_in_expr(node))
@@ -163,7 +151,7 @@ def generate_expr_validation(actual_value, node, vardict):
             contains_desired_number=cont_des_num,
             contains_inconsistent_varspec=cont_incons_var,
             exprstr=quoted_exprstr,
-            line_template=line_template,
+            line_template=current_template,
             parse_opts="parse_opts",
         )
         validation_codes.append(validation_code)
@@ -566,7 +554,9 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
 
 
 def generate_code_for_text(node, vardict):
-    code = aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    template = reconstruct_endf_line_template(node)
+    code = aux.define_current_template(template)
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     text_fields = get_child(node, "text_fields")
     tphs = [v for v in text_fields.children if is_textplaceholder(v)]
     ofs = 0
@@ -601,7 +591,9 @@ def generate_code_for_intg(node, vardict):
     jj_expr = intg_fields_kids[1]
     kij_expr = intg_fields_kids[2]
 
-    code = aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    template = reconstruct_endf_line_template(node)
+    code = aux.define_current_template(template)
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     code += cpp.statement(f"int cpp_ndigit = {ndigit_exprstr}")
     code += cpp.pureif(
         cpp.logical_or(["cpp_ndigit < 2", "cpp_ndigit > 6"]),
@@ -635,7 +627,9 @@ def generate_code_for_send(node, vardict):
 
 
 def generate_code_for_cont(node, vardict):
-    code = aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    template = reconstruct_endf_line_template(node)
+    code = aux.define_current_template(template)
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     record_fields = get_child(node, "record_fields")
     code += cpp.comment("read CONT record")
     code += generate_code_from_record_fields(record_fields, vardict)
@@ -643,7 +637,9 @@ def generate_code_for_cont(node, vardict):
 
 
 def generate_code_for_dir(node, vardict):
-    code = aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    template = reconstruct_endf_line_template(node)
+    code = aux.define_current_template(template)
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     record_fields = get_child(node, "dir_fields")
     code += cpp.comment("read TEXT record")
     code += generate_code_from_record_fields(record_fields, vardict, skip=(0, 1), ofs=2)
@@ -651,7 +647,10 @@ def generate_code_for_dir(node, vardict):
 
 
 def generate_code_for_tab1(node, vardict):
-    code = cpp.comment("read TAB1 record")
+    code = ""
+    code += cpp.comment("read TAB1 record")
+    template = reconstruct_endf_line_template(node)
+    code += aux.define_current_template(template)
     code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     tab1_fields = get_child(node, "tab1_fields")
     table_name = get_child(node, "table_name", nofail=True)
@@ -701,7 +700,10 @@ def generate_code_for_tab1(node, vardict):
 
 
 def generate_code_for_tab2(node, vardict):
-    code = cpp.comment("read TAB2 record")
+    code = ""
+    code += cpp.comment("read TAB2 record")
+    template = reconstruct_endf_line_template(node)
+    code += aux.define_current_template(template)
     code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     tab2_fields = get_child(node, "tab2_fields")
     table_name = get_child(node, "table_name", nofail=True)
@@ -743,7 +745,10 @@ def generate_code_for_tab2(node, vardict):
 
 
 def generate_code_for_list(node, vardict):
-    code = aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    template = reconstruct_endf_line_template(node)
+    code = ""
+    code += aux.define_current_template(template)
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     record_fields = get_child(node, "record_fields")
     code += cpp.comment("read LIST record")
     code += generate_code_from_record_fields(record_fields, vardict)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/08
+# Last modified:   2024/05/10
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -555,6 +555,7 @@ def parsefun_header(fun_name):
           py::dict cpp_workdict;
           int cpp_idxnum;
           std::string cpp_line;
+          std::string cpp_template;
           double cpp_float_val;
         """,
         -8,

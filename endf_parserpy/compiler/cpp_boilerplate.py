@@ -67,47 +67,56 @@ def module_header():
           if (!py::isinstance<py::dict>(src))
             return false;
           auto d = reinterpret_borrow<py::dict>(src);
-
-          if (d.contains("ignore_number_mismatch")) {
-            value.ignore_number_mismatch = d["ignore_number_mismatch"].cast<bool>();
-          } else {
-            value.ignore_number_mismatch = false;
+          py::object keys = d.attr("keys")();
+          for (auto key : keys) {
+            std::string key_str = py::str(key);
+            if (key_str == "ignore_number_mismatch")
+              value.ignore_number_mismatch = d["ignore_number_mismatch"].cast<bool>();
+            else if (key_str == "ignore_zero_mismatch")
+              value.ignore_zero_mismatch = true;
+            else if (key_str == "ignore_varspec_mismatch")
+              value.ignore_varspec_mismatch = d["ignore_varspec_mismatch"].cast<bool>();
+            else if (key_str == "accept_spaces")
+              value.accept_spaces = d["accept_spaces"].cast<bool>();
+            else if (key_str == "ignore_send_records")
+              value.ignore_send_records = d["ignore_send_records"].cast<bool>();
+            else if (key_str == "ignore_missing_tpid")
+              value.ignore_missing_tpid = d["ignore_missing_tpid"].cast<bool>();
+            else if (key_str == "validate_control_records")
+              value.validate_control_records = d["validate_control_records"].cast<bool>();
+            else
+              throw std::runtime_error("unknown option `" + key_str + "` provided");
           }
 
-          if (d.contains("ignore_zero_mismatch")) {
-            value.ignore_zero_mismatch = d["ignore_zero_mismatch"].cast<bool>();
-          } else {
-            value.ignore_zero_mismatch = true;
+          // use default values for missing options
+          ParsingOptions default_opts = default_parsing_options();
+
+          if (! d.contains("ignore_number_mismatch")) {
+            value.ignore_number_mismatch = default_opts.ignore_number_mismatch;
           }
 
-          if (d.contains("ignore_varspec_mismatch")) {
-            value.ignore_varspec_mismatch = d["ignore_varspec_mismatch"].cast<bool>();
-          } else {
-            value.ignore_varspec_mismatch = false;
+          if (! d.contains("ignore_zero_mismatch")) {
+            value.ignore_zero_mismatch = default_opts.ignore_zero_mismatch;
           }
 
-          if (d.contains("accept_spaces")) {
-            value.accept_spaces = d["accept_spaces"].cast<bool>();
-          } else {
-            value.accept_spaces = true;
+          if (! d.contains("ignore_varspec_mismatch")) {
+            value.ignore_varspec_mismatch = default_opts.ignore_varspec_mismatch;
           }
 
-          if (d.contains("ignore_send_records")) {
-            value.ignore_send_records = d["ignore_send_records"].cast<bool>();
-          } else {
-            value.ignore_send_records = false;
+          if (! d.contains("accept_spaces")) {
+            value.accept_spaces = default_opts.accept_spaces;
           }
 
-          if (d.contains("ignore_missing_tpid")) {
-            value.ignore_missing_tpid = d["ignore_missing_tpid"].cast<bool>();
-          } else {
-            value.ignore_missing_tpid = false;
+          if (! d.contains("ignore_send_records")) {
+            value.ignore_send_records = default_opts.ignore_send_records;
           }
 
-          if (d.contains("validate_control_records")) {
-            value.validate_control_records = d["validate_control_records"].cast<bool>();
-          } else {
-            value.validate_control_records = false;
+          if (! d.contains("ignore_missing_tpid")) {
+            value.ignore_missing_tpid = default_opts.ignore_missing_tpid;
+          }
+
+          if (! d.contains("validate_control_records")) {
+            value.validate_control_records = default_opts.validate_control_records;
           }
 
           return true;

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/07
+# Last modified:   2024/05/10
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -36,13 +36,16 @@ from .exceptions import (
 )
 
 
-def contains_variable(node, vartok, skip_nodes=None):
+def contains_variable(node, vartok, skip_nodes=None, filters=None):
     if skip_nodes is not None:
         if any(n is node for n in skip_nodes):
             return False
+    if filters is not None:
+        if any(f(node) for f in filters):
+            return False
     if isinstance(node, Token):
         return node == vartok
-    return any(contains_variable(c, vartok, skip_nodes) for c in node.children)
+    return any(contains_variable(c, vartok, skip_nodes, filters) for c in node.children)
 
 
 def get_variables_in_expr(node):

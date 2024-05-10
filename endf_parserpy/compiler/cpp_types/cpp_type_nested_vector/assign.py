@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/07
+# Last modified:   2024/05/10
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -75,10 +75,10 @@ class Assign:
             )
             if node is not None:
                 destnode = moveup_ptrassign(vartok, i, node, limit_node)
+                limit_node = destnode
                 if destnode is not node:
                     destnode.check_my_identity()
                     destnode.append_precode(new_code)
-                    limit_node = destnode
                 else:
                     code += new_code
             ptrvar_old = ptrvar_new

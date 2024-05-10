@@ -384,8 +384,10 @@ def module_header():
         cpp_read_field<int>(line.c_str(), 5, parse_opts) != 0 ||
         mtnum != 0) {
 
-        std::cout << line << std::endl;  // debug
-        throw std::runtime_error("expected SEND record");
+        std::stringstream errmsg;
+        errmsg << "Expected SEND record does not contain one!" << std::endl
+               << "Line: " << line << std::endl;
+        throw std::runtime_error(errmsg.str());
       }
       if (parse_opts.validate_control_records) {
         int curmat = cpp_read_mat_number(line.c_str());

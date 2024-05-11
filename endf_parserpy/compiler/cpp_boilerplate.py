@@ -38,6 +38,7 @@ def module_header():
       bool ignore_zero_mismatch;
       bool ignore_varspec_mismatch;
       bool accept_spaces;
+      bool ignore_blank_lines;
       bool ignore_send_records;
       bool ignore_missing_tpid;
       bool validate_control_records;
@@ -50,6 +51,7 @@ def module_header():
         true,  // ignore_zero_mismatch
         false,  // ignore_varspec_mismatch
         true,  // accept_spaces
+        false,  // ignore_blank_lines
         false,  // ignore_send_records
         false,  // ignore_missing_tpid
         false  // validate_control_records
@@ -78,6 +80,8 @@ def module_header():
               value.ignore_varspec_mismatch = d["ignore_varspec_mismatch"].cast<bool>();
             else if (key_str == "accept_spaces")
               value.accept_spaces = d["accept_spaces"].cast<bool>();
+            else if (key_str == "ignore_blank_lines")
+              value.ignore_blank_lines = d["ignore_blank_lines"].cast<bool>();
             else if (key_str == "ignore_send_records")
               value.ignore_send_records = d["ignore_send_records"].cast<bool>();
             else if (key_str == "ignore_missing_tpid")
@@ -107,6 +111,10 @@ def module_header():
             value.accept_spaces = default_opts.accept_spaces;
           }
 
+          if (! d.contains("ignore_blank_lines")) {
+            value.ignore_blank_lines = default_opts.ignore_blank_lines;
+          }
+
           if (! d.contains("ignore_send_records")) {
             value.ignore_send_records = default_opts.ignore_send_records;
           }
@@ -129,6 +137,7 @@ def module_header():
           d["ignore_zero_mismatch"] = src.ignore_zero_mismatch;
           d["ignore_varspec_mismatch"] = src.ignore_varspec_mismatch;
           d["accept_spaces"] = src.accept_spaces;
+          d["ignore_blank_lines"] = src.ignore_blank_lines;
           d["ignore_send_records"] = src.ignore_send_records;
           d["ignore_missing_tpid"] = src.ignore_missing_tpid;
           d["validate_control_records"] = src.validate_control_records;
@@ -627,6 +636,7 @@ def _register_reading_options():
       .def_readwrite("ignore_zero_mismatch", &ParsingOptions::ignore_zero_mismatch)
       .def_readwrite("ignore_varspec_mismatch", &ParsingOptions::ignore_varspec_mismatch)
       .def_readwrite("accept_spaces", &ParsingOptions::accept_spaces)
+      .def_readwrite("ignore_blank_lines", &ParsingOptions::ignore_blank_lines)
       .def_readwrite("ignore_send_records", &ParsingOptions::ignore_send_records)
       .def_readwrite("ignore_missing_tpid", &ParsingOptions::ignore_missing_tpid)
       .def_readwrite("validate_control_records", &ParsingOptions::validate_control_records);

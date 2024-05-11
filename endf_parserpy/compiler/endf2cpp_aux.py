@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/10
+# Last modified:   2024/05/11
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -34,6 +34,23 @@ def read_raw_line():
 def read_send(mat, mf, parse_opts):
     code = cpp.statement(f"cpp_read_send(cont, {mat}, {mf}, {parse_opts})")
     return code
+
+
+def is_fend(parse_opts):
+    return f"cpp_is_fend_record(cpp_line, {parse_opts})"
+    return code
+
+
+def is_mend(parse_opts):
+    return f"cpp_is_mend_record(cpp_line, {parse_opts})"
+
+
+def is_tend(parse_opts):
+    return f"cpp_is_tend_record(cpp_line, {parse_opts})"
+
+
+def is_blank_line():
+    return "cpp_is_blank_line(cpp_line)"
 
 
 def read_line(mat, mf, mt, parse_opts):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/10
+# Last modified:   2024/05/11
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -400,6 +400,44 @@ def module_header():
       return line;
     }
 
+
+    bool cpp_is_fend_record(std::string line, ParsingOptions &parse_opts) {
+      int mf = cpp_read_mf_number(line.c_str());
+      int mt = cpp_read_mt_number(line.c_str());
+      double c1 = cpp_read_field<double>(line.c_str(), 0, parse_opts);
+      double c2 = cpp_read_field<double>(line.c_str(), 1, parse_opts);
+      int n1 = cpp_read_field<int>(line.c_str(), 2, parse_opts);
+      int n2 = cpp_read_field<int>(line.c_str(), 3, parse_opts);
+      int l1 = cpp_read_field<int>(line.c_str(), 4, parse_opts);
+      int l2 = cpp_read_field<int>(line.c_str(), 5, parse_opts);
+      bool cond = (c1 == 0.0 && c2 == 0.0 && n1 == 0 && n2 == 0);
+      cond &= (l1 == 0 && l2 == 0 && mf == 0 && mt == 0);
+      return cond;
+    }
+
+
+    bool cpp_is_mend_record(std::string line, ParsingOptions &parse_opts) {
+      int mat = cpp_read_mat_number(line.c_str());
+      bool cond = cpp_is_fend_record(line, parse_opts);
+      cond &= (mat == 0);
+      return cond;
+    }
+
+
+    bool cpp_is_tend_record(std::string line, ParsingOptions &parse_opts) {
+      int mat = cpp_read_mat_number(line.c_str());
+      bool cond = cpp_is_fend_record(line, parse_opts);
+      cond &= (mat == -1);
+      return cond;
+    }
+
+
+    bool cpp_is_blank_line(std::string line) {
+      for (int i=0; i < line.size(); i++) {
+        if (line[i] != ' ') return false;
+      }
+      return true;
+    }
 
     template<typename T>
     std::vector<T> cpp_read_vec(

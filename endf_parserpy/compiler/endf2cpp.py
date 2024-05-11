@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/10
+# Last modified:   2024/05/11
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -893,8 +893,15 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("int mat")
     body += cpp.statement("int mf")
     body += cpp.statement("int mt")
+    body += cpp.statement("bool section_encountered = false")
+    body += cpp.statement("int last_mat")
+    body += cpp.statement("int last_mf")
+    body += cpp.statement("int last_mt")
     body += cpp.statement("std::string cpp_line")
     body += cpp.statement("std::vector<std::string> verbatim_section")
+    body += cpp.statement("bool after_fend = false")
+    body += cpp.statement("bool after_mend = false")
+    body += cpp.statement("bool after_tend = false")
     body += cpp.statement("curpos = cont.tellg()")
     body += cpp.line("while (std::getline(cont, cpp_line)) {")
     matval = aux.get_custom_int_field(66, 4)
@@ -907,13 +914,34 @@ def generate_master_parsefun(name, recipefuns):
     conditions = []
     statements = []
     for mf, mfdic in recipefuns.items():
+        ctrl_checks = cpp.pureif(
+            cpp.logical_or(["after_mend == true", "after_tend == true"]),
+            cpp.throw_runtime_error("No MF/MT section allowed after MEND/TEND record"),
+        )
+        ctrl_checks += cpp.pureif(
+            cpp.logical_and(["after_fend == true", "section_encountered == false"]),
+            cpp.throw_runtime_error(
+                "FEND record without preceding MF/MT section encountered"
+            ),
+        )
+        ctrl_checks += cpp.pureif(
+            cpp.logical_and(["after_fend == true", "last_mf >= mf"]),
+            cpp.throw_runtime_error("MF sections must be in ascending order"),
+        )
+        sec_prep_code = cpp.pureif(
+            "parse_opts.ignore_send_records == false", ctrl_checks
+        )
+        sec_prep_code += cpp.statement("after_fend = false")
+        sec_prep_code += cpp.statement("section_encountered = true")
+        sec_prep_code += cpp.statement("cont.seekg(curpos)")
+
         if isinstance(mfdic, str):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic
             conditions.append(f"mf == {mf}")
-            curstat = cpp.statement("cont.seekg(curpos)")
-            curstat += _generate_parse_or_read_verbatim(funname, "parse_opts")
-            statements.append(curstat)
+            sec_read_code = _generate_parse_or_read_verbatim(funname, "parse_opts")
+            section_code = sec_prep_code + sec_read_code
+            statements.append(section_code)
             continue
         for mt in reversed(sorted(mfdic.keys())):
             funname = mfdic[mt]
@@ -925,9 +953,9 @@ def generate_master_parsefun(name, recipefuns):
             if mt == 0 and mt == 0:
                 curcond = cpp.logical_and([curcond, "is_firstline"])
 
-            curstat = cpp.statement("cont.seekg(curpos)")
-            curstat += _generate_parse_or_read_verbatim(funname, "parse_opts")
-            statements.append(curstat)
+            sec_read_code = _generate_parse_or_read_verbatim(funname, "parse_opts")
+            section_code = sec_prep_code + sec_read_code
+            statements.append(section_code)
             conditions.append(curcond)
 
     # if no parser function is registered for an MF/MT section
@@ -940,7 +968,48 @@ def generate_master_parsefun(name, recipefuns):
     statements.append(curstat)
     conditions.append(curcond)
 
-    body += cpp.indent_code(cpp.conditional_branches(conditions, statements))
+    # blank line treatment
+    curcond = aux.is_blank_line()
+    curstat = cpp.pureif(
+        cpp.logical_not("parse_opts.ignore_blank_lines"),
+        cpp.throw_runtime_error("Blank line detected"),
+    )
+    conditions.append(curcond)
+    statements.append(curstat)
+
+    # tend record treatment
+    curcond = cpp.logical_and(["after_mend == true", aux.is_tend("parse_opts")])
+    curstat = cpp.statement("after_mend = false")
+    curstat += cpp.statement("after_tend = true")
+    conditions.append(curcond)
+    statements.append(curstat)
+    # mend record treatment
+    curcond = cpp.logical_and(["after_fend == true", aux.is_mend("parse_opts")])
+    curstat = cpp.statement("after_fend = false")
+    curstat = cpp.statement("after_mend = true")
+    conditions.append(curcond)
+    statements.append(curstat)
+    # fend record treatment
+    curcond = aux.is_fend("mat", "parse_opts")
+    curstat = cpp.statement("after_fend = true")
+    conditions.append(curcond)
+    statements.append(curstat)
+
+    # default branch
+    errmsg = cpp.line("")
+    errmsg += cpp.line(
+        r'std::string("Invalid line encountered! This line is outside any MF/MT section.\n")',
+        cpp.INDENT,
+    )
+    errmsg += cpp.line(r'+ "Line: " + cpp_line', cpp.INDENT)
+    default_code = cpp.throw_runtime_error(errmsg, quote=False)
+
+    body += cpp.indent_code(
+        cpp.conditional_branches(conditions, statements, default=default_code)
+    )
+    body += cpp.statement("last_mat = mat")
+    body += cpp.statement("last_mf = mf")
+    body += cpp.statement("last_mt = mt")
     body += cpp.statement("curpos = cont.tellg()", cpp.INDENT)
     body += cpp.statement("is_firstline = false", cpp.INDENT)
     body += cpp.close_block()

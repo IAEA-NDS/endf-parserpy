@@ -410,7 +410,11 @@ def module_header():
     }
 
 
-    bool cpp_is_fend_record(std::string line, ParsingOptions &parse_opts) {
+    bool cpp_is_fend_record(std::string line, int mat, ParsingOptions &parse_opts) {
+      int curmat = cpp_read_mat_number(line.c_str());
+      if (mat != curmat && parse_opts.validate_control_records) {
+          throw_mismatch_error("MAT", mat, curmat, line, "");
+      }
       int mf = cpp_read_mf_number(line.c_str());
       int mt = cpp_read_mt_number(line.c_str());
       double c1 = cpp_read_field<double>(line.c_str(), 0, parse_opts);
@@ -427,7 +431,7 @@ def module_header():
 
     bool cpp_is_mend_record(std::string line, ParsingOptions &parse_opts) {
       int mat = cpp_read_mat_number(line.c_str());
-      bool cond = cpp_is_fend_record(line, parse_opts);
+      bool cond = cpp_is_fend_record(line, 0, parse_opts);
       cond &= (mat == 0);
       return cond;
     }
@@ -435,7 +439,7 @@ def module_header():
 
     bool cpp_is_tend_record(std::string line, ParsingOptions &parse_opts) {
       int mat = cpp_read_mat_number(line.c_str());
-      bool cond = cpp_is_fend_record(line, parse_opts);
+      bool cond = cpp_is_fend_record(line, -1, parse_opts);
       cond &= (mat == -1);
       return cond;
     }

@@ -36,8 +36,8 @@ def read_send(mat, mf, parse_opts):
     return code
 
 
-def is_fend(parse_opts):
-    return f"cpp_is_fend_record(cpp_line, {parse_opts})"
+def is_fend(mat, parse_opts):
+    return f"cpp_is_fend_record(cpp_line, {mat}, {parse_opts})"
     return code
 
 

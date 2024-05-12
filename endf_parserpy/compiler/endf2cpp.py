@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/11
+# Last modified:   2024/05/12
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -899,6 +899,7 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("int last_mt")
     body += cpp.statement("std::string cpp_line")
     body += cpp.statement("std::vector<std::string> verbatim_section")
+    body += cpp.statement("bool found_tpid = false")
     body += cpp.statement("bool after_fend = false")
     body += cpp.statement("bool after_mend = false")
     body += cpp.statement("bool after_tend = false")
@@ -928,6 +929,12 @@ def generate_master_parsefun(name, recipefuns):
             cpp.logical_and(["after_fend == true", "last_mf >= mf"]),
             cpp.throw_runtime_error("MF sections must be in ascending order"),
         )
+        ctrl_checks += cpp.pureif(
+            cpp.logical_and(
+                ["found_tpid == false", "parse_opts.ignore_missing_tpid == false"]
+            ),
+            cpp.throw_runtime_error("Tape ID (TPID) record missing in first line"),
+        )
         sec_prep_code = cpp.pureif(
             "parse_opts.ignore_send_records == false", ctrl_checks
         )
@@ -946,15 +953,18 @@ def generate_master_parsefun(name, recipefuns):
         for mt in reversed(sorted(mfdic.keys())):
             funname = mfdic[mt]
             varname = _mf_mt_dict_varname(mf, mt)
+            section_code = ""
             if mt == -1:
                 curcond = f"mf == {mf}"
             else:
                 curcond = f"mf == {mf} && mt == {mt}"
             if mt == 0 and mt == 0:
                 curcond = cpp.logical_and([curcond, "is_firstline"])
+                # in case of MF=0/MT=0, we want to register that the tpid record has been read
+                section_code += cpp.statement("found_tpid = true")
 
             sec_read_code = _generate_parse_or_read_verbatim(funname, "parse_opts")
-            section_code = sec_prep_code + sec_read_code
+            section_code += sec_prep_code + sec_read_code
             statements.append(section_code)
             conditions.append(curcond)
 

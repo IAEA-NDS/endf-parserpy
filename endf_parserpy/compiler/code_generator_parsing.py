@@ -11,8 +11,10 @@
 
 
 from .code_generator_core import generate_vardefs, generate_code_from_parsetree
-from .code_generator_parsing_core import (
+from .code_generator_core import (
     generate_code_for_varassign,
+)
+from .code_generator_parsing_core import (
     generate_endf_dict_assignments,
     generate_parse_or_read_verbatim,
 )

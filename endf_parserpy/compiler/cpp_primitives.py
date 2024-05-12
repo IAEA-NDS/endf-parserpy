@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/11
+# Last modified:   2024/05/12
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -148,4 +148,19 @@ def forloop(start, stop, inc, body):
     code = line(f"for ({start}; {stop}; {inc}) {{")
     code += indent_code(body, INDENT)
     code += close_block()
+    return code
+
+
+def function(name, body, return_type, *args):
+    type_and_arg_strs = (f"{arg[0]} {arg[1]}" for arg in args)
+    argstr = ", ".join(type_and_arg_strs)
+    code = line(f"{return_type} {name}({argstr}) {{")
+    code += indent_code(body)
+    code += close_block()
+    return code
+
+
+def call(name, *args):
+    argsstr = ", ".join(args)
+    code = statement(f"{name}({argsstr})")
     return code

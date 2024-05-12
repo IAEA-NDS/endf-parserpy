@@ -15,7 +15,7 @@ from .cpp_types import cpp_varaux
 from .code_generator_parsing_core import generate_parse_or_read_verbatim
 
 
-def _mf_mt_parsefun_name(mf, mt):
+def mf_mt_parsefun_name(mf, mt):
     if mt is None or mt == -1:
         return f"parse_mf{mf}"
     return f"parse_mf{mf}mt{mt}"

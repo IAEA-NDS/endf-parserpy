@@ -14,7 +14,7 @@ from .code_generator_core import (
     generate_cpp_parsefun,
 )
 from .code_generator_parsing import (
-    _mf_mt_parsefun_name,
+    mf_mt_parsefun_name,
     generate_cpp_parsefun_wrappers_string,
     generate_cpp_parsefun_wrappers_file,
     generate_master_parsefun,
@@ -29,7 +29,7 @@ def generate_cpp_module_code(recipes, module_name):
     for mf, mt_recipes in recipes.items():
         if isinstance(mt_recipes, str):
             print(f"MF: {mf}")
-            func_name = _mf_mt_parsefun_name(mf, None)
+            func_name = mf_mt_parsefun_name(mf, None)
             func_names.append(func_name)
             recipe = mt_recipes
             parsefuns_code += generate_cpp_parsefun(
@@ -39,7 +39,7 @@ def generate_cpp_module_code(recipes, module_name):
             continue
         for mt, recipe in mt_recipes.items():
             print(f"MF: {mf} MT: {mt}")
-            func_name = _mf_mt_parsefun_name(mf, mt)
+            func_name = mf_mt_parsefun_name(mf, mt)
             func_names.append(func_name)
             mt_ = mt if mt != -1 else None
             parsefuns_code += generate_cpp_parsefun(

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/11
+# Last modified:   2024/05/12
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -27,6 +27,7 @@ def module_header():
     #include <iostream>
     #include <sstream>
     #include <fstream>
+    #include <iomanip>
     #include <vector>
     #include <string>
 
@@ -234,6 +235,14 @@ def module_header():
     }
 
 
+    std::string float2endfstr(double value) {
+      std::ostringstream oss;
+      oss << std::scientific << std::setprecision(6);
+      oss << std::setw(11) << value;
+      return oss.str();
+    }
+
+
     int endfstr2int(const char* str, ParsingOptions &parse_opts) {
       char strzero[12];
       std::memcpy(strzero, str, 11);
@@ -247,6 +256,13 @@ def module_header():
     }
 
 
+    std::string int2endfstr(int value) {
+      std::ostringstream oss;
+      oss << std::right << std::setw(11) << value;
+      return oss.str();
+    }
+
+
     template<typename T>
     T cpp_read_field(const char *str, const char fieldnum, ParsingOptions &parse_opts) {
       static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, "T must be int or double");
@@ -255,6 +271,19 @@ def module_header():
       } else {
         return endfstr2int(str+fieldnum*11, parse_opts);
       }
+    }
+
+
+    template<typename T>
+    void cpp_write_field(std::string& line, const char fieldnum, T value) {
+      static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, "T must be int or double");
+      std::string fieldstr;
+      if (std::is_same<T, double>::value) {
+        fieldstr = float2endfstr(value);
+      } else {
+        fieldstr = int2endfstr(value);
+      }
+      line.replace(fieldnum*11, 11, fieldstr);
     }
 
     // the next couple of functions are for handling

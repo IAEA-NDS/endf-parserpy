@@ -33,6 +33,7 @@ from .node_aux import (
     simplify_expr_node,
     node_and_kids_to_ParseNode,
 )
+from .mode_management import set_read_mode
 
 
 def mf_mt_parsefun_name(mf, mt):
@@ -55,6 +56,7 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     parsetree = transform_nodes_inplace(parsetree, node_and_kids_to_ParseNode)
 
     vardict = {}
+    set_read_mode(vardict)
     ctrl_code = ""
     var_mat = VariableToken(Token("VARNAME", "MAT"))
     var_mf = VariableToken(Token("VARNAME", "MF"))

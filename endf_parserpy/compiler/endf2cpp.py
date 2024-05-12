@@ -932,13 +932,6 @@ def generate_master_parsefun(name, recipefuns):
     code += _generate_check_end_records_fun("_check_end_records")
     code += cpp.line("")
 
-    header = cpp.line(
-        f"py::dict {name}(std::istream& cont, "
-        + "py::object exclude, py::object include, "
-        + "ParsingOptions parse_opts=default_parsing_options()) {"
-    )
-    footer = cpp.statement("return mfmt_dict", cpp.INDENT)
-    footer += cpp.close_block()
     body = ""
     body += cpp.statement("bool is_firstline = true")
     body += cpp.statement("std::streampos curpos")
@@ -1063,13 +1056,22 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.indent_code(
         cpp.conditional_branches(conditions, statements, default=default_code)
     )
-    body += cpp.statement("last_mat = mat")
-    body += cpp.statement("last_mf = mf")
-    body += cpp.statement("last_mt = mt")
+    body += cpp.statement("last_mat = mat", cpp.INDENT)
+    body += cpp.statement("last_mf = mf", cpp.INDENT)
+    body += cpp.statement("last_mt = mt", cpp.INDENT)
     body += cpp.statement("curpos = cont.tellg()", cpp.INDENT)
     body += cpp.statement("is_firstline = false", cpp.INDENT)
     body += cpp.close_block()
-    code += cpp.line("") + header + cpp.indent_code(body) + footer + cpp.line("")
+    body += cpp.statement("return mfmt_dict")
+
+    args = (
+        ("std::istream&", "cont"),
+        ("py::object", "exclude"),
+        ("py::object", "include"),
+        ("ParsingOptions", f"parse_opts=default_parsing_options()"),
+    )
+    code += cpp.function(name, body, "py::dict", *args)
+    code += cpp.line("")
     return code
 
 

@@ -12,7 +12,7 @@
 from . import cpp_primitives as cpp
 from . import endf2cpp_aux as aux
 from .cpp_types import cpp_varaux
-from .code_generator_parsing_core import _generate_parse_or_read_verbatim
+from .code_generator_parsing_core import generate_parse_or_read_verbatim
 
 
 def _mf_mt_parsefun_name(mf, mt):
@@ -135,7 +135,7 @@ def generate_master_parsefun(name, recipefuns):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic
             conditions.append(f"mf == {mf}")
-            sec_read_code = _generate_parse_or_read_verbatim(funname, "parse_opts")
+            sec_read_code = generate_parse_or_read_verbatim(funname, "parse_opts")
             section_code = sec_prep_code + sec_read_code
             statements.append(section_code)
             continue
@@ -152,7 +152,7 @@ def generate_master_parsefun(name, recipefuns):
                 # in case of MF=0/MT=0, we want to register that the tpid record has been read
                 section_code += cpp.statement("found_tpid = true")
 
-            sec_read_code = _generate_parse_or_read_verbatim(funname, "parse_opts")
+            sec_read_code = generate_parse_or_read_verbatim(funname, "parse_opts")
             section_code += sec_prep_code + sec_read_code
             statements.append(section_code)
             conditions.append(curcond)

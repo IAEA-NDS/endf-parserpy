@@ -219,7 +219,7 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
     return code
 
 
-def _generate_parse_or_read_verbatim(funname, parse_opts):
+def generate_parse_or_read_verbatim(funname, parse_opts):
     code = cpp.ifelse(
         aux.should_parse_section("mf", "mt", "exclude", "include"),
         cpp_varaux.dict_assign(

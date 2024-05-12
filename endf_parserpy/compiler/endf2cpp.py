@@ -10,13 +10,11 @@
 ############################################################
 
 from . import cpp_boilerplate
-from .code_generator_core import (
-    generate_cpp_parsefun,
-)
 from .code_generator_parsing import (
     mf_mt_parsefun_name,
     generate_cpp_parsefun_wrappers_string,
     generate_cpp_parsefun_wrappers_file,
+    generate_cpp_parsefun,
     generate_master_parsefun,
 )
 

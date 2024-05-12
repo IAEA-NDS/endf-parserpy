@@ -877,7 +877,61 @@ def _generate_parse_or_read_verbatim(funname, parse_opts):
     return code
 
 
+def _generate_check_end_records_fun(funname):
+    checker_body = ""
+
+    end_record_checks = cpp.pureif(
+        cpp.logical_or(["after_mend == true", "after_tend == true"]),
+        cpp.throw_runtime_error("No MF/MT section allowed after MEND/TEND record"),
+    )
+    end_record_checks += cpp.pureif(
+        cpp.logical_and(["after_fend == true", "section_encountered == false"]),
+        cpp.throw_runtime_error(
+            "FEND record without preceding MF/MT section encountered"
+        ),
+    )
+    end_record_checks += cpp.pureif(
+        cpp.logical_and(["after_fend == true", "last_mf >= mf"]),
+        cpp.throw_runtime_error("MF sections must be in ascending order"),
+    )
+
+    tpid_record_check = cpp.pureif(
+        cpp.logical_and(
+            ["found_tpid == false", "parse_opts.ignore_missing_tpid == false"]
+        ),
+        cpp.throw_runtime_error("Tape ID (TPID) record missing in first line"),
+    )
+
+    checker_body = cpp.pureif(
+        "parse_opts.ignore_send_records == false", end_record_checks
+    )
+    checker_body += tpid_record_check
+
+    args = (
+        ("bool", "after_fend"),
+        ("bool", "after_mend"),
+        ("bool", "after_tend"),
+        ("bool", "mat"),
+        ("bool", "mf"),
+        ("bool", "mt"),
+        ("bool", "last_mat"),
+        ("bool", "last_mf"),
+        ("bool", "last_mt"),
+        ("bool", "section_encountered"),
+        ("bool", "found_tpid"),
+        ("ParsingOptions", "parse_opts"),
+    )
+
+    checker_fun = cpp.function(funname, checker_body, "void", *args)
+    return checker_fun
+
+
 def generate_master_parsefun(name, recipefuns):
+    code = ""
+    code += cpp.line("")
+    code += _generate_check_end_records_fun("_check_end_records")
+    code += cpp.line("")
+
     header = cpp.line(
         f"py::dict {name}(std::istream& cont, "
         + "py::object exclude, py::object include, "
@@ -915,28 +969,20 @@ def generate_master_parsefun(name, recipefuns):
     conditions = []
     statements = []
     for mf, mfdic in recipefuns.items():
-        ctrl_checks = cpp.pureif(
-            cpp.logical_or(["after_mend == true", "after_tend == true"]),
-            cpp.throw_runtime_error("No MF/MT section allowed after MEND/TEND record"),
-        )
-        ctrl_checks += cpp.pureif(
-            cpp.logical_and(["after_fend == true", "section_encountered == false"]),
-            cpp.throw_runtime_error(
-                "FEND record without preceding MF/MT section encountered"
-            ),
-        )
-        ctrl_checks += cpp.pureif(
-            cpp.logical_and(["after_fend == true", "last_mf >= mf"]),
-            cpp.throw_runtime_error("MF sections must be in ascending order"),
-        )
-        ctrl_checks += cpp.pureif(
-            cpp.logical_and(
-                ["found_tpid == false", "parse_opts.ignore_missing_tpid == false"]
-            ),
-            cpp.throw_runtime_error("Tape ID (TPID) record missing in first line"),
-        )
-        sec_prep_code = cpp.pureif(
-            "parse_opts.ignore_send_records == false", ctrl_checks
+        sec_prep_code = cpp.call(
+            "_check_end_records",
+            "after_fend",
+            "after_mend",
+            "after_tend",
+            "mat",
+            "mf",
+            "mt",
+            "last_mat",
+            "last_mf",
+            "last_mt",
+            "section_encountered",
+            "found_tpid",
+            "parse_opts",
         )
         sec_prep_code += cpp.statement("after_fend = false")
         sec_prep_code += cpp.statement("section_encountered = true")
@@ -1023,7 +1069,7 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("curpos = cont.tellg()", cpp.INDENT)
     body += cpp.statement("is_firstline = false", cpp.INDENT)
     body += cpp.close_block()
-    code = cpp.line("") + header + cpp.indent_code(body) + footer + cpp.line("")
+    code += cpp.line("") + header + cpp.indent_code(body) + footer + cpp.line("")
     return code
 
 

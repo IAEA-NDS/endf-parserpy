@@ -12,6 +12,7 @@
 
 from .code_generator_core import generate_vardefs, generate_code_from_parsetree
 from .code_generator_core import (
+    generate_cpp_parse_or_write_fun,
     generate_code_for_varassign,
 )
 from .code_generator_parsing_core import (
@@ -19,23 +20,15 @@ from .code_generator_parsing_core import (
     generate_parse_or_read_verbatim,
 )
 from lark.lexer import Token
-from lark import Lark
-from endf_parserpy.endf_recipes.endf_lark_ebnf import endf_recipe_grammar
 from .expr_utils.custom_nodes import VariableToken
 from .expr_utils.tree_walkers import (
     transform_nodes,
     transform_nodes_inplace,
 )
 from . import cpp_primitives as cpp
-from . import cpp_boilerplate
 from .cpp_types import cpp_varops_assign
 from .cpp_types import cpp_varaux
 from . import endf2cpp_aux as aux
-from .node_aux import (
-    simplify_expr_node,
-    node_and_kids_to_ParseNode,
-)
-from .mode_management import set_read_mode
 
 
 def mf_mt_parsefun_name(mf, mt):
@@ -51,51 +44,9 @@ def _mf_mt_dict_varname(mf, mt):
 
 
 def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=None):
-    if parser is None:
-        parser = Lark(endf_recipe_grammar, start="endf_recipe", keep_all_tokens=True)
-    parsetree = parser.parse(endf_recipe)
-    parsetree = transform_nodes(parsetree, simplify_expr_node)
-    parsetree = transform_nodes_inplace(parsetree, node_and_kids_to_ParseNode)
-
-    vardict = {}
-    set_read_mode(vardict)
-    ctrl_code = ""
-    var_mat = VariableToken(Token("VARNAME", "MAT"))
-    var_mf = VariableToken(Token("VARNAME", "MF"))
-    var_mt = VariableToken(Token("VARNAME", "MT"))
-    ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
-    ctrl_code += aux.read_raw_line()
-
-    matval = aux.get_mat_number() if mat is None else str(mat)
-    mfval = aux.get_mf_number() if mf is None else str(mf)
-    mtval = aux.get_mt_number() if mt is None else str(mt)
-    ctrl_code += cpp.statement(f"int mat = {matval}")
-    ctrl_code += cpp.statement(f"int mf = {mfval}")
-    ctrl_code += cpp.statement(f"int mt = {mtval}")
-    ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
-    ctrl_code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
-
-    ctrl_code += generate_code_for_varassign(var_mat, vardict, matval, int)
-    ctrl_code += generate_code_for_varassign(var_mf, vardict, mfval, int)
-    ctrl_code += generate_code_for_varassign(var_mt, vardict, mtval, int)
-
-    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mat, vardict)
-    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mf, vardict)
-    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mt, vardict)
-    ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
-
-    code = generate_code_from_parsetree(parsetree, vardict)
-
-    # must be after traversing the tree because assign_exprstr_to_var
-    # populates vardict and type info therein
-    vardefs = generate_vardefs(vardict)
-
-    fun_header = cpp_boilerplate.parsefun_header(name)
-    fun_footer = cpp.indent_code(generate_endf_dict_assignments(vardict), cpp.INDENT)
-    fun_footer += cpp_boilerplate.parsefun_footer()
-    fun_body = cpp.indent_code(vardefs + ctrl_code + code, cpp.INDENT)
-    code = fun_header + fun_body + fun_footer
-    return code
+    return generate_cpp_parse_or_write_fun(
+        name, endf_recipe, mat, mf, mt, parser, mode="read"
+    )
 
 
 def _generate_check_end_records_fun(funname):

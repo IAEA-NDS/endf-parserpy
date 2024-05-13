@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/12
+# Last modified:   2024/05/13
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -691,8 +691,8 @@ def generate_code_for_tab1(node, vardict):
     xvar = VariableToken(colnodes[0])
     yvar = VariableToken(colnodes[1])
     if in_read_mode(vardict):
-        nr = aux.get_int_field(4, "parse_opts")
-        np = aux.get_int_field(5, "parse_opts")
+        nr = aux.get_numeric_field(4, int, "parse_opts")
+        np = aux.get_numeric_field(5, int, "parse_opts")
         tabdata = aux.get_tab1_body(xvar, yvar, nr, np, "mat", "mf", "mt", "parse_opts")
     else:
         NotImplementedError("write mode not implemented")
@@ -749,7 +749,7 @@ def generate_code_for_tab2(node, vardict):
         sectok = VariableToken(get_child(table_name, "extvarname"))
 
     if in_read_mode(vardict):
-        nr = aux.get_int_field(4, "parse_opts")
+        nr = aux.get_numeric_field(4, int, "parse_opts")
         tabdata = aux.get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
     else:
         NotImplementedError("write mode not implemented")

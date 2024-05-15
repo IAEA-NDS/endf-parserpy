@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/11
+# Last modified:   2024/05/15
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -156,30 +156,23 @@ def open_section(vartok, vardict):
     check_variable(vartok, vardict)
     secname = vartok
     indices = vartok.indices
-    code = cpp.indent_code(
-        f"""
-    {{
-        py::dict cpp_parent_dict = cpp_current_dict;
-        if (! cpp_parent_dict.contains("{secname}")) {{
-          cpp_parent_dict["{secname}"] = py::dict();
-        }}
-        py::dict cpp_current_dict = cpp_parent_dict["{secname}"];
-        """,
-        -4,
+    code = ""
+    code += cpp.statement("py::dict cpp_parent_dict = cpp_current_dict")
+    code += cpp.pureif(
+        cpp.logical_not(f'cpp_parent_dict.contains("{secname}")'),
+        cpp.statement(f'cpp_parent_dict["{secname}"] = py::dict()'),
     )
+    code += cpp.statement(f'py::dict cpp_current_dict = cpp_parent_dict["{secname}"]')
     for idx in indices:
         cpp_idxstr = get_cpp_varname(idx, vardict)
         idxstr = f"py::cast({cpp_idxstr})"
-        code += cpp.indent_code(
-            f"""
-        if (! cpp_current_dict.contains({idxstr})) {{
-          cpp_current_dict[{idxstr}] = py::dict();
-        }}
-        cpp_current_dict = cpp_current_dict[{idxstr}];
-        """,
-            -4,
+        code += cpp.pureif(
+            cpp.logical_not(f"cpp_current_dict.contains({idxstr})"),
+            cpp.statement(f"cpp_current_dict[{idxstr}] = py::dict()"),
         )
-    return code
+        code += cpp.statement(f"cpp_current_dict = cpp_current_dict[{idxstr}]")
+
+    return cpp.open_block() + cpp.indent_code(code)
 
 
 def close_section():

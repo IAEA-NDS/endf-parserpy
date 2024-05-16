@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/12
+# Last modified:   2024/05/16
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -29,6 +29,8 @@ from . import cpp_primitives as cpp
 from .cpp_types import cpp_varops_assign
 from .cpp_types import cpp_varaux
 from . import endf2cpp_aux as aux
+from .mode_management import register_numeric_field_getter
+from .endf2cpp_aux import get_numeric_field
 
 
 def mf_mt_parsefun_name(mf, mt):
@@ -43,9 +45,17 @@ def _mf_mt_dict_varname(mf, mt):
     return f"mf{mf}_mt{mt}_dict"
 
 
+def _get_numeric_field_wrapper(node, idx, dtype, lookahead):
+    valcode = get_numeric_field(idx, dtype, "parse_opts")
+    code = ""
+    return valcode, code
+
+
 def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=None):
+    vardict = {}
+    register_numeric_field_getter(_get_numeric_field_wrapper, vardict)
     return generate_cpp_parse_or_write_fun(
-        name, endf_recipe, mat, mf, mt, parser, mode="read"
+        name, endf_recipe, mat, mf, mt, parser, vardict
     )
 
 

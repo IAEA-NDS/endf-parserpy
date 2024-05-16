@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/13
+# Last modified:   2024/05/16
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -87,22 +87,21 @@ from .expr_utils.exceptions import (
     MultipleVariableOccurrenceError,
     SeveralUnknownVariablesError,
 )
-from .mode_management import in_read_mode
 from .code_generator_parsing_core import generate_endf_dict_assignments
-from .mode_management import set_mode
+from .mode_management import set_mode, get_numeric_field_getter
 
 
 def generate_cpp_parse_or_write_fun(
-    name, endf_recipe, mat=None, mf=None, mt=None, parser=None, mode="read"
+    name, endf_recipe, mat=None, mf=None, mt=None, parser=None, vardict=None
 ):
+    if vardict is None:
+        raise TypeError("dictionary `vardict` must be provided")
     if parser is None:
         parser = Lark(endf_recipe_grammar, start="endf_recipe", keep_all_tokens=True)
     parsetree = parser.parse(endf_recipe)
     parsetree = transform_nodes(parsetree, simplify_expr_node)
     parsetree = transform_nodes_inplace(parsetree, node_and_kids_to_ParseNode)
 
-    vardict = {}
-    set_mode(mode, vardict)
     ctrl_code = ""
     var_mat = VariableToken(Token("VARNAME", "MAT"))
     var_mf = VariableToken(Token("VARNAME", "MF"))
@@ -523,10 +522,10 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
         if skip is not None and idx in skip:
             continue
         dtype = float if idx < 2 else int
-        if in_read_mode(vardict):
-            valcode = aux.get_numeric_field(idx, dtype, "parse_opts")
-        else:
-            NotImplementedError("write mode not implemented")
+        valcode, addcode = get_numeric_field_getter(vardict)(
+            node, idx, dtype, in_lookahead(vardict)
+        )
+        code += addcode
         try:
             code += generate_code_for_varassign(
                 child, vardict, valcode, dtype, throw_cpp=throw_cpp
@@ -547,10 +546,7 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
 def generate_code_for_text(node, vardict):
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
-    if in_read_mode(vardict):
-        code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
-    else:
-        NotImplementedError("write mode not implemented")
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     text_fields = get_child(node, "text_fields")
     tphs = [v for v in text_fields.children if is_textplaceholder(v)]
     ofs = 0
@@ -570,10 +566,7 @@ def generate_code_for_text(node, vardict):
         length = int(txtlen) if txtlen is not None else 66
         vartok = VariableToken(v)
         dtype = str
-        if in_read_mode(vardict):
-            valcode = aux.get_text_field(ofs, length)
-        else:
-            NotImplementedError("write mode not implemented")
+        valcode = aux.get_text_field(ofs, length)
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         ofs += length
     return code
@@ -590,20 +583,14 @@ def generate_code_for_intg(node, vardict):
 
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
-    if in_read_mode(vardict):
-        code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
-    else:
-        NotImplementedError("write mode not implemented")
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     code += cpp.statement(f"int cpp_ndigit = {ndigit_exprstr}")
     code += cpp.pureif(
         cpp.logical_or(["cpp_ndigit < 2", "cpp_ndigit > 6"]),
         cpp.throw_runtime_error("invalid NDIGIT (must be between 2 and 6)"),
     )
-    if in_read_mode(vardict):
-        val_ii = aux.get_custom_int_field(0, 5)
-        val_jj = aux.get_custom_int_field(5, 5)
-    else:
-        NotImplementedError("write mode not implemented")
+    val_ii = aux.get_custom_int_field(0, 5)
+    val_jj = aux.get_custom_int_field(5, 5)
     code += generate_code_for_varassign(ii_expr, vardict, val_ii, int)
     code += generate_code_for_varassign(jj_expr, vardict, val_jj, int)
     code += cpp.statement("int cpp_step = cpp_ndigit + 1")
@@ -618,10 +605,7 @@ def generate_code_for_intg(node, vardict):
     code += cpp.line(
         "for (int cpp_i = cpp_start; cpp_i < cpp_end; cpp_i += cpp_step) {"
     )
-    if in_read_mode(vardict):
-        valcode = aux.get_custom_int_field("cpp_i", "cpp_step")
-    else:
-        NotImplementedError("write mode not implemented")
+    valcode = aux.get_custom_int_field("cpp_i", "cpp_step")
     code += cpp.statement(f"cpp_intvec.push_back({valcode})", cpp.INDENT)
     code += cpp.close_block()
     code += generate_code_for_varassign(kij_expr, vardict, "cpp_intvec", "intvec")
@@ -629,20 +613,14 @@ def generate_code_for_intg(node, vardict):
 
 
 def generate_code_for_send(node, vardict):
-    if in_read_mode(vardict):
-        return aux.read_send("mat", "mf", "parse_opts")
-    else:
-        NotImplementedError("write mode not implemented")
+    return aux.read_send("mat", "mf", "parse_opts")
 
 
 def generate_code_for_cont(node, vardict):
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
-    if in_read_mode(vardict):
-        code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
-        code += cpp.comment("read CONT record")
-    else:
-        NotImplementedError("write mode not implemented")
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    code += cpp.comment("read CONT record")
     record_fields = get_child(node, "record_fields")
     code += generate_code_from_record_fields(record_fields, vardict)
     return code
@@ -651,11 +629,8 @@ def generate_code_for_cont(node, vardict):
 def generate_code_for_dir(node, vardict):
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
-    if in_read_mode(vardict):
-        code += cpp.comment("read TEXT record")
-        code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
-    else:
-        NotImplementedError("write mode not implemented")
+    code += cpp.comment("read TEXT record")
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     record_fields = get_child(node, "dir_fields")
     code += generate_code_from_record_fields(record_fields, vardict, skip=(0, 1), ofs=2)
     return code
@@ -670,11 +645,8 @@ def generate_code_for_tab1(node, vardict):
     record_fields = get_child(tab1_fields, "record_fields")
     tab1_def = get_child(tab1_fields, "tab1_def")
 
-    if in_read_mode(vardict):
-        code += cpp.comment("read TAB1 record")
-        code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
-    else:
-        NotImplementedError("write mode not implemented")
+    code += cpp.comment("read TAB1 record")
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     code += generate_code_from_record_fields(record_fields, vardict, skip=(4, 5))
 
     if not should_proceed(vardict):
@@ -690,12 +662,22 @@ def generate_code_for_tab1(node, vardict):
     assert len(colnodes) == 2
     xvar = VariableToken(colnodes[0])
     yvar = VariableToken(colnodes[1])
-    if in_read_mode(vardict):
-        nr = aux.get_numeric_field(4, int, "parse_opts")
-        np = aux.get_numeric_field(5, int, "parse_opts")
-        tabdata = aux.get_tab1_body(xvar, yvar, nr, np, "mat", "mf", "mt", "parse_opts")
-    else:
-        NotImplementedError("write mode not implemented")
+    nr_val_node = VariableToken(Token("VARNAME", "cpp_nr_val"), cpp_namespace=True)
+    np_val_node = VariableToken(Token("VARNAME", "cpp_np_val"), cpp_namespace=True)
+
+    nr_val, addcode = get_numeric_field_getter(vardict)(
+        nr_val_node, 4, int, in_lookahead(vardict)
+    )
+    code += addcode
+    np_val, addcode = get_numeric_field_getter(vardict)(
+        np_val_node, 5, int, in_lookahead(vardict)
+    )
+    code += addcode
+
+    tabdata = aux.get_tab1_body(
+        xvar, yvar, nr_val, np_val, "mat", "mf", "mt", "parse_opts"
+    )
+
     INTvar = VariableToken(Token("VARNAME", "INT"))
     NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
@@ -711,10 +693,7 @@ def generate_code_for_tab1(node, vardict):
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)
-        if in_read_mode(vardict):
-            dictassigns = generate_endf_dict_assignments(vardict)
-        else:
-            NotImplementedError("write mode not implemented")
+        dictassigns = generate_endf_dict_assignments(vardict)
         code += aux.open_section(sectok, vardict)
         code += cpp.indent_code(vardefs + assigncode + dictassigns)
         code += aux.close_section()
@@ -731,12 +710,8 @@ def generate_code_for_tab2(node, vardict):
     table_name = get_child(node, "table_name", nofail=True)
     record_fields = get_child(tab2_fields, "record_fields")
 
-    if in_read_mode(vardict):
-        code += cpp.comment("read TAB2 record")
-        code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
-    else:
-        NotImplementedError("write mode not implemented")
-
+    code += cpp.comment("read TAB2 record")
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
     code += generate_code_from_record_fields(record_fields, vardict, skip=(4,))
 
     if not should_proceed(vardict):
@@ -748,11 +723,13 @@ def generate_code_for_tab2(node, vardict):
     if table_name is not None:
         sectok = VariableToken(get_child(table_name, "extvarname"))
 
-    if in_read_mode(vardict):
-        nr = aux.get_numeric_field(4, int, "parse_opts")
-        tabdata = aux.get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
-    else:
-        NotImplementedError("write mode not implemented")
+    nr_val_node = VariableToken(Token("VARNAME", "cpp_nr_val"), cpp_namespace=True)
+    nr_val, addcode = get_numeric_field_getter(vardict)(
+        nr_val_node, 4, int, in_lookahead(vardict)
+    )
+    code += addcode
+
+    tabdata = aux.get_tab2_body(nr_val, "mat", "mf", "mt", "parse_opts")
     INTvar = VariableToken(Token("VARNAME", "INT"))
     NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
@@ -766,10 +743,7 @@ def generate_code_for_tab2(node, vardict):
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)
-        if in_read_mode(vardict):
-            dictassigns = generate_endf_dict_assignments(vardict)
-        else:
-            NotImplementedError("write mode not implemented")
+        dictassigns = generate_endf_dict_assignments(vardict)
         code += aux.open_section(sectok, vardict)
         code += cpp.indent_code(vardefs + assigncode + dictassigns)
         code += aux.close_section()
@@ -784,12 +758,8 @@ def generate_code_for_list(node, vardict):
     code += aux.define_current_template(template)
     record_fields = get_child(node, "record_fields")
 
-    if in_read_mode(vardict):
-        code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
-        code += cpp.comment("read LIST record")
-    else:
-        NotImplementedError("write mode not implemented")
-
+    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    code += cpp.comment("read LIST record")
     code += generate_code_from_record_fields(record_fields, vardict)
 
     if not should_proceed(vardict):
@@ -812,10 +782,7 @@ def generate_code_for_list(node, vardict):
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)
-        if in_read_mode(vardict):
-            dictassigns = generate_endf_dict_assignments(vardict)
-        else:
-            NotImplementedError("write mode not implemented")
+        dictassigns = generate_endf_dict_assignments(vardict)
         code += aux.open_section(sectok, vardict)
         code += cpp.indent_code(vardefs + icode + dictassigns)
         code += aux.close_section()
@@ -830,15 +797,9 @@ def generate_code_for_list_body(node, vardict):
     for child in node.children:
         child_name = get_name(child)
         if child_name == "expr":
-            if in_read_mode(vardict):
-                current_value = lbr.get_element("parse_opts")
-            else:
-                NotImplementedError("write mode not implemented")
+            current_value = lbr.get_element("parse_opts")
             code += generate_code_for_varassign(child, vardict, current_value, float)
-            if in_read_mode(vardict):
-                code += lbr.update_counters_and_line("mat", "mf", "mt", "parse_opts")
-            else:
-                NotImplementedError("write mode not implemented")
+            code += lbr.update_counters_and_line("mat", "mf", "mt", "parse_opts")
         elif child_name == "list_loop":
             code += generate_code_for_list_loop(child, vardict)
         elif child_name == "LINEPADDING":

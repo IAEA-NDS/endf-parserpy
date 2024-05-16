@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/15
+# Last modified:   2024/05/16
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -60,8 +60,8 @@ def read_line(mat, mf, mt, parse_opts):
     return code
 
 
-def read_line_la(mat, mf, mt, parse_opts, vardict):
-    if in_lookahead(vardict):
+def read_line_la(mat, mf, mt, parse_opts, lookahead):
+    if lookahead:
         return read_raw_line()
     else:
         return read_line(mat, mf, mt, parse_opts)

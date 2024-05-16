@@ -92,6 +92,7 @@ from .mode_management import (
     get_numeric_field_getter,
     get_text_field_getter,
     get_custom_int_field_getter,
+    get_prepare_line_func,
 )
 
 
@@ -120,7 +121,7 @@ def generate_cpp_parse_or_write_fun(
     ctrl_code += cpp.statement(f"int mf = {mfval}")
     ctrl_code += cpp.statement(f"int mt = {mtval}")
     ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
-    ctrl_code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    ctrl_code += get_prepare_line_func(vardict)(in_lookahead(vardict))
 
     ctrl_code += generate_code_for_varassign(var_mat, vardict, matval, int)
     ctrl_code += generate_code_for_varassign(var_mf, vardict, mfval, int)
@@ -550,7 +551,7 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
 def generate_code_for_text(node, vardict):
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
-    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
     text_fields = get_child(node, "text_fields")
     tphs = [v for v in text_fields.children if is_textplaceholder(v)]
     ofs = 0
@@ -590,7 +591,7 @@ def generate_code_for_intg(node, vardict):
 
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
-    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
     code += cpp.statement(f"int cpp_ndigit = {ndigit_exprstr}")
     code += cpp.pureif(
         cpp.logical_or(["cpp_ndigit < 2", "cpp_ndigit > 6"]),
@@ -636,7 +637,7 @@ def generate_code_for_send(node, vardict):
 def generate_code_for_cont(node, vardict):
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
-    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
     code += cpp.comment("read CONT record")
     record_fields = get_child(node, "record_fields")
     code += generate_code_from_record_fields(record_fields, vardict)
@@ -647,7 +648,7 @@ def generate_code_for_dir(node, vardict):
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
     code += cpp.comment("read TEXT record")
-    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
     record_fields = get_child(node, "dir_fields")
     code += generate_code_from_record_fields(record_fields, vardict, skip=(0, 1), ofs=2)
     return code
@@ -663,7 +664,7 @@ def generate_code_for_tab1(node, vardict):
     tab1_def = get_child(tab1_fields, "tab1_def")
 
     code += cpp.comment("read TAB1 record")
-    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
     code += generate_code_from_record_fields(record_fields, vardict, skip=(4, 5))
 
     if not should_proceed(vardict):
@@ -728,7 +729,7 @@ def generate_code_for_tab2(node, vardict):
     record_fields = get_child(tab2_fields, "record_fields")
 
     code += cpp.comment("read TAB2 record")
-    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
     code += generate_code_from_record_fields(record_fields, vardict, skip=(4,))
 
     if not should_proceed(vardict):
@@ -775,7 +776,7 @@ def generate_code_for_list(node, vardict):
     code += aux.define_current_template(template)
     record_fields = get_child(node, "record_fields")
 
-    code += aux.read_line_la("mat", "mf", "mt", "parse_opts", vardict)
+    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
     code += cpp.comment("read LIST record")
     code += generate_code_from_record_fields(record_fields, vardict)
 

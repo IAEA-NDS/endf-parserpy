@@ -33,8 +33,14 @@ from .mode_management import (
     register_numeric_field_getter,
     register_text_field_getter,
     register_custom_int_field_getter,
+    register_prepare_line_func,
 )
-from .endf2cpp_aux import get_numeric_field, get_text_field, get_custom_int_field
+from .endf2cpp_aux import (
+    get_numeric_field,
+    get_text_field,
+    get_custom_int_field,
+    read_line_la,
+)
 
 
 def mf_mt_parsefun_name(mf, mt):
@@ -67,11 +73,17 @@ def _get_custom_int_field_wrapper(node, start, length, lookahead):
     return valcode, code
 
 
+def _prepare_line_func_wrapper(lookahead):
+    code = read_line_la("mat", "mf", "mt", "parse_opts", lookahead)
+    return code
+
+
 def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=None):
     vardict = {}
     register_numeric_field_getter(_get_numeric_field_wrapper, vardict)
     register_text_field_getter(_get_text_field_wrapper, vardict)
     register_custom_int_field_getter(_get_custom_int_field_wrapper, vardict)
+    register_prepare_line_func(_prepare_line_func_wrapper, vardict)
     return generate_cpp_parse_or_write_fun(
         name, endf_recipe, mat, mf, mt, parser, vardict
     )

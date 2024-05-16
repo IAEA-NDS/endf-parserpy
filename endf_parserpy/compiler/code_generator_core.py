@@ -91,6 +91,7 @@ from .code_generator_parsing_core import generate_endf_dict_assignments
 from .mode_management import (
     get_numeric_field_getter,
     get_text_field_getter,
+    get_custom_int_field_getter,
 )
 
 
@@ -595,8 +596,15 @@ def generate_code_for_intg(node, vardict):
         cpp.logical_or(["cpp_ndigit < 2", "cpp_ndigit > 6"]),
         cpp.throw_runtime_error("invalid NDIGIT (must be between 2 and 6)"),
     )
-    val_ii = aux.get_custom_int_field(0, 5)
-    val_jj = aux.get_custom_int_field(5, 5)
+    val_ii, addcode = get_custom_int_field_getter(vardict)(
+        ii_expr, 0, 5, in_lookahead(vardict)
+    )
+    code += addcode
+    val_jj, addcode = get_custom_int_field_getter(vardict)(
+        jj_expr, 5, 5, in_lookahead(vardict)
+    )
+    code += addcode
+
     code += generate_code_for_varassign(ii_expr, vardict, val_ii, int)
     code += generate_code_for_varassign(jj_expr, vardict, val_jj, int)
     code += cpp.statement("int cpp_step = cpp_ndigit + 1")
@@ -611,7 +619,10 @@ def generate_code_for_intg(node, vardict):
     code += cpp.line(
         "for (int cpp_i = cpp_start; cpp_i < cpp_end; cpp_i += cpp_step) {"
     )
-    valcode = aux.get_custom_int_field("cpp_i", "cpp_step")
+    valcode, addcode = get_custom_int_field_getter(vardict)(
+        kij_expr, "cpp_i", "cpp_step", in_lookahead(vardict)
+    )
+    code += addcode
     code += cpp.statement(f"cpp_intvec.push_back({valcode})", cpp.INDENT)
     code += cpp.close_block()
     code += generate_code_for_varassign(kij_expr, vardict, "cpp_intvec", "intvec")

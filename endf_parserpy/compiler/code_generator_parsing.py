@@ -29,8 +29,8 @@ from . import cpp_primitives as cpp
 from .cpp_types import cpp_varops_assign
 from .cpp_types import cpp_varaux
 from . import endf2cpp_aux as aux
-from .mode_management import register_numeric_field_getter
-from .endf2cpp_aux import get_numeric_field
+from .mode_management import register_numeric_field_getter, register_text_field_getter
+from .endf2cpp_aux import get_numeric_field, get_text_field
 
 
 def mf_mt_parsefun_name(mf, mt):
@@ -51,9 +51,16 @@ def _get_numeric_field_wrapper(node, idx, dtype, lookahead):
     return valcode, code
 
 
+def _get_text_field_wrapper(node, start, length, lookahead):
+    valcode = get_text_field(start, length)
+    code = ""
+    return valcode, code
+
+
 def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=None):
     vardict = {}
     register_numeric_field_getter(_get_numeric_field_wrapper, vardict)
+    register_text_field_getter(_get_text_field_wrapper, vardict)
     return generate_cpp_parse_or_write_fun(
         name, endf_recipe, mat, mf, mt, parser, vardict
     )

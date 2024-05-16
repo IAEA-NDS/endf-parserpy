@@ -88,7 +88,10 @@ from .expr_utils.exceptions import (
     SeveralUnknownVariablesError,
 )
 from .code_generator_parsing_core import generate_endf_dict_assignments
-from .mode_management import set_mode, get_numeric_field_getter
+from .mode_management import (
+    get_numeric_field_getter,
+    get_text_field_getter,
+)
 
 
 def generate_cpp_parse_or_write_fun(
@@ -566,7 +569,10 @@ def generate_code_for_text(node, vardict):
         length = int(txtlen) if txtlen is not None else 66
         vartok = VariableToken(v)
         dtype = str
-        valcode = aux.get_text_field(ofs, length)
+        valcode, addcode = get_text_field_getter(vardict)(
+            v, ofs, length, in_lookahead(vardict)
+        )
+        code += addcode
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         ofs += length
     return code

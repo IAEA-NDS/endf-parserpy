@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/12
+# Last modified:   2024/05/16
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -41,3 +41,27 @@ def in_read_mode(vardict):
 def in_write_mode(vardict):
     mode = get_mode(vardict)
     return mode == "write"
+
+
+def _find_parent_dict(varname, vardict):
+    curdict = vardict
+    while varname not in curdict and "__up" in curdict:
+        curdict = curdict["__up"]
+    if varname not in curdict:
+        raise TypeError(f"{varname} not found in dictionary hierarchy")
+    return curdict
+
+
+def register_numeric_field_getter(func, vardict):
+    if not callable(func):
+        raise TypeError(
+            "func must be a callable with parameters `node`, `idx`, `dtype`, `lookahead`"
+        )
+    basic_ops = vardict.setdefault("__basic_ops", {})
+    basic_ops["numeric_field_getter"] = func
+
+
+def get_numeric_field_getter(vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops["numeric_field_getter"]

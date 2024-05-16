@@ -80,3 +80,18 @@ def get_text_field_getter(vardict):
     pardict = _find_parent_dict("__basic_ops", vardict)
     basic_ops = pardict["__basic_ops"]
     return basic_ops["text_field_getter"]
+
+
+def register_custom_int_field_getter(func, vardict):
+    if not callable(func):
+        raise TypeError(
+            "func must be a callable with parameters `node`, `start`, `length`, `lookahead`"
+        )
+    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops["custom_int_field_getter"] = func
+
+
+def get_custom_int_field_getter(vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops["custom_int_field_getter"]

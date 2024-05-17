@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/16
+# Last modified:   2024/05/17
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -95,6 +95,21 @@ def get_custom_int_field_getter(vardict):
     pardict = _find_parent_dict("__basic_ops", vardict)
     basic_ops = pardict["__basic_ops"]
     return basic_ops["custom_int_field_getter"]
+
+
+def register_counter_field_getter(func, vardict):
+    if not callable(func):
+        raise TypeError(
+            "func must be a callable with parameters `node`, `idx`, `lookahead`"
+        )
+    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops["counter_field_getter"] = func
+
+
+def get_counter_field_getter(vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops["counter_field_getter"]
 
 
 def register_prepare_line_func(func, vardict):

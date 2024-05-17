@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/16
+# Last modified:   2024/05/17
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -112,7 +112,7 @@ def generate_cpp_parse_or_write_fun(
     var_mf = VariableToken(Token("VARNAME", "MF"))
     var_mt = VariableToken(Token("VARNAME", "MT"))
     ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
-    ctrl_code += aux.read_raw_line()
+    ctrl_code += get_prepare_line_func(vardict)(in_lookahead(vardict))
 
     matval = aux.get_mat_number() if mat is None else str(mat)
     mfval = aux.get_mf_number() if mf is None else str(mf)
@@ -793,7 +793,7 @@ def generate_code_for_list(node, vardict):
         vardict = {"__up": vardict}
 
     lbr = aux.ListBodyRecorder
-    icode = lbr.start_list_body_loop("mat", "mf", "mt", "parse_opts")
+    icode = lbr.start_list_body_loop(vardict)
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
     icode += lbr.indent(list_body_code)
     icode += lbr.finish_list_body_loop()
@@ -815,9 +815,10 @@ def generate_code_for_list_body(node, vardict):
     for child in node.children:
         child_name = get_name(child)
         if child_name == "expr":
-            current_value = lbr.get_element("parse_opts")
+            current_value, addcode = lbr.get_element(child, vardict)
+            code += addcode
             code += generate_code_for_varassign(child, vardict, current_value, float)
-            code += lbr.update_counters_and_line("mat", "mf", "mt", "parse_opts")
+            code += lbr.update_counters_and_line(vardict)
         elif child_name == "list_loop":
             code += generate_code_for_list_loop(child, vardict)
         elif child_name == "LINEPADDING":

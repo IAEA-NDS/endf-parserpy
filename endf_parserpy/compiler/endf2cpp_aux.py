@@ -3,17 +3,23 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/16
+# Last modified:   2024/05/17
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+from lark.lexer import Token
 from .expr_utils.equation_utils import get_variables_in_expr
+from .expr_utils.custom_nodes import VariableToken
 from . import cpp_primitives as cpp
 from .cpp_types.cpp_varops_query import did_read_var
 from .cpp_types.cpp_varaux import check_variable, get_cpp_varname
 from .lookahead_management import in_lookahead
+from .mode_management import (
+    get_prepare_line_func,
+    get_numeric_field_getter,
+)
 
 
 def define_current_template(template):
@@ -26,8 +32,8 @@ def get_current_template():
     return "cpp_template"
 
 
-def read_raw_line():
-    code = cpp.statement("cpp_line = cpp_read_raw_line(cont)")
+def read_raw_line(linevar):
+    code = cpp.statement(f"{linevar} = cpp_read_raw_line(cont)")
     return code
 
 
@@ -53,18 +59,18 @@ def is_blank_line():
     return "cpp_is_blank_line(cpp_line)"
 
 
-def read_line(mat, mf, mt, parse_opts):
+def read_line(linevar, mat, mf, mt, parse_opts):
     code = cpp.statement(
-        f"cpp_line = cpp_read_line(cont, {mat}, {mf}, {mt}, {parse_opts})"
+        f"{linevar} = cpp_read_line(cont, {mat}, {mf}, {mt}, {parse_opts})"
     )
     return code
 
 
-def read_line_la(mat, mf, mt, parse_opts, lookahead):
-    if lookahead:
-        return read_raw_line()
+def read_line_la(linevar, mat, mf, mt, parse_opts, lookahead):
+    if not lookahead:
+        return read_raw_line(linevar)
     else:
-        return read_line(mat, mf, mt, parse_opts)
+        return read_line(linevar, mat, mf, mt, parse_opts)
 
 
 def get_mat_number():
@@ -222,14 +228,19 @@ def read_section_verbatim(tarvec, mat, mf, mt, cont, is_firstline, parse_opts):
 class ListBodyRecorder:
 
     @staticmethod
-    def start_list_body_loop(mat, mf, mt, parse_opts):
+    def start_list_body_loop(vardict):
         code = cpp.open_block()
-        cpp_npl_val = get_int_field(4, parse_opts)
+        npl_var = VariableToken(Token("VARNAME", "cpp_npl_val"), cpp_namespace=True)
+        cpp_npl_val, addcode = get_numeric_field_getter(vardict)(
+            npl_var, 4, int, in_lookahead(vardict)
+        )
+        code += addcode
         code += cpp.statement(f"int cpp_npl = {cpp_npl_val}", cpp.INDENT)
         code += cpp.statement("int cpp_i = 0", cpp.INDENT)
         code += cpp.statement("int cpp_j = 0", cpp.INDENT)
-        read_line_call = read_line(mat, mf, mt, parse_opts)
-        code += cpp.statement(f"std::string line = {read_line_call}", cpp.INDENT)
+        code += cpp.indent_code(
+            get_prepare_line_func(vardict)(in_lookahead(vardict)), cpp.INDENT
+        )
         return code
 
     @staticmethod
@@ -241,25 +252,27 @@ class ListBodyRecorder:
                     'throw std::runtime_error("not exactly NPL elements consumed")'
                 ),
             ),
-            4,
+            cpp.INDENT,
         )
         code += cpp.close_block()
         return cpp.close_block()
 
     @staticmethod
-    def get_element(parse_opts):
-        return f"cpp_read_field<double>(line.c_str(), cpp_j, {parse_opts})"
+    def get_element(node, vardict):
+        valcode, addcode = get_numeric_field_getter(vardict)(
+            node, "cpp_j", float, in_lookahead(vardict)
+        )
+        return valcode, addcode
 
     @staticmethod
-    def update_counters_and_line(mat, mf, mt, parse_opts):
+    def update_counters_and_line(vardict):
         code = cpp.statement("cpp_i++")
         code += cpp.statement("cpp_j++")
-        read_line_call = read_line(mat, mf, mt, parse_opts)
         code += cpp.pureif(
             cpp.logical_and(["cpp_j > 5", "cpp_i < cpp_npl"]),
             cpp.concat(
                 [
-                    cpp.statement(f"line = {read_line_call}"),
+                    get_prepare_line_func(vardict)(in_lookahead(vardict)),
                     cpp.statement("cpp_j = 0"),
                 ]
             ),

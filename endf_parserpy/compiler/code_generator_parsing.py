@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/16
+# Last modified:   2024/05/17
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -74,7 +74,7 @@ def _get_custom_int_field_wrapper(node, start, length, lookahead):
 
 
 def _prepare_line_func_wrapper(lookahead):
-    code = read_line_la("mat", "mf", "mt", "parse_opts", lookahead)
+    code = read_line_la("cpp_line", "mat", "mf", "mt", "parse_opts", lookahead)
     return code
 
 

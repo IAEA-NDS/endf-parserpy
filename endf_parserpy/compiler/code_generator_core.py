@@ -92,6 +92,7 @@ from .mode_management import (
     get_numeric_field_getter,
     get_text_field_getter,
     get_custom_int_field_getter,
+    get_counter_field_getter,
     get_prepare_line_func,
 )
 
@@ -680,24 +681,19 @@ def generate_code_for_tab1(node, vardict):
     assert len(colnodes) == 2
     xvar = VariableToken(colnodes[0])
     yvar = VariableToken(colnodes[1])
-    nr_val_node = VariableToken(Token("VARNAME", "cpp_nr_val"), cpp_namespace=True)
-    np_val_node = VariableToken(Token("VARNAME", "cpp_np_val"), cpp_namespace=True)
+    INTvar = VariableToken(Token("VARNAME", "INT"))
+    NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
-    nr_val, addcode = get_numeric_field_getter(vardict)(
-        nr_val_node, 4, int, in_lookahead(vardict)
+    nr_val, addcode = get_counter_field_getter(vardict)(
+        INTvar, 4, in_lookahead(vardict)
     )
     code += addcode
-    np_val, addcode = get_numeric_field_getter(vardict)(
-        np_val_node, 5, int, in_lookahead(vardict)
-    )
+    np_val, addcode = get_counter_field_getter(vardict)(xvar, 5, in_lookahead(vardict))
     code += addcode
 
     tabdata = aux.get_tab1_body(
         xvar, yvar, nr_val, np_val, "mat", "mf", "mt", "parse_opts"
     )
-
-    INTvar = VariableToken(Token("VARNAME", "INT"))
-    NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
     if sectok is not None:
         vardict = {"__up": vardict}
@@ -741,15 +737,15 @@ def generate_code_for_tab2(node, vardict):
     if table_name is not None:
         sectok = VariableToken(get_child(table_name, "extvarname"))
 
-    nr_val_node = VariableToken(Token("VARNAME", "cpp_nr_val"), cpp_namespace=True)
-    nr_val, addcode = get_numeric_field_getter(vardict)(
-        nr_val_node, 4, int, in_lookahead(vardict)
+    INTvar = VariableToken(Token("VARNAME", "INT"))
+    NBTvar = VariableToken(Token("VARNAME", "NBT"))
+
+    nr_val, addcode = get_counter_field_getter(vardict)(
+        INTvar, 4, in_lookahead(vardict)
     )
     code += addcode
 
     tabdata = aux.get_tab2_body(nr_val, "mat", "mf", "mt", "parse_opts")
-    INTvar = VariableToken(Token("VARNAME", "INT"))
-    NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
     if sectok is not None:
         vardict = {"__up": vardict}

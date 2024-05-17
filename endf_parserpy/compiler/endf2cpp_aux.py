@@ -228,14 +228,9 @@ def read_section_verbatim(tarvec, mat, mf, mt, cont, is_firstline, parse_opts):
 class ListBodyRecorder:
 
     @staticmethod
-    def start_list_body_loop(vardict):
+    def start_list_body_loop(npl_val, vardict):
         code = cpp.open_block()
-        npl_var = VariableToken(Token("VARNAME", "cpp_npl_val"), cpp_namespace=True)
-        cpp_npl_val, addcode = get_numeric_field_getter(vardict)(
-            npl_var, 4, int, in_lookahead(vardict)
-        )
-        code += addcode
-        code += cpp.statement(f"int cpp_npl = {cpp_npl_val}", cpp.INDENT)
+        code += cpp.statement(f"int cpp_npl = {npl_val}", cpp.INDENT)
         code += cpp.statement("int cpp_i = 0", cpp.INDENT)
         code += cpp.statement("int cpp_j = 0", cpp.INDENT)
         code += cpp.indent_code(

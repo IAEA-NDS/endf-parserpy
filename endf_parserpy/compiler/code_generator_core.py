@@ -779,6 +779,11 @@ def generate_code_for_list(node, vardict):
     code += get_prepare_line_func(vardict)(in_lookahead(vardict))
     code += cpp.comment("read LIST record")
     code += generate_code_from_record_fields(record_fields, vardict)
+    npl_node = get_child(record_fields, "expr", idx=4)
+    npl_val, addcode = get_numeric_field_getter(vardict)(
+        npl_node, 4, int, in_lookahead(vardict)
+    )
+    code += addcode
 
     if not should_proceed(vardict):
         return code
@@ -793,7 +798,7 @@ def generate_code_for_list(node, vardict):
         vardict = {"__up": vardict}
 
     lbr = aux.ListBodyRecorder
-    icode = lbr.start_list_body_loop(vardict)
+    icode = lbr.start_list_body_loop(npl_val, vardict)
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
     icode += lbr.indent(list_body_code)
     icode += lbr.finish_list_body_loop()

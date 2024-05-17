@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/25
+# Last modified:   2024/05/17
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -46,10 +46,14 @@ def get_child_names(tree):
     return list(get_name(t) for t in tree.children)
 
 
-def get_child(tree, name, nofail=False):
+def get_child(tree, name, nofail=False, idx=None):
+    idx = 0 if idx is None else idx
+    curidx = 0
     for child in tree.children:
         if get_name(child) == name:
-            return child
+            if idx == curidx:
+                return child
+            curidx += 1
     if nofail:
         return None
     else:

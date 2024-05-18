@@ -12,6 +12,7 @@
 
 from .code_generator_core import generate_vardefs, generate_code_from_parsetree
 from . import cpp_boilerplate
+from . import cpp_boilerplate_reading
 from .code_generator_core import (
     generate_cpp_parse_or_write_fun,
     generate_code_for_varassign,
@@ -42,6 +43,7 @@ from .endf2cpp_aux import (
     get_text_field,
     get_custom_int_field,
     read_line_la,
+    read_raw_line,
 )
 
 
@@ -93,8 +95,43 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_custom_int_field_getter(_get_custom_int_field_wrapper, vardict)
     register_counter_field_getter(_get_counter_field_wrapper, vardict)
     register_prepare_line_func(_prepare_line_func_wrapper, vardict)
+
+    var_mat = VariableToken(Token("VARNAME", "MAT"))
+    var_mf = VariableToken(Token("VARNAME", "MF"))
+    var_mt = VariableToken(Token("VARNAME", "MT"))
+
+    ctrl_code = ""
+    ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
+    ctrl_code += read_raw_line("cpp_line")
+    matval = aux.get_mat_number() if mat is None else str(mat)
+    mfval = aux.get_mf_number() if mf is None else str(mf)
+    mtval = aux.get_mt_number() if mt is None else str(mt)
+    ctrl_code += cpp.statement(f"int mat = {matval}")
+    ctrl_code += cpp.statement(f"int mf = {mfval}")
+    ctrl_code += cpp.statement(f"int mt = {mtval}")
+    ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
+
+    ctrl_code += generate_code_for_varassign(var_mat, vardict, matval, int)
+    ctrl_code += generate_code_for_varassign(var_mf, vardict, mfval, int)
+    ctrl_code += generate_code_for_varassign(var_mt, vardict, mtval, int)
+
+    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mat, vardict)
+    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mf, vardict)
+    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mt, vardict)
+
+    fun_header = cpp_boilerplate_reading.parsefun_header(name)
+    fun_footer = cpp_boilerplate_reading.parsefun_footer()
     return generate_cpp_parse_or_write_fun(
-        name, endf_recipe, mat, mf, mt, parser, vardict
+        name,
+        endf_recipe,
+        mat,
+        mf,
+        mt,
+        parser,
+        vardict,
+        fun_header=fun_header,
+        fun_footer=fun_footer,
+        fun_setup=ctrl_code,
     )
 
 

@@ -20,6 +20,7 @@ from .cpp_boilerplate_reading import (
     register_reading_options,
     module_header_reading,
 )
+from .cpp_boilerplate_writing import module_header_writing
 
 
 def _module_header():
@@ -81,6 +82,7 @@ def _module_header():
 def module_header():
     code = _module_header()
     code += module_header_reading()
+    code += module_header_writing()
     code += cpp.line("")
     code += construct_vartype_dtype_enum()
     code += cpp.line("")

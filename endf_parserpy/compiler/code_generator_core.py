@@ -99,51 +99,40 @@ from .mode_management import (
 
 
 def generate_cpp_parse_or_write_fun(
-    name, endf_recipe, mat=None, mf=None, mt=None, parser=None, vardict=None
+    name,
+    endf_recipe,
+    mat=None,
+    mf=None,
+    mt=None,
+    parser=None,
+    vardict=None,
+    fun_header=None,
+    fun_footer=None,
+    fun_setup=None,
 ):
     if vardict is None:
         raise TypeError("dictionary `vardict` must be provided")
     if parser is None:
         parser = Lark(endf_recipe_grammar, start="endf_recipe", keep_all_tokens=True)
+    if fun_header is None:
+        raise TypeError("must provide `fun_header` argument")
+    if fun_footer is None:
+        raise TypeError("must provide `fun_footer` argument")
+    fun_setup = "" if fun_setup is None else fun_setup
+
     parsetree = parser.parse(endf_recipe)
     parsetree = transform_nodes(parsetree, simplify_expr_node)
     parsetree = transform_nodes_inplace(parsetree, node_and_kids_to_ParseNode)
-
-    ctrl_code = ""
-    var_mat = VariableToken(Token("VARNAME", "MAT"))
-    var_mf = VariableToken(Token("VARNAME", "MF"))
-    var_mt = VariableToken(Token("VARNAME", "MT"))
-    ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
-    ctrl_code += get_prepare_line_func(vardict)(in_lookahead(vardict))
-
-    matval = aux.get_mat_number() if mat is None else str(mat)
-    mfval = aux.get_mf_number() if mf is None else str(mf)
-    mtval = aux.get_mt_number() if mt is None else str(mt)
-    ctrl_code += cpp.statement(f"int mat = {matval}")
-    ctrl_code += cpp.statement(f"int mf = {mfval}")
-    ctrl_code += cpp.statement(f"int mt = {mtval}")
-    ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
-    ctrl_code += get_prepare_line_func(vardict)(in_lookahead(vardict))
-
-    ctrl_code += generate_code_for_varassign(var_mat, vardict, matval, int)
-    ctrl_code += generate_code_for_varassign(var_mf, vardict, mfval, int)
-    ctrl_code += generate_code_for_varassign(var_mt, vardict, mtval, int)
-
-    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mat, vardict)
-    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mf, vardict)
-    ctrl_code += cpp_varops_assign.store_var_in_endf_dict(var_mt, vardict)
-    ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
 
     code = generate_code_from_parsetree(parsetree, vardict)
 
     # must be after traversing the tree because assign_exprstr_to_var
     # populates vardict and type info therein
     vardefs = generate_vardefs(vardict)
+    fun_body = vardefs + fun_setup + code
+    fun_body += generate_endf_dict_assignments(vardict)
+    fun_body = cpp.indent_code(fun_body, cpp.INDENT)
 
-    fun_header = cpp_boilerplate_reading.parsefun_header(name)
-    fun_footer = cpp.indent_code(generate_endf_dict_assignments(vardict), cpp.INDENT)
-    fun_footer += cpp_boilerplate_reading.parsefun_footer()
-    fun_body = cpp.indent_code(vardefs + ctrl_code + code, cpp.INDENT)
     code = fun_header + fun_body + fun_footer
     return code
 

@@ -267,11 +267,15 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
     for p in writefuns:
         code += cpp.line(f"py::dict {p}_file(std::string& filename{args_str}) {{")
         code += cpp.statement("std::ifstream inpfile(filename)", cpp.INDENT)
-        code += cpp.pureif(
-            cpp.logical_not("inpfile.is_open()"),
-            cpp.statement(
-                "throw std::ifstream::failure" + '("failed to open file " + filename)'
+        code += cpp.indent_code(
+            cpp.pureif(
+                cpp.logical_not("inpfile.is_open()"),
+                cpp.statement(
+                    "throw std::ifstream::failure"
+                    + '("failed to open file " + filename)'
+                ),
             ),
+            cpp.INDENT,
         )
         code += cpp.statement(f"return {p}_istream(inpfile{args_str2})", cpp.INDENT)
         code += cpp.close_block()

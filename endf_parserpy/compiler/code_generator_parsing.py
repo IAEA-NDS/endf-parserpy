@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/17
+# Last modified:   2024/05/18
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,6 +11,7 @@
 
 
 from .code_generator_core import generate_vardefs, generate_code_from_parsetree
+from . import cpp_boilerplate
 from .code_generator_core import (
     generate_cpp_parse_or_write_fun,
     generate_code_for_varassign,
@@ -329,3 +330,75 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
         code += cpp.close_block()
         code += cpp.line("")
     return code
+
+
+def generate_all_cpp_parsefuns_code(recipes, module_name):
+    parsefuns_code = ""
+    func_names = []
+    recipefuns = {}
+    for mf, mt_recipes in recipes.items():
+        if isinstance(mt_recipes, str):
+            print(f"MF: {mf}")
+            func_name = mf_mt_parsefun_name(mf, None)
+            func_names.append(func_name)
+            recipe = mt_recipes
+            parsefuns_code += generate_cpp_parsefun(
+                func_name + "_istream", recipe, mf=mf, mt=None
+            )
+            recipefuns[mf] = func_name
+            continue
+        for mt, recipe in mt_recipes.items():
+            print(f"MF: {mf} MT: {mt}")
+            func_name = mf_mt_parsefun_name(mf, mt)
+            func_names.append(func_name)
+            mt_ = mt if mt != -1 else None
+            parsefuns_code += generate_cpp_parsefun(
+                func_name + "_istream", recipe, mf=mf, mt=mt_
+            )
+            curdic = recipefuns.setdefault(mf, {})
+            curdic[mt] = func_name
+    parsefun_wrappers_code1 = generate_cpp_parsefun_wrappers_string(
+        func_names, ("ParsingOptions", "parse_opts")
+    )
+    parsefun_wrappers_code2 = generate_cpp_parsefun_wrappers_file(
+        func_names, ("ParsingOptions", "parse_opts")
+    )
+    # special case for the master function calling the other mf/mt parser funs
+    master_parsefun_code = generate_master_parsefun("parse_endf_istream", recipefuns)
+    parsefun_wrappers_code1 += generate_cpp_parsefun_wrappers_string(
+        ["parse_endf"],
+        ("py::object", "exclude"),
+        ("py::object", "include"),
+        ("ParsingOptions", "parse_opts"),
+    )
+    parsefun_wrappers_code2 += generate_cpp_parsefun_wrappers_file(
+        ["parse_endf"],
+        ("py::object", "exclude"),
+        ("py::object", "include"),
+        ("ParsingOptions", "parse_opts"),
+    )
+    pybind_glue = ""
+    pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
+        ["parse_endf"],
+        module_name,
+        'py::arg("cont")',
+        'py::arg("exclude") = py::none()',
+        'py::arg("include") = py::none()',
+        'py::arg("parse_opts") = false',
+    )
+    pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
+        ["parse_endf_file"],
+        module_name,
+        'py::arg("filename")',
+        'py::arg("exclude") = py::none()',
+        'py::arg("include") = py::none()',
+        'py::arg("parse_opts") = default_parsing_options()',
+    )
+
+    all_parsefun_codes = (
+        parsefuns_code
+        + master_parsefun_code
+        + parsefun_wrappers_code1
+        + parsefun_wrappers_code2
+    )
+    return all_parsefun_codes, pybind_glue

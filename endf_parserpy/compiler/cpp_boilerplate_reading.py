@@ -217,14 +217,6 @@ def module_header_reading():
     }
 
 
-    std::string float2endfstr(double value) {
-      std::ostringstream oss;
-      oss << std::scientific << std::setprecision(6);
-      oss << std::setw(11) << value;
-      return oss.str();
-    }
-
-
     int endfstr2int(const char* str, ParsingOptions &parse_opts) {
       char strzero[12];
       std::memcpy(strzero, str, 11);
@@ -235,13 +227,6 @@ def module_header_reading():
         }
       }
       return 0;
-    }
-
-
-    std::string int2endfstr(int value) {
-      std::ostringstream oss;
-      oss << std::right << std::setw(11) << value;
-      return oss.str();
     }
 
 

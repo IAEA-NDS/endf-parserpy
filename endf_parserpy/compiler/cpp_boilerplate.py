@@ -38,19 +38,6 @@ def _module_header():
     namespace py = pybind11;
 
 
-    template<typename T>
-    void cpp_write_field(std::string& line, const char fieldnum, T value) {
-      static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, "T must be int or double");
-      std::string fieldstr;
-      if (std::is_same<T, double>::value) {
-        fieldstr = float2endfstr(value);
-      } else {
-        fieldstr = int2endfstr(value);
-      }
-      line.replace(fieldnum*11, 11, fieldstr);
-    }
-
-
     bool seq_contains(py::sequence seq, py::object value) {
       int i = 0;
       for (const auto& item : seq) {

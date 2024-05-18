@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/17
+# Last modified:   2024/05/18
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -55,6 +55,7 @@ from .variable_management import (
     find_parent_dict,
 )
 from . import cpp_boilerplate
+from . import cpp_boilerplate_reading
 from . import endf2cpp_aux as aux
 from .cpp_types import cpp_varops_query
 from .cpp_types.cpp_varops_query import (
@@ -139,9 +140,9 @@ def generate_cpp_parse_or_write_fun(
     # populates vardict and type info therein
     vardefs = generate_vardefs(vardict)
 
-    fun_header = cpp_boilerplate.parsefun_header(name)
+    fun_header = cpp_boilerplate_reading.parsefun_header(name)
     fun_footer = cpp.indent_code(generate_endf_dict_assignments(vardict), cpp.INDENT)
-    fun_footer += cpp_boilerplate.parsefun_footer()
+    fun_footer += cpp_boilerplate_reading.parsefun_footer()
     fun_body = cpp.indent_code(vardefs + ctrl_code + code, cpp.INDENT)
     code = fun_header + fun_body + fun_footer
     return code

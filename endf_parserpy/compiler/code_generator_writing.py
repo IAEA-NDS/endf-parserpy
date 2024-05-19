@@ -46,7 +46,10 @@ from .endf2cpp_aux import (
     read_line_la,
     read_raw_line,
 )
-from .endf2cpp_aux_writing import prepare_line_la
+from .endf2cpp_aux_writing import (
+    prepare_line_la,
+    set_numeric_field,
+)
 
 
 def mf_mt_writefun_name(mf, mt):
@@ -64,6 +67,8 @@ def _mf_mt_dict_varname(mf, mt):
 def _get_numeric_field_wrapper(node, idx, dtype, lookahead):
     valcode = get_numeric_field(idx, dtype, "parse_opts")
     code = ""
+    if not lookahead:
+        code += set_numeric_field("cpp_draft_line", idx, dtype, valcode)
     return valcode, code
 
 

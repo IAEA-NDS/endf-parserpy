@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/18
+# Last modified:   2024/05/19
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -95,6 +95,7 @@ from .mode_management import (
     get_custom_int_field_getter,
     get_counter_field_getter,
     get_prepare_line_func,
+    get_finalize_line_func,
 )
 
 
@@ -632,6 +633,7 @@ def generate_code_for_cont(node, vardict):
     code += cpp.comment("read CONT record")
     record_fields = get_child(node, "record_fields")
     code += generate_code_from_record_fields(record_fields, vardict)
+    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
     return code
 
 

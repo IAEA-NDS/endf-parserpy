@@ -645,6 +645,7 @@ def generate_code_for_dir(node, vardict):
     code += get_prepare_line_func(vardict)(in_lookahead(vardict))
     record_fields = get_child(node, "dir_fields")
     code += generate_code_from_record_fields(record_fields, vardict, skip=(0, 1), ofs=2)
+    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
     return code
 
 

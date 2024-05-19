@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/18
+# Last modified:   2024/05/19
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -37,6 +37,20 @@ def _module_header():
     #include <string>
 
     namespace py = pybind11;
+
+
+    struct Tab1Body {
+      std::vector<int> INT;
+      std::vector<int> NBT;
+      std::vector<double> X;
+      std::vector<double> Y;
+    };
+
+
+    struct Tab2Body {
+      std::vector<int> INT;
+      std::vector<int> NBT;
+    };
 
 
     bool seq_contains(py::sequence seq, py::object value) {

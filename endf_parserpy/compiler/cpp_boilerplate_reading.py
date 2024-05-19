@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/18
+# Last modified:   2024/05/19
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -451,20 +451,6 @@ def module_header_reading():
       }
       return res;
     }
-
-
-    struct Tab1Body {
-      std::vector<int> INT;
-      std::vector<int> NBT;
-      std::vector<double> X;
-      std::vector<double> Y;
-    };
-
-
-    struct Tab2Body {
-      std::vector<int> INT;
-      std::vector<int> NBT;
-    };
 
 
     Tab2Body read_tab2_body(

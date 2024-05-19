@@ -569,6 +569,7 @@ def generate_code_for_text(node, vardict):
         code += addcode
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         ofs += length
+    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
     return code
 
 

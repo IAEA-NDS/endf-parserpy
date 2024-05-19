@@ -50,6 +50,7 @@ from .endf2cpp_aux_writing import (
     prepare_line_la,
     set_numeric_field,
     set_text_field,
+    set_custom_int_field,
 )
 
 
@@ -84,6 +85,8 @@ def _get_text_field_wrapper(node, start, length, lookahead):
 def _get_custom_int_field_wrapper(node, start, length, lookahead):
     valcode = get_custom_int_field(start, length)
     code = ""
+    if not lookahead:
+        code += set_custom_int_field("cpp_draft_line", start, length, valcode)
     return valcode, code
 
 

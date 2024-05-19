@@ -22,3 +22,9 @@ def prepare_line_la(linevar, mat, mf, mt, lookahead):
     if lookahead:
         return ""
     return prepare_line(linevar, mat, mf, mt)
+
+
+def set_numeric_field(linevar, fieldpos, dtype, value):
+    dtypestr = {float: "double", int: "int"}[dtype]
+    code = cpp.statement(f"cpp_write_field<{dtypestr}>({linevar}, {fieldpos}, {value})")
+    return code

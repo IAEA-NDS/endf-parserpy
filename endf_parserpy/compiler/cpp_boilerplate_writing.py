@@ -47,10 +47,40 @@ def module_header_writing():
     }
 
 
+    std::string float2endfstr_helper(double value, int prec) {
+      std::ostringstream oss;
+      oss << std::scientific << std::setprecision(prec) << value;
+      std::string numstr = oss.str();
+      size_t exp_pos = numstr.find("e");
+      size_t strsize = numstr.size();
+      size_t zerostart = std::string::npos;
+      if (exp_pos == std::string::npos) {
+        throw std::runtime_error("`e` character not found");
+      }
+      for (int i=exp_pos+1; i < strsize; i++) {
+        if ((numstr[i] >= '1' && numstr[i] <= '9') || i+1 == strsize) {
+          if (zerostart != std::string::npos) {
+            numstr.erase(zerostart, i - zerostart);
+            break;
+          }
+        } else if (zerostart == std::string::npos && numstr[i] == '0') {
+          zerostart = i;
+        }
+      }
+      numstr.erase(exp_pos, 1);
+      return numstr;
+    }
+
+
     std::string float2endfstr(double value) {
       std::ostringstream oss;
-      oss << std::scientific << std::setprecision(6);
-      oss << std::setw(11) << value;
+      std::string numstr;
+      numstr = float2endfstr_helper(value, 6);
+      int prec_red = numstr.size() - 10;
+      if (prec_red > 0) {
+        numstr = float2endfstr_helper(value, 6 - prec_red);
+      }
+      oss << std::right << std::setw(11) << numstr;
       return oss.str();
     }
 
@@ -71,6 +101,7 @@ def module_header_writing():
       } else {
         fieldstr = int2endfstr(value);
       }
+      if (fieldstr.size() != 11) { throw std::runtime_error(std::string("wrong size") + std::to_string(fieldstr.size())); }
       line.replace(fieldnum*11, 11, fieldstr);
     }
     """

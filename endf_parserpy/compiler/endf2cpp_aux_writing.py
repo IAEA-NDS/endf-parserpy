@@ -28,3 +28,8 @@ def set_numeric_field(linevar, fieldpos, dtype, value):
     dtypestr = {float: "double", int: "int"}[dtype]
     code = cpp.statement(f"cpp_write_field<{dtypestr}>({linevar}, {fieldpos}, {value})")
     return code
+
+
+def set_text_field(linevar, start, length, value):
+    code = cpp.statement(f"{linevar}.replace({start}, {length}, {value})")
+    return code

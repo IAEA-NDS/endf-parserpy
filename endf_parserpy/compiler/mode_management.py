@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/17
+# Last modified:   2024/05/19
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -123,3 +123,16 @@ def get_prepare_line_func(vardict):
     pardict = _find_parent_dict("__basic_ops", vardict)
     basic_ops = pardict["__basic_ops"]
     return basic_ops["prepare_line_func"]
+
+
+def register_finalize_line_func(func, vardict):
+    if not callable(func):
+        raise TypeError("func must be a callable with parameters `lookahead`")
+    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops["finalize_line_func"] = func
+
+
+def get_finalize_line_func(vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops["finalize_line_func"]

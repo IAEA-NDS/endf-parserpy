@@ -774,6 +774,7 @@ def generate_code_for_list(node, vardict):
         npl_node, 4, int, in_lookahead(vardict)
     )
     code += addcode
+    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
 
     if not should_proceed(vardict):
         return code
@@ -791,7 +792,7 @@ def generate_code_for_list(node, vardict):
     icode = lbr.start_list_body_loop(npl_val, vardict)
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
     icode += lbr.indent(list_body_code)
-    icode += lbr.finish_list_body_loop()
+    icode += lbr.finish_list_body_loop(vardict)
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)

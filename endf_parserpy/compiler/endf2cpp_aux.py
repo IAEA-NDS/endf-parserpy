@@ -19,6 +19,7 @@ from .lookahead_management import in_lookahead
 from .mode_management import (
     get_prepare_line_func,
     get_numeric_field_getter,
+    get_finalize_line_func,
 )
 
 
@@ -239,7 +240,7 @@ class ListBodyRecorder:
         return code
 
     @staticmethod
-    def finish_list_body_loop():
+    def finish_list_body_loop(vardict):
         code = cpp.indent_code(
             cpp.pureif(
                 "cpp_i != cpp_npl",
@@ -250,6 +251,7 @@ class ListBodyRecorder:
             cpp.INDENT,
         )
         code += cpp.close_block()
+        code += get_finalize_line_func(vardict)(in_lookahead(vardict))
         return cpp.close_block()
 
     @staticmethod
@@ -267,6 +269,7 @@ class ListBodyRecorder:
             cpp.logical_and(["cpp_j > 5", "cpp_i < cpp_npl"]),
             cpp.concat(
                 [
+                    get_finalize_line_func(vardict)(in_lookahead(vardict)),
                     get_prepare_line_func(vardict)(in_lookahead(vardict)),
                     cpp.statement("cpp_j = 0"),
                 ]

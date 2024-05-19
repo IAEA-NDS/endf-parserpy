@@ -45,7 +45,7 @@ from .endf2cpp_aux import (
     read_line_la,
     read_raw_line,
 )
-from .endf2cpp_aux_writing import prepare_line
+from .endf2cpp_aux_writing import prepare_line_la
 
 
 def mf_mt_writefun_name(mf, mt):
@@ -86,7 +86,7 @@ def _get_counter_field_wrapper(node, idx, lookahead):
 
 def _prepare_line_func_wrapper(lookahead):
     code = read_line_la("cpp_line", "mat", "mf", "mt", "parse_opts", lookahead)
-    code += prepare_line("cpp_draft_line", "mat", "mf", "mt", lookahead)
+    code += prepare_line_la("cpp_draft_line", "mat", "mf", "mt", lookahead)
     return code
 
 

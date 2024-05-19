@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/18
+# Last modified:   2024/05/19
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -37,6 +37,7 @@ from .mode_management import (
     register_custom_int_field_getter,
     register_counter_field_getter,
     register_prepare_line_func,
+    register_finalize_line_func,
 )
 from .endf2cpp_aux import (
     get_numeric_field,
@@ -88,6 +89,10 @@ def _prepare_line_func_wrapper(lookahead):
     return code
 
 
+def _finalize_line_func_wrapper(lookahead):
+    return ""
+
+
 def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=None):
     vardict = {}
     register_numeric_field_getter(_get_numeric_field_wrapper, vardict)
@@ -95,6 +100,7 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_custom_int_field_getter(_get_custom_int_field_wrapper, vardict)
     register_counter_field_getter(_get_counter_field_wrapper, vardict)
     register_prepare_line_func(_prepare_line_func_wrapper, vardict)
+    register_finalize_line_func(_finalize_line_func_wrapper, vardict)
 
     var_mat = VariableToken(Token("VARNAME", "MAT"))
     var_mf = VariableToken(Token("VARNAME", "MF"))

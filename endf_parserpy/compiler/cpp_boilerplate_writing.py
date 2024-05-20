@@ -177,10 +177,8 @@ def writefun_header(fun_name):
         ) {{
           std::vector<int> cpp_intvec;
           std::vector<double> cpp_floatvec;
-          std::string cpp_line;
           std::string cpp_template;
           double cpp_float_val;
-          std::string cpp_draft_line;
           Tab1Body tab1_body;
           Tab2Body tab2_body;
         """,

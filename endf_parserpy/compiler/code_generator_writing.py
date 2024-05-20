@@ -145,7 +145,9 @@ def _finalize_line_func_wrapper(lookahead):
 
 
 def _prepare_line_tape_func_wrapper():
-    return ""
+    code = cpp.statement("std::string cpp_line")
+    code += cpp.statement("std::string cpp_draft_line")
+    return code
 
 
 def _finalize_line_tape_func_wrapper():

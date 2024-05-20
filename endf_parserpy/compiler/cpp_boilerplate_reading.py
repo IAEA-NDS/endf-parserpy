@@ -619,7 +619,6 @@ def parsefun_header(fun_name):
         ) {{
           std::vector<int> cpp_intvec;
           std::vector<double> cpp_floatvec;
-          std::string cpp_line;
           std::string cpp_template;
           double cpp_float_val;
         """,

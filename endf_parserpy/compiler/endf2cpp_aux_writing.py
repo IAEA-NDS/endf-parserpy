@@ -45,3 +45,8 @@ def set_custom_int_field(linevar, start_pos, length, value):
 def set_tab1_body(linevar, tab_body, mat, mf, mt):
     code = cpp.statement(f"write_tab1_body({linevar}, {tab_body}, {mat}, {mf}, {mt})")
     return code
+
+
+def set_tab2_body(linevar, tab_body, mat, mf, mt):
+    code = cpp.statement(f"write_tab2_body({linevar}, {tab_body}, {mat}, {mf}, {mt})")
+    return code

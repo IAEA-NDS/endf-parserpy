@@ -72,7 +72,7 @@ def register_text_field_getter(func, vardict):
         raise TypeError(
             "func must be a callable with parameters `node`, `start`, `length`, `lookahead`"
         )
-    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops = vardict.setdefault("__basic_ops", {})
     basic_ops["text_field_getter"] = func
 
 
@@ -87,7 +87,7 @@ def register_custom_int_field_getter(func, vardict):
         raise TypeError(
             "func must be a callable with parameters `node`, `start`, `length`, `lookahead`"
         )
-    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops = vardict.setdefault("__basic_ops", {})
     basic_ops["custom_int_field_getter"] = func
 
 
@@ -102,7 +102,7 @@ def register_counter_field_getter(func, vardict):
         raise TypeError(
             "func must be a callable with parameters `node`, `idx`, `lookahead`"
         )
-    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops = vardict.setdefault("__basic_ops", {})
     basic_ops["counter_field_getter"] = func
 
 
@@ -117,7 +117,7 @@ def register_tab1_body_getter(func, vardict):
         raise TypeError(
             "func must be a callable with parameters `xvar`, `xvar`, `nr`, `np`,  `lookahead`"
         )
-    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops = vardict.setdefault("__basic_ops", {})
     basic_ops["tab1_body_getter"] = func
 
 
@@ -130,7 +130,7 @@ def get_tab1_body_getter(vardict):
 def register_tab2_body_getter(func, vardict):
     if not callable(func):
         raise TypeError("func must be a callable with parameters `nr`, `lookahead`")
-    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops = vardict.setdefault("__basic_ops", {})
     basic_ops["tab2_body_getter"] = func
 
 
@@ -143,7 +143,7 @@ def get_tab2_body_getter(vardict):
 def register_prepare_line_func(func, vardict):
     if not callable(func):
         raise TypeError("func must be a callable with parameters `lookahead`")
-    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops = vardict.setdefault("__basic_ops", {})
     basic_ops["prepare_line_func"] = func
 
 
@@ -156,7 +156,7 @@ def get_prepare_line_func(vardict):
 def register_finalize_line_func(func, vardict):
     if not callable(func):
         raise TypeError("func must be a callable with parameters `lookahead`")
-    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops = vardict.setdefault("__basic_ops", {})
     basic_ops["finalize_line_func"] = func
 
 

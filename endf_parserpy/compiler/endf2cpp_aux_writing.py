@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/19
+# Last modified:   2024/05/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -39,4 +39,9 @@ def set_custom_int_field(linevar, start_pos, length, value):
     code = cpp.statement(
         f"cpp_write_custom_int_field({linevar}, {start_pos}, {length}, {value})"
     )
+    return code
+
+
+def set_tab1_body(linevar, tab_body, mat, mf, mt):
+    code = cpp.statement(f"write_tab1_body({linevar}, {tab_body}, {mat}, {mf}, {mt})")
     return code

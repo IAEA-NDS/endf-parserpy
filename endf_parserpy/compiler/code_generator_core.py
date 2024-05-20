@@ -98,6 +98,8 @@ from .mode_management import (
     get_counter_field_getter,
     get_prepare_line_func,
     get_finalize_line_func,
+    get_prepare_line_tape_func,
+    get_finalize_line_tape_func,
 )
 
 
@@ -132,8 +134,10 @@ def generate_cpp_parse_or_write_fun(
     # must be after traversing the tree because assign_exprstr_to_var
     # populates vardict and type info therein
     vardefs = generate_vardefs(vardict)
-    fun_body = vardefs + fun_setup + code
+    fun_body = get_prepare_line_tape_func(vardict)()
+    fun_body += vardefs + fun_setup + code
     fun_body += generate_endf_dict_assignments(vardict)
+    fun_body += get_finalize_line_tape_func(vardict)()
     fun_body = cpp.indent_code(fun_body, cpp.INDENT)
 
     code = fun_header + fun_body + fun_footer

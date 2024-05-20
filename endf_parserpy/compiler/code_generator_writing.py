@@ -139,7 +139,6 @@ def _finalize_line_func_wrapper(lookahead):
     )
     code += cpp.statement('std::cout << "LINE: " << cpp_line << std::endl')
     code += cpp.statement('std::cout << "FINE: " << cpp_draft_line << std::endl')
-    code += cpp.statement("cpp_output_stream << cpp_draft_line")
     return code
 
 

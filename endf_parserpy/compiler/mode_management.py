@@ -127,6 +127,19 @@ def get_tab1_body_getter(vardict):
     return basic_ops["tab1_body_getter"]
 
 
+def register_tab2_body_getter(func, vardict):
+    if not callable(func):
+        raise TypeError("func must be a callable with parameters `nr`, `lookahead`")
+    basic_ops = vardict.setdefault("__basic_ops", vardict)
+    basic_ops["tab2_body_getter"] = func
+
+
+def get_tab2_body_getter(vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops["tab2_body_getter"]
+
+
 def register_prepare_line_func(func, vardict):
     if not callable(func):
         raise TypeError("func must be a callable with parameters `lookahead`")

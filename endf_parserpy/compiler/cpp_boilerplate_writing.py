@@ -161,6 +161,7 @@ def writefun_header(fun_name):
           std::string cpp_template;
           double cpp_float_val;
           std::string cpp_draft_line;
+          Tab1Body tab1_body;
         """,
         -8,
     )

@@ -35,6 +35,7 @@ from .mode_management import (
     register_numeric_field_getter,
     register_text_field_getter,
     register_tab1_body_getter,
+    register_tab2_body_getter,
     register_custom_int_field_getter,
     register_counter_field_getter,
     register_prepare_line_func,
@@ -44,6 +45,7 @@ from .endf2cpp_aux import (
     get_numeric_field,
     get_text_field,
     get_tab1_body,
+    get_tab2_body,
     get_custom_int_field,
     read_line_la,
     read_raw_line,
@@ -80,6 +82,12 @@ def _get_tab1_body_wrapper(xvar, yvar, nr, np, lookahead):
     return valcode, code
 
 
+def _get_tab2_body_wrapper(nr, lookahead):
+    valcode = get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
+    code = ""
+    return valcode, code
+
+
 def _get_custom_int_field_wrapper(node, start, length, lookahead):
     valcode = get_custom_int_field(start, length)
     code = ""
@@ -106,6 +114,7 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_numeric_field_getter(_get_numeric_field_wrapper, vardict)
     register_text_field_getter(_get_text_field_wrapper, vardict)
     register_tab1_body_getter(_get_tab1_body_wrapper, vardict)
+    register_tab2_body_getter(_get_tab2_body_wrapper, vardict)
     register_custom_int_field_getter(_get_custom_int_field_wrapper, vardict)
     register_counter_field_getter(_get_counter_field_wrapper, vardict)
     register_prepare_line_func(_prepare_line_func_wrapper, vardict)

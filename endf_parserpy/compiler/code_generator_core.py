@@ -93,6 +93,7 @@ from .mode_management import (
     get_numeric_field_getter,
     get_text_field_getter,
     get_tab1_body_getter,
+    get_tab2_body_getter,
     get_custom_int_field_getter,
     get_counter_field_getter,
     get_prepare_line_func,
@@ -748,7 +749,12 @@ def generate_code_for_tab2(node, vardict):
     )
     code += addcode
 
-    tabdata = aux.get_tab2_body(nr_val, "mat", "mf", "mt", "parse_opts")
+    # we are done with the first control record line of the tab2 record
+    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+
+    # NOTE: the prepare line call is/should be handled by the code returned by get_tab1_body_getter
+    tabdata, addcode = get_tab2_body_getter(vardict)(nr_val, in_lookahead(vardict))
+    code += addcode
 
     if sectok is not None:
         vardict = {"__up": vardict}
@@ -762,10 +768,13 @@ def generate_code_for_tab2(node, vardict):
         vardefs = generate_vardefs(vardict)
         dictassigns = generate_endf_dict_assignments(vardict)
         code += aux.open_section(sectok, vardict)
-        code += cpp.indent_code(vardefs + assigncode + dictassigns)
+        inner_code = vardefs + assigncode + dictassigns
+        inner_code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+        code += cpp.indent_code(inner_code)
         code += aux.close_section()
     else:
         code += assigncode
+        code += get_finalize_line_func(vardict)(in_lookahead(vardict))
     return code
 
 

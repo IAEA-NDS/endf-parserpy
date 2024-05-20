@@ -40,6 +40,7 @@ def module_header_writing():
 
     std::string cpp_prepare_line(int mat, int mf, int mt) {
       std::string line(75, ' ');
+      line += '\n';
       cpp_write_mat_number(line, mat);
       cpp_write_mf_number(line, mf);
       cpp_write_mt_number(line, mt);

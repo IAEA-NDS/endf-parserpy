@@ -143,6 +143,28 @@ def module_header_writing():
     }
 
 
+    void write_tab2_body(
+      std::string& line, Tab2Body tab_body, int mat, int mf, int mt
+    ) {
+      assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
+      int nr = tab_body.INT.size();
+      std::ostringstream oss;
+      std::string curline = cpp_prepare_line(mat, mf, mt);
+      int j = 0;
+      for (int i=0; i < nr; i++) {
+        cpp_write_field(curline, j++, tab_body.NBT[i]);
+        cpp_write_field(curline, j++, tab_body.INT[i]);
+        if (j > 5 && i+1 < nr) {
+          oss << curline << std::endl;
+          curline = cpp_prepare_line(mat, mf, mt);
+          j = 0;
+        }
+      }
+      oss << curline << std::endl;
+      line = oss.str();
+    }
+
+
     """
     return cpp.indent_code(code, -4)
 

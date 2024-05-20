@@ -40,6 +40,8 @@ from .mode_management import (
     register_tab2_body_getter,
     register_prepare_line_func,
     register_finalize_line_func,
+    register_prepare_line_tape_func,
+    register_finalize_line_tape_func,
 )
 from .endf2cpp_aux import (
     get_numeric_field,
@@ -137,7 +139,16 @@ def _finalize_line_func_wrapper(lookahead):
     )
     code += cpp.statement('std::cout << "LINE: " << cpp_line << std::endl')
     code += cpp.statement('std::cout << "FINE: " << cpp_draft_line << std::endl')
+    code += cpp.statement("cpp_output_stream << cpp_draft_line")
     return code
+
+
+def _prepare_line_tape_func_wrapper():
+    return ""
+
+
+def _finalize_line_tape_func_wrapper():
+    return ""
 
 
 def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=None):
@@ -150,6 +161,8 @@ def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_counter_field_getter(_get_counter_field_wrapper, vardict)
     register_prepare_line_func(_prepare_line_func_wrapper, vardict)
     register_finalize_line_func(_finalize_line_func_wrapper, vardict)
+    register_prepare_line_tape_func(_prepare_line_tape_func_wrapper, vardict)
+    register_finalize_line_tape_func(_finalize_line_tape_func_wrapper, vardict)
 
     var_mat = VariableToken(Token("VARNAME", "MAT"))
     var_mf = VariableToken(Token("VARNAME", "MF"))

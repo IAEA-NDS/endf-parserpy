@@ -178,13 +178,11 @@ def open_section(vartok, vardict):
             cpp.statement(f"cpp_current_dict[{idxstr}] = py::dict()"),
         )
         code += cpp.statement(f"cpp_current_dict = cpp_current_dict[{idxstr}]")
-
-    return cpp.open_block() + cpp.indent_code(code)
+    return code
 
 
 def close_section():
-    code = cpp.statement("cpp_current_dict = cpp_parent_dict", cpp.INDENT)
-    code += cpp.close_block()
+    code = cpp.statement("cpp_current_dict = cpp_parent_dict")
     return code
 
 

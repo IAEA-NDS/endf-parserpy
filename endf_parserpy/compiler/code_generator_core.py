@@ -88,7 +88,6 @@ from .expr_utils.exceptions import (
     MultipleVariableOccurrenceError,
     SeveralUnknownVariablesError,
 )
-from .code_generator_parsing_core import generate_endf_dict_assignments
 from .mode_management import (
     get_numeric_field_getter,
     get_text_field_getter,
@@ -139,7 +138,6 @@ def generate_cpp_parse_or_write_fun(
     fun_body = get_prepare_section_func(vardict)(None, vardict)
     fun_body += get_prepare_line_tape_func(vardict)()
     fun_body += vardefs + fun_setup + code
-    fun_body += generate_endf_dict_assignments(vardict)
     fun_body += get_finalize_line_tape_func(vardict)()
     fun_body += get_finalize_section_func(vardict)(None, vardict)
     fun_body = cpp.indent_code(fun_body, cpp.INDENT)
@@ -366,14 +364,11 @@ def _generate_code_for_section(sectok, section_body, vardict, parsefun):
     body_code = parsefun(section_body, vardict)
     vardef_code = generate_vardefs(vardict)
     code = cpp.comment(f"open section {sectok}")
-    code += aux.open_section(sectok, vardict)
     inner_code = get_prepare_section_func(vardict)(sectok, vardict)
     inner_code += vardef_code
     inner_code += body_code
-    inner_code += generate_endf_dict_assignments(vardict)
     inner_code += get_finalize_section_func(vardict)(sectok, vardict)
-    code += cpp.indent_code(inner_code)
-    code += aux.close_section()
+    code += cpp.block(inner_code)
     vardict = pardict
     return code
 
@@ -719,14 +714,11 @@ def generate_code_for_tab1(node, vardict):
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)
-        dictassigns = generate_endf_dict_assignments(vardict)
-        code += aux.open_section(sectok, vardict)
         inner_code = get_prepare_section_func(vardict)(sectok, vardict)
-        inner_code += vardefs + assigncode + dictassigns
+        inner_code += vardefs + assigncode
         inner_code += get_finalize_line_func(vardict)(in_lookahead(vardict))
         inner_code += get_finalize_section_func(vardict)(sectok, vardict)
-        code += cpp.indent_code(inner_code)
-        code += aux.close_section()
+        code += cpp.block(inner_code)
     else:
         code += assigncode
         code += get_finalize_line_func(vardict)(in_lookahead(vardict))
@@ -779,14 +771,11 @@ def generate_code_for_tab2(node, vardict):
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)
-        dictassigns = generate_endf_dict_assignments(vardict)
-        code += aux.open_section(sectok, vardict)
         inner_code = get_prepare_section_func(vardict)(sectok, vardict)
-        inner_code += vardefs + assigncode + dictassigns
+        inner_code += vardefs + assigncode
         inner_code += get_finalize_line_func(vardict)(in_lookahead(vardict))
         inner_code += get_finalize_section_func(vardict)(sectok, vardict)
-        code += cpp.indent_code(inner_code)
-        code += aux.close_section()
+        code += cpp.block(inner_code)
     else:
         code += assigncode
         code += get_finalize_line_func(vardict)(in_lookahead(vardict))
@@ -829,13 +818,10 @@ def generate_code_for_list(node, vardict):
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)
-        dictassigns = generate_endf_dict_assignments(vardict)
-        code += aux.open_section(sectok, vardict)
         inner_code = get_prepare_section_func(vardict)(sectok, vardict)
-        inner_code += vardefs + icode + dictassigns
+        inner_code += vardefs + icode
         inner_code += get_finalize_section_func(vardict)(sectok, vardict)
-        code += cpp.indent_code(inner_code)
-        code += aux.close_section()
+        code += cpp.block(inner_code)
     else:
         code += icode
     return code

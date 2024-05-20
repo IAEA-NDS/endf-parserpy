@@ -153,11 +153,20 @@ def _finalize_line_tape_func_wrapper():
 
 
 def _prepare_section_func_wrapper(sectok, vardict):
-    return ""
+    if sectok is None:
+        # initialization
+        code = cpp.statement("py::dict cpp_parent_dict")
+        code += cpp.statement("py::dict cpp_current_dict")
+        return code
+    return aux.open_section(sectok, vardict)
 
 
 def _finalize_section_func_wrapper(sectok, vardict):
-    return ""
+    code = generate_endf_dict_assignments(vardict)
+    if sectok is None:
+        return code
+    code += aux.close_section()
+    return code
 
 
 def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=None):

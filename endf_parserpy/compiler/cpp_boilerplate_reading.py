@@ -619,8 +619,6 @@ def parsefun_header(fun_name):
         ) {{
           std::vector<int> cpp_intvec;
           std::vector<double> cpp_floatvec;
-          py::dict cpp_parent_dict;
-          py::dict cpp_current_dict;
           std::string cpp_line;
           std::string cpp_template;
           double cpp_float_val;

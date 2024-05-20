@@ -121,11 +121,11 @@ def _finalize_line_tape_func_wrapper():
     return ""
 
 
-def _prepare_section_func_wrapper(vardict):
+def _prepare_section_func_wrapper(sectok, vardict):
     return ""
 
 
-def _finalize_section_func_wrapper(vardict):
+def _finalize_section_func_wrapper(sectok, vardict):
     return ""
 
 

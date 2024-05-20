@@ -194,7 +194,7 @@ def get_finalize_line_tape_func(vardict):
 
 def register_prepare_section_func(func, vardict):
     if not callable(func):
-        raise TypeError("func must be a callable with parameters `vardict`")
+        raise TypeError("func must be a callable with parameters `vartok`, `vardict`")
     basic_ops = vardict.setdefault("__basic_ops", {})
     basic_ops["prepare_section_func"] = func
 
@@ -207,7 +207,7 @@ def get_prepare_section_func(vardict):
 
 def register_finalize_section_func(func, vardict):
     if not callable(func):
-        raise TypeError("func must gbe a callable with parameters `vardict`")
+        raise TypeError("func must gbe a callable with parameters `vartok`, `vardict`")
     basic_ops = vardict.setdefault("__basic_ops", {})
     basic_ops["finalize_section_func"] = func
 

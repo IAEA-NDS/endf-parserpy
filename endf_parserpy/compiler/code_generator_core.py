@@ -686,6 +686,10 @@ def generate_code_for_tab1(node, vardict):
     np_val, addcode = get_counter_field_getter(vardict)(xvar, 5, in_lookahead(vardict))
     code += addcode
 
+    # we are done with the first control record line of the tab1 record
+    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+
+    # NOTE: the prepare line call is/should be handled by the code returned by get_tab1_body_getter
     tabdata, addcode = get_tab1_body_getter(vardict)(
         xvar, yvar, nr_val, np_val, in_lookahead(vardict)
     )
@@ -705,10 +709,13 @@ def generate_code_for_tab1(node, vardict):
         vardefs = generate_vardefs(vardict)
         dictassigns = generate_endf_dict_assignments(vardict)
         code += aux.open_section(sectok, vardict)
-        code += cpp.indent_code(vardefs + assigncode + dictassigns)
+        inner_code = vardefs + assigncode + dictassigns
+        inner_code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+        code += cpp.indent_code(inner_code)
         code += aux.close_section()
     else:
         code += assigncode
+        code += get_finalize_line_func(vardict)(in_lookahead(vardict))
     return code
 
 

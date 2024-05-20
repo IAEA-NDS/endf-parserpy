@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/19
+# Last modified:   2024/05/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -104,6 +104,45 @@ def module_header_writing():
       if (fieldstr.size() != 11) { throw std::runtime_error(std::string("wrong size") + std::to_string(fieldstr.size())); }
       line.replace(fieldnum*11, 11, fieldstr);
     }
+
+
+    void write_tab1_body(
+      std::string& line, Tab1Body tab_body, int mat, int mf, int mt
+    ) {
+      assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
+      assert(tab_body.X.size() == tab_body.Y.size() && "X and Y must have same size");
+      int nr = tab_body.INT.size();
+      int np = tab_body.X.size();
+      std::ostringstream oss;
+      std::string curline = cpp_prepare_line(mat, mf, mt);
+      int j = 0;
+      for (int i=0; i < nr; i++) {
+        cpp_write_field(curline, j++, tab_body.NBT[i]);
+        cpp_write_field(curline, j++, tab_body.INT[i]);
+        if (j > 5 && i+1 < nr) {
+          oss << curline << std::endl;
+          curline = cpp_prepare_line(mat, mf, mt);
+          j = 0;
+        }
+      }
+      oss << curline << std::endl;
+
+      j = 0;
+      curline = cpp_prepare_line(mat, mf, mt);
+      for (int i=0; i < np; i++) {
+        cpp_write_field(curline, j++, tab_body.X[i]);
+        cpp_write_field(curline, j++, tab_body.Y[i]);
+        if (j > 5 && i+1 < np) {
+          oss << curline << std::endl;
+          curline = cpp_prepare_line(mat, mf, mt);
+          j = 0;
+        }
+      }
+      oss << curline << std::endl;
+      line = oss.str();
+    }
+
+
     """
     return cpp.indent_code(code, -4)
 

@@ -141,17 +141,20 @@ def _finalize_line_func_wrapper(lookahead):
     )
     code += cpp.statement('std::cout << "LINE: " << cpp_line << std::endl')
     code += cpp.statement('std::cout << "FINE: " << cpp_draft_line << std::endl')
+    code += cpp.statement("cpp_output << cpp_draft_line")
     return code
 
 
 def _prepare_line_tape_func_wrapper():
     code = cpp.statement("std::string cpp_line")
     code += cpp.statement("std::string cpp_draft_line")
+    code += cpp.statement("std::ostringstream cpp_output")
     return code
 
 
 def _finalize_line_tape_func_wrapper():
-    return ""
+    code = cpp.statement("std::cout << cpp_output.str()")
+    return code
 
 
 def _prepare_section_func_wrapper(sectok, vardict):

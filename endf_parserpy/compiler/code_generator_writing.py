@@ -55,6 +55,7 @@ from .endf2cpp_aux_writing import (
     set_numeric_field,
     set_text_field,
     set_tab1_body,
+    set_tab2_body,
     set_custom_int_field,
 )
 
@@ -97,8 +98,12 @@ def _get_tab1_body_wrapper(xvar, yvar, nr, np, lookahead):
 
 
 def _get_tab2_body_wrapper(nr, lookahead):
-    valcode = get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
-    code = ""
+    tab2_body_data = get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
+    valcode = "tab2_body"
+    code = cpp.statement(f"{valcode} = {tab2_body_data}")
+    code += cpp.statement('std::cout << "encounterd TAB2 body" << std::endl')
+    if not lookahead:
+        code += set_tab2_body("cpp_draft_line", valcode, "mat", "mf", "mt")
     return valcode, code
 
 

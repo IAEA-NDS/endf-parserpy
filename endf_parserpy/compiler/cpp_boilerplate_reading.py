@@ -489,6 +489,32 @@ def module_header_reading():
     }
 
 
+    Tab1Body read_tab1_body_debug(
+      std::istream& cont, std::string& line, int nr, int np,
+      int mat, int mf, int mt, ParsingOptions &parse_opts
+    ) {
+      std::ostringstream oss;
+      std::string tmpline;
+      Tab1Body tab_body;
+      std::vector<int> interp = cpp_read_vec_debug<int>(cont, tmpline, 2*nr, mat, mf, mt, parse_opts);
+      oss << tmpline;
+      int j = 0;
+      for (int i=0; i < nr; i++) {
+        tab_body.NBT.push_back(interp[j++]);
+        tab_body.INT.push_back(interp[j++]);
+      }
+      std::vector<double> data = cpp_read_vec_debug<double>(cont, tmpline, 2*np, mat, mf, mt, parse_opts);
+      oss << tmpline;
+      j = 0;
+      for (int i=0; i < np; i++) {
+        tab_body.X.push_back(data[j++]);
+        tab_body.Y.push_back(data[j++]);
+      }
+      line = oss.str();
+      return tab_body;
+    }
+
+
     Tab1Body read_tab1_body(
       std::istream& cont, int nr, int np,
       int mat, int mf, int mt, ParsingOptions &parse_opts

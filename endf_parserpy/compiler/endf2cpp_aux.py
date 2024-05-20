@@ -153,7 +153,9 @@ def get_tab1_body(xvar, yvar, nr, np, mat, mf, mt, parse_opts):
 
 
 def get_tab2_body(nr, mat, mf, mt, parse_opts):
-    code = f"read_tab2_body(cont, {nr}, {mat}, {mf}, {mt}, {parse_opts})"
+    code = (
+        f"read_tab2_body_debug(cont, cpp_line, {nr}, {mat}, {mf}, {mt}, {parse_opts})"
+    )
     return code
 
 

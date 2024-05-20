@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/19
+# Last modified:   2024/05/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -449,6 +449,28 @@ def module_header_reading():
           j = 0;
         }
       }
+      return res;
+    }
+
+
+    template<typename T>
+    std::vector<T> cpp_read_vec_debug(
+      std::istream& cont, std::string& line, const int numel, int mat, int mf, int mt, ParsingOptions &parse_opts
+    ) {
+      int j = 0;
+      std::vector<T> res;
+      std::ostringstream oss;
+      std::string curline = cpp_read_line(cont, mat, mf, mt, parse_opts);
+      for (int i=0; i < numel; i++) {
+        res.push_back(cpp_read_field<T>(curline.c_str(), j++, parse_opts));
+        if (j > 5 && i+1 < numel) {
+          oss << curline << std::endl;
+          curline = cpp_read_line(cont, mat, mf, mt, parse_opts);
+          j = 0;
+        }
+      }
+      oss << curline << std::endl;
+      line = oss.str();
       return res;
     }
 

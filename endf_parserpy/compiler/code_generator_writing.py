@@ -52,6 +52,7 @@ from .endf2cpp_aux_writing import (
     prepare_line_la,
     set_numeric_field,
     set_text_field,
+    set_tab1_body,
     set_custom_int_field,
 )
 
@@ -85,8 +86,11 @@ def _get_text_field_wrapper(node, start, length, lookahead):
 
 
 def _get_tab1_body_wrapper(xvar, yvar, nr, np, lookahead):
-    valcode = get_tab1_body(xvar, yvar, nr, np, "mat", "mf", "mt", "parse_opts")
-    code = ""
+    tab1_body_data = get_tab1_body(xvar, yvar, nr, np, "mat", "mf", "mt", "parse_opts")
+    valcode = "tab1_body"
+    code = cpp.statement(f"{valcode} = {tab1_body_data}")
+    if not lookahead:
+        code += set_tab1_body("cpp_draft_line", valcode, "mat", "mf", "mt")
     return valcode, code
 
 

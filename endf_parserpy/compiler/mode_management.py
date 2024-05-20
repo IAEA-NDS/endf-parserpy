@@ -164,3 +164,29 @@ def get_finalize_line_func(vardict):
     pardict = _find_parent_dict("__basic_ops", vardict)
     basic_ops = pardict["__basic_ops"]
     return basic_ops["finalize_line_func"]
+
+
+def register_prepare_line_tape_func(func, vardict):
+    if not callable(func):
+        raise TypeError("func must be a callable")
+    basic_ops = vardict.setdefault("__basic_ops", {})
+    basic_ops["prepare_line_tape"] = func
+
+
+def get_prepare_line_tape_func(vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops["prepare_line_tape"]
+
+
+def register_finalize_line_tape_func(func, vardict):
+    if not callable(func):
+        raise TypeError("func must be a callable")
+    basic_ops = vardict.setdefault("__basic_ops", {})
+    basic_ops["finalize_line_tape"] = func
+
+
+def get_finalize_line_tape_func(vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops["finalize_line_tape"]

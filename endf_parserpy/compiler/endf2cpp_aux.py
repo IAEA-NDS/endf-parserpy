@@ -148,7 +148,7 @@ def validate_field(
 
 
 def get_tab1_body(xvar, yvar, nr, np, mat, mf, mt, parse_opts):
-    code = f"read_tab1_body(cont, {nr}, {np}, {mat}, {mf}, {mt}, {parse_opts})"
+    code = f"read_tab1_body_debug(cont, cpp_line, {nr}, {np}, {mat}, {mf}, {mt}, {parse_opts})"
     return code
 
 

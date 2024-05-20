@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/19
+# Last modified:   2024/05/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -92,6 +92,7 @@ from .code_generator_parsing_core import generate_endf_dict_assignments
 from .mode_management import (
     get_numeric_field_getter,
     get_text_field_getter,
+    get_tab1_body_getter,
     get_custom_int_field_getter,
     get_counter_field_getter,
     get_prepare_line_func,
@@ -685,9 +686,10 @@ def generate_code_for_tab1(node, vardict):
     np_val, addcode = get_counter_field_getter(vardict)(xvar, 5, in_lookahead(vardict))
     code += addcode
 
-    tabdata = aux.get_tab1_body(
-        xvar, yvar, nr_val, np_val, "mat", "mf", "mt", "parse_opts"
+    tabdata, addcode = get_tab1_body_getter(vardict)(
+        xvar, yvar, nr_val, np_val, in_lookahead(vardict)
     )
+    code += addcode
 
     if sectok is not None:
         vardict = {"__up": vardict}

@@ -105,6 +105,8 @@ def _get_custom_int_field_wrapper(node, start, length, lookahead):
 def _get_counter_field_wrapper(node, idx, lookahead):
     valcode = get_numeric_field(idx, int, "parse_opts")
     code = ""
+    if not lookahead:
+        code += set_numeric_field("cpp_draft_line", idx, int, valcode)
     return valcode, code
 
 

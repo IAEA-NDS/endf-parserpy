@@ -107,7 +107,6 @@ def _get_tab2_body_wrapper(nr, lookahead):
     tab2_body_data = get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
     valcode = "tab2_body"
     code = cpp.statement(f"{valcode} = {tab2_body_data}")
-    code += cpp.statement('std::cout << "encounterd TAB2 body" << std::endl')
     if not lookahead:
         code += set_tab2_body("cpp_draft_line", valcode, "mat", "mf", "mt")
     return valcode, code

@@ -143,12 +143,7 @@ def _prepare_line_func_wrapper(lookahead):
 def _finalize_line_func_wrapper(lookahead):
     if lookahead:
         return ""
-    code = cpp.statement(
-        'std::cout << "---------------------------------------" << std::endl'
-    )
-    code += cpp.statement('std::cout << "LINE: " << cpp_line << std::endl')
-    code += cpp.statement('std::cout << "FINE: " << cpp_draft_line << std::endl')
-    code += cpp.statement("cpp_output << cpp_draft_line")
+    code = cpp.statement("cpp_output << cpp_draft_line")
     return code
 
 
@@ -337,17 +332,20 @@ def generate_master_writefun(name, recipefuns):
     curcond = cpp.logical_and(["after_mend == true", aux.is_tend("parse_opts")])
     curstat = cpp.statement("after_mend = false")
     curstat += cpp.statement("after_tend = true")
+    curstat += cpp.statement("std::cout << cpp_prepare_send(-1, 0)")
     conditions.append(curcond)
     statements.append(curstat)
     # mend record treatment
     curcond = cpp.logical_and(["after_fend == true", aux.is_mend("parse_opts")])
     curstat = cpp.statement("after_fend = false")
     curstat = cpp.statement("after_mend = true")
+    curstat += cpp.statement("std::cout << cpp_prepare_send(0, 0)")
     conditions.append(curcond)
     statements.append(curstat)
     # fend record treatment
     curcond = aux.is_fend("mat", "parse_opts")
     curstat = cpp.statement("after_fend = true")
+    curstat += cpp.statement("std::cout << cpp_prepare_send(mat, 0)")
     conditions.append(curcond)
     statements.append(curstat)
 

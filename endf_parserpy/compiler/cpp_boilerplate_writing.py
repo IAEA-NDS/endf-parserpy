@@ -121,12 +121,12 @@ def module_header_writing():
         cpp_write_field(curline, j++, tab_body.NBT[i]);
         cpp_write_field(curline, j++, tab_body.INT[i]);
         if (j > 5 && i+1 < nr) {
-          oss << curline << std::endl;
+          oss << curline;
           curline = cpp_prepare_line(mat, mf, mt);
           j = 0;
         }
       }
-      oss << curline << std::endl;
+      oss << curline;
 
       j = 0;
       curline = cpp_prepare_line(mat, mf, mt);
@@ -134,12 +134,12 @@ def module_header_writing():
         cpp_write_field(curline, j++, tab_body.X[i]);
         cpp_write_field(curline, j++, tab_body.Y[i]);
         if (j > 5 && i+1 < np) {
-          oss << curline << std::endl;
+          oss << curline;
           curline = cpp_prepare_line(mat, mf, mt);
           j = 0;
         }
       }
-      oss << curline << std::endl;
+      oss << curline;
       line = oss.str();
     }
 
@@ -156,12 +156,12 @@ def module_header_writing():
         cpp_write_field(curline, j++, tab_body.NBT[i]);
         cpp_write_field(curline, j++, tab_body.INT[i]);
         if (j > 5 && i+1 < nr) {
-          oss << curline << std::endl;
+          oss << curline;
           curline = cpp_prepare_line(mat, mf, mt);
           j = 0;
         }
       }
-      oss << curline << std::endl;
+      oss << curline;
       line = oss.str();
     }
 

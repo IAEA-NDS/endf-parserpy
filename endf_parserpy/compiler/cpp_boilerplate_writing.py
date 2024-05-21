@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/20
+# Last modified:   2024/05/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -163,6 +163,22 @@ def module_header_writing():
       }
       oss << curline << std::endl;
       line = oss.str();
+    }
+
+
+    std::string cpp_prepare_send(int mat, int mf) {
+      std::string line(75, ' ');
+      line += '\n';
+      cpp_write_mat_number(line, mat);
+      cpp_write_mf_number(line, mf);
+      cpp_write_mt_number(line, 0);
+      cpp_write_field(line, 0, 0.0);
+      cpp_write_field(line, 1, 0.0);
+      cpp_write_field(line, 2, 0);
+      cpp_write_field(line, 3, 0);
+      cpp_write_field(line, 4, 0);
+      cpp_write_field(line, 5, 0);
+      return line;
     }
 
 

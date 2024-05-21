@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/20
+# Last modified:   2024/05/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -38,6 +38,7 @@ from .mode_management import (
     register_counter_field_getter,
     register_tab1_body_getter,
     register_tab2_body_getter,
+    register_send_line_func,
     register_prepare_line_func,
     register_finalize_line_func,
     register_prepare_line_tape_func,
@@ -56,6 +57,7 @@ from .endf2cpp_aux import (
 )
 from .endf2cpp_aux_writing import (
     prepare_line_la,
+    prepare_send_la,
     set_numeric_field,
     set_text_field,
     set_tab1_body,
@@ -127,6 +129,12 @@ def _get_counter_field_wrapper(node, idx, lookahead):
     return valcode, code
 
 
+def _prepare_send_func_wrapper(lookahead):
+    code = aux.read_send("mat", "mf", "parse_opts")
+    code += prepare_send_la("cpp_draft_line", "mat", "mf", lookahead)
+    return code
+
+
 def _prepare_line_func_wrapper(lookahead):
     code = read_line_la("cpp_line", "mat", "mf", "mt", "parse_opts", lookahead)
     code += prepare_line_la("cpp_draft_line", "mat", "mf", "mt", lookahead)
@@ -182,6 +190,7 @@ def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_tab2_body_getter(_get_tab2_body_wrapper, vardict)
     register_custom_int_field_getter(_get_custom_int_field_wrapper, vardict)
     register_counter_field_getter(_get_counter_field_wrapper, vardict)
+    register_send_line_func(_prepare_send_func_wrapper, vardict)
     register_prepare_line_func(_prepare_line_func_wrapper, vardict)
     register_finalize_line_func(_finalize_line_func_wrapper, vardict)
     register_prepare_line_tape_func(_prepare_line_tape_func_wrapper, vardict)

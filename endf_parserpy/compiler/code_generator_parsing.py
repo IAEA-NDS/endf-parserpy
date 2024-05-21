@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/20
+# Last modified:   2024/05/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -40,6 +40,7 @@ from .mode_management import (
     register_counter_field_getter,
     register_prepare_line_func,
     register_finalize_line_func,
+    register_send_line_func,
     register_prepare_line_tape_func,
     register_finalize_line_tape_func,
     register_prepare_section_func,
@@ -104,6 +105,11 @@ def _get_counter_field_wrapper(node, idx, lookahead):
     return valcode, code
 
 
+def _read_send_line_func_wrapper(lookahead):
+    code = aux.read_send("mat", "mf", "parse_opts")
+    return code
+
+
 def _prepare_line_func_wrapper(lookahead):
     code = read_line_la("cpp_line", "mat", "mf", "mt", "parse_opts", lookahead)
     return code
@@ -147,6 +153,7 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_tab2_body_getter(_get_tab2_body_wrapper, vardict)
     register_custom_int_field_getter(_get_custom_int_field_wrapper, vardict)
     register_counter_field_getter(_get_counter_field_wrapper, vardict)
+    register_send_line_func(_read_send_line_func_wrapper, vardict)
     register_prepare_line_func(_prepare_line_func_wrapper, vardict)
     register_finalize_line_func(_finalize_line_func_wrapper, vardict)
     register_prepare_line_tape_func(_prepare_line_tape_func_wrapper, vardict)

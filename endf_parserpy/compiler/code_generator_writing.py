@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/21
+# Last modified:   2024/05/22
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -19,6 +19,8 @@ from .code_generator_core import (
 )
 from .code_generator_parsing_core import (
     generate_endf_dict_assignments,
+)
+from .code_generator_writing_core import (
     generate_parse_or_read_verbatim,
 )
 from lark.lexer import Token
@@ -371,6 +373,7 @@ def generate_master_writefun(name, recipefuns):
 
     args = (
         ("std::istream&", "cont"),
+        ("py::dict", "endf_dict"),
         ("py::object", "exclude"),
         ("py::object", "include"),
         ("ParsingOptions", f"parse_opts=default_parsing_options()"),
@@ -387,9 +390,13 @@ def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
     args_str2 = ", " + args_str2 if args_str2 != "" else args_str2
     code = ""
     for p in writefuns:
-        code += cpp.line(f"py::dict {p}(std::string& strcont{args_str}) {{")
+        code += cpp.line(
+            f"py::dict {p}(std::string& strcont, py::dict endf_dict{args_str}) {{"
+        )
         code += cpp.statement("std::istringstream iss(strcont)", cpp.INDENT)
-        code += cpp.statement(f"return {p}_istream(iss{args_str2})", cpp.INDENT)
+        code += cpp.statement(
+            f"return {p}_istream(iss, endf_dict{args_str2})", cpp.INDENT
+        )
         code += cpp.close_block()
         code += cpp.line("")
     return code
@@ -402,7 +409,9 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
     args_str2 = ", " + args_str2 if args_str2 != "" else args_str2
     code = ""
     for p in writefuns:
-        code += cpp.line(f"py::dict {p}_file(std::string& filename{args_str}) {{")
+        code += cpp.line(
+            f"py::dict {p}_file(std::string& filename, py::dict endf_dict{args_str}) {{"
+        )
         code += cpp.statement("std::ifstream inpfile(filename)", cpp.INDENT)
         code += cpp.indent_code(
             cpp.pureif(
@@ -414,7 +423,9 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
             ),
             cpp.INDENT,
         )
-        code += cpp.statement(f"return {p}_istream(inpfile{args_str2})", cpp.INDENT)
+        code += cpp.statement(
+            f"return {p}_istream(inpfile, endf_dict{args_str2})", cpp.INDENT
+        )
         code += cpp.close_block()
         code += cpp.line("")
     return code
@@ -470,6 +481,7 @@ def generate_all_cpp_writefuns_code(recipes, module_name):
         ["write_endf"],
         module_name,
         'py::arg("cont")',
+        'py::arg("endf_dict")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
         'py::arg("parse_opts") = false',
@@ -478,6 +490,7 @@ def generate_all_cpp_writefuns_code(recipes, module_name):
         ["write_endf_file"],
         module_name,
         'py::arg("filename")',
+        'py::arg("endf_dict")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
         'py::arg("parse_opts") = default_parsing_options()',

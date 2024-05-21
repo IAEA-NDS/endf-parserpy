@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/21
+# Last modified:   2024/05/22
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -190,7 +190,7 @@ def writefun_header(fun_name):
     code = cpp.indent_code(
         rf"""
         py::dict {fun_name}(
-          std::istream& cont, ParsingOptions &parse_opts
+          std::istream& cont, py::dict endf_dict, ParsingOptions &parse_opts
         ) {{
           std::vector<int> cpp_intvec;
           std::vector<double> cpp_floatvec;

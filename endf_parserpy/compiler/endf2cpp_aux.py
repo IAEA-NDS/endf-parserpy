@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/20
+# Last modified:   2024/05/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -250,7 +250,7 @@ class ListBodyRecorder:
         )
         code += cpp.close_block()
         code += get_finalize_line_func(vardict)(in_lookahead(vardict))
-        return cpp.close_block()
+        return code
 
     @staticmethod
     def get_element(node, vardict):

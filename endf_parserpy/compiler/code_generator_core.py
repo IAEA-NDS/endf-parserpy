@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/20
+# Last modified:   2024/05/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -95,6 +95,7 @@ from .mode_management import (
     get_tab2_body_getter,
     get_custom_int_field_getter,
     get_counter_field_getter,
+    get_send_line_func,
     get_prepare_line_func,
     get_finalize_line_func,
     get_prepare_line_tape_func,
@@ -632,7 +633,9 @@ def generate_code_for_intg(node, vardict):
 
 
 def generate_code_for_send(node, vardict):
-    return aux.read_send("mat", "mf", "parse_opts")
+    code = get_send_line_func(vardict)(in_lookahead(vardict))
+    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+    return code
 
 
 def generate_code_for_cont(node, vardict):

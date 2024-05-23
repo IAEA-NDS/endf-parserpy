@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/23
+# Last modified:   2024/05/24
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -83,25 +83,65 @@ def _mf_mt_dict_varname(mf, mt):
 
 
 def _get_numeric_field_wrapper(node, idx, dtype, vardict):
-    valcode = get_numeric_field(idx, dtype, "parse_opts")
     code = ""
+    # valcode = get_numeric_field(idx, dtype, "parse_opts")
     if not in_lookahead(vardict):
+        valcode = get_expr_value_using_endf_dict(
+            node, "cpp_current_dict_tmp", dtype, vardict
+        )
         code += set_numeric_field("cpp_draft_line", idx, dtype, valcode)
+    else:
+        # defaults are used in lookahead for if-condition evaluation
+        # NOTE: not ideal to use precoded values instead of dealing
+        #       with missing variables directly, but the best solution
+        #       I am able to come up with given the existing code structure
+        defaults = {int: -99999, float: -99999.9}
+        valcode = get_expr_value_using_endf_dict(
+            node, "cpp_current_dict_tmp", dtype, vardict, defaults
+        )
     return valcode, code
 
 
 def _get_text_field_wrapper(node, start, length, vardict):
-    valcode = get_text_field(start, length)
     code = ""
+    # valcode = get_text_field(start, length)
     if not in_lookahead(vardict):
+        valcode = get_expr_value_using_endf_dict(
+            node, "cpp_current_dict_tmp", str, vardict
+        )
         code += set_text_field("cpp_draft_line", start, length, valcode)
+    else:
+        defaults = {str: " " * 11}
+        valcode = get_expr_value_using_endf_dict(
+            node, "cpp_current_dict_tmp", str, vardict, defaults
+        )
     return valcode, code
 
 
 def _get_tab1_body_wrapper(xvar, yvar, nr, np, vardict):
+    code = ""
+    # TODO: remove eventually but still need it for proper line counting
     tab1_body_data = get_tab1_body(xvar, yvar, nr, np, "mat", "mf", "mt", "parse_opts")
     valcode = "tab1_body"
-    code = cpp.statement(f"{valcode} = {tab1_body_data}")
+    code += cpp.statement(f"{tab1_body_data}")
+    xvalue = get_expr_value_using_endf_dict(
+        xvar, "cpp_current_dict_tmp", "floatvec", vardict
+    )
+    yvalue = get_expr_value_using_endf_dict(
+        yvar, "cpp_current_dict_tmp", "floatvec", vardict
+    )
+    INTvar = VariableToken(Token("VARNAME", "INT"))
+    INTvalue = get_expr_value_using_endf_dict(
+        INTvar, "cpp_current_dict_tmp", "intvec", vardict
+    )
+    NBTvar = VariableToken(Token("VARNAME", "NBT"))
+    NBTvalue = get_expr_value_using_endf_dict(
+        NBTvar, "cpp_current_dict_tmp", "intvec", vardict
+    )
+    code += cpp.statement(f"{valcode}.X = {xvalue}")
+    code += cpp.statement(f"{valcode}.Y = {yvalue}")
+    code += cpp.statement(f"{valcode}.INT = {INTvalue}")
+    code += cpp.statement(f"{valcode}.NBT = {NBTvalue}")
     if not in_lookahead(vardict):
         code += set_tab1_body("cpp_draft_line", valcode, "mat", "mf", "mt")
     return valcode, code

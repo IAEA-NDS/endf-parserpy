@@ -168,10 +168,18 @@ def _get_tab2_body_wrapper(nr, vardict):
 
 
 def _get_custom_int_field_wrapper(node, start, length, vardict):
-    valcode = get_custom_int_field(start, length)
+    # valcode = get_custom_int_field(start, length)
     code = ""
     if not in_lookahead(vardict):
+        valcode = get_expr_value_using_endf_dict(
+            node, "cpp_current_dict_tmp", int, vardict
+        )
         code += set_custom_int_field("cpp_draft_line", start, length, valcode)
+    else:
+        defaults = {int: -99999}
+        valcode = get_expr_value_using_endf_dict(
+            node, "cpp_current_dict_tmp", int, vardict, defaults
+        )
     return valcode, code
 
 

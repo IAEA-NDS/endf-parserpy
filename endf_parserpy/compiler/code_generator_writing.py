@@ -148,9 +148,20 @@ def _get_tab1_body_wrapper(xvar, yvar, nr, np, vardict):
 
 
 def _get_tab2_body_wrapper(nr, vardict):
+    code = ""
     tab2_body_data = get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
     valcode = "tab2_body"
-    code = cpp.statement(f"{valcode} = {tab2_body_data}")
+    code += cpp.statement(f"{tab2_body_data}")
+    INTvar = VariableToken(Token("VARNAME", "INT"))
+    INTvalue = get_expr_value_using_endf_dict(
+        INTvar, "cpp_current_dict_tmp", "intvec", vardict
+    )
+    NBTvar = VariableToken(Token("VARNAME", "NBT"))
+    NBTvalue = get_expr_value_using_endf_dict(
+        NBTvar, "cpp_current_dict_tmp", "intvec", vardict
+    )
+    code += cpp.statement(f"{valcode}.INT = {INTvalue}")
+    code += cpp.statement(f"{valcode}.NBT = {NBTvalue}")
     if not in_lookahead(vardict):
         code += set_tab2_body("cpp_draft_line", valcode, "mat", "mf", "mt")
     return valcode, code

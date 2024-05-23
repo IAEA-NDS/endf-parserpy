@@ -84,7 +84,6 @@ def _mf_mt_dict_varname(mf, mt):
 
 def _get_numeric_field_wrapper(node, idx, dtype, vardict):
     code = ""
-    # valcode = get_numeric_field(idx, dtype, "parse_opts")
     if not in_lookahead(vardict):
         valcode = get_expr_value_using_endf_dict(
             node, "cpp_current_dict_tmp", dtype, vardict
@@ -104,7 +103,6 @@ def _get_numeric_field_wrapper(node, idx, dtype, vardict):
 
 def _get_text_field_wrapper(node, start, length, vardict):
     code = ""
-    # valcode = get_text_field(start, length)
     if not in_lookahead(vardict):
         valcode = get_expr_value_using_endf_dict(
             node, "cpp_current_dict_tmp", str, vardict
@@ -168,7 +166,6 @@ def _get_tab2_body_wrapper(nr, vardict):
 
 
 def _get_custom_int_field_wrapper(node, start, length, vardict):
-    # valcode = get_custom_int_field(start, length)
     code = ""
     if not in_lookahead(vardict):
         valcode = get_expr_value_using_endf_dict(
@@ -184,7 +181,6 @@ def _get_custom_int_field_wrapper(node, start, length, vardict):
 
 
 def _get_counter_field_wrapper(node, idx, vardict):
-    # valcode = get_numeric_field(idx, int, "parse_opts")
     code = ""
     if not in_lookahead(vardict):
         pyobj = get_expr_value_using_endf_dict(

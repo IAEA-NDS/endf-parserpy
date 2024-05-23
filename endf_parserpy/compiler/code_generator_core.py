@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/23
+# Last modified:   2024/05/24
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -528,7 +528,7 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
         if skip is not None and idx in skip:
             continue
         dtype = float if idx < 2 else int
-        valcode, addcode = get_numeric_field_getter(vardict)(node, idx, dtype, vardict)
+        valcode, addcode = get_numeric_field_getter(vardict)(child, idx, dtype, vardict)
         code += addcode
         try:
             code += generate_code_for_varassign(

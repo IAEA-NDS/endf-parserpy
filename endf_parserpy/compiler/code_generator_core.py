@@ -680,23 +680,29 @@ def generate_code_for_tab1(node, vardict):
     yvar = VariableToken(colnodes[1])
     INTvar = VariableToken(Token("VARNAME", "INT"))
     NBTvar = VariableToken(Token("VARNAME", "NBT"))
+    nr_vartok = VariableToken(Token("VARNAME", "cpp_nr_val"), cpp_namespace=True)
+    np_vartok = VariableToken(Token("VARNAME", "cpp_np_val"), cpp_namespace=True)
+
+    inner_code = ""
+    if sectok is not None:
+        vardict = {"__up": vardict}
+        inner_code += get_prepare_section_func(vardict)(sectok, vardict)
 
     nr_val, addcode = get_counter_field_getter(vardict)(INTvar, 4, vardict)
-    code += addcode
+    inner_code += addcode
+    inner_code += cpp.statement(f"cpp_nr_val = {nr_val}")
     np_val, addcode = get_counter_field_getter(vardict)(xvar, 5, vardict)
-    code += addcode
+    inner_code += addcode
+    inner_code += cpp.statement(f"cpp_np_val = {np_val}")
 
     # we are done with the first control record line of the tab1 record
-    code += get_finalize_line_func(vardict)(vardict)
+    inner_code += get_finalize_line_func(vardict)(vardict)
 
     # NOTE: the prepare line call is/should be handled by the code returned by get_tab1_body_getter
     tabdata, addcode = get_tab1_body_getter(vardict)(
-        xvar, yvar, nr_val, np_val, vardict
+        xvar, yvar, nr_vartok, np_vartok, vardict
     )
-    code += addcode
-
-    if sectok is not None:
-        vardict = {"__up": vardict}
+    inner_code += addcode
 
     assigncode = cpp.statement(f"Tab1Body tab_body = {tabdata}")
     assigncode += generate_code_for_varassign(xvar, vardict, "tab_body.X", "floatvec")
@@ -707,14 +713,14 @@ def generate_code_for_tab1(node, vardict):
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)
-        inner_code = get_prepare_section_func(vardict)(sectok, vardict)
         inner_code += vardefs + assigncode
         inner_code += get_finalize_line_func(vardict)(vardict)
         inner_code += get_finalize_section_func(vardict)(sectok, vardict)
         code += cpp.block(inner_code)
     else:
-        code += assigncode
-        code += get_finalize_line_func(vardict)(vardict)
+        inner_code += assigncode
+        inner_code += get_finalize_line_func(vardict)(vardict)
+        code += inner_code
     return code
 
 

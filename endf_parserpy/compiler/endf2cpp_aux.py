@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/21
+# Last modified:   2024/05/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -159,30 +159,32 @@ def get_tab2_body(nr, mat, mf, mt, parse_opts):
     return code
 
 
-def open_section(vartok, vardict):
+def open_section(
+    vartok, vardict, current_dict="cpp_current_dict", parent_dict="cpp_parent_dict"
+):
     check_variable(vartok, vardict)
     secname = vartok
     indices = vartok.indices
     code = ""
-    code += cpp.statement("py::dict cpp_parent_dict = cpp_current_dict")
+    code += cpp.statement(f"py::dict {parent_dict} = {current_dict}")
     code += cpp.pureif(
-        cpp.logical_not(f'cpp_parent_dict.contains("{secname}")'),
-        cpp.statement(f'cpp_parent_dict["{secname}"] = py::dict()'),
+        cpp.logical_not(f'{parent_dict}.contains("{secname}")'),
+        cpp.statement(f'{parent_dict}["{secname}"] = py::dict()'),
     )
-    code += cpp.statement(f'py::dict cpp_current_dict = cpp_parent_dict["{secname}"]')
+    code += cpp.statement(f'py::dict {current_dict} = {parent_dict}["{secname}"]')
     for idx in indices:
         cpp_idxstr = get_cpp_varname(idx, vardict)
         idxstr = f"py::cast({cpp_idxstr})"
         code += cpp.pureif(
-            cpp.logical_not(f"cpp_current_dict.contains({idxstr})"),
-            cpp.statement(f"cpp_current_dict[{idxstr}] = py::dict()"),
+            cpp.logical_not(f"{current_dict}.contains({idxstr})"),
+            cpp.statement(f"{current_dict}[{idxstr}] = py::dict()"),
         )
-        code += cpp.statement(f"cpp_current_dict = cpp_current_dict[{idxstr}]")
+        code += cpp.statement(f"{current_dict} = {current_dict}[{idxstr}]")
     return code
 
 
-def close_section():
-    code = cpp.statement("cpp_current_dict = cpp_parent_dict")
+def close_section(current_dict="cpp_current_dict", parent_dict="cpp_parent_dict"):
+    code = cpp.statement(f"{current_dict} = {parent_dict}")
     return code
 
 

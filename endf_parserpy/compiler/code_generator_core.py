@@ -747,19 +747,23 @@ def generate_code_for_tab2(node, vardict):
 
     INTvar = VariableToken(Token("VARNAME", "INT"))
     NBTvar = VariableToken(Token("VARNAME", "NBT"))
+    nr_vartok = VariableToken(Token("VARNAME", "cpp_nr_val"), cpp_namespace=True)
 
-    nr_val, addcode = get_counter_field_getter(vardict)(INTvar, 4, vardict)
-    code += addcode
-
-    # we are done with the first control record line of the tab2 record
-    code += get_finalize_line_func(vardict)(vardict)
-
-    # NOTE: the prepare line call is/should be handled by the code returned by get_tab1_body_getter
-    tabdata, addcode = get_tab2_body_getter(vardict)(nr_val, vardict)
-    code += addcode
-
+    inner_code = ""
     if sectok is not None:
         vardict = {"__up": vardict}
+        inner_code += get_prepare_section_func(vardict)(sectok, vardict)
+
+    nr_val, addcode = get_counter_field_getter(vardict)(INTvar, 4, vardict)
+    inner_code += addcode
+    inner_code += cpp.statement(f"cpp_nr_val = {nr_val}")
+
+    # we are done with the first control record line of the tab2 record
+    inner_code += get_finalize_line_func(vardict)(vardict)
+
+    # NOTE: the prepare line call is/should be handled by the code returned by get_tab1_body_getter
+    tabdata, addcode = get_tab2_body_getter(vardict)(nr_vartok, vardict)
+    inner_code += addcode
 
     assigncode = cpp.statement(f"Tab2Body tab_body = {tabdata}")
     assigncode += generate_code_for_varassign(INTvar, vardict, "tab_body.INT", "intvec")
@@ -768,14 +772,14 @@ def generate_code_for_tab2(node, vardict):
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)
-        inner_code = get_prepare_section_func(vardict)(sectok, vardict)
         inner_code += vardefs + assigncode
         inner_code += get_finalize_line_func(vardict)(vardict)
         inner_code += get_finalize_section_func(vardict)(sectok, vardict)
         code += cpp.block(inner_code)
     else:
-        code += assigncode
-        code += get_finalize_line_func(vardict)(vardict)
+        inner_code += assigncode
+        inner_code += get_finalize_line_func(vardict)(vardict)
+        code += inner_code
     return code
 
 

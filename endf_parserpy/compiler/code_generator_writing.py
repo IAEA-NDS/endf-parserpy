@@ -280,15 +280,28 @@ def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     var_mt = VariableToken(Token("VARNAME", "MT"))
 
     ctrl_code = ""
-    ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
-    ctrl_code += read_raw_line("cpp_line")
-    matval = aux.get_mat_number() if mat is None else str(mat)
-    mfval = aux.get_mf_number() if mf is None else str(mf)
-    mtval = aux.get_mt_number() if mt is None else str(mt)
+    if mat is None:
+        matval = get_expr_value_using_endf_dict(
+            var_mat, "cpp_current_dict_tmp", int, vardict
+        )
+    else:
+        matval = str(mat)
+    if mf is None:
+        mfval = get_expr_value_using_endf_dict(
+            var_mf, "cpp_current_dict_tmp", int, vardict
+        )
+    else:
+        mfval = str(mf)
+    if mt is None:
+        mtval = get_expr_value_using_endf_dict(
+            var_mt, "cpp_current_dict_tmp", int, vardict
+        )
+    else:
+        mtval = str(mt)
+
     ctrl_code += cpp.statement(f"int mat = {matval}")
     ctrl_code += cpp.statement(f"int mf = {mfval}")
     ctrl_code += cpp.statement(f"int mt = {mtval}")
-    ctrl_code += cpp.statement("cont.seekg(cpp_startpos)")
 
     ctrl_code += generate_code_for_varassign(var_mat, vardict, matval, int)
     ctrl_code += generate_code_for_varassign(var_mf, vardict, mfval, int)

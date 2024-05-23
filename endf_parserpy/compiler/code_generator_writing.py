@@ -184,10 +184,20 @@ def _get_custom_int_field_wrapper(node, start, length, vardict):
 
 
 def _get_counter_field_wrapper(node, idx, vardict):
-    valcode = get_numeric_field(idx, int, "parse_opts")
+    # valcode = get_numeric_field(idx, int, "parse_opts")
     code = ""
     if not in_lookahead(vardict):
+        pyobj = get_expr_value_using_endf_dict(
+            node, "cpp_current_dict_tmp", None, vardict
+        )
+        valcode = f"py::len({pyobj})"
         code += set_numeric_field("cpp_draft_line", idx, int, valcode)
+    else:
+        defaults = {int: -99999}
+        pyobj = get_expr_value_using_endf_dict(
+            node, "cpp_current_dict_tmp", None, vardict
+        )
+        valcode = f"py::len({pyobj})"
     return valcode, code
 
 

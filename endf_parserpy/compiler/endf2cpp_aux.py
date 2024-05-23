@@ -234,9 +234,7 @@ class ListBodyRecorder:
         code += cpp.statement(f"int cpp_npl = {npl_val}", cpp.INDENT)
         code += cpp.statement("int cpp_i = 0", cpp.INDENT)
         code += cpp.statement("int cpp_j = 0", cpp.INDENT)
-        code += cpp.indent_code(
-            get_prepare_line_func(vardict)(in_lookahead(vardict)), cpp.INDENT
-        )
+        code += cpp.indent_code(get_prepare_line_func(vardict)(vardict), cpp.INDENT)
         return code
 
     @staticmethod
@@ -251,13 +249,13 @@ class ListBodyRecorder:
             cpp.INDENT,
         )
         code += cpp.close_block()
-        code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+        code += get_finalize_line_func(vardict)(vardict)
         return code
 
     @staticmethod
     def get_element(node, vardict):
         valcode, addcode = get_numeric_field_getter(vardict)(
-            node, "cpp_j", float, in_lookahead(vardict)
+            node, "cpp_j", float, vardict
         )
         return valcode, addcode
 
@@ -269,8 +267,8 @@ class ListBodyRecorder:
             cpp.logical_and(["cpp_j > 5", "cpp_i < cpp_npl"]),
             cpp.concat(
                 [
-                    get_finalize_line_func(vardict)(in_lookahead(vardict)),
-                    get_prepare_line_func(vardict)(in_lookahead(vardict)),
+                    get_finalize_line_func(vardict)(vardict),
+                    get_prepare_line_func(vardict)(vardict),
                     cpp.statement("cpp_j = 0"),
                 ]
             ),

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/21
+# Last modified:   2024/05/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -528,9 +528,7 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
         if skip is not None and idx in skip:
             continue
         dtype = float if idx < 2 else int
-        valcode, addcode = get_numeric_field_getter(vardict)(
-            node, idx, dtype, in_lookahead(vardict)
-        )
+        valcode, addcode = get_numeric_field_getter(vardict)(node, idx, dtype, vardict)
         code += addcode
         try:
             code += generate_code_for_varassign(
@@ -552,7 +550,7 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
 def generate_code_for_text(node, vardict):
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
-    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
+    code += get_prepare_line_func(vardict)(vardict)
     text_fields = get_child(node, "text_fields")
     tphs = [v for v in text_fields.children if is_textplaceholder(v)]
     ofs = 0
@@ -572,13 +570,11 @@ def generate_code_for_text(node, vardict):
         length = int(txtlen) if txtlen is not None else 66
         vartok = VariableToken(v)
         dtype = str
-        valcode, addcode = get_text_field_getter(vardict)(
-            v, ofs, length, in_lookahead(vardict)
-        )
+        valcode, addcode = get_text_field_getter(vardict)(v, ofs, length, vardict)
         code += addcode
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         ofs += length
-    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+    code += get_finalize_line_func(vardict)(vardict)
     return code
 
 
@@ -593,19 +589,15 @@ def generate_code_for_intg(node, vardict):
 
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
-    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
+    code += get_prepare_line_func(vardict)(vardict)
     code += cpp.statement(f"int cpp_ndigit = {ndigit_exprstr}")
     code += cpp.pureif(
         cpp.logical_or(["cpp_ndigit < 2", "cpp_ndigit > 6"]),
         cpp.throw_runtime_error("invalid NDIGIT (must be between 2 and 6)"),
     )
-    val_ii, addcode = get_custom_int_field_getter(vardict)(
-        ii_expr, 0, 5, in_lookahead(vardict)
-    )
+    val_ii, addcode = get_custom_int_field_getter(vardict)(ii_expr, 0, 5, vardict)
     code += addcode
-    val_jj, addcode = get_custom_int_field_getter(vardict)(
-        jj_expr, 5, 5, in_lookahead(vardict)
-    )
+    val_jj, addcode = get_custom_int_field_getter(vardict)(jj_expr, 5, 5, vardict)
     code += addcode
 
     code += generate_code_for_varassign(ii_expr, vardict, val_ii, int)
@@ -623,7 +615,7 @@ def generate_code_for_intg(node, vardict):
         "for (int cpp_i = cpp_start; cpp_i < cpp_end; cpp_i += cpp_step) {"
     )
     valcode, addcode = get_custom_int_field_getter(vardict)(
-        kij_expr, "cpp_i", "cpp_step", in_lookahead(vardict)
+        kij_expr, "cpp_i", "cpp_step", vardict
     )
     code += addcode
     code += cpp.statement(f"cpp_intvec.push_back({valcode})", cpp.INDENT)
@@ -633,19 +625,19 @@ def generate_code_for_intg(node, vardict):
 
 
 def generate_code_for_send(node, vardict):
-    code = get_send_line_func(vardict)(in_lookahead(vardict))
-    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+    code = get_send_line_func(vardict)(vardict)
+    code += get_finalize_line_func(vardict)(vardict)
     return code
 
 
 def generate_code_for_cont(node, vardict):
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
-    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
+    code += get_prepare_line_func(vardict)(vardict)
     code += cpp.comment("read CONT record")
     record_fields = get_child(node, "record_fields")
     code += generate_code_from_record_fields(record_fields, vardict)
-    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+    code += get_finalize_line_func(vardict)(vardict)
     return code
 
 
@@ -653,10 +645,10 @@ def generate_code_for_dir(node, vardict):
     template = reconstruct_endf_line_template(node)
     code = aux.define_current_template(template)
     code += cpp.comment("read TEXT record")
-    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
+    code += get_prepare_line_func(vardict)(vardict)
     record_fields = get_child(node, "dir_fields")
     code += generate_code_from_record_fields(record_fields, vardict, skip=(0, 1), ofs=2)
-    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+    code += get_finalize_line_func(vardict)(vardict)
     return code
 
 
@@ -670,7 +662,7 @@ def generate_code_for_tab1(node, vardict):
     tab1_def = get_child(tab1_fields, "tab1_def")
 
     code += cpp.comment("read TAB1 record")
-    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
+    code += get_prepare_line_func(vardict)(vardict)
     code += generate_code_from_record_fields(record_fields, vardict, skip=(4, 5))
 
     if not should_proceed(vardict):
@@ -689,19 +681,17 @@ def generate_code_for_tab1(node, vardict):
     INTvar = VariableToken(Token("VARNAME", "INT"))
     NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
-    nr_val, addcode = get_counter_field_getter(vardict)(
-        INTvar, 4, in_lookahead(vardict)
-    )
+    nr_val, addcode = get_counter_field_getter(vardict)(INTvar, 4, vardict)
     code += addcode
-    np_val, addcode = get_counter_field_getter(vardict)(xvar, 5, in_lookahead(vardict))
+    np_val, addcode = get_counter_field_getter(vardict)(xvar, 5, vardict)
     code += addcode
 
     # we are done with the first control record line of the tab1 record
-    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+    code += get_finalize_line_func(vardict)(vardict)
 
     # NOTE: the prepare line call is/should be handled by the code returned by get_tab1_body_getter
     tabdata, addcode = get_tab1_body_getter(vardict)(
-        xvar, yvar, nr_val, np_val, in_lookahead(vardict)
+        xvar, yvar, nr_val, np_val, vardict
     )
     code += addcode
 
@@ -719,12 +709,12 @@ def generate_code_for_tab1(node, vardict):
         vardefs = generate_vardefs(vardict)
         inner_code = get_prepare_section_func(vardict)(sectok, vardict)
         inner_code += vardefs + assigncode
-        inner_code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+        inner_code += get_finalize_line_func(vardict)(vardict)
         inner_code += get_finalize_section_func(vardict)(sectok, vardict)
         code += cpp.block(inner_code)
     else:
         code += assigncode
-        code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+        code += get_finalize_line_func(vardict)(vardict)
     return code
 
 
@@ -737,7 +727,7 @@ def generate_code_for_tab2(node, vardict):
     record_fields = get_child(tab2_fields, "record_fields")
 
     code += cpp.comment("read TAB2 record")
-    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
+    code += get_prepare_line_func(vardict)(vardict)
     code += generate_code_from_record_fields(record_fields, vardict, skip=(4,))
 
     if not should_proceed(vardict):
@@ -752,16 +742,14 @@ def generate_code_for_tab2(node, vardict):
     INTvar = VariableToken(Token("VARNAME", "INT"))
     NBTvar = VariableToken(Token("VARNAME", "NBT"))
 
-    nr_val, addcode = get_counter_field_getter(vardict)(
-        INTvar, 4, in_lookahead(vardict)
-    )
+    nr_val, addcode = get_counter_field_getter(vardict)(INTvar, 4, vardict)
     code += addcode
 
     # we are done with the first control record line of the tab2 record
-    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+    code += get_finalize_line_func(vardict)(vardict)
 
     # NOTE: the prepare line call is/should be handled by the code returned by get_tab1_body_getter
-    tabdata, addcode = get_tab2_body_getter(vardict)(nr_val, in_lookahead(vardict))
+    tabdata, addcode = get_tab2_body_getter(vardict)(nr_val, vardict)
     code += addcode
 
     if sectok is not None:
@@ -776,12 +764,12 @@ def generate_code_for_tab2(node, vardict):
         vardefs = generate_vardefs(vardict)
         inner_code = get_prepare_section_func(vardict)(sectok, vardict)
         inner_code += vardefs + assigncode
-        inner_code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+        inner_code += get_finalize_line_func(vardict)(vardict)
         inner_code += get_finalize_section_func(vardict)(sectok, vardict)
         code += cpp.block(inner_code)
     else:
         code += assigncode
-        code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+        code += get_finalize_line_func(vardict)(vardict)
     return code
 
 
@@ -791,15 +779,13 @@ def generate_code_for_list(node, vardict):
     code += aux.define_current_template(template)
     record_fields = get_child(node, "record_fields")
 
-    code += get_prepare_line_func(vardict)(in_lookahead(vardict))
+    code += get_prepare_line_func(vardict)(vardict)
     code += cpp.comment("read LIST record")
     code += generate_code_from_record_fields(record_fields, vardict)
     npl_node = get_child(record_fields, "expr", idx=4)
-    npl_val, addcode = get_numeric_field_getter(vardict)(
-        npl_node, 4, int, in_lookahead(vardict)
-    )
+    npl_val, addcode = get_numeric_field_getter(vardict)(npl_node, 4, int, vardict)
     code += addcode
-    code += get_finalize_line_func(vardict)(in_lookahead(vardict))
+    code += get_finalize_line_func(vardict)(vardict)
 
     if not should_proceed(vardict):
         return code

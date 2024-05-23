@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/21
+# Last modified:   2024/05/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -55,6 +55,7 @@ from .endf2cpp_aux import (
     read_line_la,
     read_raw_line,
 )
+from .lookahead_management import in_lookahead
 
 
 def mf_mt_parsefun_name(mf, mt):
@@ -69,53 +70,55 @@ def _mf_mt_dict_varname(mf, mt):
     return f"mf{mf}_mt{mt}_dict"
 
 
-def _get_numeric_field_wrapper(node, idx, dtype, lookahead):
+def _get_numeric_field_wrapper(node, idx, dtype, vardict):
     valcode = get_numeric_field(idx, dtype, "parse_opts")
     code = ""
     return valcode, code
 
 
-def _get_text_field_wrapper(node, start, length, lookahead):
+def _get_text_field_wrapper(node, start, length, vardict):
     valcode = get_text_field(start, length)
     code = ""
     return valcode, code
 
 
-def _get_tab1_body_wrapper(xvar, yvar, nr, np, lookahead):
+def _get_tab1_body_wrapper(xvar, yvar, nr, np, vardict):
     valcode = get_tab1_body(xvar, yvar, nr, np, "mat", "mf", "mt", "parse_opts")
     code = ""
     return valcode, code
 
 
-def _get_tab2_body_wrapper(nr, lookahead):
+def _get_tab2_body_wrapper(nr, vardict):
     valcode = get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
     code = ""
     return valcode, code
 
 
-def _get_custom_int_field_wrapper(node, start, length, lookahead):
+def _get_custom_int_field_wrapper(node, start, length, vardict):
     valcode = get_custom_int_field(start, length)
     code = ""
     return valcode, code
 
 
-def _get_counter_field_wrapper(node, idx, lookahead):
+def _get_counter_field_wrapper(node, idx, vardict):
     valcode = get_numeric_field(idx, int, "parse_opts")
     code = ""
     return valcode, code
 
 
-def _read_send_line_func_wrapper(lookahead):
+def _read_send_line_func_wrapper(vardict):
     code = aux.read_send("mat", "mf", "parse_opts")
     return code
 
 
-def _prepare_line_func_wrapper(lookahead):
-    code = read_line_la("cpp_line", "mat", "mf", "mt", "parse_opts", lookahead)
+def _prepare_line_func_wrapper(vardict):
+    code = read_line_la(
+        "cpp_line", "mat", "mf", "mt", "parse_opts", in_lookahead(vardict)
+    )
     return code
 
 
-def _finalize_line_func_wrapper(lookahead):
+def _finalize_line_func_wrapper(vardict):
     return ""
 
 

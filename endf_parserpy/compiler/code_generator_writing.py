@@ -67,6 +67,7 @@ from .endf2cpp_aux_writing import (
     set_tab2_body,
     set_custom_int_field,
 )
+from .lookahead_management import in_lookahead
 
 
 def mf_mt_writefun_name(mf, mt):
@@ -81,70 +82,72 @@ def _mf_mt_dict_varname(mf, mt):
     return f"mf{mf}_mt{mt}_dict"
 
 
-def _get_numeric_field_wrapper(node, idx, dtype, lookahead):
+def _get_numeric_field_wrapper(node, idx, dtype, vardict):
     valcode = get_numeric_field(idx, dtype, "parse_opts")
     code = ""
-    if not lookahead:
+    if not in_lookahead(vardict):
         code += set_numeric_field("cpp_draft_line", idx, dtype, valcode)
     return valcode, code
 
 
-def _get_text_field_wrapper(node, start, length, lookahead):
+def _get_text_field_wrapper(node, start, length, vardict):
     valcode = get_text_field(start, length)
     code = ""
-    if not lookahead:
+    if not in_lookahead(vardict):
         code += set_text_field("cpp_draft_line", start, length, valcode)
     return valcode, code
 
 
-def _get_tab1_body_wrapper(xvar, yvar, nr, np, lookahead):
+def _get_tab1_body_wrapper(xvar, yvar, nr, np, vardict):
     tab1_body_data = get_tab1_body(xvar, yvar, nr, np, "mat", "mf", "mt", "parse_opts")
     valcode = "tab1_body"
     code = cpp.statement(f"{valcode} = {tab1_body_data}")
-    if not lookahead:
+    if not in_lookahead(vardict):
         code += set_tab1_body("cpp_draft_line", valcode, "mat", "mf", "mt")
     return valcode, code
 
 
-def _get_tab2_body_wrapper(nr, lookahead):
+def _get_tab2_body_wrapper(nr, vardict):
     tab2_body_data = get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
     valcode = "tab2_body"
     code = cpp.statement(f"{valcode} = {tab2_body_data}")
-    if not lookahead:
+    if not in_lookahead(vardict):
         code += set_tab2_body("cpp_draft_line", valcode, "mat", "mf", "mt")
     return valcode, code
 
 
-def _get_custom_int_field_wrapper(node, start, length, lookahead):
+def _get_custom_int_field_wrapper(node, start, length, vardict):
     valcode = get_custom_int_field(start, length)
     code = ""
-    if not lookahead:
+    if not in_lookahead(vardict):
         code += set_custom_int_field("cpp_draft_line", start, length, valcode)
     return valcode, code
 
 
-def _get_counter_field_wrapper(node, idx, lookahead):
+def _get_counter_field_wrapper(node, idx, vardict):
     valcode = get_numeric_field(idx, int, "parse_opts")
     code = ""
-    if not lookahead:
+    if not in_lookahead(vardict):
         code += set_numeric_field("cpp_draft_line", idx, int, valcode)
     return valcode, code
 
 
-def _prepare_send_func_wrapper(lookahead):
+def _prepare_send_func_wrapper(vardict):
     code = aux.read_send("mat", "mf", "parse_opts")
-    code += prepare_send_la("cpp_draft_line", "mat", "mf", lookahead)
+    code += prepare_send_la("cpp_draft_line", "mat", "mf", in_lookahead(vardict))
     return code
 
 
-def _prepare_line_func_wrapper(lookahead):
-    code = read_line_la("cpp_line", "mat", "mf", "mt", "parse_opts", lookahead)
-    code += prepare_line_la("cpp_draft_line", "mat", "mf", "mt", lookahead)
+def _prepare_line_func_wrapper(vardict):
+    code = read_line_la(
+        "cpp_line", "mat", "mf", "mt", "parse_opts", in_lookahead(vardict)
+    )
+    code += prepare_line_la("cpp_draft_line", "mat", "mf", "mt", in_lookahead(vardict))
     return code
 
 
-def _finalize_line_func_wrapper(lookahead):
-    if lookahead:
+def _finalize_line_func_wrapper(vardict):
+    if in_lookahead(vardict):
         return ""
     code = cpp.statement("cpp_output << cpp_draft_line")
     return code

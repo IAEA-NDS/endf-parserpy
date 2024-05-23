@@ -27,7 +27,6 @@ def get_node_value_using_endf_dict(node, dictvar, dtype, vardict, defaults=None)
     defaults = {} if defaults is None else defaults
     if not isinstance(node, VariableToken):
         return node2str(node)
-    dtypestr = map_dtype(dtype)
     if dtype not in defaults:
         varname = f'{dictvar}["{node}"]'
     else:
@@ -42,7 +41,11 @@ def get_node_value_using_endf_dict(node, dictvar, dtype, vardict, defaults=None)
         idxstrs.append(curidxstr)
     idxstrs = [f"[py::cast({idxstr})]" for idxstr in idxstrs]
     extvarname = varname + "".join(idxstrs)
-    return f"py::cast<{dtypestr}>({extvarname})"
+    if dtype is None:
+        return extvarname
+    else:
+        dtypestr = map_dtype(dtype)
+        return f"py::cast<{dtypestr}>({extvarname})"
 
 
 def get_expr_value_using_endf_dict(node, dictvar, dtype, vardict, defaults=None):

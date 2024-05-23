@@ -67,16 +67,17 @@ def generate_parse_or_read_verbatim(funname, parse_opts):  # debug
         ),
         cpp.concat(
             [
-                aux.read_section_verbatim(
-                    "verbatim_section",
-                    "mat",
-                    "mf",
-                    "mt",
-                    "cont",
-                    "is_firstline",
-                    parse_opts,
-                ),
-                cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section"),
+                cpp.line("")
+                # aux.read_section_verbatim(
+                #     "verbatim_section",
+                #     "mat",
+                #     "mf",
+                #     "mt",
+                #     "cont",
+                #     "is_firstline",
+                #     parse_opts,
+                # ),
+                # cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section"),
             ]
         ),
     )

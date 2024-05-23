@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/22
+# Last modified:   2024/05/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -21,6 +21,7 @@ from .code_generator_parsing_core import (
     generate_endf_dict_assignments,
 )
 from .code_generator_writing_core import (
+    get_expr_value_using_endf_dict,
     generate_parse_or_read_verbatim,
 )
 from lark.lexer import Token
@@ -166,14 +167,26 @@ def _prepare_section_func_wrapper(sectok, vardict):
         # initialization
         code = cpp.statement("py::dict cpp_parent_dict")
         code += cpp.statement("py::dict cpp_current_dict")
+        code += cpp.statement("py::dict cpp_parent_dict_tmp")
+        code += cpp.statement("py::dict cpp_current_dict_tmp = endf_dict")
         return code
-    return aux.open_section(sectok, vardict)
+    code = aux.open_section(
+        sectok,
+        vardict,
+        current_dict="cpp_current_dict_tmp",
+        parent_dict="cpp_parent_dict_tmp",
+    )
+    code += aux.open_section(sectok, vardict)
+    return code
 
 
 def _finalize_section_func_wrapper(sectok, vardict):
     code = generate_endf_dict_assignments(vardict)
     if sectok is None:
         return code
+    code += aux.close_section(
+        current_dict="cpp_current_dict_tmp", parent_dict="cpp_parent_dict_tmp"
+    )
     code += aux.close_section()
     return code
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/20
+# Last modified:   2024/05/24
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -621,6 +621,8 @@ def parsefun_header(fun_name):
           std::vector<double> cpp_floatvec;
           std::string cpp_template;
           double cpp_float_val;
+          int cpp_nr_val;
+          int cpp_np_val;
         """,
         -8,
     )

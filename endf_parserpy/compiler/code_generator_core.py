@@ -102,6 +102,8 @@ from .mode_management import (
     get_finalize_line_tape_func,
     get_prepare_section_func,
     get_finalize_section_func,
+    get_lookahead_tellg_statement,
+    get_lookahead_seekg_statement,
 )
 
 
@@ -462,9 +464,7 @@ def generate_code_for_if_statement(node, vardict):
             [
                 cpp.comment("if statement evaluation with lookahead"),
                 cpp.open_block(),
-                cpp.statement(
-                    "std::streampos cpp_old_streampos = cont.tellg()", cpp.INDENT
-                ),
+                cpp.indent_code(get_lookahead_tellg_statement(vardict)),
             ]
         )
 
@@ -481,7 +481,7 @@ def generate_code_for_if_statement(node, vardict):
                             condition=logical_expr_str,
                             code=cpp.statement("cpp_found_match = true"),
                         ),
-                        cpp.statement("cont.seekg(cpp_old_streampos)"),
+                        get_lookahead_seekg_statement(vardict),
                     ]
                 )
             )

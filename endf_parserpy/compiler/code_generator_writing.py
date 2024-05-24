@@ -48,6 +48,8 @@ from .mode_management import (
     register_finalize_line_tape_func,
     register_prepare_section_func,
     register_finalize_section_func,
+    register_lookahead_tellg_statement,
+    register_lookahead_seekg_statement,
 )
 from .endf2cpp_aux import (
     get_numeric_field,
@@ -274,6 +276,8 @@ def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_finalize_line_tape_func(_finalize_line_tape_func_wrapper, vardict)
     register_prepare_section_func(_prepare_section_func_wrapper, vardict)
     register_finalize_section_func(_finalize_section_func_wrapper, vardict)
+    register_lookahead_tellg_statement("", vardict)
+    register_lookahead_seekg_statement("", vardict)
 
     var_mat = VariableToken(Token("VARNAME", "MAT"))
     var_mf = VariableToken(Token("VARNAME", "MF"))

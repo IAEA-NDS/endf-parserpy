@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/23
+# Last modified:   2024/05/24
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -45,6 +45,8 @@ from .mode_management import (
     register_finalize_line_tape_func,
     register_prepare_section_func,
     register_finalize_section_func,
+    register_lookahead_tellg_statement,
+    register_lookahead_seekg_statement,
 )
 from .endf2cpp_aux import (
     get_numeric_field,
@@ -163,6 +165,12 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_finalize_line_tape_func(_finalize_line_tape_func_wrapper, vardict)
     register_prepare_section_func(_prepare_section_func_wrapper, vardict)
     register_finalize_section_func(_finalize_section_func_wrapper, vardict)
+    register_lookahead_tellg_statement(
+        cpp.statement("std::streampos cpp_old_streampos = cont.tellg()"), vardict
+    )
+    register_lookahead_seekg_statement(
+        cpp.statement("cont.seekg(cpp_old_streampos)"), vardict
+    )
 
     var_mat = VariableToken(Token("VARNAME", "MAT"))
     var_mf = VariableToken(Token("VARNAME", "MF"))

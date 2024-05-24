@@ -120,10 +120,7 @@ def _get_text_field_wrapper(node, start, length, vardict):
 
 def _get_tab1_body_wrapper(xvar, yvar, nr, np, vardict):
     code = ""
-    # TODO: remove eventually but still need it for proper line counting
-    tab1_body_data = get_tab1_body(xvar, yvar, nr, np, "mat", "mf", "mt", "parse_opts")
     valcode = "tab1_body"
-    code += cpp.statement(f"{tab1_body_data}")
     xvalue = get_expr_value_using_endf_dict(
         xvar, "cpp_current_dict_tmp", "floatvec", vardict
     )
@@ -149,9 +146,7 @@ def _get_tab1_body_wrapper(xvar, yvar, nr, np, vardict):
 
 def _get_tab2_body_wrapper(nr, vardict):
     code = ""
-    tab2_body_data = get_tab2_body(nr, "mat", "mf", "mt", "parse_opts")
     valcode = "tab2_body"
-    code += cpp.statement(f"{tab2_body_data}")
     INTvar = VariableToken(Token("VARNAME", "INT"))
     INTvalue = get_expr_value_using_endf_dict(
         INTvar, "cpp_current_dict_tmp", "intvec", vardict
@@ -200,27 +195,25 @@ def _get_counter_field_wrapper(node, idx, vardict):
 
 
 def _prepare_send_func_wrapper(vardict):
-    code = aux.read_send("mat", "mf", "parse_opts")
-    code += prepare_send_la("cpp_draft_line", "mat", "mf", in_lookahead(vardict))
+    code = prepare_send_la("cpp_draft_line", "mat", "mf", in_lookahead(vardict))
     return code
 
 
 def _prepare_line_func_wrapper(vardict):
-    code = read_line_la(
-        "cpp_line", "mat", "mf", "mt", "parse_opts", in_lookahead(vardict)
-    )
-    code += prepare_line_la("cpp_draft_line", "mat", "mf", "mt", in_lookahead(vardict))
+    code = prepare_line_la("cpp_draft_line", "mat", "mf", "mt", in_lookahead(vardict))
     return code
 
 
 def _finalize_line_func_wrapper(vardict):
     if in_lookahead(vardict):
         return ""
-    code = cpp.statement("cpp_output << cpp_draft_line")
+    code = cpp.statement("cont << cpp_draft_line")
     return code
 
 
 def _prepare_line_tape_func_wrapper():
+    # cpp_line not used but kept in order to avoid
+    # rewritig the printing of error messages including template strings
     code = cpp.statement("std::string cpp_line")
     code += cpp.statement("std::string cpp_draft_line")
     code += cpp.statement("std::ostringstream cpp_output")
@@ -335,60 +328,36 @@ def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
 def generate_master_writefun(name, recipefuns):
     code = ""
     body = ""
-    body += cpp.statement("bool is_firstline = true")
-    body += cpp.statement("std::streampos curpos")
-    body += cpp.statement("py::dict mfmt_dict")
-    body += cpp.statement("py::dict curdict")
     body += cpp.statement("int mat")
     body += cpp.statement("int mf")
     body += cpp.statement("int mt")
-    body += cpp.statement("bool section_encountered = false")
     body += cpp.statement("int last_mat")
     body += cpp.statement("int last_mf")
     body += cpp.statement("int last_mt")
-    body += cpp.statement("std::string cpp_line")
-    body += cpp.statement("std::vector<std::string> verbatim_section")
     body += cpp.statement("bool found_tpid = false")
-    body += cpp.statement("bool after_fend = false")
-    body += cpp.statement("bool after_mend = false")
-    body += cpp.statement("bool after_tend = false")
-    body += cpp.statement("curpos = cont.tellg()")
-    body += cpp.line("while (std::getline(cont, cpp_line)) {")
-    matval = aux.get_custom_int_field(66, 4)
-    mfval = aux.get_custom_int_field(70, 2)
-    mtval = aux.get_custom_int_field(72, 3)
-    body += cpp.statement(f"mat = {matval}", cpp.INDENT)
-    body += cpp.statement(f"mf = {mfval}", cpp.INDENT)
-    body += cpp.statement(f"mt = {mtval}", cpp.INDENT)
+    # body += cpp.line("while (std::getline(cont, cpp_line)) {")
+    body += cpp.statement("auto d = py::reinterpret_borrow<py::dict>(endf_dict)")
+    body += cpp.statement('py::object mf_keys = d.attr("keys")()')
+    body += cpp.line("for (auto mf_key : mf_keys) {")
+    body += cpp.statement("int mf_key_int = py::cast<int>(mf_key)", cpp.INDENT)
+    body += cpp.statement("py::dict mf_dict = d[py::cast(mf_key_int)]", cpp.INDENT)
+    body += cpp.statement('py::object mt_keys = mf_dict.attr("keys")()', cpp.INDENT)
+    body += cpp.line("for (auto mt_key : mt_keys) {", cpp.INDENT)
+    body += cpp.statement("int mt_key_int = py::cast<int>(mt_key)", 2 * cpp.INDENT)
+    body += cpp.statement(
+        "py::dict mt_dict = mf_dict[py::cast(mt_key_int)]", 2 * cpp.INDENT
+    )
+    body += cpp.statement(f"mf = mf_key_int", 2 * cpp.INDENT)
+    body += cpp.statement(f"mt = mt_key_int", 2 * cpp.INDENT)
 
     conditions = []
     statements = []
     for mf, mfdic in recipefuns.items():
-        sec_prep_code = cpp.call(
-            "_check_end_records",
-            "after_fend",
-            "after_mend",
-            "after_tend",
-            "mat",
-            "mf",
-            "mt",
-            "last_mat",
-            "last_mf",
-            "last_mt",
-            "section_encountered",
-            "found_tpid",
-            "parse_opts",
-        )
-        sec_prep_code += cpp.statement("after_fend = false")
-        sec_prep_code += cpp.statement("section_encountered = true")
-        sec_prep_code += cpp.statement("cont.seekg(curpos)")
-
         if isinstance(mfdic, str):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic
             conditions.append(f"mf == {mf}")
-            sec_read_code = generate_parse_or_read_verbatim(funname, "parse_opts")
-            section_code = sec_prep_code + sec_read_code
+            section_code = generate_parse_or_read_verbatim(funname, "parse_opts")
             statements.append(section_code)
             continue
         for mt in reversed(sorted(mfdic.keys())):
@@ -400,83 +369,39 @@ def generate_master_writefun(name, recipefuns):
             else:
                 curcond = f"mf == {mf} && mt == {mt}"
             if mt == 0 and mt == 0:
-                curcond = cpp.logical_and([curcond, "is_firstline"])
                 # in case of MF=0/MT=0, we want to register that the tpid record has been read
                 section_code += cpp.statement("found_tpid = true")
 
-            sec_read_code = generate_parse_or_read_verbatim(funname, "parse_opts")
-            section_code += sec_prep_code + sec_read_code
+            section_code = generate_parse_or_read_verbatim(funname, "parse_opts")
             statements.append(section_code)
             conditions.append(curcond)
 
-    # if no parser function is registered for an MF/MT section
-    # we read it in verbatim
-    curcond = cpp.logical_and([f"mf != 0", "mt != 0"])
-    curstat = aux.read_section_verbatim(
-        "verbatim_section", "mat", "mf", "mt", "cont", "is_firstline", "parse_opts"
-    )
-    curstat += cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section")
-    statements.append(curstat)
-    conditions.append(curcond)
-
-    # blank line treatment
-    curcond = aux.is_blank_line()
-    curstat = cpp.pureif(
-        cpp.logical_not("parse_opts.ignore_blank_lines"),
-        cpp.throw_runtime_error("Blank line detected"),
-    )
-    conditions.append(curcond)
-    statements.append(curstat)
-
-    # tend record treatment
-    curcond = cpp.logical_and(["after_mend == true", aux.is_tend("parse_opts")])
-    curstat = cpp.statement("after_mend = false")
-    curstat += cpp.statement("after_tend = true")
-    curstat += cpp.statement("std::cout << cpp_prepare_send(-1, 0)")
-    conditions.append(curcond)
-    statements.append(curstat)
-    # mend record treatment
-    curcond = cpp.logical_and(["after_fend == true", aux.is_mend("parse_opts")])
-    curstat = cpp.statement("after_fend = false")
-    curstat = cpp.statement("after_mend = true")
-    curstat += cpp.statement("std::cout << cpp_prepare_send(0, 0)")
-    conditions.append(curcond)
-    statements.append(curstat)
-    # fend record treatment
-    curcond = aux.is_fend("mat", "parse_opts")
-    curstat = cpp.statement("after_fend = true")
-    curstat += cpp.statement("std::cout << cpp_prepare_send(mat, 0)")
-    conditions.append(curcond)
-    statements.append(curstat)
-
-    # default branch
-    errmsg = cpp.line("")
-    errmsg += cpp.line(
-        r'std::string("Invalid line encountered! This line is outside any MF/MT section.\n")',
-        cpp.INDENT,
-    )
-    errmsg += cpp.line(r'+ "Line: " + cpp_line', cpp.INDENT)
-    default_code = cpp.throw_runtime_error(errmsg, quote=False)
+    # TODO
+    default_code = ""
 
     body += cpp.indent_code(
-        cpp.conditional_branches(conditions, statements, default=default_code)
+        cpp.conditional_branches(conditions, statements, default=default_code),
+        2 * cpp.INDENT,
     )
-    body += cpp.statement("last_mat = mat", cpp.INDENT)
-    body += cpp.statement("last_mf = mf", cpp.INDENT)
-    body += cpp.statement("last_mt = mt", cpp.INDENT)
-    body += cpp.statement("curpos = cont.tellg()", cpp.INDENT)
-    body += cpp.statement("is_firstline = false", cpp.INDENT)
+
+    # curstat += cpp.statement("std::cout << cpp_prepare_send(mat, 0)")
+    # curstat += cpp.statement("std::cout << cpp_prepare_send(0, 0)")
+    # curstat += cpp.statement("std::cout << cpp_prepare_send(-1, 0)")
+
+    body += cpp.statement("last_mat = mat", 2 * cpp.INDENT)
+    body += cpp.statement("last_mf = mf", 2 * cpp.INDENT)
+    body += cpp.statement("last_mt = mt", 2 * cpp.INDENT)
+    body += cpp.indent_code(cpp.close_block(), cpp.INDENT)
     body += cpp.close_block()
-    body += cpp.statement("return mfmt_dict")
 
     args = (
-        ("std::istream&", "cont"),
+        ("std::ostream&", "cont"),
         ("py::dict", "endf_dict"),
         ("py::object", "exclude"),
         ("py::object", "include"),
         ("ParsingOptions", f"parse_opts=default_parsing_options()"),
     )
-    code += cpp.function(name, body, "py::dict", *args)
+    code += cpp.function(name, body, "void", *args)
     code += cpp.line("")
     return code
 
@@ -488,13 +413,10 @@ def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
     args_str2 = ", " + args_str2 if args_str2 != "" else args_str2
     code = ""
     for p in writefuns:
-        code += cpp.line(
-            f"py::dict {p}(std::string& strcont, py::dict endf_dict{args_str}) {{"
-        )
-        code += cpp.statement("std::istringstream iss(strcont)", cpp.INDENT)
-        code += cpp.statement(
-            f"return {p}_istream(iss, endf_dict{args_str2})", cpp.INDENT
-        )
+        code += cpp.line(f"std::string {p}(py::dict endf_dict{args_str}) {{")
+        code += cpp.statement("std::ostringstream oss", cpp.INDENT)
+        code += cpp.statement(f"{p}_istream(oss, endf_dict{args_str2})", cpp.INDENT)
+        code += cpp.statement("return oss.str()")
         code += cpp.close_block()
         code += cpp.line("")
     return code
@@ -508,22 +430,21 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
     code = ""
     for p in writefuns:
         code += cpp.line(
-            f"py::dict {p}_file(std::string& filename, py::dict endf_dict{args_str}) {{"
+            f"void {p}_file(std::string& filename, py::dict endf_dict{args_str}) {{"
         )
-        code += cpp.statement("std::ifstream inpfile(filename)", cpp.INDENT)
+        code += cpp.statement("std::ofstream outfile(filename)", cpp.INDENT)
         code += cpp.indent_code(
             cpp.pureif(
-                cpp.logical_not("inpfile.is_open()"),
+                cpp.logical_not("outfile.is_open()"),
                 cpp.statement(
-                    "throw std::ifstream::failure"
+                    "throw std::ofstream::failure"
                     + '("failed to open file " + filename)'
                 ),
             ),
             cpp.INDENT,
         )
-        code += cpp.statement(
-            f"return {p}_istream(inpfile, endf_dict{args_str2})", cpp.INDENT
-        )
+        code += cpp.statement(f"{p}_istream(outfile, endf_dict{args_str2})", cpp.INDENT)
+        code += cpp.statement("outfile.close()")
         code += cpp.close_block()
         code += cpp.line("")
     return code
@@ -578,7 +499,6 @@ def generate_all_cpp_writefuns_code(recipes, module_name):
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
         ["write_endf"],
         module_name,
-        'py::arg("cont")',
         'py::arg("endf_dict")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',

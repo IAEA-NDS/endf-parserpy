@@ -189,8 +189,8 @@ def module_header_writing():
 def writefun_header(fun_name):
     code = cpp.indent_code(
         rf"""
-        py::dict {fun_name}(
-          std::istream& cont, py::dict endf_dict, ParsingOptions &parse_opts
+        void {fun_name}(
+          std::ostream& cont, py::dict endf_dict, ParsingOptions &parse_opts
         ) {{
           std::vector<int> cpp_intvec;
           std::vector<double> cpp_floatvec;
@@ -207,6 +207,5 @@ def writefun_header(fun_name):
 
 
 def writefun_footer():
-    code = cpp.statement("return cpp_current_dict", cpp.INDENT)
-    code += cpp.close_block()
+    code = cpp.close_block()
     return code

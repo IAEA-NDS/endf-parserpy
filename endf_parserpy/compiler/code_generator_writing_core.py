@@ -60,10 +60,8 @@ def get_expr_value_using_endf_dict(node, dictvar, dtype, vardict, defaults=None)
 def generate_parse_or_read_verbatim(funname, parse_opts):  # debug
     code = cpp.ifelse(
         aux.should_parse_section("mf", "mt", "exclude", "include"),
-        cpp_varaux.dict_assign(
-            "mfmt_dict",
-            ["mf", "mt"],
-            f"{funname}_istream(cont, endf_dict[py::cast(mf)][py::cast(mt)], {parse_opts})",
+        cpp.statement(
+            f"{funname}_istream(cont, endf_dict[py::cast(mf)][py::cast(mt)], {parse_opts})"
         ),
         cpp.concat(
             [

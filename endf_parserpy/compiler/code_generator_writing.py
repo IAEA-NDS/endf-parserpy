@@ -335,20 +335,43 @@ def generate_master_writefun(name, recipefuns):
     body += cpp.statement("int last_mf")
     body += cpp.statement("int last_mt")
     body += cpp.statement("bool found_tpid = false")
-    # body += cpp.line("while (std::getline(cont, cpp_line)) {")
     body += cpp.statement("auto d = py::reinterpret_borrow<py::dict>(endf_dict)")
     body += cpp.statement('py::object mf_keys = d.attr("keys")()')
+    # sort the mf keys
+    body += cpp.statement("std::vector<int> sorted_mf_keys")
     body += cpp.line("for (auto mf_key : mf_keys) {")
-    body += cpp.statement("int mf_key_int = py::cast<int>(mf_key)", cpp.INDENT)
-    body += cpp.statement("py::dict mf_dict = d[py::cast(mf_key_int)]", cpp.INDENT)
-    body += cpp.statement('py::object mt_keys = mf_dict.attr("keys")()', cpp.INDENT)
-    body += cpp.line("for (auto mt_key : mt_keys) {", cpp.INDENT)
-    body += cpp.statement("int mt_key_int = py::cast<int>(mt_key)", 2 * cpp.INDENT)
+    body += cpp.statement("sorted_mf_keys.push_back(py::cast<int>(mf_key))", cpp.INDENT)
+    body += cpp.close_block()
+    body += cpp.statement("std::sort(sorted_mf_keys.begin(), sorted_mf_keys.end())")
+    body += cpp.statement("std::map<int, std::vector<int>> sorted_mfmt_keys")
+    # sort the mt keys
+    body += cpp.line("for (auto mf_key : sorted_mf_keys) {")
     body += cpp.statement(
-        "py::dict mt_dict = mf_dict[py::cast(mt_key_int)]", 2 * cpp.INDENT
+        'py::object mt_keys = d[py::cast(mf_key)].attr("keys")()', cpp.INDENT
     )
-    body += cpp.statement(f"mf = mf_key_int", 2 * cpp.INDENT)
-    body += cpp.statement(f"mt = mt_key_int", 2 * cpp.INDENT)
+    body += cpp.statement("std::vector<int> sorted_mt_keys")
+    body += cpp.line("for (auto mt_key : mt_keys) {", cpp.INDENT)
+    body += cpp.statement(
+        "sorted_mt_keys.push_back(py::cast<int>(mt_key))", 2 * cpp.INDENT
+    )
+    body += cpp.indent_code(cpp.close_block(), cpp.INDENT)
+    body += cpp.statement(
+        "std::sort(sorted_mt_keys.begin(), sorted_mt_keys.end())", cpp.INDENT
+    )
+    body += cpp.statement("sorted_mfmt_keys[mf_key] = sorted_mt_keys", cpp.INDENT)
+    body += cpp.close_block()
+    # iterate through the sorted mf/mt combinations
+    body += cpp.line("for (auto mf_key : sorted_mf_keys) {")
+    body += cpp.statement("py::dict mf_dict = d[py::cast(mf_key)]", cpp.INDENT)
+    body += cpp.statement(
+        "std::vector<int> sorted_mt_keys = sorted_mfmt_keys[mf_key]", cpp.INDENT
+    )
+    body += cpp.line("for (auto mt_key : sorted_mt_keys) {", cpp.INDENT)
+    body += cpp.statement(
+        "py::dict mt_dict = mf_dict[py::cast(mt_key)]", 2 * cpp.INDENT
+    )
+    body += cpp.statement(f"mf = mf_key", 2 * cpp.INDENT)
+    body += cpp.statement(f"mt = mt_key", 2 * cpp.INDENT)
 
     conditions = []
     statements = []

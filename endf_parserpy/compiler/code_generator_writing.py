@@ -22,6 +22,7 @@ from .code_generator_parsing_core import (
 )
 from .code_generator_writing_core import (
     get_expr_value_using_endf_dict,
+    get_mat_from_mfmt_section,
     generate_parse_or_read_verbatim,
 )
 from lark.lexer import Token
@@ -334,6 +335,7 @@ def generate_master_writefun(name, recipefuns):
     body += cpp.statement("int last_mat")
     body += cpp.statement("int last_mf")
     body += cpp.statement("int last_mt")
+    body += cpp.statement("bool section_encountered = false")
     body += cpp.statement("bool found_tpid = false")
     body += cpp.statement("auto d = py::reinterpret_borrow<py::dict>(endf_dict)")
     body += cpp.statement('py::object mf_keys = d.attr("keys")()')
@@ -381,6 +383,9 @@ def generate_master_writefun(name, recipefuns):
             funname = mfdic
             conditions.append(f"mf == {mf}")
             section_code = generate_parse_or_read_verbatim(funname, "parse_opts")
+            matval = get_mat_from_mfmt_section("mt_dict")
+            section_code += cpp.statement(f"mat = {matval}")
+            section_code += cpp.statement("section_encountered = true")
             statements.append(section_code)
             continue
         for mt in reversed(sorted(mfdic.keys())):
@@ -396,6 +401,9 @@ def generate_master_writefun(name, recipefuns):
                 section_code += cpp.statement("found_tpid = true")
 
             section_code = generate_parse_or_read_verbatim(funname, "parse_opts")
+            matval = get_mat_from_mfmt_section("mt_dict")
+            section_code += cpp.statement(f"mat = {matval}")
+            section_code += cpp.statement("section_encountered = true")
             statements.append(section_code)
             conditions.append(curcond)
 
@@ -406,16 +414,21 @@ def generate_master_writefun(name, recipefuns):
         cpp.conditional_branches(conditions, statements, default=default_code),
         2 * cpp.INDENT,
     )
-
-    # curstat += cpp.statement("std::cout << cpp_prepare_send(mat, 0)")
-    # curstat += cpp.statement("std::cout << cpp_prepare_send(0, 0)")
-    # curstat += cpp.statement("std::cout << cpp_prepare_send(-1, 0)")
+    # add FEND record
+    body += cpp.pureif(
+        cpp.logical_and(["section_encountered", "mf != last_mf", "mf != 0"]),
+        cpp.statement("cont << cpp_prepare_send(mat, 0)"),
+    )
 
     body += cpp.statement("last_mat = mat", 2 * cpp.INDENT)
     body += cpp.statement("last_mf = mf", 2 * cpp.INDENT)
     body += cpp.statement("last_mt = mt", 2 * cpp.INDENT)
     body += cpp.indent_code(cpp.close_block(), cpp.INDENT)
     body += cpp.close_block()
+
+    # add MEND and TEND record
+    body += cpp.statement("cont << cpp_prepare_send(0, 0)")
+    body += cpp.statement("cont << cpp_prepare_send(-1, 0)")
 
     args = (
         ("std::ostream&", "cont"),

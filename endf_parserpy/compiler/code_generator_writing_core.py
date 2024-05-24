@@ -57,6 +57,11 @@ def get_expr_value_using_endf_dict(node, dictvar, dtype, vardict, defaults=None)
     return valcode
 
 
+def get_mat_from_mfmt_section(mfmt_dict):
+    code = f"get_mat_from_mfmt_section({mfmt_dict})"
+    return code
+
+
 def generate_parse_or_read_verbatim(funname, parse_opts):  # debug
     code = cpp.ifelse(
         aux.should_parse_section("mf", "mt", "exclude", "include"),

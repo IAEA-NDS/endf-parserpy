@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/21
+# Last modified:   2024/05/24
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -229,3 +229,25 @@ def get_finalize_section_func(vardict):
     pardict = _find_parent_dict("__basic_ops", vardict)
     basic_ops = pardict["__basic_ops"]
     return basic_ops["finalize_section_func"]
+
+
+def register_lookahead_tellg_statement(statement, vardict):
+    basic_ops = vardict.setdefault("__basic_ops", {})
+    basic_ops["lookahead_tellg_statement"] = statement
+
+
+def get_lookahead_tellg_statement(vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops["lookahead_tellg_statement"]
+
+
+def register_lookahead_seekg_statement(statement, vardict):
+    basic_ops = vardict.setdefault("__basic_ops", {})
+    basic_ops["lookahead_seekg_statement"] = statement
+
+
+def get_lookahead_seekg_statement(vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops["lookahead_seekg_statement"]

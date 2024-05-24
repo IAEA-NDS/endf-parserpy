@@ -182,6 +182,20 @@ def module_header_writing():
     }
 
 
+    int get_mat_from_mfmt_section(py::object mfmt_section) {
+      int mat;
+      if (py::isinstance<py::dict>(mfmt_section)) {
+        mat = py::cast<int>(mfmt_section["MAT"]);
+        return mat;
+      }
+      std::string first_line;
+      if (py::isinstance<py::list>(mfmt_section)) {
+        first_line = py::cast<std::string>(mfmt_section[0]);
+      }
+      std::string matstr = first_line.substr(66, 4);
+      mat = std::stoi(matstr);
+      return mat;
+    }
     """
     return cpp.indent_code(code, -4)
 

@@ -422,9 +422,12 @@ def generate_master_writefun(name, recipefuns):
         2 * cpp.INDENT,
     )
     # add FEND record
-    body += cpp.pureif(
-        cpp.logical_and(["section_encountered", "mf != last_mf", "mf != 0"]),
-        cpp.statement("cont << cpp_prepare_send(mat, 0)"),
+    body += cpp.indent_code(
+        cpp.pureif(
+            cpp.logical_and(["section_encountered", "mf != last_mf", "mf != 0"]),
+            cpp.statement("cont << cpp_prepare_send(mat, 0)"),
+        ),
+        2 * cpp.INDENT,
     )
 
     body += cpp.statement("last_mat = mat", 2 * cpp.INDENT)
@@ -459,7 +462,7 @@ def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
         code += cpp.line(f"std::string {p}(py::dict endf_dict{args_str}) {{")
         code += cpp.statement("std::ostringstream oss", cpp.INDENT)
         code += cpp.statement(f"{p}_istream(oss, endf_dict{args_str2})", cpp.INDENT)
-        code += cpp.statement("return oss.str()")
+        code += cpp.statement("return oss.str()", cpp.INDENT)
         code += cpp.close_block()
         code += cpp.line("")
     return code
@@ -487,7 +490,7 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
             cpp.INDENT,
         )
         code += cpp.statement(f"{p}_istream(outfile, endf_dict{args_str2})", cpp.INDENT)
-        code += cpp.statement("outfile.close()")
+        code += cpp.statement("outfile.close()", cpp.INDENT)
         code += cpp.close_block()
         code += cpp.line("")
     return code

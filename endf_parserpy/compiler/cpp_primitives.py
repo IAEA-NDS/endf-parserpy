@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/12
+# Last modified:   2024/05/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -125,10 +125,10 @@ def conditional_branches(conditions, codes, default=None, escape=False):
     code = f"if ({if_cond}) {obr}\n"
     code += indent_code(codes[0], INDENT)
     for elif_cond, elif_body in zip(conditions[1:], codes[1:]):
-        code += f"\n{cbr} else if ({elif_cond}) {obr}\n"
+        code += f"{cbr} else if ({elif_cond}) {obr}\n"
         code += indent_code(elif_body, INDENT)
     if default is not None:
-        code += f"\n{cbr} else {obr}\n"
+        code += f"{cbr} else {obr}\n"
         code += indent_code(default, INDENT)
     code += f"{cbr}\n"
     return code

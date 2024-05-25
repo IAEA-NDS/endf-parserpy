@@ -24,7 +24,9 @@ from . import cpp_primitives as cpp
 from .variable_management import expand_abbreviation
 
 
-def get_node_value_using_endf_dict(node, dictvar, dtype, vardict, defaults=None):
+def get_node_value_using_endf_dict(
+    node, dictvar, dtype, vardict, defaults=None, idx=None
+):
     defaults = {} if defaults is None else defaults
     if not isinstance(node, VariableToken):
         return node2str(node)
@@ -42,6 +44,8 @@ def get_node_value_using_endf_dict(node, dictvar, dtype, vardict, defaults=None)
         idxstrs.append(curidxstr)
     idxstrs = [f"[py::cast({idxstr})]" for idxstr in idxstrs]
     extvarname = varname + "".join(idxstrs)
+    if idx is not None:
+        extvarname += f"[py::cast({idx})]"
     if dtype is None:
         return extvarname
     else:
@@ -49,11 +53,13 @@ def get_node_value_using_endf_dict(node, dictvar, dtype, vardict, defaults=None)
         return f"py::cast<{dtypestr}>({extvarname})"
 
 
-def get_expr_value_using_endf_dict(node, dictvar, dtype, vardict, defaults=None):
+def get_expr_value_using_endf_dict(
+    node, dictvar, dtype, vardict, defaults=None, idx=None
+):
     node = convert_to_exprtree(node)
     node = transform_nodes(node, expand_abbreviation, vardict)
     valcode = transform_nodes(
-        node, get_node_value_using_endf_dict, dictvar, dtype, vardict, defaults
+        node, get_node_value_using_endf_dict, dictvar, dtype, vardict, defaults, idx=idx
     )
     return valcode
 

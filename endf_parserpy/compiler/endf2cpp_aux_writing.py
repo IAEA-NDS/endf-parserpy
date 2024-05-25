@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/21
+# Last modified:   2024/05/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -60,4 +60,9 @@ def set_tab1_body(linevar, tab_body, mat, mf, mt):
 
 def set_tab2_body(linevar, tab_body, mat, mf, mt):
     code = cpp.statement(f"write_tab2_body({linevar}, {tab_body}, {mat}, {mf}, {mt})")
+    return code
+
+
+def write_section_verbatim(ostreamvar, listobj):
+    code = cpp.statement(f"write_section_verbatim({ostreamvar}, {listobj})")
     return code

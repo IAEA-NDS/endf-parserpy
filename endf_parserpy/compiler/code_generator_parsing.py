@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/24
+# Last modified:   2024/05/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -96,7 +96,7 @@ def _get_tab2_body_wrapper(nr, vardict):
     return valcode, code
 
 
-def _get_custom_int_field_wrapper(node, start, length, vardict):
+def _get_custom_int_field_wrapper(node, start, length, vardict, idx=None):
     valcode = get_custom_int_field(start, length)
     code = ""
     return valcode, code

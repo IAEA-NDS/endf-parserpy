@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/24
+# Last modified:   2024/05/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -529,11 +529,12 @@ def generate_code_from_record_fields(node, vardict, skip=None, ofs=0):
             continue
         dtype = float if idx < 2 else int
         valcode, addcode = get_numeric_field_getter(vardict)(child, idx, dtype, vardict)
-        code += addcode
         try:
-            code += generate_code_for_varassign(
+            new_assigncode = generate_code_for_varassign(
                 child, vardict, valcode, dtype, throw_cpp=throw_cpp
             )
+            code += addcode
+            code += new_assigncode
         except (ModuloEquationError, MultipleVariableOccurrenceError) as exc:
             indexed_children.append(indexed_child)
             num_failures += 1

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/24
+# Last modified:   2024/05/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -195,6 +195,28 @@ def module_header_writing():
       std::string matstr = first_line.substr(66, 4);
       mat = std::stoi(matstr);
       return mat;
+    }
+
+
+    void write_section_verbatim(std::ostream& oss, py::list mfmt_section) {
+      if (mfmt_section.size() == 0) {
+        throw std::runtime_error("an MF/MT section must not be represented by an empty list");
+      }
+      int mat;
+      int mf;
+      int mt;
+      for (const auto& item : mfmt_section) {
+        std::string linestr = py::cast<std::string>(item);
+        if (linestr.back() != '\n') {
+          linestr.push_back('\n');
+        }
+        mat = cpp_read_mat_number(linestr.c_str());
+        mf = cpp_read_mf_number(linestr.c_str());
+        mt = cpp_read_mt_number(linestr.c_str());
+        oss << linestr;
+      }
+      std::string send_line = cpp_prepare_send(mat, mf);
+      oss << send_line;
     }
     """
     return cpp.indent_code(code, -4)

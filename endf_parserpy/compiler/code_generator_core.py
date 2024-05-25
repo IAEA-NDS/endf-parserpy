@@ -612,16 +612,19 @@ def generate_code_for_intg(node, vardict):
         cpp.statement("cpp_start = 10"),
     )
     code += cpp.statement("std::vector<int> cpp_intvec")
+    code += cpp.statement("int elpos = 0")
     code += cpp.line(
         "for (int cpp_i = cpp_start; cpp_i < cpp_end; cpp_i += cpp_step) {"
     )
     valcode, addcode = get_custom_int_field_getter(vardict)(
-        kij_expr, "cpp_i", "cpp_step", vardict
+        kij_expr, "cpp_i", "cpp_step", vardict, idx="elpos"
     )
     code += addcode
     code += cpp.statement(f"cpp_intvec.push_back({valcode})", cpp.INDENT)
+    code += cpp.statement("elpos++", cpp.INDENT)
     code += cpp.close_block()
     code += generate_code_for_varassign(kij_expr, vardict, "cpp_intvec", "intvec")
+    code += get_finalize_line_func(vardict)(vardict)
     return cpp.open_block() + cpp.indent_code(code, cpp.INDENT) + cpp.close_block()
 
 

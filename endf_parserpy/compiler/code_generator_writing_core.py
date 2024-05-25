@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2024/05/24
+# Last modified:   2024/05/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -16,6 +16,7 @@ from .expr_utils.node_trafos import node2str
 from .expr_utils.conversion import convert_to_exprtree
 from .node_checks import is_extvar
 from . import endf2cpp_aux as aux
+from .endf2cpp_aux_writing import write_section_verbatim
 from .cpp_types import cpp_varaux
 from .cpp_types.cpp_varops_query import get_idxstr
 from .cpp_types.cpp_dtype_aux import map_dtype
@@ -62,26 +63,14 @@ def get_mat_from_mfmt_section(mfmt_dict):
     return code
 
 
-def generate_parse_or_read_verbatim(funname, parse_opts):  # debug
+def generate_section_writing_code(funname, parse_opts):
     code = cpp.ifelse(
-        aux.should_parse_section("mf", "mt", "exclude", "include"),
+        f"py::isinstance<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)])",
         cpp.statement(
-            f"{funname}_istream(cont, endf_dict[py::cast(mf)][py::cast(mt)], {parse_opts})"
+            f"{funname}_istream(cont, py::cast<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)]), {parse_opts})"
         ),
-        cpp.concat(
-            [
-                cpp.line("")
-                # aux.read_section_verbatim(
-                #     "verbatim_section",
-                #     "mat",
-                #     "mf",
-                #     "mt",
-                #     "cont",
-                #     "is_firstline",
-                #     parse_opts,
-                # ),
-                # cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section"),
-            ]
+        write_section_verbatim(
+            "cont", "py::cast<py::list>(endf_dict[py::cast(mf)][py::cast(mt)])"
         ),
     )
     return code

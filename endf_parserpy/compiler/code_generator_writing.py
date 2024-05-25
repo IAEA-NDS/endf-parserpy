@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/24
+# Last modified:   2024/05/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -23,7 +23,7 @@ from .code_generator_parsing_core import (
 from .code_generator_writing_core import (
     get_expr_value_using_endf_dict,
     get_mat_from_mfmt_section,
-    generate_parse_or_read_verbatim,
+    generate_section_writing_code,
 )
 from lark.lexer import Token
 from .expr_utils.custom_nodes import VariableToken
@@ -332,9 +332,9 @@ def generate_master_writefun(name, recipefuns):
     body += cpp.statement("int mat")
     body += cpp.statement("int mf")
     body += cpp.statement("int mt")
-    body += cpp.statement("int last_mat")
-    body += cpp.statement("int last_mf")
-    body += cpp.statement("int last_mt")
+    body += cpp.statement("int last_mat = -9999")
+    body += cpp.statement("int last_mf = -9999")
+    body += cpp.statement("int last_mt = -9999")
     body += cpp.statement("bool section_encountered = false")
     body += cpp.statement("bool found_tpid = false")
     body += cpp.statement("auto d = py::reinterpret_borrow<py::dict>(endf_dict)")
@@ -370,10 +370,17 @@ def generate_master_writefun(name, recipefuns):
     )
     body += cpp.line("for (auto mt_key : sorted_mt_keys) {", cpp.INDENT)
     body += cpp.statement(
-        "py::dict mt_dict = mf_dict[py::cast(mt_key)]", 2 * cpp.INDENT
+        "py::object mt_dict = mf_dict[py::cast(mt_key)]", 2 * cpp.INDENT
     )
     body += cpp.statement(f"mf = mf_key", 2 * cpp.INDENT)
     body += cpp.statement(f"mt = mt_key", 2 * cpp.INDENT)
+    body += cpp.indent_code(
+        cpp.pureif(
+            cpp.logical_not(aux.should_parse_section("mf", "mt", "exclude", "include")),
+            cpp.statement("continue"),
+        ),
+        2 * cpp.INDENT,
+    )
 
     conditions = []
     statements = []
@@ -382,7 +389,7 @@ def generate_master_writefun(name, recipefuns):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic
             conditions.append(f"mf == {mf}")
-            section_code = generate_parse_or_read_verbatim(funname, "parse_opts")
+            section_code = generate_section_writing_code(funname, "parse_opts")
             matval = get_mat_from_mfmt_section("mt_dict")
             section_code += cpp.statement(f"mat = {matval}")
             section_code += cpp.statement("section_encountered = true")
@@ -400,7 +407,7 @@ def generate_master_writefun(name, recipefuns):
                 # in case of MF=0/MT=0, we want to register that the tpid record has been read
                 section_code += cpp.statement("found_tpid = true")
 
-            section_code = generate_parse_or_read_verbatim(funname, "parse_opts")
+            section_code = generate_section_writing_code(funname, "parse_opts")
             matval = get_mat_from_mfmt_section("mt_dict")
             section_code += cpp.statement(f"mat = {matval}")
             section_code += cpp.statement("section_encountered = true")

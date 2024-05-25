@@ -217,13 +217,11 @@ def _prepare_line_tape_func_wrapper():
     # rewritig the printing of error messages including template strings
     code = cpp.statement("std::string cpp_line")
     code += cpp.statement("std::string cpp_draft_line")
-    code += cpp.statement("std::ostringstream cpp_output")
     return code
 
 
 def _finalize_line_tape_func_wrapper():
-    code = cpp.statement("std::cout << cpp_output.str()")
-    return code
+    return ""
 
 
 def _prepare_section_func_wrapper(sectok, vardict):

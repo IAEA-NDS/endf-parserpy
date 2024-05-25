@@ -185,13 +185,20 @@ def module_header_writing():
     int get_mat_from_mfmt_section(py::object mfmt_section) {
       int mat;
       if (py::isinstance<py::dict>(mfmt_section)) {
-        mat = py::cast<int>(mfmt_section["MAT"]);
+        py::dict mfmt_section_dict = py::cast<py::dict>(mfmt_section);
+        mat = py::cast<int>(mfmt_section_dict["MAT"]);
         return mat;
       }
-      std::string first_line;
-      if (py::isinstance<py::list>(mfmt_section)) {
-        first_line = py::cast<std::string>(mfmt_section[0]);
+      if (! py::isinstance<py::list>(mfmt_section)) {
+        throw std::runtime_error(
+          "expect section to be represented by `list` or `dict`"
+        );
       }
+      py::list mfmt_section_list = py::cast<py::list>(mfmt_section);
+      if (mfmt_section_list.size() == 0) {
+        throw std::runtime_error("list representing section is empty");
+      }
+      std::string first_line = py::cast<std::string>(mfmt_section_list[0]);
       std::string matstr = first_line.substr(66, 4);
       mat = std::stoi(matstr);
       return mat;

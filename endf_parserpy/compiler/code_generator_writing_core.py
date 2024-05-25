@@ -67,7 +67,7 @@ def generate_section_writing_code(funname, parse_opts):
     code = cpp.ifelse(
         f"py::isinstance<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)])",
         cpp.statement(
-            f"{funname}_istream(cont, py::cast<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)]), {parse_opts})"
+            f"{funname}_ostream(cont, py::cast<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)]), {parse_opts})"
         ),
         write_section_verbatim(
             "cont", "py::cast<py::list>(endf_dict[py::cast(mf)][py::cast(mt)])"

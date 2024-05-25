@@ -461,7 +461,7 @@ def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
     for p in writefuns:
         code += cpp.line(f"std::string {p}(py::dict endf_dict{args_str}) {{")
         code += cpp.statement("std::ostringstream oss", cpp.INDENT)
-        code += cpp.statement(f"{p}_istream(oss, endf_dict{args_str2})", cpp.INDENT)
+        code += cpp.statement(f"{p}_ostream(oss, endf_dict{args_str2})", cpp.INDENT)
         code += cpp.statement("return oss.str()", cpp.INDENT)
         code += cpp.close_block()
         code += cpp.line("")
@@ -489,7 +489,7 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
             ),
             cpp.INDENT,
         )
-        code += cpp.statement(f"{p}_istream(outfile, endf_dict{args_str2})", cpp.INDENT)
+        code += cpp.statement(f"{p}_ostream(outfile, endf_dict{args_str2})", cpp.INDENT)
         code += cpp.statement("outfile.close()", cpp.INDENT)
         code += cpp.close_block()
         code += cpp.line("")
@@ -507,7 +507,7 @@ def generate_all_cpp_writefuns_code(recipes, module_name):
             func_names.append(func_name)
             recipe = mt_recipes
             writefuns_code += generate_cpp_writefun(
-                func_name + "_istream", recipe, mf=mf, mt=None
+                func_name + "_ostream", recipe, mf=mf, mt=None
             )
             recipefuns[mf] = func_name
             continue
@@ -517,7 +517,7 @@ def generate_all_cpp_writefuns_code(recipes, module_name):
             func_names.append(func_name)
             mt_ = mt if mt != -1 else None
             writefuns_code += generate_cpp_writefun(
-                func_name + "_istream", recipe, mf=mf, mt=mt_
+                func_name + "_ostream", recipe, mf=mf, mt=mt_
             )
             curdic = recipefuns.setdefault(mf, {})
             curdic[mt] = func_name
@@ -528,7 +528,7 @@ def generate_all_cpp_writefuns_code(recipes, module_name):
         func_names, ("ParsingOptions", "parse_opts")
     )
     # special case for the master function calling the other mf/mt parser funs
-    master_writefun_code = generate_master_writefun("write_endf_istream", recipefuns)
+    master_writefun_code = generate_master_writefun("write_endf_ostream", recipefuns)
     writefun_wrappers_code1 += generate_cpp_writefun_wrappers_string(
         ["write_endf"],
         ("py::object", "exclude"),

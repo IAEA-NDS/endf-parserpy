@@ -84,6 +84,9 @@ def module_header_writing():
       std::string numstr;
       numstr = float2endfstr_helper(value, 6);
       int prec_red = numstr.size() - 10;
+      if (value < 0) {
+        prec_red -= 1;
+      }
       if (prec_red > 0) {
         numstr = float2endfstr_helper(value, 6 - prec_red);
       }

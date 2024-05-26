@@ -173,7 +173,7 @@ def module_header_writing():
 
 
     std::string cpp_prepare_send(int mat, int mf) {
-      std::string line(75, ' ');
+      std::string line(80, ' ');
       line += '\n';
       cpp_write_mat_number(line, mat);
       cpp_write_mf_number(line, mf);
@@ -184,6 +184,12 @@ def module_header_writing():
       cpp_write_field(line, 3, 0);
       cpp_write_field(line, 4, 0);
       cpp_write_field(line, 5, 0);
+      if (mf == 0) {
+        // for writing FEND/MEND/TEND record
+        cpp_write_line_number(line, 0);
+      } else {
+        cpp_write_line_number(line, 99999);
+      }
       return line;
     }
 

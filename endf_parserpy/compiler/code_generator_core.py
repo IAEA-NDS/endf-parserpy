@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/25
+# Last modified:   2024/05/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -139,8 +139,9 @@ def generate_cpp_parse_or_write_fun(
     # populates vardict and type info therein
     vardefs = generate_vardefs(vardict)
     fun_body = get_prepare_section_func(vardict)(None, vardict)
+    fun_body += vardefs + fun_setup
     fun_body += get_prepare_line_tape_func(vardict)()
-    fun_body += vardefs + fun_setup + code
+    fun_body += code
     fun_body += get_finalize_line_tape_func(vardict)()
     fun_body += get_finalize_section_func(vardict)(None, vardict)
     fun_body = cpp.indent_code(fun_body, cpp.INDENT)

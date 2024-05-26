@@ -16,6 +16,59 @@ from . import cpp_primitives as cpp
 def module_header_writing():
     code = r"""
 
+    struct WritingOptions {
+      bool abuse_signpos;
+    };
+
+
+    WritingOptions default_writing_options() {
+      return WritingOptions{
+        false  // abuse_signpos
+      };
+    }
+
+
+    namespace pybind11 { namespace detail {
+      template <> struct type_caster<WritingOptions> {
+      public:
+        PYBIND11_TYPE_CASTER(WritingOptions, _("WritingOptions"));
+
+        // conversion from Python to C++
+        bool load(handle src, bool) {
+          if (!py::isinstance<py::dict>(src))
+            return false;
+          auto d = reinterpret_borrow<py::dict>(src);
+          py::object keys = d.attr("keys")();
+          for (auto key : keys) {
+            std::string key_str = py::str(key);
+            if (key_str == "abuse_signpos")
+              value.abuse_signpos = d["abuse_signpos"].cast<bool>();
+            else
+              throw std::runtime_error("unknown option `" + key_str + "` provided");
+          }
+
+          // use default values for missing options
+          WritingOptions default_opts = default_writing_options();
+
+          if (! d.contains("abuse_signpos")) {
+            value.abuse_signpos = default_opts.abuse_signpos;
+          }
+
+          return true;
+        }
+
+        // conversion from C++ to Python
+        static handle cast(const WritingOptions &src, return_value_policy, handle) {
+          py::dict d;
+          d["abuse_signpos"] = src.abuse_signpos;
+          return d.release();
+        }
+
+      };
+    }}
+
+
+
     void cpp_write_custom_int_field(std::string &str, int start, int length, int value) {
       std::ostringstream oss;
       oss << std::right << std::setw(length) << value;

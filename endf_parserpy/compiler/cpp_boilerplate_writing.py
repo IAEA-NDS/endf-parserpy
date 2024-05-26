@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/26
+# Last modified:   2024/05/27
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -66,7 +66,6 @@ def module_header_writing():
 
       };
     }}
-
 
 
     void cpp_write_custom_int_field(std::string &str, int start, int length, int value) {
@@ -135,13 +134,19 @@ def module_header_writing():
     std::string float2endfstr(double value, WritingOptions &write_opts) {
       std::ostringstream oss;
       std::string numstr;
-      numstr = float2endfstr_helper(value, 6);
-      int prec_red = numstr.size() - 10;
+      int number_length = 10;
+      int digits_after_comma = 6;
+      if (value >= 0 & write_opts.abuse_signpos) {
+        number_length++;
+        digits_after_comma++;
+      }
+      numstr = float2endfstr_helper(value, digits_after_comma);
+      int prec_red = numstr.size() - number_length;
       if (value < 0) {
         prec_red -= 1;
       }
       if (prec_red > 0) {
-        numstr = float2endfstr_helper(value, 6 - prec_red);
+        numstr = float2endfstr_helper(value, digits_after_comma - prec_red);
       }
       oss << std::right << std::setw(11) << numstr;
       return oss.str();

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/25
+# Last modified:   2024/05/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -141,7 +141,7 @@ def _get_tab1_body_wrapper(xvar, yvar, nr, np, vardict):
     code += cpp.statement(f"{valcode}.INT = {INTvalue}")
     code += cpp.statement(f"{valcode}.NBT = {NBTvalue}")
     if not in_lookahead(vardict):
-        code += set_tab1_body("cpp_draft_line", valcode, "mat", "mf", "mt")
+        code += set_tab1_body("cpp_draft_line", valcode, "mat", "mf", "mt", "linenum")
     return valcode, code
 
 
@@ -159,7 +159,7 @@ def _get_tab2_body_wrapper(nr, vardict):
     code += cpp.statement(f"{valcode}.INT = {INTvalue}")
     code += cpp.statement(f"{valcode}.NBT = {NBTvalue}")
     if not in_lookahead(vardict):
-        code += set_tab2_body("cpp_draft_line", valcode, "mat", "mf", "mt")
+        code += set_tab2_body("cpp_draft_line", valcode, "mat", "mf", "mt", "linenum")
     return valcode, code
 
 
@@ -201,7 +201,9 @@ def _prepare_send_func_wrapper(vardict):
 
 
 def _prepare_line_func_wrapper(vardict):
-    code = prepare_line_la("cpp_draft_line", "mat", "mf", "mt", in_lookahead(vardict))
+    code = prepare_line_la(
+        "cpp_draft_line", "mat", "mf", "mt", "linenum", in_lookahead(vardict)
+    )
     return code
 
 
@@ -217,6 +219,11 @@ def _prepare_line_tape_func_wrapper():
     # rewritig the printing of error messages including template strings
     code = cpp.statement("std::string cpp_line")
     code += cpp.statement("std::string cpp_draft_line")
+    code += cpp.statement("int linenum = 0")
+    # for the tape id line, indicated by mf=0 and mt=0, we want linenum = 0
+    code += cpp.pureif(
+        cpp.logical_and(["mf == 0", "mt == 0"]), cpp.statement("linenum = -1")
+    )
     return code
 
 

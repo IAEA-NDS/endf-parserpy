@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/25
+# Last modified:   2024/05/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -38,12 +38,18 @@ def module_header_writing():
     }
 
 
-    std::string cpp_prepare_line(int mat, int mf, int mt) {
-      std::string line(75, ' ');
+    void cpp_write_line_number(std::string& str, int value) {
+      cpp_write_custom_int_field(str, 75, 5, value);
+    }
+
+
+    std::string cpp_prepare_line(int mat, int mf, int mt, int &linenum) {
+      std::string line(80, ' ');
       line += '\n';
       cpp_write_mat_number(line, mat);
       cpp_write_mf_number(line, mf);
       cpp_write_mt_number(line, mt);
+      cpp_write_line_number(line, ++linenum);
       return line;
     }
 
@@ -108,34 +114,34 @@ def module_header_writing():
 
 
     void write_tab1_body(
-      std::string& line, Tab1Body tab_body, int mat, int mf, int mt
+      std::string& line, Tab1Body tab_body, int mat, int mf, int mt, int& linenum
     ) {
       assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
       assert(tab_body.X.size() == tab_body.Y.size() && "X and Y must have same size");
       int nr = tab_body.INT.size();
       int np = tab_body.X.size();
       std::ostringstream oss;
-      std::string curline = cpp_prepare_line(mat, mf, mt);
+      std::string curline = cpp_prepare_line(mat, mf, mt, linenum);
       int j = 0;
       for (int i=0; i < nr; i++) {
         cpp_write_field(curline, j++, tab_body.NBT[i]);
         cpp_write_field(curline, j++, tab_body.INT[i]);
         if (j > 5 && i+1 < nr) {
           oss << curline;
-          curline = cpp_prepare_line(mat, mf, mt);
+          curline = cpp_prepare_line(mat, mf, mt, linenum);
           j = 0;
         }
       }
       oss << curline;
 
       j = 0;
-      curline = cpp_prepare_line(mat, mf, mt);
+      curline = cpp_prepare_line(mat, mf, mt, linenum);
       for (int i=0; i < np; i++) {
         cpp_write_field(curline, j++, tab_body.X[i]);
         cpp_write_field(curline, j++, tab_body.Y[i]);
         if (j > 5 && i+1 < np) {
           oss << curline;
-          curline = cpp_prepare_line(mat, mf, mt);
+          curline = cpp_prepare_line(mat, mf, mt, linenum);
           j = 0;
         }
       }
@@ -145,19 +151,19 @@ def module_header_writing():
 
 
     void write_tab2_body(
-      std::string& line, Tab2Body tab_body, int mat, int mf, int mt
+      std::string& line, Tab2Body tab_body, int mat, int mf, int mt, int& linenum
     ) {
       assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
       int nr = tab_body.INT.size();
       std::ostringstream oss;
-      std::string curline = cpp_prepare_line(mat, mf, mt);
+      std::string curline = cpp_prepare_line(mat, mf, mt, linenum);
       int j = 0;
       for (int i=0; i < nr; i++) {
         cpp_write_field(curline, j++, tab_body.NBT[i]);
         cpp_write_field(curline, j++, tab_body.INT[i]);
         if (j > 5 && i+1 < nr) {
           oss << curline;
-          curline = cpp_prepare_line(mat, mf, mt);
+          curline = cpp_prepare_line(mat, mf, mt, linenum);
           j = 0;
         }
       }

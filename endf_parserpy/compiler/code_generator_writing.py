@@ -386,6 +386,16 @@ def generate_master_writefun(name, recipefuns):
         ),
         2 * cpp.INDENT,
     )
+    # add FEND record if required
+    body += cpp.indent_code(
+        cpp.pureif(
+            cpp.logical_and(
+                ["section_encountered", "mf != last_mf", "mf != 0", "last_mf != 0"]
+            ),
+            cpp.statement("cont << cpp_prepare_send(mat, 0)"),
+        ),
+        2 * cpp.INDENT,
+    )
 
     conditions = []
     statements = []
@@ -426,14 +436,6 @@ def generate_master_writefun(name, recipefuns):
         cpp.conditional_branches(conditions, statements, default=default_code),
         2 * cpp.INDENT,
     )
-    # add FEND record
-    body += cpp.indent_code(
-        cpp.pureif(
-            cpp.logical_and(["section_encountered", "mf != last_mf", "mf != 0"]),
-            cpp.statement("cont << cpp_prepare_send(mat, 0)"),
-        ),
-        2 * cpp.INDENT,
-    )
 
     body += cpp.statement("last_mat = mat", 2 * cpp.INDENT)
     body += cpp.statement("last_mf = mf", 2 * cpp.INDENT)
@@ -441,7 +443,8 @@ def generate_master_writefun(name, recipefuns):
     body += cpp.indent_code(cpp.close_block(), cpp.INDENT)
     body += cpp.close_block()
 
-    # add MEND and TEND record
+    # add FEND, MEND and TEND record at the very end
+    body += cpp.statement("cont << cpp_prepare_send(mat, 0)")
     body += cpp.statement("cont << cpp_prepare_send(0, 0)")
     body += cpp.statement("cont << cpp_prepare_send(-1, 0)")
 

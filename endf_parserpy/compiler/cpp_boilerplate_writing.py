@@ -301,7 +301,7 @@ def writefun_header(fun_name):
     code = cpp.indent_code(
         rf"""
         void {fun_name}(
-          std::ostream& cont, py::dict endf_dict, ParsingOptions &parse_opts
+          std::ostream& cont, py::dict endf_dict, WritingOptions &write_opts
         ) {{
           std::vector<int> cpp_intvec;
           std::vector<double> cpp_floatvec;

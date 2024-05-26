@@ -410,7 +410,7 @@ def generate_master_writefun(name, recipefuns):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic
             conditions.append(f"mf == {mf}")
-            section_code = generate_section_writing_code(funname, "parse_opts")
+            section_code = generate_section_writing_code(funname, "write_opts")
             matval = get_mat_from_mfmt_section("mt_dict")
             section_code += cpp.statement(f"mat = {matval}")
             section_code += cpp.statement("section_encountered = true")
@@ -428,7 +428,7 @@ def generate_master_writefun(name, recipefuns):
                 # in case of MF=0/MT=0, we want to register that the tpid record has been read
                 section_code += cpp.statement("found_tpid = true")
 
-            section_code = generate_section_writing_code(funname, "parse_opts")
+            section_code = generate_section_writing_code(funname, "write_opts")
             matval = get_mat_from_mfmt_section("mt_dict")
             section_code += cpp.statement(f"mat = {matval}")
             section_code += cpp.statement("section_encountered = true")
@@ -459,7 +459,7 @@ def generate_master_writefun(name, recipefuns):
         ("py::dict", "endf_dict"),
         ("py::object", "exclude"),
         ("py::object", "include"),
-        ("ParsingOptions", f"parse_opts=default_parsing_options()"),
+        ("WritingOptions", f"write_opts=default_writing_options()"),
     )
     code += cpp.function(name, body, "void", *args)
     code += cpp.line("")
@@ -536,10 +536,10 @@ def generate_all_cpp_writefuns_code(recipes, module_name):
             curdic = recipefuns.setdefault(mf, {})
             curdic[mt] = func_name
     writefun_wrappers_code1 = generate_cpp_writefun_wrappers_string(
-        func_names, ("ParsingOptions", "parse_opts")
+        func_names, ("WritingOptions", "write_opts")
     )
     writefun_wrappers_code2 = generate_cpp_writefun_wrappers_file(
-        func_names, ("ParsingOptions", "parse_opts")
+        func_names, ("WritingOptions", "write_opts")
     )
     # special case for the master function calling the other mf/mt parser funs
     master_writefun_code = generate_master_writefun("write_endf_ostream", recipefuns)
@@ -547,13 +547,13 @@ def generate_all_cpp_writefuns_code(recipes, module_name):
         ["write_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),
-        ("ParsingOptions", "parse_opts"),
+        ("WritingOptions", "write_opts"),
     )
     writefun_wrappers_code2 += generate_cpp_writefun_wrappers_file(
         ["write_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),
-        ("ParsingOptions", "parse_opts"),
+        ("WritingOptions", "write_opts"),
     )
     pybind_glue = ""
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
@@ -562,7 +562,7 @@ def generate_all_cpp_writefuns_code(recipes, module_name):
         'py::arg("endf_dict")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
-        'py::arg("parse_opts") = false',
+        'py::arg("WritingOptions") = false',
     )
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
         ["write_endf_file"],
@@ -571,7 +571,7 @@ def generate_all_cpp_writefuns_code(recipes, module_name):
         'py::arg("endf_dict")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
-        'py::arg("parse_opts") = default_parsing_options()',
+        'py::arg("write_opts") = default_writing_options()',
     )
 
     all_writefun_codes = (

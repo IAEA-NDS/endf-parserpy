@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2024/05/25
+# Last modified:   2024/05/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -69,11 +69,11 @@ def get_mat_from_mfmt_section(mfmt_dict):
     return code
 
 
-def generate_section_writing_code(funname, parse_opts):
+def generate_section_writing_code(funname, write_opts):
     code = cpp.ifelse(
         f"py::isinstance<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)])",
         cpp.statement(
-            f"{funname}_ostream(cont, py::cast<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)]), {parse_opts})"
+            f"{funname}_ostream(cont, py::cast<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)]), {write_opts})"
         ),
         write_section_verbatim(
             "cont", "py::cast<py::list>(endf_dict[py::cast(mf)][py::cast(mt)])"

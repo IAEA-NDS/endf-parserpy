@@ -9,7 +9,6 @@
 #
 ############################################################
 
-import itertools
 from lark import Lark
 from lark.tree import Tree
 from lark.lexer import Token
@@ -35,7 +34,6 @@ from .expr_utils.equation_utils import (
     get_varassign_from_expr,
 )
 from . import cpp_primitives as cpp
-from .cpp_types.cpp_vartype_handling import has_vartype
 from .cpp_types import cpp_varops_assign
 from .cpp_types.cpp_type_scalar.auxiliary import init_readflag
 from .lookahead_management import (
@@ -147,56 +145,6 @@ def generate_cpp_parse_or_write_fun(
     fun_body = cpp.indent_code(fun_body, cpp.INDENT)
 
     code = fun_header + fun_body + fun_footer
-    return code
-
-
-def generate_expr_validation(actual_value, node, vardict):
-    # no validation in lookahead
-    if in_lookahead(vardict):
-        return ""
-
-    node = transform_nodes(node, expand_abbreviation, vardict)
-    cont_vars = contains_variables(node)
-    cont_des_num = contains_desired_number(node)
-    cont_incons_var = contains_potentially_inconsistent_variable(node)
-    current_template = aux.get_current_template()
-
-    # using sorted to have a stable ordering across distinct program runs
-    variables = sorted(get_variables_in_expr(node))
-    vartypes_dict = {v: get_var_types(v, vardict) for v in variables}
-    vartype_assignments = [
-        {k: v for k, v in zip(vartypes_dict.keys(), combination)}
-        for combination in itertools.product(*vartypes_dict.values())
-    ]
-    conditions = []
-    validation_codes = []
-    for vta in vartype_assignments:
-        vartype_checks = (
-            has_vartype(vartok, vta[vartok][0], vta[vartok][1]) for vartok in variables
-        )
-        conditions.append(cpp.logical_and(vartype_checks))
-        expected_value = transform_nodes(node, expr2str_shiftidx, vardict, vartypes=vta)
-        exprstr = transform_nodes(node, node2str)
-        quoted_exprstr = f'"{exprstr}"'
-        validation_code = aux.validate_field(
-            expected_value,
-            actual_value,
-            contains_variable=cont_vars,
-            contains_desired_number=cont_des_num,
-            contains_inconsistent_varspec=cont_incons_var,
-            exprstr=quoted_exprstr,
-            line_template=current_template,
-            parse_opts="parse_opts",
-        )
-        validation_codes.append(validation_code)
-
-    code = ""
-    if len(validation_codes) > 1:
-        code += cpp.conditional_branches(conditions, validation_codes)
-    elif len(validation_codes) == 1:
-        code += validation_codes[0]
-    else:
-        NotImplementedError("should not happen")
     return code
 
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/25
+# Last modified:   2024/05/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -178,10 +178,11 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
 
     ctrl_code = ""
     ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
-    ctrl_code += read_raw_line("cpp_line")
-    matval = aux.get_mat_number() if mat is None else str(mat)
-    mfval = aux.get_mf_number() if mf is None else str(mf)
-    mtval = aux.get_mt_number() if mt is None else str(mt)
+    ctrl_code += cpp.statement("std::string cpp_temp_line")
+    ctrl_code += read_raw_line("cpp_temp_line")
+    matval = aux.get_mat_number("cpp_temp_line") if mat is None else str(mat)
+    mfval = aux.get_mf_number("cpp_temp_line") if mf is None else str(mf)
+    mtval = aux.get_mt_number("cpp_temp_line") if mt is None else str(mt)
     ctrl_code += cpp.statement(f"int mat = {matval}")
     ctrl_code += cpp.statement(f"int mf = {mfval}")
     ctrl_code += cpp.statement(f"int mt = {mtval}")

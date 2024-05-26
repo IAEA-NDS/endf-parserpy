@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/23
+# Last modified:   2024/05/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -74,18 +74,18 @@ def read_line_la(linevar, mat, mf, mt, parse_opts, lookahead):
         return read_line(linevar, mat, mf, mt, parse_opts)
 
 
-def get_mat_number():
-    code = "cpp_read_mat_number(cpp_line.c_str())"
+def get_mat_number(linevar):
+    code = f"cpp_read_mat_number({linevar}.c_str())"
     return code
 
 
-def get_mf_number():
-    code = "cpp_read_mf_number(cpp_line.c_str())"
+def get_mf_number(linevar):
+    code = f"cpp_read_mf_number({linevar}.c_str())"
     return code
 
 
-def get_mt_number():
-    code = "cpp_read_mt_number(cpp_line.c_str())"
+def get_mt_number(linevar):
+    code = f"cpp_read_mt_number({linevar}.c_str())"
     return code
 
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/24
+# Last modified:   2024/05/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -251,3 +251,18 @@ def get_lookahead_seekg_statement(vardict):
     pardict = _find_parent_dict("__basic_ops", vardict)
     basic_ops = pardict["__basic_ops"]
     return basic_ops["lookahead_seekg_statement"]
+
+
+def register_generate_expr_validation_func(func, vardict):
+    if not callable(func):
+        raise TypeError(
+            "func must gbe a callable with parameters `actual_value`, `node`, `vardict`"
+        )
+    basic_ops = vardict.setdefault("__basic_ops", {})
+    basic_ops["generate_expr_validation_func"] = func
+
+
+def get_generate_expr_validation_func(vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops["generate_expr_validation_func"]

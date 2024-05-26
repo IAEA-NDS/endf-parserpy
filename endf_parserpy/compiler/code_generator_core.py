@@ -102,6 +102,7 @@ from .mode_management import (
     get_finalize_section_func,
     get_lookahead_tellg_statement,
     get_lookahead_seekg_statement,
+    get_generate_expr_validation_func,
 )
 
 
@@ -216,7 +217,7 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
     variables = get_variables_in_expr(node)
 
     if len(variables) == 0:
-        code += generate_expr_validation(valcode, node, vardict)
+        code += get_generate_expr_validation_func(vardict)(valcode, node, vardict)
         return code
 
     if aux.count_not_encountered_vars(node, vardict) > 1:
@@ -244,7 +245,9 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
             assigncode = _generate_code_for_varassign(
                 v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
             )
-            validation_code = generate_expr_validation(valcode, node, vardict)
+            validation_code = get_generate_expr_validation_func(vardict)(
+                valcode, node, vardict
+            )
             code += cpp.ifelse(
                 condition=did_not_read_cond, code=assigncode, other_code=validation_code
             )

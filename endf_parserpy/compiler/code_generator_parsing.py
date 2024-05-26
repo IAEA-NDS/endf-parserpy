@@ -20,6 +20,7 @@ from .code_generator_core import (
 from .code_generator_parsing_core import (
     generate_endf_dict_assignments,
     generate_parse_or_read_verbatim,
+    generate_expr_validation,
 )
 from lark.lexer import Token
 from .expr_utils.custom_nodes import VariableToken
@@ -47,6 +48,7 @@ from .mode_management import (
     register_finalize_section_func,
     register_lookahead_tellg_statement,
     register_lookahead_seekg_statement,
+    register_generate_expr_validation_func,
 )
 from .endf2cpp_aux import (
     get_numeric_field,
@@ -150,6 +152,11 @@ def _finalize_section_func_wrapper(sectok, vardict):
     return code
 
 
+def _generate_expr_validation_wrapper(actual_value, node, vardict):
+    code = generate_expr_validation(actual_value, node, vardict)
+    return code
+
+
 def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=None):
     vardict = {}
     register_numeric_field_getter(_get_numeric_field_wrapper, vardict)
@@ -165,6 +172,7 @@ def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_finalize_line_tape_func(_finalize_line_tape_func_wrapper, vardict)
     register_prepare_section_func(_prepare_section_func_wrapper, vardict)
     register_finalize_section_func(_finalize_section_func_wrapper, vardict)
+    register_generate_expr_validation_func(_generate_expr_validation_wrapper, vardict)
     register_lookahead_tellg_statement(
         cpp.statement("std::streampos cpp_old_streampos = cont.tellg()"), vardict
     )

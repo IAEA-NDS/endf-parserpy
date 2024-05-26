@@ -92,7 +92,7 @@ def _get_numeric_field_wrapper(node, idx, dtype, vardict):
         valcode = get_expr_value_using_endf_dict(
             node, "cpp_current_dict_tmp", dtype, vardict
         )
-        code += set_numeric_field("cpp_draft_line", idx, dtype, valcode)
+        code += set_numeric_field("cpp_draft_line", idx, dtype, valcode, "write_opts")
     else:
         # defaults are used in lookahead for if-condition evaluation
         # NOTE: not ideal to use precoded values instead of dealing
@@ -142,7 +142,9 @@ def _get_tab1_body_wrapper(xvar, yvar, nr, np, vardict):
     code += cpp.statement(f"{valcode}.INT = {INTvalue}")
     code += cpp.statement(f"{valcode}.NBT = {NBTvalue}")
     if not in_lookahead(vardict):
-        code += set_tab1_body("cpp_draft_line", valcode, "mat", "mf", "mt", "linenum")
+        code += set_tab1_body(
+            "cpp_draft_line", valcode, "mat", "mf", "mt", "linenum", "write_opts"
+        )
     return valcode, code
 
 
@@ -160,7 +162,9 @@ def _get_tab2_body_wrapper(nr, vardict):
     code += cpp.statement(f"{valcode}.INT = {INTvalue}")
     code += cpp.statement(f"{valcode}.NBT = {NBTvalue}")
     if not in_lookahead(vardict):
-        code += set_tab2_body("cpp_draft_line", valcode, "mat", "mf", "mt", "linenum")
+        code += set_tab2_body(
+            "cpp_draft_line", valcode, "mat", "mf", "mt", "linenum", "write_opts"
+        )
     return valcode, code
 
 
@@ -186,7 +190,7 @@ def _get_counter_field_wrapper(node, idx, vardict):
             node, "cpp_current_dict_tmp", None, vardict
         )
         valcode = f"py::len({pyobj})"
-        code += set_numeric_field("cpp_draft_line", idx, int, valcode)
+        code += set_numeric_field("cpp_draft_line", idx, int, valcode, "write_opts")
     else:
         defaults = {int: -99999}
         pyobj = get_expr_value_using_endf_dict(
@@ -197,7 +201,9 @@ def _get_counter_field_wrapper(node, idx, vardict):
 
 
 def _prepare_send_func_wrapper(vardict):
-    code = prepare_send_la("cpp_draft_line", "mat", "mf", in_lookahead(vardict))
+    code = prepare_send_la(
+        "cpp_draft_line", "mat", "mf", "write_opts", in_lookahead(vardict)
+    )
     return code
 
 
@@ -398,7 +404,7 @@ def generate_master_writefun(name, recipefuns):
             cpp.logical_and(
                 ["section_encountered", "mf != last_mf", "mf != 0", "last_mf != 0"]
             ),
-            cpp.statement("cont << cpp_prepare_send(mat, 0)"),
+            cpp.statement("cont << cpp_prepare_send(mat, 0, write_opts)"),
         ),
         2 * cpp.INDENT,
     )
@@ -450,9 +456,9 @@ def generate_master_writefun(name, recipefuns):
     body += cpp.close_block()
 
     # add FEND, MEND and TEND record at the very end
-    body += cpp.statement("cont << cpp_prepare_send(mat, 0)")
-    body += cpp.statement("cont << cpp_prepare_send(0, 0)")
-    body += cpp.statement("cont << cpp_prepare_send(-1, 0)")
+    body += cpp.statement("cont << cpp_prepare_send(mat, 0, write_opts)")
+    body += cpp.statement("cont << cpp_prepare_send(0, 0, write_opts)")
+    body += cpp.statement("cont << cpp_prepare_send(-1, 0, write_opts)")
 
     args = (
         ("std::ostream&", "cont"),

@@ -24,20 +24,22 @@ def prepare_line_la(linevar, mat, mf, mt, linenum, lookahead):
     return prepare_line(linevar, mat, mf, mt, linenum)
 
 
-def prepare_send(linevar, mat, mf):
-    code = cpp.statement(f"{linevar} = cpp_prepare_send({mat}, {mf})")
+def prepare_send(linevar, mat, mf, write_opts):
+    code = cpp.statement(f"{linevar} = cpp_prepare_send({mat}, {mf}, {write_opts})")
     return code
 
 
-def prepare_send_la(linevar, mat, mf, lookahead):
+def prepare_send_la(linevar, mat, mf, write_opts, lookahead):
     if lookahead:
         return ""
-    return prepare_send(linevar, mat, mf)
+    return prepare_send(linevar, mat, mf, write_opts)
 
 
-def set_numeric_field(linevar, fieldpos, dtype, value):
+def set_numeric_field(linevar, fieldpos, dtype, value, write_opts):
     dtypestr = {float: "double", int: "int"}[dtype]
-    code = cpp.statement(f"cpp_write_field<{dtypestr}>({linevar}, {fieldpos}, {value})")
+    code = cpp.statement(
+        f"cpp_write_field<{dtypestr}>({linevar}, {fieldpos}, {value}, {write_opts})"
+    )
     return code
 
 
@@ -53,20 +55,22 @@ def set_custom_int_field(linevar, start_pos, length, value):
     return code
 
 
-def set_tab1_body(linevar, tab_body, mat, mf, mt, linenum):
+def set_tab1_body(linevar, tab_body, mat, mf, mt, linenum, write_opts):
     code = cpp.statement(
-        f"write_tab1_body({linevar}, {tab_body}, {mat}, {mf}, {mt}, {linenum})"
+        f"write_tab1_body({linevar}, {tab_body}, {mat}, {mf}, {mt}, {linenum}, {write_opts})"
     )
     return code
 
 
-def set_tab2_body(linevar, tab_body, mat, mf, mt, linenum):
+def set_tab2_body(linevar, tab_body, mat, mf, mt, linenum, write_opts):
     code = cpp.statement(
-        f"write_tab2_body({linevar}, {tab_body}, {mat}, {mf}, {mt}, {linenum})"
+        f"write_tab2_body({linevar}, {tab_body}, {mat}, {mf}, {mt}, {linenum}, {write_opts})"
     )
     return code
 
 
-def write_section_verbatim(ostreamvar, listobj):
-    code = cpp.statement(f"write_section_verbatim({ostreamvar}, {listobj})")
+def write_section_verbatim(ostreamvar, listobj, write_opts):
+    code = cpp.statement(
+        f"write_section_verbatim({ostreamvar}, {listobj}, {write_opts})"
+    )
     return code

@@ -132,7 +132,7 @@ def module_header_writing():
     }
 
 
-    std::string float2endfstr(double value) {
+    std::string float2endfstr(double value, WritingOptions &write_opts) {
       std::ostringstream oss;
       std::string numstr;
       numstr = float2endfstr_helper(value, 6);
@@ -156,11 +156,11 @@ def module_header_writing():
 
 
     template<typename T>
-    void cpp_write_field(std::string& line, const char fieldnum, T value) {
+    void cpp_write_field(std::string& line, const char fieldnum, T value, WritingOptions &write_opts) {
       static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, "T must be int or double");
       std::string fieldstr;
       if (std::is_same<T, double>::value) {
-        fieldstr = float2endfstr(value);
+        fieldstr = float2endfstr(value, write_opts);
       } else {
         fieldstr = int2endfstr(value);
       }
@@ -170,7 +170,7 @@ def module_header_writing():
 
 
     void write_tab1_body(
-      std::string& line, Tab1Body tab_body, int mat, int mf, int mt, int& linenum
+      std::string& line, Tab1Body tab_body, int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
     ) {
       assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
       assert(tab_body.X.size() == tab_body.Y.size() && "X and Y must have same size");
@@ -180,8 +180,8 @@ def module_header_writing():
       std::string curline = cpp_prepare_line(mat, mf, mt, linenum);
       int j = 0;
       for (int i=0; i < nr; i++) {
-        cpp_write_field(curline, j++, tab_body.NBT[i]);
-        cpp_write_field(curline, j++, tab_body.INT[i]);
+        cpp_write_field(curline, j++, tab_body.NBT[i], write_opts);
+        cpp_write_field(curline, j++, tab_body.INT[i], write_opts);
         if (j > 5 && i+1 < nr) {
           oss << curline;
           curline = cpp_prepare_line(mat, mf, mt, linenum);
@@ -193,8 +193,8 @@ def module_header_writing():
       j = 0;
       curline = cpp_prepare_line(mat, mf, mt, linenum);
       for (int i=0; i < np; i++) {
-        cpp_write_field(curline, j++, tab_body.X[i]);
-        cpp_write_field(curline, j++, tab_body.Y[i]);
+        cpp_write_field(curline, j++, tab_body.X[i], write_opts);
+        cpp_write_field(curline, j++, tab_body.Y[i], write_opts);
         if (j > 5 && i+1 < np) {
           oss << curline;
           curline = cpp_prepare_line(mat, mf, mt, linenum);
@@ -207,7 +207,7 @@ def module_header_writing():
 
 
     void write_tab2_body(
-      std::string& line, Tab2Body tab_body, int mat, int mf, int mt, int& linenum
+      std::string& line, Tab2Body tab_body, int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
     ) {
       assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
       int nr = tab_body.INT.size();
@@ -215,8 +215,8 @@ def module_header_writing():
       std::string curline = cpp_prepare_line(mat, mf, mt, linenum);
       int j = 0;
       for (int i=0; i < nr; i++) {
-        cpp_write_field(curline, j++, tab_body.NBT[i]);
-        cpp_write_field(curline, j++, tab_body.INT[i]);
+        cpp_write_field(curline, j++, tab_body.NBT[i], write_opts);
+        cpp_write_field(curline, j++, tab_body.INT[i], write_opts);
         if (j > 5 && i+1 < nr) {
           oss << curline;
           curline = cpp_prepare_line(mat, mf, mt, linenum);
@@ -228,18 +228,18 @@ def module_header_writing():
     }
 
 
-    std::string cpp_prepare_send(int mat, int mf) {
+    std::string cpp_prepare_send(int mat, int mf, WritingOptions &write_opts) {
       std::string line(80, ' ');
       line += '\n';
       cpp_write_mat_number(line, mat);
       cpp_write_mf_number(line, mf);
       cpp_write_mt_number(line, 0);
-      cpp_write_field(line, 0, 0.0);
-      cpp_write_field(line, 1, 0.0);
-      cpp_write_field(line, 2, 0);
-      cpp_write_field(line, 3, 0);
-      cpp_write_field(line, 4, 0);
-      cpp_write_field(line, 5, 0);
+      cpp_write_field(line, 0, 0.0, write_opts);
+      cpp_write_field(line, 1, 0.0, write_opts);
+      cpp_write_field(line, 2, 0, write_opts);
+      cpp_write_field(line, 3, 0, write_opts);
+      cpp_write_field(line, 4, 0, write_opts);
+      cpp_write_field(line, 5, 0, write_opts);
       if (mf == 0) {
         // for writing FEND/MEND/TEND record
         cpp_write_line_number(line, 0);
@@ -273,7 +273,9 @@ def module_header_writing():
     }
 
 
-    void write_section_verbatim(std::ostream& oss, py::list mfmt_section) {
+    void write_section_verbatim(
+      std::ostream& oss, py::list mfmt_section, WritingOptions &write_opts
+    ) {
       if (mfmt_section.size() == 0) {
         throw std::runtime_error("an MF/MT section must not be represented by an empty list");
       }
@@ -290,7 +292,7 @@ def module_header_writing():
         mt = cpp_read_mt_number(linestr.c_str());
         oss << linestr;
       }
-      std::string send_line = cpp_prepare_send(mat, mf);
+      std::string send_line = cpp_prepare_send(mat, mf, write_opts);
       oss << send_line;
     }
     """

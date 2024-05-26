@@ -76,7 +76,9 @@ def generate_section_writing_code(funname, write_opts):
             f"{funname}_ostream(cont, py::cast<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)]), {write_opts})"
         ),
         write_section_verbatim(
-            "cont", "py::cast<py::list>(endf_dict[py::cast(mf)][py::cast(mt)])"
+            "cont",
+            "py::cast<py::list>(endf_dict[py::cast(mf)][py::cast(mt)])",
+            "write_opts",
         ),
     )
     return code

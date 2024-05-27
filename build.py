@@ -9,15 +9,19 @@ from pybind11.setup_helpers import (
 import logging
 
 
-class CustomBuildExt(pybind11_build_ext):
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+class OptionalBuildExt(pybind11_build_ext):
     def run(self):
         try:
-            logging.info(
+            logger.info(
                 "Attempting to compile C++ code for reading/writing ENDF-6 files..."
             )
             super().run()
         except Exception as exc:
-            logging.warn(
+            logger.warn(
                 f"Failed to compile C++ read/write module code. "
                 + "Accelerated parsing will not be available."
             )
@@ -26,19 +30,35 @@ class CustomBuildExt(pybind11_build_ext):
 def build(setup_kwargs):
     compile_env_var = os.environ.get("INSTALL_ENDF_PARSERPY_CPP", "optional")
     if compile_env_var == "no":
+        logger.info(
+            "Skipping generation of C++ ENDF-6 read/write module as per environment variable."
+        )
         return
     # import function to generate C++ code
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
     from endf_parserpy.compiler.compiler import _prepare_cpp_parsers_subpackage
 
     # generate the C++ code module with functions for reading and writing ENDF-6
+    logger.info(
+        "Generate the C++ modules with functions for reading and writing ENDF-6 files."
+    )
     _prepare_cpp_parsers_subpackage(overwrite=True)
-    ext_modules = intree_extensions(glob("endf_parserpy/cpp_parsers/*.cpp"))
-    my_build_ext = pybind11_build_ext if compile_env_var == "yes" else CustomBuildExt
+    # ext_modules = intree_extensions(glob("endf_parserpy/cpp_parsers/*.cpp"))
+    cpp_files = glob("endf_parserpy/cpp_parsers/*.cpp")
+    ext_modules = [
+        Pybind11Extension(
+            os.path.splitext(os.path.basename(cpp_file))[0],
+            [cpp_file],
+            extra_compile_args=["-std=c++11", "-Wno-unused-variable"],
+        )
+        for cpp_file in cpp_files
+    ]
+
+    my_build_ext = pybind11_build_ext if compile_env_var == "yes" else OptionalBuildExt
     setup_kwargs.update(
         {
             "ext_modules": ext_modules,
-            "cmd_class": {"build_ext": my_build_ext},
+            "cmdclass": {"build_ext": my_build_ext},
             "zip_safe": False,
         }
     )

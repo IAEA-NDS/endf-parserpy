@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/24
+# Last modified:   2024/05/27
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -597,16 +597,20 @@ def module_header_reading():
 
 def register_reading_options():
     code = r"""
-    py::class_<ParsingOptions>(m, "ParsingOptions")
-      .def(py::init<>())
-      .def_readwrite("ignore_number_mismatch", &ParsingOptions::ignore_number_mismatch)
-      .def_readwrite("ignore_zero_mismatch", &ParsingOptions::ignore_zero_mismatch)
-      .def_readwrite("ignore_varspec_mismatch", &ParsingOptions::ignore_varspec_mismatch)
-      .def_readwrite("accept_spaces", &ParsingOptions::accept_spaces)
-      .def_readwrite("ignore_blank_lines", &ParsingOptions::ignore_blank_lines)
-      .def_readwrite("ignore_send_records", &ParsingOptions::ignore_send_records)
-      .def_readwrite("ignore_missing_tpid", &ParsingOptions::ignore_missing_tpid)
-      .def_readwrite("validate_control_records", &ParsingOptions::validate_control_records);
+    // static bool parsing_options_registered = false;
+    // if (! parsing_options_registered) {
+    //   py::class_<ParsingOptions>(m, "ParsingOptions")
+    //     .def(py::init<>())
+    //     .def_readwrite("ignore_number_mismatch", &ParsingOptions::ignore_number_mismatch)
+    //     .def_readwrite("ignore_zero_mismatch", &ParsingOptions::ignore_zero_mismatch)
+    //     .def_readwrite("ignore_varspec_mismatch", &ParsingOptions::ignore_varspec_mismatch)
+    //     .def_readwrite("accept_spaces", &ParsingOptions::accept_spaces)
+    //     .def_readwrite("ignore_blank_lines", &ParsingOptions::ignore_blank_lines)
+    //     .def_readwrite("ignore_send_records", &ParsingOptions::ignore_send_records)
+    //     .def_readwrite("ignore_missing_tpid", &ParsingOptions::ignore_missing_tpid)
+    //     .def_readwrite("validate_control_records", &ParsingOptions::validate_control_records);
+    //   parsing_options_registered = true;
+    // }
     """
     return cpp.indent_code(code, -4)
 

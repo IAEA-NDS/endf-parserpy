@@ -90,7 +90,7 @@ def _get_numeric_field_wrapper(node, idx, dtype, vardict):
     code = ""
     if not in_lookahead(vardict):
         valcode = get_expr_value_using_endf_dict(
-            node, "cpp_current_dict_tmp", dtype, vardict
+            node, "cpp_current_dict", dtype, vardict
         )
         code += set_numeric_field("cpp_draft_line", idx, dtype, valcode, "write_opts")
     else:
@@ -100,7 +100,7 @@ def _get_numeric_field_wrapper(node, idx, dtype, vardict):
         #       I am able to come up with given the existing code structure
         defaults = {int: -99999, float: -99999.9}
         valcode = get_expr_value_using_endf_dict(
-            node, "cpp_current_dict_tmp", dtype, vardict, defaults
+            node, "cpp_current_dict", dtype, vardict, defaults
         )
     return valcode, code
 
@@ -108,14 +108,12 @@ def _get_numeric_field_wrapper(node, idx, dtype, vardict):
 def _get_text_field_wrapper(node, start, length, vardict):
     code = ""
     if not in_lookahead(vardict):
-        valcode = get_expr_value_using_endf_dict(
-            node, "cpp_current_dict_tmp", str, vardict
-        )
+        valcode = get_expr_value_using_endf_dict(node, "cpp_current_dict", str, vardict)
         code += set_text_field("cpp_draft_line", start, length, valcode)
     else:
         defaults = {str: " " * 11}
         valcode = get_expr_value_using_endf_dict(
-            node, "cpp_current_dict_tmp", str, vardict, defaults
+            node, "cpp_current_dict", str, vardict, defaults
         )
     return valcode, code
 
@@ -124,18 +122,18 @@ def _get_tab1_body_wrapper(xvar, yvar, nr, np, vardict):
     code = ""
     valcode = "tab1_body"
     xvalue = get_expr_value_using_endf_dict(
-        xvar, "cpp_current_dict_tmp", "floatvec", vardict
+        xvar, "cpp_current_dict", "floatvec", vardict
     )
     yvalue = get_expr_value_using_endf_dict(
-        yvar, "cpp_current_dict_tmp", "floatvec", vardict
+        yvar, "cpp_current_dict", "floatvec", vardict
     )
     INTvar = VariableToken(Token("VARNAME", "INT"))
     INTvalue = get_expr_value_using_endf_dict(
-        INTvar, "cpp_current_dict_tmp", "intvec", vardict
+        INTvar, "cpp_current_dict", "intvec", vardict
     )
     NBTvar = VariableToken(Token("VARNAME", "NBT"))
     NBTvalue = get_expr_value_using_endf_dict(
-        NBTvar, "cpp_current_dict_tmp", "intvec", vardict
+        NBTvar, "cpp_current_dict", "intvec", vardict
     )
     code += cpp.statement(f"{valcode}.X = {xvalue}")
     code += cpp.statement(f"{valcode}.Y = {yvalue}")
@@ -153,11 +151,11 @@ def _get_tab2_body_wrapper(nr, vardict):
     valcode = "tab2_body"
     INTvar = VariableToken(Token("VARNAME", "INT"))
     INTvalue = get_expr_value_using_endf_dict(
-        INTvar, "cpp_current_dict_tmp", "intvec", vardict
+        INTvar, "cpp_current_dict", "intvec", vardict
     )
     NBTvar = VariableToken(Token("VARNAME", "NBT"))
     NBTvalue = get_expr_value_using_endf_dict(
-        NBTvar, "cpp_current_dict_tmp", "intvec", vardict
+        NBTvar, "cpp_current_dict", "intvec", vardict
     )
     code += cpp.statement(f"{valcode}.INT = {INTvalue}")
     code += cpp.statement(f"{valcode}.NBT = {NBTvalue}")
@@ -172,13 +170,13 @@ def _get_custom_int_field_wrapper(node, start, length, vardict, idx=None):
     code = ""
     if not in_lookahead(vardict):
         valcode = get_expr_value_using_endf_dict(
-            node, "cpp_current_dict_tmp", int, vardict, idx=idx
+            node, "cpp_current_dict", int, vardict, idx=idx
         )
         code += set_custom_int_field("cpp_draft_line", start, length, valcode)
     else:
         defaults = {int: -99999}
         valcode = get_expr_value_using_endf_dict(
-            node, "cpp_current_dict_tmp", int, vardict, defaults, idx=idx
+            node, "cpp_current_dict", int, vardict, defaults, idx=idx
         )
     return valcode, code
 
@@ -186,16 +184,12 @@ def _get_custom_int_field_wrapper(node, start, length, vardict, idx=None):
 def _get_counter_field_wrapper(node, idx, vardict):
     code = ""
     if not in_lookahead(vardict):
-        pyobj = get_expr_value_using_endf_dict(
-            node, "cpp_current_dict_tmp", None, vardict
-        )
+        pyobj = get_expr_value_using_endf_dict(node, "cpp_current_dict", None, vardict)
         valcode = f"py::len({pyobj})"
         code += set_numeric_field("cpp_draft_line", idx, int, valcode, "write_opts")
     else:
         defaults = {int: -99999}
-        pyobj = get_expr_value_using_endf_dict(
-            node, "cpp_current_dict_tmp", None, vardict
-        )
+        pyobj = get_expr_value_using_endf_dict(node, "cpp_current_dict", None, vardict)
         valcode = f"py::len({pyobj})"
     return valcode, code
 
@@ -242,12 +236,12 @@ def _prepare_section_func_wrapper(sectok, vardict):
     if sectok is None:
         # initialization
         code = cpp.statement("py::dict cpp_parent_dict_tmp")
-        code += cpp.statement("py::dict cpp_current_dict_tmp = endf_dict")
+        code += cpp.statement("py::dict cpp_current_dict = endf_dict")
         return code
     code = aux.open_section(
         sectok,
         vardict,
-        current_dict="cpp_current_dict_tmp",
+        current_dict="cpp_current_dict",
         parent_dict="cpp_parent_dict_tmp",
     )
     return code
@@ -258,7 +252,7 @@ def _finalize_section_func_wrapper(sectok, vardict):
     if sectok is None:
         return code
     code += aux.close_section(
-        current_dict="cpp_current_dict_tmp", parent_dict="cpp_parent_dict_tmp"
+        current_dict="cpp_current_dict", parent_dict="cpp_parent_dict_tmp"
     )
     return code
 
@@ -293,29 +287,25 @@ def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     ctrl_code = ""
     if mat is None:
         matval = get_expr_value_using_endf_dict(
-            var_mat, "cpp_current_dict_tmp", int, vardict
+            var_mat, "cpp_current_dict", int, vardict
         )
     else:
         matval = str(mat)
     if mf is None:
-        mfval = get_expr_value_using_endf_dict(
-            var_mf, "cpp_current_dict_tmp", int, vardict
-        )
+        mfval = get_expr_value_using_endf_dict(var_mf, "cpp_current_dict", int, vardict)
     else:
         mfval = str(mf)
     if mt is None:
-        mtval = get_expr_value_using_endf_dict(
-            var_mt, "cpp_current_dict_tmp", int, vardict
-        )
+        mtval = get_expr_value_using_endf_dict(var_mt, "cpp_current_dict", int, vardict)
     else:
         mtval = str(mt)
 
     ctrl_code += cpp.statement(f"int mat = {matval}")
     ctrl_code += cpp.statement(f"int mf = {mfval}")
     ctrl_code += cpp.statement(f"int mt = {mtval}")
-    ctrl_code += cpp.statement(f'cpp_current_dict_tmp["MAT"] = mat')
-    ctrl_code += cpp.statement(f'cpp_current_dict_tmp["MF"] = mf')
-    ctrl_code += cpp.statement(f'cpp_current_dict_tmp["MT"] = mt')
+    ctrl_code += cpp.statement(f'cpp_current_dict["MAT"] = mat')
+    ctrl_code += cpp.statement(f'cpp_current_dict["MF"] = mf')
+    ctrl_code += cpp.statement(f'cpp_current_dict["MT"] = mt')
 
     ctrl_code += generate_code_for_varassign(var_mat, vardict, matval, int)
     ctrl_code += generate_code_for_varassign(var_mf, vardict, mfval, int)

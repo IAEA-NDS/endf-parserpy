@@ -67,6 +67,9 @@ def build(setup_kwargs):
                 "-Wno-parentheses-equality",
                 "-Wno-uninitialized",
                 "-Wno-sometimes-uninitialized",
+                "-Wno-sign-compare",
+                "-Wno-switch",
+                "-Wno-division-by-zero",
             ],
         )
         for cpp_file in cpp_files

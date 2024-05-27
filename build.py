@@ -65,6 +65,8 @@ def build(setup_kwargs):
                 "-Wno-unused-variable",
                 "-Wno-unused-but-set-variable",
                 "-Wno-parentheses-equality",
+                "-Wno-uninitialized",
+                "-Wno-sometimes-uninitialized",
             ],
         )
         for cpp_file in cpp_files

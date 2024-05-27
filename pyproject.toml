@@ -18,9 +18,17 @@ pre-commit = "2.15.0"
 
 [tool.poetry.build]
 script = "build.py"
+# The following line is essential, as otherwise
+# the build.py script doesn't seem to be executed
 generate-setup-file = true
 
 [build-system]
-requires = ["poetry-core>=1.0", "setuptools", "pybind11>=2.10.0"]
+requires = [
+    "poetry-core>=1.0",
+    "setuptools>=58.0.0,<69.0.0",
+    "pybind11>=2.10.0",
+    "lark>=1.0.0",     # required for C++ compilation during
+    "appdirs>=1.4.0",  # installation using functionality of endf-parserpy
+]
 build-backend = "poetry.core.masonry.api"
 # build-backend = "setuptools.build_meta"

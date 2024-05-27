@@ -630,6 +630,8 @@ def parsefun_header(fun_name):
         """,
         -8,
     )
+    # remove empty first line
+    code = "\n".join(code.splitlines()[1:])
     return code
 
 

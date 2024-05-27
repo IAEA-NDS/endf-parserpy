@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/26
+# Last modified:   2024/05/27
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -104,6 +104,7 @@ from .mode_management import (
     get_lookahead_seekg_statement,
     get_generate_expr_validation_func,
 )
+from hashlib import md5
 
 
 def generate_cpp_parse_or_write_fun(
@@ -146,7 +147,16 @@ def generate_cpp_parse_or_write_fun(
     fun_body = cpp.indent_code(fun_body, cpp.INDENT)
 
     code = fun_header + fun_body + fun_footer
-    return code
+    md5_hash_recipe = md5(endf_recipe.encode()).hexdigest()
+    md5_header = "\n\n"
+    md5_header += "// MD5 hash of ENDF recipe underlying the following function: "
+    md5_header += md5_hash_recipe
+    md5_header += "\n"
+    md5_hash_func = md5(code.encode()).hexdigest()
+    md5_header += "// MD5 hash of the following function definition: "
+    md5_header += md5_hash_func
+    md5_header += "\n"
+    return md5_header + code
 
 
 def _generate_code_for_varassign(

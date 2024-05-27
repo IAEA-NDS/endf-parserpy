@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/26
+# Last modified:   2024/05/27
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -221,7 +221,7 @@ def should_not_parse_section(mf, mt, exclude, include):
 def read_section_verbatim(tarvec, mat, mf, mt, cont, is_firstline, parse_opts):
     code = cpp.statement(
         f"{tarvec} = read_section_verbatim({mat}, {mf}, {mt}, {cont}, "
-        + "{is_firstline}, {parse_opts})"
+        + f"{is_firstline}, {parse_opts})"
     )
     return code
 

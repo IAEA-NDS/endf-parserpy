@@ -20,6 +20,7 @@ def module_header_writing():
       bool abuse_signpos;
       bool keep_E;
       bool prefer_noexp;
+      bool skip_intzero;
     };
 
 
@@ -27,7 +28,8 @@ def module_header_writing():
       return WritingOptions{
         false,  // abuse_signpos
         false,  // keep_E
-        false   // prefer_noexp
+        false,  // prefer_noexp
+        false   // skip_intzero
       };
     }
 
@@ -51,6 +53,8 @@ def module_header_writing():
               value.keep_E = d["keep_E"].cast<bool>();
             else if (key_str == "prefer_noexp")
               value.prefer_noexp = d["prefer_noexp"].cast<bool>();
+            else if (key_str == "skip_intzero")
+              value.skip_intzero = d["skip_intzero"].cast<bool>();
             else
               throw std::runtime_error("unknown option `" + key_str + "` provided");
           }
@@ -67,6 +71,9 @@ def module_header_writing():
           if (! d.contains("prefer_noexp")) {
             value.prefer_noexp = default_opts.prefer_noexp;
           }
+          if (! d.contains("skip_intzero")) {
+            value.skip_intzero = default_opts.skip_intzero;
+          }
           return true;
         }
 
@@ -76,6 +83,7 @@ def module_header_writing():
           d["abuse_signpos"] = src.abuse_signpos;
           d["keep_E"] = src.keep_E;
           d["prefer_noexp"] = src.prefer_noexp;
+          d["skip_intzero"] = src.skip_intzero;
           return d.release();
         }
 
@@ -217,6 +225,17 @@ def module_header_writing():
           double recon_value_noexp_diff = std::abs(recon_value_noexp - value);
           double recon_value_noexp_reldiff =  recon_value_noexp_diff / (std::abs(value)+1e-12);
           if (recon_value_reldiff >= recon_value_noexp_reldiff) {
+            if (write_opts.skip_intzero && static_cast<int>(recon_value_noexp) == 0) {
+              numstr_noexp = float2endfstr_decimal_helper(
+                value, number_length+1, write_opts
+              );
+              size_t zeropos = numstr_noexp.find('0');
+              size_t commapos = numstr_noexp.find('.');
+              if (zeropos+1 != commapos) {
+                throw std::runtime_error("integer zero matching failed");
+              }
+              numstr_noexp.erase(zeropos, 1);
+            }
             numstr = numstr_noexp;
             delete_E = false;
           }

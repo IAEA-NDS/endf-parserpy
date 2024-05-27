@@ -12,6 +12,17 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# create a console handler to inform user about progress
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.INFO)
+
+# create a formatter
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+console_handler.setFormatter(formatter)
+
+# add the handler to the logger
+logger.addHandler(console_handler)
+
 
 class OptionalBuildExt(pybind11_build_ext):
     def run(self):

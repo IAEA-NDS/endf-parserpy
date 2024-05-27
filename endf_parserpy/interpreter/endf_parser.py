@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/27
+# Last modified:   2024/05/27
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -168,6 +168,10 @@ class EndfParser:
             For numbers written out in decimal notation, eliminate
             the integer part if zero, e.g. `0.12` becomes `.12` to
             increase attainable precision. *(writing)*
+        prefer_noexp: bool
+            Switch to decimal representation (i.e. non-scientific) if it leads
+            to an increase of accuracy, e.g. `1.234567-1` becomes `0.12345678`.
+            *(writing)*
         accept_spaces: bool
             Eliminate spaces in a number before trying to parse it, e.g.
             `1.234 +8` is transformed to `1.234+8`. *(parsing)*

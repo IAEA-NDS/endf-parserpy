@@ -49,7 +49,11 @@ def build(setup_kwargs):
         Pybind11Extension(
             os.path.splitext(os.path.basename(cpp_file))[0],
             [cpp_file],
-            extra_compile_args=["-std=c++11", "-Wno-unused-variable"],
+            extra_compile_args=[
+                "-std=c++11",
+                "-Wno-unused-variable",
+                "-Wno-unused-but-set-variable",
+            ],
         )
         for cpp_file in cpp_files
     ]

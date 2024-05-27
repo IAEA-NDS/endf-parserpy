@@ -24,8 +24,8 @@ class CustomBuildExt(pybind11_build_ext):
 
 
 def build(setup_kwargs):
-    compile_env_var = os.environ.get("INSTALL_ENDF_PARSERPY_CPP", "yes")
-    if compile_env_var != "yes":
+    compile_env_var = os.environ.get("INSTALL_ENDF_PARSERPY_CPP", "optional")
+    if compile_env_var == "no":
         return
     # import function to generate C++ code
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -34,10 +34,11 @@ def build(setup_kwargs):
     # generate the C++ code module with functions for reading and writing ENDF-6
     _prepare_cpp_parsers_subpackage(overwrite=True)
     ext_modules = intree_extensions(glob("endf_parserpy/cpp_parsers/*.cpp"))
+    my_build_ext = pybind11_build_ext if compile_env_var == "yes" else CustomBuildExt
     setup_kwargs.update(
         {
             "ext_modules": ext_modules,
-            "cmd_class": {"build_ext": CustomBuildExt},
+            "cmd_class": {"build_ext": my_build_ext},
             "zip_safe": False,
         }
     )

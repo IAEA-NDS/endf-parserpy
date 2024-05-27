@@ -19,13 +19,15 @@ def module_header_writing():
     struct WritingOptions {
       bool abuse_signpos;
       bool keep_E;
+      bool prefer_noexp;
     };
 
 
     WritingOptions default_writing_options() {
       return WritingOptions{
         false,  // abuse_signpos
-        false  // keep_E
+        false,  // keep_E
+        false   // prefer_noexp
       };
     }
 
@@ -47,6 +49,8 @@ def module_header_writing():
               value.abuse_signpos = d["abuse_signpos"].cast<bool>();
             else if (key_str == "keep_E")
               value.keep_E = d["keep_E"].cast<bool>();
+            else if (key_str == "prefer_noexp")
+              value.prefer_noexp = d["prefer_noexp"].cast<bool>();
             else
               throw std::runtime_error("unknown option `" + key_str + "` provided");
           }
@@ -60,6 +64,9 @@ def module_header_writing():
           if (! d.contains("keep_E")) {
             value.keep_E = default_opts.keep_E;
           }
+          if (! d.contains("prefer_noexp")) {
+            value.prefer_noexp = default_opts.prefer_noexp;
+          }
           return true;
         }
 
@@ -68,6 +75,7 @@ def module_header_writing():
           py::dict d;
           d["abuse_signpos"] = src.abuse_signpos;
           d["keep_E"] = src.keep_E;
+          d["prefer_noexp"] = src.prefer_noexp;
           return d.release();
         }
 
@@ -114,14 +122,14 @@ def module_header_writing():
 
 
     std::string float2endfstr_helper(
-      double value, int prec, WritingOptions &write_opts
+      double value, int prec, size_t &exp_pos, WritingOptions &write_opts
     ) {
       std::ostringstream oss;
       oss << std::scientific << std::setprecision(prec) << value;
       std::string numstr = oss.str();
-      size_t exp_pos = numstr.find("e");
       size_t strsize = numstr.size();
       size_t zerostart = std::string::npos;
+      exp_pos = numstr.find("e");
       if (exp_pos == std::string::npos) {
         throw std::runtime_error("`e` character not found");
       }
@@ -135,10 +143,32 @@ def module_header_writing():
           zerostart = i;
         }
       }
-      if (! write_opts.keep_E) {
-        numstr.erase(exp_pos, 1);
-      }
       return numstr;
+    }
+
+
+    std::string float2endfstr_decimal_helper(
+      double value, int width, WritingOptions &write_opts
+    ) {
+      std::stringstream ss;
+      std::string numstr;
+      int commapos;
+      ss << std::fixed << std::setprecision(16) << value;
+      numstr = ss.str();
+      commapos = numstr.find('.');
+      if (commapos == std::string::npos) {
+        throw std::runtime_error("error occured while converting float to string");
+      }
+      if (commapos >= width) {
+        return numstr;
+      }
+      int prec = width - commapos;
+      if (value >= 0) {
+        prec--;
+      }
+      std::stringstream ss2;
+      ss2 << std::fixed << std::setprecision(prec) << value;
+      return ss2.str();
     }
 
 
@@ -147,20 +177,53 @@ def module_header_writing():
       std::string numstr;
       int number_length = 10;
       int digits_after_comma = 6;
-      if (write_opts.keep_E) {
+      bool delete_E = (! write_opts.keep_E);
+      size_t exp_pos;
+      if (! delete_E) {
         digits_after_comma--;
       }
-      if (value >= 0 & write_opts.abuse_signpos) {
+      if (value >= 0 && write_opts.abuse_signpos) {
         number_length++;
         digits_after_comma++;
       }
-      numstr = float2endfstr_helper(value, digits_after_comma, write_opts);
+      numstr = float2endfstr_helper(
+        value, digits_after_comma, exp_pos, write_opts
+      );
       int prec_red = numstr.size() - number_length;
+      // account for excess length by char 'e'
+      if (delete_E) {
+        prec_red -= 1;
+      }
+      // account for excess length in numstr to minus sign
       if (value < 0) {
         prec_red -= 1;
       }
       if (prec_red > 0) {
-        numstr = float2endfstr_helper(value, digits_after_comma - prec_red, write_opts);
+        numstr = float2endfstr_helper(
+          value, digits_after_comma - prec_red, exp_pos, write_opts
+        );
+      }
+      if (write_opts.prefer_noexp) {
+        std::string numstr_noexp = float2endfstr_decimal_helper(
+          value, number_length, write_opts
+        );
+        int sign_inc = 0;
+        if (value < 0) sign_inc++;
+        if (numstr_noexp.size() <= number_length + sign_inc) {
+          double recon_value = std::stod(numstr);
+          double recon_value_noexp = std::stod(numstr_noexp);
+          double recon_value_diff = std::abs(recon_value - value);
+          double recon_value_reldiff = recon_value_diff / (std::abs(value)+1e-12);
+          double recon_value_noexp_diff = std::abs(recon_value_noexp - value);
+          double recon_value_noexp_reldiff =  recon_value_noexp_diff / (std::abs(value)+1e-12);
+          if (recon_value_reldiff >= recon_value_noexp_reldiff) {
+            numstr = numstr_noexp;
+            delete_E = false;
+          }
+        }
+      }
+      if (delete_E) {
+        numstr.erase(exp_pos, 1);
       }
       oss << std::right << std::setw(11) << numstr;
       return oss.str();
@@ -183,7 +246,7 @@ def module_header_writing():
       } else {
         fieldstr = int2endfstr(value);
       }
-      if (fieldstr.size() != 11) { throw std::runtime_error(std::string("wrong size") + std::to_string(fieldstr.size())); }
+      if (fieldstr.size() != 11) { throw std::runtime_error(std::string("wrong size") + std::to_string(fieldstr.size()) + std::string("  ") + std::string(fieldstr)); }
       line.replace(fieldnum*11, 11, fieldstr);
     }
 

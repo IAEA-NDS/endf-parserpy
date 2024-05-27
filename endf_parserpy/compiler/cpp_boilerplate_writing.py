@@ -18,12 +18,14 @@ def module_header_writing():
 
     struct WritingOptions {
       bool abuse_signpos;
+      bool keep_E;
     };
 
 
     WritingOptions default_writing_options() {
       return WritingOptions{
-        false  // abuse_signpos
+        false,  // abuse_signpos
+        false  // keep_E
       };
     }
 
@@ -43,6 +45,8 @@ def module_header_writing():
             std::string key_str = py::str(key);
             if (key_str == "abuse_signpos")
               value.abuse_signpos = d["abuse_signpos"].cast<bool>();
+            else if (key_str == "keep_E")
+              value.keep_E = d["keep_E"].cast<bool>();
             else
               throw std::runtime_error("unknown option `" + key_str + "` provided");
           }
@@ -53,7 +57,9 @@ def module_header_writing():
           if (! d.contains("abuse_signpos")) {
             value.abuse_signpos = default_opts.abuse_signpos;
           }
-
+          if (! d.contains("keep_E")) {
+            value.keep_E = default_opts.keep_E;
+          }
           return true;
         }
 
@@ -61,6 +67,7 @@ def module_header_writing():
         static handle cast(const WritingOptions &src, return_value_policy, handle) {
           py::dict d;
           d["abuse_signpos"] = src.abuse_signpos;
+          d["keep_E"] = src.keep_E;
           return d.release();
         }
 
@@ -106,7 +113,9 @@ def module_header_writing():
     }
 
 
-    std::string float2endfstr_helper(double value, int prec) {
+    std::string float2endfstr_helper(
+      double value, int prec, WritingOptions &write_opts
+    ) {
       std::ostringstream oss;
       oss << std::scientific << std::setprecision(prec) << value;
       std::string numstr = oss.str();
@@ -126,7 +135,9 @@ def module_header_writing():
           zerostart = i;
         }
       }
-      numstr.erase(exp_pos, 1);
+      if (! write_opts.keep_E) {
+        numstr.erase(exp_pos, 1);
+      }
       return numstr;
     }
 
@@ -136,17 +147,20 @@ def module_header_writing():
       std::string numstr;
       int number_length = 10;
       int digits_after_comma = 6;
+      if (write_opts.keep_E) {
+        digits_after_comma--;
+      }
       if (value >= 0 & write_opts.abuse_signpos) {
         number_length++;
         digits_after_comma++;
       }
-      numstr = float2endfstr_helper(value, digits_after_comma);
+      numstr = float2endfstr_helper(value, digits_after_comma, write_opts);
       int prec_red = numstr.size() - number_length;
       if (value < 0) {
         prec_red -= 1;
       }
       if (prec_red > 0) {
-        numstr = float2endfstr_helper(value, digits_after_comma - prec_red);
+        numstr = float2endfstr_helper(value, digits_after_comma - prec_red, write_opts);
       }
       oss << std::right << std::setw(11) << numstr;
       return oss.str();

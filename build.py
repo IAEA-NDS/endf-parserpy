@@ -53,6 +53,7 @@ def build(setup_kwargs):
                 "-std=c++11",
                 "-Wno-unused-variable",
                 "-Wno-unused-but-set-variable",
+                "-Wno-parentheses-equality",
             ],
         )
         for cpp_file in cpp_files

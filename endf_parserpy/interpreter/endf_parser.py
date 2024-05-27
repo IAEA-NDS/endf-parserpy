@@ -103,7 +103,7 @@ class EndfParser:
         self,
         ignore_number_mismatch=False,
         ignore_zero_mismatch=True,
-        ignore_varspec_mismatch=False,
+        ignore_varspec_mismatch=True,
         fuzzy_matching=True,
         blank_as_zero=True,
         abuse_signpos=False,

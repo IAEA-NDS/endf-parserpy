@@ -32,7 +32,7 @@ def module_header_reading():
       return ParsingOptions{
         false,  // ignore_number_mismatch
         true,  // ignore_zero_mismatch
-        false,  // ignore_varspec_mismatch
+        true,  // ignore_varspec_mismatch
         true,  // accept_spaces
         false,  // ignore_blank_lines
         false,  // ignore_send_records

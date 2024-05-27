@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/26
+# Last modified:   2024/05/27
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -14,11 +14,11 @@ ENDF_RECIPE_MF4 = """
 [MAT, 4, MT/ ZA, AWR, 0, LTT, 0, 0]HEAD
 # the following two if-statements account for the
 # fact that only for LTT==3 and LI==0 we expect
-# the variable NM in in the last spot
+# the variable NM in the last slot
 if LTT==3 and LI==0 [lookahead=1]:
-    [MAT, 4, MT/ 0.0, AWR?, LI, LCT, 0, NM]CONT
+    [MAT, 4, MT/ 0.0, AWR, LI, LCT, 0, NM]CONT
 else:
-    [MAT, 4, MT/ 0.0, AWR?, LI, LCT, 0, 0]CONT
+    [MAT, 4, MT/ 0.0, AWR, LI, LCT, 0, 0]CONT
 endif
 
 # Legendre coefficients

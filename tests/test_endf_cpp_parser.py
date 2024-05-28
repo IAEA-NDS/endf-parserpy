@@ -1,7 +1,8 @@
 import pytest
+import os
 from endf_parserpy.interpreter.endf_parser import EndfParser
 from endf_parserpy.utils.debugging_utils import compare_objects
-from endf_parserpy.cpp_parsers.endf6_ext import parse_endf_file
+from endf_parserpy.cpp_parsers.endf6_ext import parse_endf_file, write_endf_file
 
 
 @pytest.fixture(scope="module")
@@ -37,6 +38,14 @@ def cpp_parse_opts(
 
 def test_python_and_cpp_parser_equivalent(endf_file, myEndfParser, cpp_parse_opts):
     endf_dict1 = myEndfParser.parsefile(endf_file)
+    endf_dict2 = parse_endf_file(str(endf_file), parse_opts=cpp_parse_opts)
+    compare_objects(endf_dict1, endf_dict2, atol=1e-10, rtol=1e-10)
+
+
+def test_endf_cpp_read_write_read_roundtrip(endf_file, tmp_path, cpp_parse_opts):
+    endf_dict1 = parse_endf_file(str(endf_file), parse_opts=cpp_parse_opts)
+    outfile = tmp_path / os.path.basename(endf_file)
+    write_endf_file(str(outfile), endf_dict1)
     endf_dict2 = parse_endf_file(str(endf_file), parse_opts=cpp_parse_opts)
     compare_objects(endf_dict1, endf_dict2, atol=1e-10, rtol=1e-10)
 

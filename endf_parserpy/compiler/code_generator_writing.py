@@ -70,6 +70,7 @@ from .endf2cpp_aux_writing import (
     set_tab1_body,
     set_tab2_body,
     set_custom_int_field,
+    write_section_verbatim,
 )
 from .lookahead_management import in_lookahead
 
@@ -426,8 +427,13 @@ def generate_master_writefun(name, recipefuns):
             statements.append(section_code)
             conditions.append(curcond)
 
-    # TODO
-    default_code = ""
+    # if no writing function registered for an MF/MT function,
+    # the section must be given as a py::list of strings
+    default_code = write_section_verbatim(
+        "cont",
+        "py::cast<py::list>(endf_dict[py::cast(mf)][py::cast(mt)])",
+        "write_opts",
+    )
 
     body += cpp.indent_code(
         cpp.conditional_branches(conditions, statements, default=default_code),

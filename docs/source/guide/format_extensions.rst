@@ -30,7 +30,7 @@ ENDF-6 recipes used by endf-parserpy:
 
 .. code:: python
 
-    from endf_parserpy.endf_recipes import endf_recipe_dictionary
+    from endf_parserpy.endf_recipes.endf6_ext import endf_recipe_dictionary
 
 The variable ``endf_recipe_dictionary`` contains a dictionary
 with all the available recipes.

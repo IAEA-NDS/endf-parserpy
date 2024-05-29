@@ -1,7 +1,7 @@
 .. currentmodule:: endf_parserpy.cpp_parsers.endf_parser_cpp
 
 endf_parser_cpp
-===========
+===============
 
 The ``endf_parserpy.cpp_parsers.endf_parser_cpp`` module implements
 only a single class :class:`EndfParserCpp`, which

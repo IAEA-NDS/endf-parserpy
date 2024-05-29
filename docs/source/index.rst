@@ -20,11 +20,11 @@
    guide/creation_endf_scratch
    guide/format_extensions
    guide/high_level_functionality
+   guide/accelerated_parsing_and_writing
 
 .. toctree::
    :maxdepth: 1
-   :caption: Reference
-   :hidden:
+   :caption: Reference :hidden:
 
    reference/modules
    reference/classes
@@ -69,6 +69,13 @@ Install endf-parserpy
 
    pip install endf-parserpy --upgrade
 
+.. note::
+
+   By default, an attempt will be made to compile C++ source files
+   with functions for accelerating parsing and writing (50-300x faster)
+   during the installation. Compilation can take quite long, e.g. ten minutes.
+   To disable the installation of faster functions, declare the environment
+   variable ``INSTALL_ENDF_PARSERPY_CPP=no`` before the ``pip install`` command.
 
 .. note::
 
@@ -94,6 +101,7 @@ Resources
   - :doc:`guide/creation_endf_scratch`
   - :doc:`guide/format_extensions`
   - :doc:`guide/high_level_functionality`
+  - :doc:`guide/accelerated_parsing_and_writing`
 
 - Reference
 

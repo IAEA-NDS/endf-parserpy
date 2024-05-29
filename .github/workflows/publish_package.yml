@@ -12,7 +12,7 @@ jobs:
     needs: test_package
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 500
     env:
       INSTALL_ENDF_PARSERPY_CPP: yes
 
@@ -54,7 +54,7 @@ jobs:
     name: Make source distribution package
     needs: test_package
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 100
 
     steps:
       - uses: actions/checkout@v4

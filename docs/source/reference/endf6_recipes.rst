@@ -12,5 +12,5 @@ The ENDF-6 recipes are all located in the ``endf_parserpy/endf_recipes``
 folder of endf-parserpy's `GitHub repository <https://github.com/iaea-nds/endf-parserpy>`_.
 
 `List of all implemented ENDF-6 recipes
-<https://github.com/IAEA-NDS/endf-parserpy/tree/main/endf_parserpy/endf_recipes>`_
+<https://github.com/IAEA-NDS/endf-parserpy/tree/main/endf_parserpy/endf_recipes/endf6>`_
 

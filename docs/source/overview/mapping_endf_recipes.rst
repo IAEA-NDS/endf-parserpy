@@ -76,7 +76,7 @@ Basic mapping of variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following `ENDF-6 recipe for MF=1/MT=451
-<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf1_mt451.py>`_
+<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf6/endf_recipe_mf1_mt451.py>`_
 (general description) will serve as the basis for the explanation
 of how the dictionary structure is determined by a recipe:
 
@@ -218,7 +218,7 @@ There are a couple of particularities in how TAB1 and TAB2 records
 (:endf6manshort:`54`)
 are mapped into a Python dictionary. To explain, let's consider
 a slightly adjusted version of the `ENDF-6 recipe for MT sections of MF=3
-<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf3.py>`_
+<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf6/endf_recipe_mf3.py>`_
 (cross sections), compare also with the :endf6manpage:`123`:
 
 .. code:: text
@@ -305,7 +305,7 @@ Let's consider the following LIST record specification
 
 As this line is extracted
 from the `ENDF-6 recipe for MF=4
-<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf4.py>`_,
+<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf6/endf_recipe_mf4.py>`_,
 let's assume we deal with an MF=4/MT=2
 section whose data is stored in a dictionary ``mf4_mt2_section``.
 Variable names introduced after the second slash exist as equally named
@@ -364,7 +364,7 @@ Conditional blocks
 Conditional blocks are associated with `if/elif/else
 <https://arxiv.org/pdf/2312.08249.pdf#page=12>`_ statements.
 Consider the `recipe for an MF=1/MT=452 section
-<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf1_mt452.py>`_
+<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf6/endf_recipe_mf1_mt452.py>`_
 (see also :endf6manshort:`63`):
 
 .. code:: text
@@ -390,5 +390,5 @@ keys named ``Eint`` and ``nu`` will only exist if
 
 .. _ENDF-6 format: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
 .. _ENDF-6 formats manual: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
-.. _ENDF-6 recipes: https://github.com/IAEA-NDS/endf-parserpy/tree/main/endf_parserpy/endf_recipes
+.. _ENDF-6 recipes: https://github.com/IAEA-NDS/endf-parserpy/tree/main/endf_parserpy/endf_recipes/endf6/
 .. _GitHub repository: https://github.com/IAEA-NDS/endf-parserpy/

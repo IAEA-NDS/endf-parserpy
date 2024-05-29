@@ -192,7 +192,7 @@ Modifying arrays
 Arrays are implemented as dictionaries with contiguous integer keys.
 Consider the following part extracted from the
 `ENDF-6 recipe for MF6 sections
-<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf6.py>`_:
+<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf6/endf_recipe_mf6.py>`_:
 
 .. code:: text
 

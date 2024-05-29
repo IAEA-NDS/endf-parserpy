@@ -78,7 +78,7 @@ Section 1.1 in Chapter 1 of the :endf6manpage:`57`
 lists all variables that need to be defined for the creation of an
 MF1/MT451 section.
 The `ENDF-6 recipe for MF1/MT451
-<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf1_mt451.py>`_ also contains the required variable names and furthermore we can infer the
+<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf6/endf_recipe_mf1_mt451.py>`_ also contains the required variable names and furthermore we can infer the
 :ref:`structure of the Python dictionary <endf6_recipe_sec>` from it.
 Because this ENDF-6 recipe is not too long, we also provide it
 here for convenient reference:
@@ -260,7 +260,7 @@ The creation of the MF3/MT1 section (described on :endf6manshort:`122`)
 with cross sections as a function of incident energy is straightforward.
 The associated
 `ENDF-6 recipe
-<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf3.py>`_
+<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf6/endf_recipe_mf3.py>`_
 is given by:
 
 .. code:: text
@@ -380,7 +380,7 @@ is specified as 20% (square root of 0.04) between one and two eV,
 ``endf_dict['3/1/xstable/E']`` were specified in the code snippet
 introduced above :ref:`in the section about MF3/MT1 <creating_mf3mt1_sec>`.
 
-.. _ENDF-6 recipe for MF33: https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf33.py
+.. _ENDF-6 recipe for MF33: https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf6/endf_recipe_mf33.py
 
 The `ENDF-6 recipe for MF33`_ sections
 is more complex and we don't include it in full here.
@@ -645,7 +645,7 @@ field is ignored and hence may be used for version control information.
 The MAT number is given by a *tape number* NTAPE, which we can set
 to one. The MF and MT numbers in the control record must be zero.
 Also the TPID record is defined in an `ENDF-6 recipe file
-<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf0_mt0.py>`_
+<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf6/endf_recipe_mf0_mt0.py>`_
 and we can add this record to our dictionary using the following assignments:
 
 .. code:: python

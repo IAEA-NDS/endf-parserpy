@@ -37,7 +37,7 @@ with all the available recipes.
 If a recipe applies to all MT sections of an MF section, it
 is directly stored under an integer key given by the MF number.
 This is the case for the MF33 section, so we can print the corresponding
-`MF33 recipe <https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf_recipe_mf33.py>`_:
+`MF33 recipe <https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/endf_recipes/endf6/endf_recipe_mf33.py>`_:
 
 .. code:: python
 

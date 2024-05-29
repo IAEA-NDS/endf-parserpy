@@ -9,6 +9,7 @@ classes and functions included in them.
    :maxdepth: 2
 
    endf_parser/index
+   endf_parser_cpp/index
    accessories/index
    debugging_utils/index
    endf6_plumbing/index

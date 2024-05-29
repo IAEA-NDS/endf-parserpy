@@ -25,15 +25,15 @@ take into consideration the inherent logical
 structure of these files.
 
 In contrast, the dictionaries with ENDF-6 data
-returned by the :func:`~endf_parserpy.endf_parser.EndfParser.parsefile` method
-of the :class:`~endf_parserpy.endf_parser.EndfParser` class
+returned by the :func:`~endf_parserpy.EndfParser.parsefile` method
+of the :class:`~endf_parserpy.EndfParser` class
 are a perfect starting point for insightful
 comparisons between two ENDF-6 files.
 It it is straightforward to implement a
 recursive function that walks through
 the nested structure of two dictionaries
 in sync and reports any differences found.
-The function :func:`~endf_parserpy.debugging_utils.compare_objects`
+The function :func:`~endf_parserpy.compare_objects`
 does exactly that. Following, we want to showcase
 the use of this function and discuss the form
 of its output.
@@ -46,7 +46,7 @@ code snippet:
 .. code:: Python
 
    from endf_parserpy import EndfParser
-   from endf_parserpy.debugging_utils import compare_objects
+   from endf_parserpy import compare_objects
    parser = EndfParser()
    endf_dict1 = parser.parsefile('input1.endf')
    endf_dict2 = parser.parsefile('input2.endf')
@@ -54,7 +54,7 @@ code snippet:
 
 After the content of the two ENDF-6 files has been read into two dictionaries
 named ``endf_dict1`` and ``endf_dict2``, the
-:func:`~endf_parserpy.debugging_utils.compare_objects` function
+:func:`~endf_parserpy.compare_objects` function
 is invoked for the comparison. The argument ``atol`` defines
 the absolute difference and the argument ``rtol`` the relative
 difference below which
@@ -66,7 +66,7 @@ dictionaries.
 
 Apart from returning ``True`` if no differences were encountered
 and ``False`` otherwise, the
-:func:`~endf_parserpy.debugging_utils.compare_objects`
+:func:`~endf_parserpy.compare_objects`
 function prints the discrepancies found on standard output.
 The output may look like this:
 
@@ -79,7 +79,7 @@ The output may look like this:
 The example output indicates the path where the difference
 occured and the type of difference.
 The first line informs us that only the second object
-passed to :func:`~endf_parserpy.debugging_utils.compare_objects`
+passed to :func:`~endf_parserpy.compare_objects`
 possesses a key ``2`` at the path ``2/151/isotope/1/range``.
 The second line points out a different value
 of the ``EH`` variable in the first ``range``

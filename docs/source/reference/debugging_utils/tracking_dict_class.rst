@@ -1,4 +1,4 @@
-.. currentmodule:: endf_parserpy.debugging_utils
+.. currentmodule:: endf_parserpy.utils.debugging_utils
 
 .. _tracking_dict_class_doc:
 

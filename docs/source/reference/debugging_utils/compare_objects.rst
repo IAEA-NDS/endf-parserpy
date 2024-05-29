@@ -1,4 +1,4 @@
-.. currentmodule:: endf_parserpy.debugging_utils
+.. currentmodule:: endf_parserpy
 
 .. _compare_objects_fun:
 

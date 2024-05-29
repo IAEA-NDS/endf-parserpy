@@ -53,7 +53,7 @@ interpolation of cross sections in MF3.
 The class should support the computation of interpolated values
 at energies requested by the user and also enable the user to update the cross section
 values at the mesh points.
-We will make use of the :class:`~endf_parserpy.accessories.EndfVariable` class to
+We will make use of the :class:`~endf_parserpy.EndfVariable` class to
 preserve the link to the original data in the ENDF-6 dictionary.
 A simple prototype class implementation
 could look something like this:
@@ -122,7 +122,7 @@ cross section (MF3/MT1):
 
 
 After loading the data of an ENDF-6 file into the dictionary ``endf_dict``,
-:class:`~endf_parserpy.accessories.EndfVariable` objects are created and
+:class:`~endf_parserpy.EndfVariable` objects are created and
 linked to the locations of the variables associated with the total cross
 section in MF3/MT1. The objects ``xvar``, ``yvar``, ``int_arr`` and ``nbt_arr``
 serve the same purpose
@@ -149,7 +149,7 @@ points can be updated, e.g.:
    interpobj.table = (new_ens, new_xs)
 
 Because the variables used by the ``LinearCrossSectionInterpolationClass``
-are :class:`~endf_parserpy.accessories.EndfVariable` objects, any adjustment performed using an
+are :class:`~endf_parserpy.EndfVariable` objects, any adjustment performed using an
 object of that class will also lead to a corresponding update
 of the ``endf_dict``.
 
@@ -158,5 +158,5 @@ higher-level functionality could be implemented, which is to some
 extent decoupled from the detailed structure of the dictionary
 with ENDF-6 data. Yet, modifications via the high-level object
 will be propagated back to the original dictionary via the
-:class:`~endf_parserpy.accessories.EndfVariable` mechanism.
+:class:`~endf_parserpy.EndfVariable` mechanism.
 

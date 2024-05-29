@@ -1,9 +1,9 @@
-.. currentmodule:: endf_parserpy.endf_parser
+.. currentmodule:: endf_parserpy.interpreter.endf_parser
 
 endf_parser
 ===========
 
-The ``endf_parserpy.endf_parser`` module implements
+The ``endf_parserpy.interpreter.endf_parser`` module implements
 only a single class :class:`EndfParser`, which
 is also exposed in the global namespace of the
 ``endf_parserpy`` package.
@@ -12,5 +12,3 @@ is also exposed in the global namespace of the
    :maxdepth: 1
 
    endf_parser_class
-
-

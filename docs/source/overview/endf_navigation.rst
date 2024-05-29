@@ -8,7 +8,7 @@ map the nuclear data stored in an ENDF-6 file into a nested
 Python dictionary. These dictionaries can be somewhat
 deeply nested and hence the navigation in them to access or
 manipulate data cumbersome. endf-parserpy introduces
-the concept of an :class:`~endf_parserpy.accessories.EndfPath`
+the concept of an :class:`~endf_parserpy.EndfPath`
 for referencing a piece of data in a dictionary associated
 with ENDF-6 data.
 
@@ -31,7 +31,7 @@ For instance, there may be a variable ``AJ`` in a Python dictionary
 
    endf_dict[2][151]['isotope'][1]['range'][1]['spingroup'][1]['AJ']
 
-The corresponding :class:`~endf_parserpy.accessories.EndfPath` would be given by
+The corresponding :class:`~endf_parserpy.EndfPath` would be given by
 
 ``2/151/isotope/1/range/1/spingroup/1/AJ``
 
@@ -44,29 +44,29 @@ could be equally written as:
 
 ``2/151/isotope[1]/range[1]/spingroup[1]/AJ``
 
-The class :class:`~endf_parserpy.accessories.EndfPath` provides
+The class :class:`~endf_parserpy.EndfPath` provides
 a container for the storage of a path. However, paths become
 only useful when they can actually be used
 to navigate dictionaries with ENDF-6 data and retrieve the desired data
-from them. The :class:`~endf_parserpy.accessories.EndfDict` class helps with this requirement.
+from them. The :class:`~endf_parserpy.EndfDict` class helps with this requirement.
 
 .. _endf_dict_class:
 
 EndfDict
 --------
 
-An instance of :class:`~endf_parserpy.accessories.EndfDict`
+An instance of :class:`~endf_parserpy.EndfDict`
 behaves like a standard :class:`dict` but
 enables the use of paths (as described above) to access
 data. When the class is instantiated with a dictionary
 as argument, it can be regarded as a `view object` of the
 original dictionary. Any modification of data through the
-:class:`~endf_parserpy.accessories.EndfDict` object will lead to the same modification
+:class:`~endf_parserpy.EndfDict` object will lead to the same modification
 of the original dictionary (technically speaking:
-:class:`~endf_parserpy.accessories.EndfDict`
+:class:`~endf_parserpy.EndfDict`
 objects manage a reference to the original :class:`dict` or other :class:`~collections.abc.MutableMapping` object).
 Suppose that ``endf_dict`` is an instance of
-:class:`~endf_parserpy.accessories.EndfDict`.
+:class:`~endf_parserpy.EndfDict`.
 Using the example given above, we could access the variable ``AJ``
 via:
 
@@ -75,7 +75,7 @@ via:
    aj = endf_dict['2/151/isotope[1]/range[1]/spingroup[1]/AJ']
 
 
-An :class:`~endf_parserpy.accessories.EndfDict` instance also
+An :class:`~endf_parserpy.EndfDict` instance also
 allows keys to be separated by commas
 so the same variable could also be accessed via the notation:
 
@@ -102,9 +102,9 @@ You could use the following code:
     F[2, 3] = 0.5
 
 This code works because any dictionary-like object retrieved
-from an :class:`~endf_parserpy.accessories.EndfDict` object
+from an :class:`~endf_parserpy.EndfDict` object
 will be automatically wrapped into an
-:class:`~endf_parserpy.accessories.EndfDict` object itself
+:class:`~endf_parserpy.EndfDict` object itself
 before being returned. Consequently, the extended indexing
 capabilities are available for these retrieved objects,
 such as demonstrated here by the assignment involving ``F``.
@@ -120,7 +120,7 @@ dictionaries. For example, the assignment
 will create all intermediate dictionaries, hence this instruction
 even works for an empty dictionary ``endf_dict = EndfDict({})``.
 
-See the documentation of the :class:`endf_parserpy.accessories.EndfDict` class
+See the documentation of the :class:`endf_parserpy.EndfDict` class
 for further details.
 
 Finally, we may want to use abbreviations to read and modify data in
@@ -128,17 +128,17 @@ a dictionary with ENDF-6 data. Perhaps we would like to assign
 a new value to the ``aj`` variable and expect that the
 same value is also assigned to the corresponding location in  ``endf_dict``.
 However, this will not be the case. The
-:class:`~endf_parserpy.accessories.EndfVariable` class
+:class:`~endf_parserpy.EndfVariable` class
 provides a mechanism to achieve this behavior.
 
 EndfVariable
 ------------
 
-An instance of :class:`~endf_parserpy.accessories.EndfVariable`
+An instance of :class:`~endf_parserpy.EndfVariable`
 possesses a ``.value`` attribute
 that is always kept in sync with a specific location in
 a nested dictionary with ENDF-6 data.
-It can be instantiated by providing an :class:`~endf_parserpy.accessories.EndfPath` object
+It can be instantiated by providing an :class:`~endf_parserpy.EndfPath` object
 and a dictionary:
 
 .. code:: python
@@ -152,4 +152,4 @@ be a good basis for implementing
 such as linear interpolation of cross sections with the
 link to the original data being preserved.
 More technical details are provided in the documentation
-of the :class:`endf_parserpy.accessories.EndfVariable` class.
+of the :class:`endf_parserpy.EndfVariable` class.

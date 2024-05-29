@@ -14,8 +14,8 @@ along with some considerations to be heeded.
 Reading an ENDF-6 file
 ------------------------
 
-An ENDF-6 file can be read with the :func:`~endf_parserpy.endf_parser.EndfParser.parsefile()`
-method of the :class:`~endf_parserpy.endf_parser.EndfParser` class:
+An ENDF-6 file can be read with the :func:`~endf_parserpy.EndfParser.parsefile()`
+method of the :class:`~endf_parserpy.EndfParser` class:
 
 .. code:: Python
 
@@ -29,14 +29,14 @@ all quantities are associated with the symbol names
 described in the `ENDF-6 formats manual`_.
 The data organization within this dictionary is determined by
 :ref:`ENDF-6 recipes <endf6_recipe_sec>`.
-An :class:`~endf_accessories.EndfDict` object,
+An :class:`~endf_parserpy.EndfDict` object,
 instantiated by
 ``view_dict = EndfDict(endf_dict)``, can facilitate
 :ref:`data navigation <data_navigation>`.
 
 The parsing process can be influenced by using additional
 arguments in the instantiation of the
-:class:`~endf_parserpy.endf_parser.EndfParser` class.
+:class:`~endf_parserpy.EndfParser` class.
 The default choices of these arguments are forgiving so that
 even ENDF-6 files that do not strictly comply with the ENDF-6
 format can be read without failure. For the purpose of
@@ -57,7 +57,7 @@ situation by adopting the following initialization:
 
 
 When only one part of the ENDF-6 file is relevant to the user,
-the :func:`~endf_parserpy.endf_parser.EndfParser.parsefile()` method
+the :func:`~endf_parserpy.EndfParser.parsefile()` method
 can be instructed to only parse
 this part for greater speed. For instance, if you are only interested
 in MT sections within MF=3,4,5 sections, you can use:
@@ -85,14 +85,14 @@ specify ``include=[6, [3, 1]]``.
 
 If one wants to check which MF/MT sections have been parsed,
 one can utilize the
-:func:`~endf_parserpy.user_tools.list_parsed_sections` and
-:func:`~endf_parserpy.user_tools.list_unparsed_sections` function,
+:func:`~endf_parserpy.list_parsed_sections` and
+:func:`~endf_parserpy.list_unparsed_sections` function,
 respectively:
 
 .. code:: Python
 
-   from endf_parserpy.user_tools import list_parsed_sections
-   from endf_parserpy.user_tools import list_unparsed_sections
+   from endf_parserpy import list_parsed_sections
+   from endf_parserpy import list_unparsed_sections
    list_parsed_sections(endf_dict)
    list_unparsed_sections(endf_dict)
 
@@ -104,7 +104,7 @@ Writing an ENDF-6 file
 Writing an ENDF-6 file is as simple as reading one.
 Assume that the dictionary ``endf_dict`` is of appropriate
 structure, e.g., as returned by the
-:func:`~endf_parserpy.endf_parser.EndfParser.parsefile` method.
+:func:`~endf_parserpy.EndfParser.parsefile` method.
 The following code snippet demonstrates writing:
 
 .. code:: Python
@@ -113,7 +113,7 @@ The following code snippet demonstrates writing:
    parser = EndfParser()
    parser.writefile('output.endf', endf_dict)
 
-Also the :func:`~endf_parserpy.endf_parser.EndfParser.writefile`
+Also the :func:`~endf_parserpy.EndfParser.writefile`
 method supports the
 ``include`` and ``exclude`` argument. If the
 ``include`` argument is provided, only included
@@ -126,20 +126,20 @@ have been added or deleted, it is important to
 update the directory listing in MF1/MT451 first
 before writing to an ENDF-6 file (see :endf6manshort:`57`).
 This can be achieved with the
-:func:`~endf_parserpy.endf6_plumbing.update_directory` function.
+:func:`~endf_parserpy.update_directory` function.
 
 .. code:: Python
 
-   from endf_parserpy.endf6_plumbing import update_directory
+   from endf_parserpy import update_directory
    update_directory(endf_dict, parser)
 
 .. note::
 
    Don't use the ``include`` and ``exclude`` argument
-   of the :func:`~endf_parserpy.endf_parser.EndfParser.writefile` method
+   of the :func:`~endf_parserpy.EndfParser.writefile` method
    if it is important that the ENDF directory in MF1/MT451 is in sync with
    the file. Rather remove the sections manually before the
-   invocation of :func:`~endf_parserpy.endf6_plumbing.update_directory`.
+   invocation of :func:`~endf_parserpy.update_directory`.
 
 
 Finally, we want to discuss how to control the **output precision**
@@ -154,7 +154,7 @@ usually be included to indicate the start of the exponent.
 
 If more output precision is required, several options are available
 to tweak the output format, which can be passed as arguments
-to the constructor of the :class:`~endf_parserpy.endf_parser.EndfParser` class.
+to the constructor of the :class:`~endf_parserpy.EndfParser` class.
 With ``abuse_signpos=True``, positive numbers
 are allowed to consume the first character slot usually
 reserved for the sign.
@@ -166,7 +166,7 @@ in decimal notation if the integer part is zero, e.g.,
 ``0.1234`` will become ``.12345``, giving in some situations
 one extra digit of precision.
 Therefore, for maximal output precision (and ugly display)
-initialize the :class:`~endf_parserpy.endf_parser.EndfParser` instance like this:
+initialize the :class:`~endf_parserpy.EndfParser` instance like this:
 
 .. code::
 
@@ -180,14 +180,14 @@ include the argument ``keep_E=True``.
 
 Finally, if you want to ensure that you haven't
 lost (too much) precision, you can make use of the
-:func:`~endf_parserpy.debugging_utils.compare_objects` function.
+:func:`~endf_parserpy.compare_objects` function.
 Just read the output file again, and compare it with
 the original ``endf_dict``:
 
 
 .. code:: Python
 
-   from endf_parserpy.debugging_utils import compare_objects
+   from endf_parserpy import compare_objects
 
    test_dict = parser.parsefile('output.endf')
    compare_objects(endf_dict, test_dict, atol=1e-6, rtol=1e-6, fail_on_diff=False)

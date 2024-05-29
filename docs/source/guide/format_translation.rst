@@ -67,8 +67,8 @@ this conversion:
 Here, basic Python functionality is employed to
 read the data from the JSON file into a dictionary
 ``endf_dict``.
-Afterwards, the invocation of :func:`~endf_parserpy.user_tools.sanitize_fieldname_types`
+Afterwards, the invocation of :func:`~endf_parserpy.sanitize_fieldname_types`
 converts keys of type :class:`str` that contain integer values back to
-type :class:`int`. Finally, the :func:`~endf_parserpy.endf_parser.EndfParser.writefile`
-method of the :class:`~endf_parserpy.endf_parser.EndfParser` object is called to write
+type :class:`int`. Finally, the :func:`~endf_parserpy.EndfParser.writefile`
+method of the :class:`~endf_parserpy.EndfParser` object is called to write
 the data stored in the  dictionary ``endf_dict`` to an ENDF-6 file.

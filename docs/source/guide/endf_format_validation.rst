@@ -4,7 +4,7 @@
 ENDF-6 Format Validation
 ========================
 
-.. _ENDF-6 format specification: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf 
+.. _ENDF-6 format specification: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
 
 A contributor to a nuclear data library project
 wants to be sure that their ENDF-6 file conforms
@@ -44,10 +44,10 @@ For an explanation of the arguments,
 consult the :ref:`detailed documentation <endf_parser_class>` of
 the EndfParser class.
 
-If the :func:`~endf_parserpy.endf_parser.EndfParser.parsefile` method fails,
+If the :func:`~endf_parserpy.EndfParser.parsefile` method fails,
 it provides detailed output to facilitate locating
 the issue. Let's look at an example output of
-:func:`~endf_parserpy.endf_parser.EndfParser.parsefile`
+:func:`~endf_parserpy.EndfParser.parsefile`
 in the case of a format violation:
 
 

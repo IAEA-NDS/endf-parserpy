@@ -1,4 +1,4 @@
-.. currentmodule:: endf_parserpy.user_tools
+.. currentmodule:: endf_parserpy
 
 user_tools
 ----------

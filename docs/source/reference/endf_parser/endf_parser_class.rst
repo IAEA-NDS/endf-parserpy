@@ -1,4 +1,4 @@
-.. currentmodule:: endf_parserpy.endf_parser
+.. currentmodule:: endf_parserpy
 
 .. _endf_parser_class:
 

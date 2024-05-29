@@ -140,7 +140,7 @@ The code to accomplish the described actions is given by:
 
 Let's see what happens when we attempt to convert the
 data of this very empty dictionary into the ENDF-6 format using
-the :func:`~endf_parserpy.endf_parser.EndfParser.write` method:
+the :func:`~endf_parserpy.EndfParser.write` method:
 
 .. code:: Python
 
@@ -213,8 +213,8 @@ all quantities of an MF=1/MT=451 section:
 
 
 For understanding the meaning of a variable and its value, we can use the
-:func:`~endf_parserpy.endf_parser.EndfParser.explain` method of the
-:class:`~endf_parserpy.endf_parser.EndfParser` class, e.g.
+:func:`~endf_parserpy.EndfParser.explain` method of the
+:class:`~endf_parserpy.EndfParser` class, e.g.
 ``parser.explain('1/451/STA')``, or look up its description in the :endf6manpage:`57`.
 These assignments are also a good opportunity to remind ourselves of how
 :ref:`data types <data_types_sec>`
@@ -239,7 +239,7 @@ the arrays ``MFx[i]``, ``MTx[i]``, ``NCx[i]`` and ``MOD[i]``, which keeps
 track of MF/MT sections included in the file and the number of ENDF records stored
 in each of them.
 We will synchronize this directory with the full file using
-the :func:`~endf_parserpy.endf6_plumbing.update_directory` function once
+the :func:`~endf_parserpy.update_directory` function once
 we've added all required information to the dictionary.
 
 Regarding the process, there are a lot of variables and it takes time
@@ -287,7 +287,7 @@ Because of the presence of a `table body section
 variables ``NBT``, ``INT``, ``E`` and ``xs`` are supposed to be
 in that section. Here we will use some dummy data for the excitation
 function in the construction of the dictionary. We augment the dictionary
-``endf_dict`` (being an :class:`~endf_parserpy.accessories.EndfDict` object)
+``endf_dict`` (being an :class:`~endf_parserpy.EndfDict` object)
 introduced above (which already includes the MF1/MT451 section):
 
 
@@ -325,7 +325,7 @@ the :endf6manpage:`43`.
     The parser doesn't check whether the values provided
     are physically meaningful. For instance, negative cross section
     values in ``xs`` or negative incident energies in ``E`` will be written
-    by the :func:`~endf_parserpy.endf_parser.EndfParser.writefile` method to an ENDF-6 file as
+    by the :func:`~endf_parserpy.EndfParser.writefile` method to an ENDF-6 file as
     they are, without any warnings.
 
 
@@ -595,7 +595,7 @@ the structure in the ENDF-6 recipe definition
 (``{ {F[k,kp] }{ kp=k to NE-1} }{ k=1 to NE-1 }``).
 Please note the notation ``F[k, kp]`` to set elements in
 the nested dictionary is only possible because
-``F`` is an :class:`~endf_parserpy.accessories.EndfDict` object.
+``F`` is an :class:`~endf_parserpy.EndfDict` object.
 
 After this quite lengthy explanation with all the pointers
 to the ENDF-6 formats manual and also linking the building process of
@@ -677,11 +677,11 @@ In words: During the construction of the MF1/MT451 we've included
 a directory that accounted only for this section. As we have
 added an MF3/MT1 and also MF33/MT1 section, this information
 is outdated. We can update it using the
-:func:`~endf_parserpy.endf6_plumbing.update_directory` function:
+:func:`~endf_parserpy.update_directory` function:
 
 .. code:: python
 
-   from endf_parserpy.end6_plumbing import update_directory
+   from endf_parserpy import update_directory
    update_directory(endf_dict, parser)
 
 
@@ -706,7 +706,7 @@ sections, so we have:
 - MF3/MT1: 5 ENDF records
 - MF33/MT1: 6 ENDF records
 
-To check whether the :func:`~endf_parserpy.endf6_plumbing.update_directory` function
+To check whether the :func:`~endf_parserpy.update_directory` function
 has done a good job,
 let's convert the data in ``endf_dict`` into the ENDF-6 format and print it:
 
@@ -756,7 +756,7 @@ This yields the following output:
 
 Taking into account that the ``SEND`` (=Section end) records are not considered
 for the counting,
-we see that :func:`~endf_parserpy.endf6_plumbing.update_directory`
+we see that :func:`~endf_parserpy.update_directory`
 has indeed determined the correct number of ENDF records of each MF/MT section.
 
 Summary
@@ -766,7 +766,7 @@ If you have followed along until here, you have a Python dictionary with
 a general description, (dummy) total cross section data, and a
 covariance matrix associated with the total cross section.
 Congratulations! You can produce your awesome ENDF-6 file
-with the :func:`~endf_parserpy.endf_parser.EndfParser.writefile` method:
+with the :func:`~endf_parserpy.EndfParser.writefile` method:
 
 .. code:: python
 
@@ -781,7 +781,7 @@ in the following Python script:
 
     from endf_parserpy import EndfParser
     from endf_parserpy.accessories import EndfDict
-    from endf_parserpy.endf6_plumbing import update_directory
+    from endf_parserpy import update_directory
     import numpy as np
 
     parser = EndfParser()

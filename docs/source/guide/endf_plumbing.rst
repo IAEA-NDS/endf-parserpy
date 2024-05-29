@@ -67,17 +67,17 @@ The following code snippet achieves this:
    parser.writefile('output.endf', endf_dict)
 
 
-The :class:`~endf_parserpy.endf_parser.EndfParser` class is imported
+The :class:`~endf_parserpy.EndfParser` class is imported
 for reading and writing ENDF-6 files.
-The :class:`~endf_parserpy.accessories.EndfDict` class is an
+The :class:`~endf_parserpy.EndfDict` class is an
 enhanced :class:`dict` that enables convenient access to
 data via :ref:`EndfPaths <endf_path_class>`.
 
 After instantiating an
-:class:`~endf_parserpy.endf_parser.EndfParser` object,
+:class:`~endf_parserpy.EndfParser` object,
 the ENDF-6 file ``input.endf`` is read and the resulting
 :class:`dict` immediately converted to an
-:class:`~endf_parserpy.accessories.EndfDict` object.
+:class:`~endf_parserpy.EndfDict` object.
 
 Next, we retrieve the :class:`list` with the elastic cross
 sections stored in the MF3/MT2 section, or more precisely
@@ -95,7 +95,7 @@ we can compare the original file with the adjusted one:
 
 .. code:: python
 
-   from endf_parserpy.debugging_utils import compare_objects
+   from endf_parserpy import compare_objects
    endf_dict1 = parser.parsefile('input.endf')
    endf_dict2 = parser.parsefile('output.endf')
    compare_objects(endf_dict1, endf_dict2, atol=1e-6, rtol=1e-6 fail_on_diff=False)
@@ -111,7 +111,7 @@ file uses an unconventional notation style for real values, e.g.
 switching from floating point notation to decimal notation to
 increase precision.
 To avoid this issue from the start, we can use the ``include``
-argument in the call of the :func:`~endf_parserpy.endf_parser.EndfParser.parsefile`
+argument in the call of the :func:`~endf_parserpy.EndfParser.parsefile`
 method to only parse MF3/MT2. The other sections will then be read
 verbatim as string and consequently also written verbatim to the output file.
 The adjusted instruction for reading the ENDF-6 file in the current

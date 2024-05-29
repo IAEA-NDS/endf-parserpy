@@ -72,8 +72,8 @@ G. Schnabel, D. L. Aldama, R. Capote, "How to explain ENDF-6 to computers: A for
 
 ## License
 
-This code is distributed under the MIT license, see the
-accompanying license file for more information.
+This code is distributed under the MIT license augmented
+by an IAEA clause, see the accompanying license file for more information.
 
 Copyright (c) International Atomic Energy Agency (IAEA)
 

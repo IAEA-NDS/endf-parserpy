@@ -23,6 +23,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install build requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install poetry-core pybind11 lark appdirs
 
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==2.18.1
@@ -46,6 +53,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+
+      - name: Install build requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install poetry-core pybind11 lark appdirs
 
       - name: Install build
         run: python -m pip install build

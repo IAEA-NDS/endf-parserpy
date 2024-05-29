@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/05/27
+# Last modified:   2024/05/29
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -222,7 +222,8 @@ class EndfParser:
             cache directory if it was automatically determined.
         endf_format : str
             Allow the user to pick specific ENDF format flavors.
-            The default `endf6` strictly follows the ENDF-6 formats manual.
+            The default `endf6-ext` tolerates deviations from the
+            ENDF-6 format encountered in some nuclear data libraries.
         recipes : dict_like
             The default ENDF-6 recipes can be overrided by providing a
             nested dictionary with custom recipes. Inspect the default

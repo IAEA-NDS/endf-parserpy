@@ -224,6 +224,9 @@ class EndfParser:
             Allow the user to pick specific ENDF format flavors.
             The default `endf6-ext` tolerates deviations from the
             ENDF-6 format encountered in some nuclear data libraries.
+            Other choices are `endf6` for strict compliance with the
+            ENDF-6 formats manual and `jendl` with JENDL specific
+            conventions, which are also implemented in `endf6-ext`.
         recipes : dict_like
             The default ENDF-6 recipes can be overrided by providing a
             nested dictionary with custom recipes. Inspect the default

@@ -118,6 +118,9 @@ class EndfParserCpp:
             Allow the user to pick specific ENDF format flavors.
             The default `endf6-ext` tolerates deviations from the
             ENDF-6 format encountered in some nuclear data libraries.
+            Other choices are `endf6` for strict compliance with the
+            ENDF-6 formats manual and `jendl` with JENDL specific
+            conventions, which are also implemented in `endf6-ext`.
         """
         self.parse_opts = {
             "ignore_number_mismatch": ignore_number_mismatch,

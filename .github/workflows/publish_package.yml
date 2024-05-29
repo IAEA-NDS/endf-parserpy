@@ -29,7 +29,7 @@ jobs:
       - name: Install build requirements
         run: |
           python -m pip install --upgrade pip
-          python -m pip install poetry-core pybind11 lark appdirs
+          python -m pip install poetry-core pybind11 lark appdirs setuptools
 
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==2.18.1
@@ -57,7 +57,7 @@ jobs:
       - name: Install build requirements
         run: |
           python -m pip install --upgrade pip
-          python -m pip install poetry-core pybind11 lark appdirs
+          python -m pip install poetry-core pybind11 lark appdirs setuptools
 
       - name: Install build
         run: python -m pip install build

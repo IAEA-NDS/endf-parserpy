@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/20
+# Last modified:   2024/05/29
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -36,6 +36,8 @@ def _module_header():
     #include <vector>
     #include <string>
     #include <cassert>
+    #include <algorithm>  // for std::sort
+    #include <cstddef>
 
     namespace py = pybind11;
 

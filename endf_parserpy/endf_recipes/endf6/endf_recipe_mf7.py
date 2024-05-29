@@ -1,11 +1,11 @@
 ############################################################
 #
-# Author(s):       Georg Schnabel
-# Email:           g.schnabel@iaea.org
+# Maintainer:      José Ignacio Marquez Damian
+# Email:           marquezj@ess.eu
 # Creation date:   2022/09/13
-# Last modified:   2024/05/28
+# Last modified:   2024/05/29
 # License:         MIT
-# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 

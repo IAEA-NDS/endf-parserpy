@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/27
+# Last modified:   2024/05/29
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -310,13 +310,13 @@ def module_header_reading():
 
     // we are done with the cpp_validate_field related functionality
 
-    double cpp_read_custom_int_field(const char *str, int start_pos, int length) {
-      char strzero[length+1];
-      std::memcpy(strzero, str+start_pos, length);
+    int cpp_read_custom_int_field(const char *str, int start_pos, int length) {
+      std::vector<char> strzero(length+1);
+      std::memcpy(strzero.data(), str+start_pos, length);
       strzero[length] = '\0';
       for (int i=0; i < length; i++) {
         if (strzero[i] != ' ') {
-          return std::atoi(strzero);
+          return std::atoi(strzero.data());
         }
       }
       return 0;

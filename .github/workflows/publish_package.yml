@@ -13,33 +13,25 @@ jobs:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 500
-    env:
-      INSTALL_ENDF_PARSERPY_CPP: yes
 
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-13, macos-14]
-        python-version: ['3.8', '3.9', '3.10', '3.11']
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.x"
 
-      - name: Install Poetry
+      - name: Install build deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install poetry==1.7
+          python -m pip install poetry==1.7 setuptools lark appdirs pybind11 build
 
       - name: Set endf-parserpy version based on tag
         run: poetry version $(git describe --tags --abbrev=0)
-
-      - name: Install dependencies
-        env:
-          INSTALL_ENDF_PARSERPY_CPP: no
-        run: poetry install -vvv
 
       - name: Install cibuildwheel
         run: poetry run python -m pip install cibuildwheel==2.18.1
@@ -47,11 +39,11 @@ jobs:
       - name: Build wheels
         env:
           INSTALL_ENDF_PARSERPY_CPP: yes
-        run: poetry run python -m cibuildwheel --output-dir wheelhouse
+        run: python -m cibuildwheel --output-dir wheelhouse
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-${{ matrix.os }}-py${{ matrix.python-version }}
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
 
   make_sdist:
@@ -67,23 +59,18 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Install poetry
+      - name: Install build deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install poetry==1.7
+          python -m pip install poetry==1.7 setuptools lark appdirs pybind11 build
 
       - name: Set endf-parserpy version based on tag
         run: poetry version $(git describe --tags --abbrev=0)
 
-      - name: Install dependencies
-        env:
-          INSTALL_ENDF_PARSERPY_CPP: no
-        run: poetry install -vvv
-
       - name: Build SDist
         env:
           INSTALL_ENDF_PARSERPY_CPP: no
-        run: poetry build -f sdist
+        run: python -m build sdist
 
       - uses: actions/upload-artifact@v4
         with:

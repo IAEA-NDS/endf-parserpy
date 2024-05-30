@@ -25,8 +25,7 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Setup Python 3.8 universal2 on macOS arm64
-        if: matrix.os == 'macos-14' && runner.arch == 'ARM64'
+      - name: Setup Python 3.8 explicitly (necessary for Py3.8 MacOS-14 case)
         uses: actions/setup-python@v5
         with:
           python-version: '3.8'

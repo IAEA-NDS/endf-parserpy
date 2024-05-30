@@ -25,12 +25,16 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Setup Python (3.8 universal2 for macOS arm64)
-        if: matrix.os == 'macos-14'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
-          architecture: 'x64'
+      - name: Setup Python 3.8 universal2 on macOS arm64
+        if: matrix.os == 'macos-14' && runner.arch == 'ARM64'
+        run: |
+          if [[ $(uname -m) == 'arm64' ]]; then
+            brew install gettext
+            brew link --force gettext
+            arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            arch -x86_64 brew install python@3.8
+            arch -x86_64 python3.8 -m pip install --upgrade pip
+          fi
 
       - name: Install build deps
         run: |

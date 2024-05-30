@@ -23,14 +23,14 @@ provided by C++ functions shipped with the ``endf-parserpy``
 package. During the installation via ``pip install`` or equivalent
 means, an attempt is made to compile the C++ source code to
 Python modules. If all required build tools are available on
-your system and hence the compilation successful, you can benefit
+your system and hence the compilation is successful, you can benefit
 from accelerated parsing and writing of ENDF-6 files by using
 the :class:`~endf_parserpy.EndfParserCpp` class.
 
 
 The interface of the :class:`~endf_parserpy.EndfParserCpp` class
 closely mirrors the one of the :class:`~endf_parserpy.EndfParser` class,
-providing mostly the same initialization options. The following
+providing most of the same initialization options. The following
 code snippet demonstrates the reading and writing of an ENDF-6 file:
 
 .. code:: Python
@@ -57,12 +57,12 @@ own recipe files.
 Generating C++ code from ENDF recipes
 ----------------------------------------
 
-To follow this section properly, basic knowledge regarding the
-use of a C++ compiler, such as ``clang`` or the ``GNU C++`` compiler,
-is probably required. The aim of this section is to provide a
+To follow this section properly, basic knowledge of using
+a C++ compiler, such as ``clang`` or the ``GNU C++`` compiler,
+is likely required. The aim of this section is to provide a
 starting point for expert users to compile their own ENDF format parsers
 but a detailed explanation of all possible pitfalls in the process
-is out of scope.
+is beyond the scope of this document.
 
 We assume that your recipes are available in a nested dictionary
 where the keys of the first level are the MF numbers (of type :class:`int`)
@@ -80,7 +80,7 @@ ENDF recipes shipped with this package:
     from endf_parserpy.endf_recipes.endf6_ext import endf_recipe_dictionary
 
 
-Now you can use the ``create_project_files`` function to generate the
+Now, you can use the ``create_project_files`` function to generate the
 module code for parsing and writing files that conform to the format
 description stored in the ``endf_recipe_dictionary``:
 
@@ -97,7 +97,7 @@ simple example ``CMakeLists.txt`` file and a C++ source file named
 ``cpp_endf.cpp``. For an impression how the generated C++ source code looks
 like, have a look at this `example C++ source file
 <https://github.com/iaea-nds/endf-parserpy/endf_parserpy/cpp_parsers/endf6.cpp>`_.
-Given that the `pybind11
+Provided that the `pybind11
 <https://pybind11.readthedocs.io/en/stable/index.html>`_  header files
 are available on your system, you can use your favorite C++ compiler
 (supporting the C++11 standard) to generate a dynamic library that

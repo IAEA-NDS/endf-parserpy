@@ -34,10 +34,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install "poetry>=1.2,<1.8"
-          poetry install --with dev
 
-      - name: Set endf-parserpy version based on tag
+      - name: Set endf-parserpy version based on git tag
         run: poetry version $(git describe --tags --abbrev=0)
+
+      - name: Install package and dependencies
+        run: poetry install --with dev
 
       - name: Run tests
         run: poetry run pytest

@@ -21,7 +21,7 @@ jobs:
 
     runs-on: ${{matrix.os}}
     env:
-      INSTALL_ENDF_PARSERPY_CPP: no
+      INSTALL_ENDF_PARSERPY_CPP: yes
 
     steps:
       - uses: actions/checkout@v3
@@ -40,4 +40,4 @@ jobs:
         run: poetry version $(git describe --tags --abbrev=0)
 
       - name: Run tests
-        run: poetry run pytest --ignore=tests/test_endf_cpp_parser.py
+        run: poetry run pytest

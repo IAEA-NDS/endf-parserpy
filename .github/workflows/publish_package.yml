@@ -25,7 +25,6 @@ jobs:
         with:
           python-version: "3.x"
 
-      # Install Homebrew and dependencies, and setup Python 3.8 for macOS arm64
       - name: Setup Python 3.8 universal2 on macOS arm64
         if: matrix.os == 'macos-14' && runner.arch == 'ARM64'
         uses: actions/setup-python@v5

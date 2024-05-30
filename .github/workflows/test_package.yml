@@ -21,7 +21,7 @@ jobs:
 
     runs-on: ${{matrix.os}}
     env:
-      INSTALL_ENDF_PARSERPY_CPP: yes
+      INSTALL_ENDF_PARSERPY_CPP: no
 
     steps:
       - uses: actions/checkout@v3

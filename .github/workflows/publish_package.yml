@@ -28,19 +28,9 @@ jobs:
       # Install Homebrew and dependencies, and setup Python 3.8 for macOS arm64
       - name: Setup Python 3.8 universal2 on macOS arm64
         if: matrix.os == 'macos-14' && runner.arch == 'ARM64'
-        run: |
-          if [[ $(uname -m) == 'arm64' ]]; then
-            # Install Homebrew in /usr/local for x86_64
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            echo 'eval "$(/usr/local/bin/brew shellenv)"' >> /Users/runner/.bash_profile
-            eval "$(/usr/local/bin/brew shellenv)"
-            # Install gettext and link it
-            brew install gettext
-            brew link --force gettext
-            # Install Python 3.8 in x86_64 mode
-            arch -x86_64 brew install python@3.8
-            arch -x86_64 /usr/local/opt/python@3.8/bin/python3.8 -m pip install --upgrade pip
-          fi
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
 
       - name: Install build deps
         run: |

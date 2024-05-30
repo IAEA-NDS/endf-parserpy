@@ -27,7 +27,7 @@ jobs:
 
       # Install Homebrew and dependencies, and setup Python 3.8 for macOS arm64
       - name: Setup Python 3.8 universal2 on macOS arm64
-        if: matrix.os == 'macos-latest' && runner.arch == 'ARM64'
+        if: matrix.os == 'macos-14' && runner.arch == 'ARM64'
         run: |
           if [[ $(uname -m) == 'arm64' ]]; then
             # Install Homebrew in /usr/local for x86_64

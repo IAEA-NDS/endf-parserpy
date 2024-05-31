@@ -96,7 +96,7 @@ This code will create a directory ``endf_parser_project`` with a
 simple example ``CMakeLists.txt`` file and a C++ source file named
 ``cpp_endf.cpp``. For an impression how the generated C++ source code looks
 like, have a look at this `example C++ source file
-<https://github.com/iaea-nds/endf-parserpy/endf_parserpy/cpp_parsers/endf6.cpp>`_.
+<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/cpp_parsers/endf6.cpp>`_.
 Provided that the `pybind11
 <https://pybind11.readthedocs.io/en/stable/index.html>`_  header files
 are available on your system, you can use your favorite C++ compiler

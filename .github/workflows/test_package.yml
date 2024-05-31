@@ -20,8 +20,6 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     runs-on: ${{matrix.os}}
-    env:
-      INSTALL_ENDF_PARSERPY_CPP: yes
 
     steps:
       - uses: actions/checkout@v3

@@ -22,11 +22,11 @@ For this reason, parsing and writing functionality is also
 provided by C++ functions shipped with the ``endf-parserpy``
 package. During the installation via ``pip install`` or equivalent
 means, an attempt is made to compile the C++ source code to
-Python modules. If all required build tools are available on
-your system and hence the compilation is successful, you can benefit
+Python modules if pre-compiled binary wheels for your platform are not
+available. Provided that a binary exists for your platform or the
+compilation from source is successful, you can benefit
 from accelerated parsing and writing of ENDF-6 files by using
 the :class:`~endf_parserpy.EndfParserCpp` class.
-
 
 The interface of the :class:`~endf_parserpy.EndfParserCpp` class
 closely mirrors the one of the :class:`~endf_parserpy.EndfParser` class,
@@ -101,7 +101,7 @@ Provided that the `pybind11
 <https://pybind11.readthedocs.io/en/stable/index.html>`_  header files
 are available on your system, you can use your favorite C++ compiler
 (supporting the C++11 standard) to generate a dynamic library that
-can be imported in Python. If everything is properly configured, the following
+can be imported in Python. If everything is correctly configured, the following
 instructions on the command line can be used to compile the source code:
 
 .. code:: console
@@ -114,7 +114,7 @@ instructions on the command line can be used to compile the source code:
 The result of the successful compilation is a file named similar to
 ``cpp_endf.cpython-39-x86_64-linux-gnu.so`` in the ``build`` directory.
 Being still in this directory, you can start an interactive Python session
-and test whether the module can be properly imported:
+and test whether the module can be imported:
 
 .. code:: Python
 
@@ -142,3 +142,4 @@ in the documentation of the :class:`~endf_parserpy.EndfParserCpp` class.
 Furthermore, all functions are endowed with an ``include`` and ``exclude``
 argument that behaves exactly the same way as for the member methods of the
 :class:`~endf_parserpy.EndfParserCpp` class.
+In fact, this class is only a thin wrapper around the C++ module functions.

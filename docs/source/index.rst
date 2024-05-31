@@ -24,7 +24,8 @@
 
 .. toctree::
    :maxdepth: 1
-   :caption: Reference :hidden:
+   :caption: Reference
+   :hidden:
 
    reference/modules
    reference/classes
@@ -71,11 +72,25 @@ Install endf-parserpy
 
 .. note::
 
-   By default, an attempt will be made to compile C++ source files
-   with functions for accelerating parsing and writing (50-300x faster)
-   during the installation. Compilation can take quite long, e.g. ten minutes.
-   To disable the installation of faster functions, declare the environment
-   variable ``INSTALL_ENDF_PARSERPY_CPP=no`` before the ``pip install`` command.
+   The package contains C++ source files for accelerated parsing.
+   If a suitable binary wheel isn't available for your platform,
+   an attempt will be made to compile the source files during
+   installation, which may take up to ten minutes. If you don't
+   need this acceleration, you can disable the compilation attempt by
+   setting the environment variable ``INSTALL_ENDF_PARSERPY_CPP``
+   to ``no`` before executing the ``pip install`` command.
+   Under Linux and MacOS, the command would be
+
+   .. code:: bash
+
+      export INSTALL_ENDF_PARSERPY_CPP=no
+
+
+   and under Windows
+
+   .. code:: bash
+
+      set INSTALL_ENDF_PARSERPY_CPP=no
 
 .. note::
 

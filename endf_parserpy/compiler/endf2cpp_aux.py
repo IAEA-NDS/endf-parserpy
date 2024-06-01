@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/27
+# Last modified:   2024/06/01
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -148,14 +148,12 @@ def validate_field(
 
 
 def get_tab1_body(xvar, yvar, nr, np, mat, mf, mt, parse_opts):
-    code = f"read_tab1_body_debug(cont, cpp_line, {nr}, {np}, {mat}, {mf}, {mt}, {parse_opts})"
+    code = f"read_tab1_body(cont, {nr}, {np}, {mat}, {mf}, {mt}, {parse_opts})"
     return code
 
 
 def get_tab2_body(nr, mat, mf, mt, parse_opts):
-    code = (
-        f"read_tab2_body_debug(cont, cpp_line, {nr}, {mat}, {mf}, {mt}, {parse_opts})"
-    )
+    code = f"read_tab2_body(cont, {nr}, {mat}, {mf}, {mt}, {parse_opts})"
     return code
 
 

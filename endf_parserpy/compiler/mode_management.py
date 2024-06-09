@@ -19,183 +19,134 @@ def _find_parent_dict(varname, vardict):
     return curdict
 
 
-def register_numeric_field_getter(func, vardict):
-    if not callable(func):
-        raise TypeError(
-            "func must be a callable with parameters `node`, `idx`, `dtype`, `lookahead`"
-        )
+def _register_getter(name, vardict, funcname, params):
+    if params is not None and not callable(name):
+        raise TypeError("func must be a callable with parameters " + ", ".join(params))
     basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["numeric_field_getter"] = func
+    basic_ops[funcname] = name
+
+
+def _get_getter(name, vardict):
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    basic_ops = pardict["__basic_ops"]
+    return basic_ops[name]
+
+
+def register_numeric_field_getter(func, vardict):
+    _register_getter(
+        func, vardict, "numeric_field_getter", ("node", "idx", "dtype", "lookahead")
+    )
 
 
 def get_numeric_field_getter(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["numeric_field_getter"]
+    return _get_getter("numeric_field_getter", vardict)
 
 
 def register_text_field_getter(func, vardict):
-    if not callable(func):
-        raise TypeError(
-            "func must be a callable with parameters `node`, `start`, `length`, `lookahead`"
-        )
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["text_field_getter"] = func
+    _register_getter(
+        func, vardict, "text_field_getter", ("node", "start", "length", "lookahead")
+    )
 
 
 def get_text_field_getter(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["text_field_getter"]
+    return _get_getter("text_field_getter", vardict)
 
 
 def register_custom_int_field_getter(func, vardict):
-    if not callable(func):
-        raise TypeError(
-            "func must be a callable with parameters `node`, `start`, `length`, `lookahead`"
-        )
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["custom_int_field_getter"] = func
+    _register_getter(
+        func,
+        vardict,
+        "custom_int_field_getter",
+        ("node", "start", "length", "lookahead"),
+    )
 
 
 def get_custom_int_field_getter(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["custom_int_field_getter"]
+    return _get_getter("custom_int_field_getter", vardict)
 
 
 def register_counter_field_getter(func, vardict):
-    if not callable(func):
-        raise TypeError(
-            "func must be a callable with parameters `node`, `idx`, `lookahead`"
-        )
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["counter_field_getter"] = func
+    _register_getter(
+        func, vardict, "counter_field_getter", ("node", "idx", "lookahead")
+    )
 
 
 def get_counter_field_getter(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["counter_field_getter"]
+    return _get_getter("counter_field_getter", vardict)
 
 
 def register_tab1_body_getter(func, vardict):
-    if not callable(func):
-        raise TypeError(
-            "func must be a callable with parameters `xvar`, `xvar`, `nr`, `np`,  `lookahead`"
-        )
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["tab1_body_getter"] = func
+    _register_getter(
+        func, vardict, "tab1_body_getter", ("xvar", "yvar", "nr", "np", "lookahead")
+    )
 
 
 def get_tab1_body_getter(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["tab1_body_getter"]
+    return _get_getter("tab1_body_getter", vardict)
 
 
 def register_tab2_body_getter(func, vardict):
-    if not callable(func):
-        raise TypeError("func must be a callable with parameters `nr`, `lookahead`")
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["tab2_body_getter"] = func
+    _register_getter(func, vardict, "tab2_body_getter", ("nr", "lookahead"))
 
 
 def get_tab2_body_getter(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["tab2_body_getter"]
+    return _get_getter("tab2_body_getter", vardict)
 
 
 def register_prepare_line_func(func, vardict):
-    if not callable(func):
-        raise TypeError("func must be a callable with parameters `lookahead`")
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["prepare_line_func"] = func
+    _register_getter(func, vardict, "prepare_line_func", ("lookahead",))
 
 
 def get_prepare_line_func(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["prepare_line_func"]
+    return _get_getter("prepare_line_func", vardict)
 
 
 def register_send_line_func(func, vardict):
-    if not callable(func):
-        raise TypeError("func must be a callable with parameters `lookahead`")
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["send_func"] = func
+    _register_getter(func, vardict, "send_func", ("lookahead",))
 
 
 def get_send_line_func(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["send_func"]
+    return _get_getter("send_func", vardict)
 
 
 def register_finalize_line_func(func, vardict):
-    if not callable(func):
-        raise TypeError("func must be a callable with parameters `lookahead`")
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["finalize_line_func"] = func
+    _register_getter(func, vardict, "finalize_line_func", ("lookahead",))
 
 
 def get_finalize_line_func(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["finalize_line_func"]
+    return _get_getter("finalize_line_func", vardict)
 
 
 def register_prepare_line_tape_func(func, vardict):
-    if not callable(func):
-        raise TypeError("func must be a callable")
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["prepare_line_tape"] = func
+    _register_getter(func, vardict, "prepare_line_tape", tuple())
 
 
 def get_prepare_line_tape_func(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["prepare_line_tape"]
+    return _get_getter("prepare_line_tape", vardict)
 
 
 def register_finalize_line_tape_func(func, vardict):
-    if not callable(func):
-        raise TypeError("func must be a callable")
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["finalize_line_tape"] = func
+    _register_getter(func, vardict, "finalize_line_tape", tuple())
 
 
 def get_finalize_line_tape_func(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["finalize_line_tape"]
+    return _get_getter("finalize_line_tape", vardict)
 
 
 def register_prepare_section_func(func, vardict):
-    if not callable(func):
-        raise TypeError("func must be a callable with parameters `vartok`, `vardict`")
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["prepare_section_func"] = func
+    _register_getter(func, vardict, "prepare_section_func", ("vartok", "vardict"))
 
 
 def get_prepare_section_func(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["prepare_section_func"]
+    return _get_getter("prepare_section_func", vardict)
 
 
 def register_finalize_section_func(func, vardict):
-    if not callable(func):
-        raise TypeError("func must gbe a callable with parameters `vartok`, `vardict`")
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["finalize_section_func"] = func
+    _register_getter(func, vardict, "finalize_section_func", ("vartok", "vardict"))
 
 
 def get_finalize_section_func(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["finalize_section_func"]
+    return _get_getter("finalize_section_func", vardict)
 
 
 def register_lookahead_tellg_statement(statement, vardict):
@@ -221,15 +172,13 @@ def get_lookahead_seekg_statement(vardict):
 
 
 def register_generate_expr_validation_func(func, vardict):
-    if not callable(func):
-        raise TypeError(
-            "func must gbe a callable with parameters `actual_value`, `node`, `vardict`"
-        )
-    basic_ops = vardict.setdefault("__basic_ops", {})
-    basic_ops["generate_expr_validation_func"] = func
+    _register_getter(
+        func,
+        vardict,
+        "generate_expr_validation_func",
+        ("actual_value", "node", "vardict"),
+    )
 
 
 def get_generate_expr_validation_func(vardict):
-    pardict = _find_parent_dict("__basic_ops", vardict)
-    basic_ops = pardict["__basic_ops"]
-    return basic_ops["generate_expr_validation_func"]
+    return _get_getter("generate_expr_validation_func", vardict)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/25
+# Last modified:   2024/06/25
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -25,7 +25,6 @@ from endf_parserpy.utils.math_utils import (
     math_mod,
     math_neg,
 )
-from .logging_utils import write_info
 from .custom_exceptions import (
     VariableInDenominatorError,
     LoopVariableError,

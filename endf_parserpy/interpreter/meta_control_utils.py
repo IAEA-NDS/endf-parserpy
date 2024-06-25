@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/27
+# Last modified:   2024/06/25
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -58,7 +58,9 @@ def finalize_abbreviations(datadic):
     del datadic["__abbrevs"]
 
 
-def open_section(extvarname, datadic, loop_vars, create_missing, path=None):
+def open_section(
+    extvarname, datadic, loop_vars, create_missing, path=None, logger=None
+):
     varname = get_varname(extvarname)
     if path is not None:
         path += (varname,)
@@ -99,16 +101,16 @@ def open_section(extvarname, datadic, loop_vars, create_missing, path=None):
     # provide a pointer so that functions
     # can look for variable names in the outer scope
     datadic["__up"] = curdatadic
-    write_info(f"Open section {varname}[" + ",".join(idcsstr_list) + "]")
+    write_info(logger, f"Open section {varname}[" + ",".join(idcsstr_list) + "]")
     if path is None:
         return datadic
     else:
         return datadic, path
 
 
-def close_section(extvarname, datadic):
+def close_section(extvarname, datadic, logger=None):
     varname = get_varname(extvarname)
-    write_info(f"Close section {varname}")
+    write_info(logger, f"Close section {varname}")
     curdatadic = datadic
     datadic = datadic["__up"]
     del curdatadic["__up"]
@@ -123,6 +125,7 @@ def cycle_for_loop(
     loop_name="for_loop",
     head_name="for_head",
     body_name="for_body",
+    logger=None,
 ):
     assert tree.data == loop_name
     for_head = get_child(tree, head_name)
@@ -145,9 +148,10 @@ def cycle_for_loop(
             f"The loop variable {varname} is already in use for another loop"
         )
     write_info(
+        logger,
         f"Enter for loop (type {loop_name}) "
         + reconstruct_tree_str(for_head)
-        + f" (for_start: {start} and for_stop {stop})"
+        + f" (for_start: {start} and for_stop {stop})",
     )
     for i in range(start, stop + 1):
         loop_vars[varname] = i
@@ -158,16 +162,21 @@ def cycle_for_loop(
     if start <= stop:
         del loop_vars[varname]
     write_info(
+        logger,
         f"Leave for loop (type {loop_name}) "
         + reconstruct_tree_str(for_head)
-        + f" (for_start: {start} and for_stop: {stop})"
+        + f" (for_start: {start} and for_stop: {stop})",
     )
 
 
-def eval_if_condition(if_condition, datadic, loop_vars, missing_as_false=False):
+def eval_if_condition(
+    if_condition, datadic, loop_vars, missing_as_false=False, logger=None
+):
     if len(if_condition.children) != 3:
         raise IndexError("if_condition must have three children")
-    write_info("Dealing with the if_condition " + reconstruct_tree_str(if_condition))
+    write_info(
+        logger, "Dealing with the if_condition " + reconstruct_tree_str(if_condition)
+    )
     left_expr = if_condition.children[0]
     cmpop = get_child_value(if_condition, "IF_RELATION")
     right_expr = if_condition.children[2]
@@ -179,7 +188,9 @@ def eval_if_condition(if_condition, datadic, loop_vars, missing_as_false=False):
             return False
         else:
             raise exc
-    write_info(f"Left side evaluates to {left_val} and right side to {right_val}")
+    write_info(
+        logger, f"Left side evaluates to {left_val} and right side to {right_val}"
+    )
     if (
         (cmpop == ">" and left_val > right_val)
         or (cmpop == "<" and left_val < right_val)
@@ -193,10 +204,12 @@ def eval_if_condition(if_condition, datadic, loop_vars, missing_as_false=False):
         return False
 
 
-def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
+def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False, logger=None):
     name = get_name(node)
     if name == "if_condition":
-        return eval_if_condition(node, datadic, loop_vars, missing_as_false)
+        return eval_if_condition(
+            node, datadic, loop_vars, missing_as_false, logger=logger
+        )
     elif name == "comparison":
         # we strip away brackets because the information they
         # encode has already been considered in the tree generation process,
@@ -211,7 +224,9 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
             raise ValueError(
                 'Child node must be either "if_condition" or "disjunction"'
             )
-        return determine_truthvalue(ch, datadic, loop_vars, missing_as_false)
+        return determine_truthvalue(
+            ch, datadic, loop_vars, missing_as_false, logger=logger
+        )
     elif name == "conjunction":
         # the following code is a bit messy because of the order of
         # conjunction and comparison in the "conjunction" rule and
@@ -220,11 +235,13 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
         comp = get_child(node, "comparison")
         if conj is not None:
             conj_truthval = determine_truthvalue(
-                conj, datadic, loop_vars, missing_as_false
+                conj, datadic, loop_vars, missing_as_false, logger=logger
             )
             if conj_truthval is False:
                 return False
-        comp_truthval = determine_truthvalue(comp, datadic, loop_vars, missing_as_false)
+        comp_truthval = determine_truthvalue(
+            comp, datadic, loop_vars, missing_as_false, logger=logger
+        )
         if conj is None:
             return comp_truthval
         else:
@@ -234,11 +251,13 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False):
         conj = get_child(node, "conjunction")
         if disj is not None:
             disj_truthval = determine_truthvalue(
-                disj, datadic, loop_vars, missing_as_false
+                disj, datadic, loop_vars, missing_as_false, logger=logger
             )
             if disj_truthval is True:
                 return True
-        conj_truthval = determine_truthvalue(conj, datadic, loop_vars, missing_as_false)
+        conj_truthval = determine_truthvalue(
+            conj, datadic, loop_vars, missing_as_false, logger=logger
+        )
         if disj is None:
             return conj_truthval
         else:
@@ -258,6 +277,7 @@ def evaluate_if_clause(
     set_parser_state=None,
     get_parser_state=None,
     eval_body=True,
+    logger=None,
 ):
     if_body = None
     first_if_statement = get_child(tree, "if_statement")
@@ -268,6 +288,7 @@ def evaluate_if_clause(
         tree_handler,
         set_parser_state,
         get_parser_state,
+        logger=logger,
     )
     if truthval is True:
         if_body = get_child(first_if_statement, "if_body")
@@ -281,6 +302,7 @@ def evaluate_if_clause(
                 tree_handler,
                 set_parser_state,
                 get_parser_state,
+                logger=logger,
             )
             if truthval is True:
                 if_body = get_child(elif_tree, "if_body")
@@ -302,6 +324,7 @@ def evaluate_if_statement(
     tree_handler=None,
     set_parser_state=None,
     get_parser_state=None,
+    logger=None,
 ):
     assert tree.data in ("if_statement", "elif_statement", "else_statement")
     if_head = get_child(tree, "if_head")
@@ -313,13 +336,21 @@ def evaluate_if_statement(
     )
     if should_perform_lookahead:
         datadic, loop_vars, orig_parser_state = perform_lookahead(
-            tree, tree_handler, datadic, loop_vars, set_parser_state, get_parser_state
+            tree,
+            tree_handler,
+            datadic,
+            loop_vars,
+            set_parser_state,
+            get_parser_state,
+            logger=logger,
         )
     # evaluate the condition (with variables in datadic potentially
     # affected by the lookahead)
-    write_info("Evaluate if head " + reconstruct_tree_str(if_head))
+    write_info(logger, "Evaluate if head " + reconstruct_tree_str(if_head))
     disj = get_child(if_head, "disjunction")
-    truthval = determine_truthvalue(disj, datadic, loop_vars, missing_as_false=True)
+    truthval = determine_truthvalue(
+        disj, datadic, loop_vars, missing_as_false=True, logger=logger
+    )
     if should_perform_lookahead:
         datadic, loop_vars = undo_lookahead_changes(
             datadic, loop_vars, orig_parser_state, set_parser_state
@@ -337,12 +368,18 @@ def should_proceed(datadic, loop_vars, action_type):
 
 
 def perform_lookahead(
-    tree, tree_handler, datadic, loop_vars, set_parser_state, get_parser_state
+    tree,
+    tree_handler,
+    datadic,
+    loop_vars,
+    set_parser_state,
+    get_parser_state,
+    logger=None,
 ):
     if_head = get_child(tree, "if_head")
     if_body = get_child(tree, "if_body")
     orig_parser_state = get_parser_state()
-    write_info("Start lookahead for if head " + reconstruct_tree_str(if_head))
+    write_info(logger, "Start lookahead for if head " + reconstruct_tree_str(if_head))
     lookahead_option = get_child(tree, "lookahead_option", nofail=True)
     lookahead_expr = get_child(lookahead_option, "expr")
     lookahead = eval_expr_without_unknown_var(lookahead_expr, datadic, loop_vars)

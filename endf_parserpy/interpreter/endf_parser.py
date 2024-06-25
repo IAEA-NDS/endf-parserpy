@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/05/29
+# Last modified:   2024/06/25
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -12,7 +12,7 @@
 from collections.abc import Mapping
 import logging
 import re
-from .logging_utils import write_info, RingBuffer
+from .logging_utils import setup_logger, write_info, RingBuffer
 from appdirs import user_cache_dir
 from os.path import exists as file_exists
 from endf_parserpy.utils.tree_utils import (
@@ -123,6 +123,7 @@ class EndfParser:
         endf_format="endf6-ext",
         recipes=None,
         parsing_funs=None,
+        loglevel=logging.WARNING,
     ):
         """Initializaton of options for parsing and writing ENDF-6 data.
 
@@ -232,6 +233,12 @@ class EndfParser:
             nested dictionary with custom recipes. Inspect the default
             recipe dictionary to see the required structure
             (`from endf_parserpy.endf_recipes import endf_recipe_dictionary`)
+        loglevel : int
+            Controls the level of detail for logging output. Default is
+            `logging.WARN`. Many ENDF-6 files in nuclear data libraries
+            contain auxiliary information in unused fields (expected to be zero),
+            which will trigger warnings. Use `logging.ERROR` to suppress
+            these warnings (you will need to `import logging`).
         """
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
@@ -298,6 +305,12 @@ class EndfParser:
         self.explain_missing_variable = explain_missing_variable
         self.variable_descriptions = EndfDict()
         self.current_path = None
+        # set up the logging functionality
+        if not hasattr(EndfParser, "instance_counter"):
+            EndfParser.instance_counter = 0
+        EndfParser.instance_counter += 1
+        self.name = f"EndfParserInstance{EndfParser.instance_counter}"
+        self.logger = setup_logger(self.name, loglevel)
 
     def explain(self, varpath, stdout=True):
         """Explain the meaning of a variable.
@@ -414,7 +427,7 @@ class EndfParser:
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
-            write_info("Reading a TEXT record", self.ofs)
+            write_info(self.logger, "Reading a TEXT record", self.ofs)
             text_dic, self.ofs = read_text(
                 self.lines, self.ofs, with_ctrl=True, **self.read_opts
             )
@@ -426,6 +439,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
             # this line adds MAT, MF, MT to the dictionary.
             # this line is introduced here to deal with the tape head (mf=0, mt=0)
@@ -441,6 +455,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
             text_dic.update(get_ctrl(self.datadic))
             newlines = write_text(text_dic, with_ctrl=True, **self.write_opts)
@@ -459,7 +474,7 @@ class EndfParser:
         if self.rwmode == "read":
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
-            write_info("Reading a HEAD record", self.ofs)
+            write_info(self.logger, "Reading a HEAD record", self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_head(
                 self.lines,
@@ -468,7 +483,9 @@ class EndfParser:
                 **self.read_opts,
             )
             cont_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
-            write_info("Content of the HEAD record: " + str(cont_dic), self.ofs)
+            write_info(
+                self.logger, "Content of the HEAD record: " + str(cont_dic), self.ofs
+            )
             map_head_dic(
                 tree,
                 cont_dic,
@@ -476,6 +493,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
             self.datadic.update(get_ctrl(cont_dic))
         else:
@@ -487,6 +505,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
             head_dic.update(get_ctrl(self.datadic))
             newlines = write_head(head_dic, with_ctrl=True, **self.write_opts)
@@ -496,7 +515,7 @@ class EndfParser:
         if self.rwmode == "read":
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
-            write_info("Reading a CONT record", self.ofs)
+            write_info(self.logger, "Reading a CONT record", self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_cont(
                 self.lines,
@@ -504,7 +523,7 @@ class EndfParser:
                 **self.read_opts,
             )
             cont_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
-            write_info("Content of the CONT record: " + str(cont_dic))
+            write_info(self.logger, "Content of the CONT record: " + str(cont_dic))
             map_cont_dic(
                 tree,
                 cont_dic,
@@ -512,6 +531,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
         else:
             self.logbuffer.save_reduced_record_log(tree)
@@ -522,6 +542,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
             cont_dic.update(get_ctrl(self.datadic))
             newlines = write_cont(cont_dic, with_ctrl=True, **self.write_opts)
@@ -545,6 +566,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
         else:
             self.logbuffer.save_reduced_record_log(tree)
@@ -555,6 +577,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
             dir_dic.update(get_ctrl(self.datadic))
             newlines = write_dir(dir_dic, with_ctrl=True, **self.write_opts)
@@ -582,6 +605,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
         else:
             self.logbuffer.save_reduced_record_log(tree)
@@ -592,6 +616,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
             intg_dic.update(get_ctrl(self.datadic))
             ndigit = eval_expr_without_unknown_var(
@@ -606,7 +631,7 @@ class EndfParser:
         if self.rwmode == "read":
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
-            write_info("Reading a TAB1 record", self.ofs)
+            write_info(self.logger, "Reading a TAB1 record", self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab1_dic, self.ofs = read_tab1(
                 self.lines,
@@ -621,6 +646,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
         else:
             self.logbuffer.save_reduced_record_log(tree)
@@ -632,6 +658,7 @@ class EndfParser:
                 self.rwmode,
                 parse_opts=self.parse_opts,
                 path=self.current_path,
+                logger=self.logger,
             )
             tab1_dic.update(get_ctrl(self.datadic))
             newlines = write_tab1(tab1_dic, with_ctrl=True, **self.write_opts)
@@ -641,7 +668,7 @@ class EndfParser:
         if self.rwmode == "read":
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
-            write_info("Reading a TAB2 record", self.ofs)
+            write_info(self.logger, "Reading a TAB2 record", self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab2_dic, self.ofs = read_tab2(
                 self.lines,
@@ -656,6 +683,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
         else:
             self.logbuffer.save_reduced_record_log(tree)
@@ -666,6 +694,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
             tab2_dic.update(get_ctrl(self.datadic))
             newlines = write_tab2(tab2_dic, with_ctrl=True, **self.write_opts)
@@ -675,7 +704,7 @@ class EndfParser:
         if self.rwmode == "read":
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
-            write_info("Reading a LIST record", self.ofs)
+            write_info(self.logger, "Reading a LIST record", self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             list_dic, self.ofs = read_list(
                 self.lines,
@@ -690,6 +719,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
         else:
             self.logbuffer.save_reduced_record_log(tree)
@@ -700,6 +730,7 @@ class EndfParser:
                 self.loop_vars,
                 self.rwmode,
                 parse_opts=self.parse_opts,
+                logger=self.logger,
             )
             list_dic.update(get_ctrl(self.datadic))
             newlines = write_list(list_dic, with_ctrl=True, **self.write_opts)
@@ -746,19 +777,22 @@ class EndfParser:
             self.loop_vars,
             create_missing,
             path=self.current_path,
+            logger=self.logger,
         )
         section_body = get_child(tree, "section_body")
         initialize_abbreviations(self.datadic)
         self.run_instruction(section_body)
         finalize_abbreviations(self.datadic)
-        self.datadic = close_section(section_head, self.datadic)
+        self.datadic = close_section(section_head, self.datadic, logger=self.logger)
         self.current_path = previous_path
 
     def process_for_loop(self, tree):
         if self.rwmode == "write":
             for_head = get_child(tree, "for_head")
             self.logbuffer.save_reduced_record_log(for_head)
-        return cycle_for_loop(tree, self.run_instruction, self.datadic, self.loop_vars)
+        return cycle_for_loop(
+            tree, self.run_instruction, self.datadic, self.loop_vars, logger=self.logger
+        )
 
     def process_if_clause(self, tree):
         evaluate_if_clause(
@@ -768,6 +802,7 @@ class EndfParser:
             self.run_instruction,
             set_parser_state=self.set_parser_state,
             get_parser_state=self.get_parser_state,
+            logger=self.logger,
         )
 
     def process_abbreviation(self, tree):
@@ -872,10 +907,10 @@ class EndfParser:
         self.variable_descriptions = EndfDict()
         mfmt_dic = split_sections(lines, **self.read_opts)
         for mf in mfmt_dic:
-            write_info(f"Parsing section MF{mf}")
+            write_info(self.logger, f"Parsing section MF{mf}")
             for mt in mfmt_dic[mf]:
                 curmat = read_ctrl(mfmt_dic[mf][mt][0], **self.read_opts)
-                write_info(f"Parsing subsection MF/MT {mf}/{mt}")
+                write_info(self.logger, f"Parsing subsection MF/MT {mf}/{mt}")
                 curlines = mfmt_dic[mf][mt]
                 cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
                 cur_parsefun = get_responsible_recipe_parsefun(

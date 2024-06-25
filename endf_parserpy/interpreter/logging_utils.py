@@ -3,19 +3,37 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/25
+# Last modified:   2024/06/25
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+
 import logging
 from endf_parserpy.utils.tree_utils import reconstruct_tree_str
 
 
-def write_info(message, ofs=None):
+def setup_logger(logger_name, log_level):
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(log_level)
+    # create handlers
+    ch = logging.StreamHandler()
+    ch.setLevel(log_level)
+    # create formatters
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    ch.setFormatter(formatter)
+    # add handler to logger
+    if not logger.hasHandlers():
+        logger.addHandler(ch)
+    return logger
+
+
+def write_info(logger, message, ofs=None):
     prefix = f"Line #{ofs}: " if ofs is not None else ""
-    logging.info(prefix + message)
+    logger.info(prefix + message)
 
 
 def abbreviate_valstr(val):

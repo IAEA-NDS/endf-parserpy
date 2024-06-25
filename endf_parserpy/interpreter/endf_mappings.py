@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/27
+# Last modified:   2024/06/25
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -59,6 +59,7 @@ def map_text_dic(
     loop_vars=None,
     rwmode="read",
     parse_opts=None,
+    logger=None,
 ):
     text_dic = {} if text_dic is None else text_dic
     datadic = {} if datadic is None else datadic
@@ -82,6 +83,7 @@ def map_head_dic(
     loop_vars=None,
     rwmode="read",
     parse_opts=None,
+    logger=None,
 ):
     head_dic = {} if head_dic is None else head_dic
     datadic = {} if datadic is None else datadic
@@ -90,7 +92,7 @@ def map_head_dic(
     expr_list = get_child(head_line_node, "record_fields").children
     cn = ("C1", "C2", "L1", "L2", "N1", "N2")
     return map_record_helper(
-        expr_list, cn, head_dic, datadic, loop_vars, rwmode, parse_opts
+        expr_list, cn, head_dic, datadic, loop_vars, rwmode, parse_opts, logger
     )
 
 
@@ -101,6 +103,7 @@ def map_cont_dic(
     loop_vars=None,
     rwmode="read",
     parse_opts=None,
+    logger=None,
 ):
     cont_dic = {} if cont_dic is None else cont_dic
     datadic = {} if datadic is None else datadic
@@ -109,7 +112,7 @@ def map_cont_dic(
     expr_list = get_child(cont_line_node, "record_fields").children
     cn = ("C1", "C2", "L1", "L2", "N1", "N2")
     return map_record_helper(
-        expr_list, cn, cont_dic, datadic, loop_vars, rwmode, parse_opts
+        expr_list, cn, cont_dic, datadic, loop_vars, rwmode, parse_opts, logger
     )
 
 
@@ -120,6 +123,7 @@ def map_dir_dic(
     loop_vars=None,
     rwmode="read",
     parse_opts=None,
+    logger=None,
 ):
     dir_dic = {} if dir_dic is None else dir_dic
     datadic = {} if datadic is None else datadic
@@ -128,7 +132,7 @@ def map_dir_dic(
     expr_list = get_child(dir_line_node, "dir_fields").children
     cn = ("L1", "L2", "N1", "N2")
     return map_record_helper(
-        expr_list, cn, dir_dic, datadic, loop_vars, rwmode, parse_opts
+        expr_list, cn, dir_dic, datadic, loop_vars, rwmode, parse_opts, logger
     )
 
 
@@ -139,6 +143,7 @@ def map_intg_dic(
     loop_vars=None,
     rwmode="read",
     parse_opts=None,
+    logger=None,
 ):
     intg_dic = {} if intg_dic is None else intg_dic
     datadic = {} if datadic is None else datadic
@@ -147,7 +152,7 @@ def map_intg_dic(
     expr_list = get_child(intg_line_node, "intg_fields").children
     cn = ("II", "JJ", "KIJ")
     return map_record_helper(
-        expr_list, cn, intg_dic, datadic, loop_vars, rwmode, parse_opts
+        expr_list, cn, intg_dic, datadic, loop_vars, rwmode, parse_opts, logger
     )
 
 
@@ -159,6 +164,7 @@ def map_tab2_dic(
     rwmode="read",
     parse_opts=None,
     path="",
+    logger=None,
 ):
     tab2_dic = {} if tab2_dic is None else tab2_dic
     datadic = {} if datadic is None else datadic
@@ -172,7 +178,7 @@ def map_tab2_dic(
     expr_list = tab2_cont_fields.children[:-3] + tab2_cont_fields.children[-1:]
     cn = ("C1", "C2", "L1", "L2", "N2")
     main_ret = map_record_helper(
-        expr_list, cn, tab2_dic, datadic, loop_vars, rwmode, parse_opts
+        expr_list, cn, tab2_dic, datadic, loop_vars, rwmode, parse_opts, logger
     )
     # treat parsing of table body as additional action step,
     # so don't parse list body if lookahead counter exhausted
@@ -188,7 +194,7 @@ def map_tab2_dic(
         create_missing = rwmode == "read"
         path = EndfPath(path)
         datadic, path = open_section(
-            tab2_name_node, datadic, loop_vars, create_missing, path=path
+            tab2_name_node, datadic, loop_vars, create_missing, path=path, logger=logger
         )
     # deal with the mapping of the variable names in the table first
     cn = ("NBT", "INT")
@@ -197,14 +203,14 @@ def map_tab2_dic(
     tbl_dic = {} if rwmode != "read" else tab2_dic["table"]
     try:
         tbl_ret = map_record_helper(
-            expr_list, cn, tbl_dic, datadic, loop_vars, rwmode, parse_opts
+            expr_list, cn, tbl_dic, datadic, loop_vars, rwmode, parse_opts, logger
         )
     except VariableNotFoundError as exc:
         exc.varname = str(path + exc.varname)
         raise exc
     # close section if desired
     if tab2_name_node is not None:
-        datadic = close_section(tab2_name_node, datadic)
+        datadic = close_section(tab2_name_node, datadic, logger=logger)
     if rwmode != "read":
         main_ret["table"] = tbl_ret
     return main_ret
@@ -218,6 +224,7 @@ def map_tab1_dic(
     rwmode="read",
     parse_opts=None,
     path="",
+    logger=None,
 ):
     tab1_dic = {} if tab1_dic is None else tab1_dic
     datadic = {} if datadic is None else datadic
@@ -232,7 +239,7 @@ def map_tab1_dic(
     expr_list = tab1_cont_fields.children[:-3]
     cn = ("C1", "C2", "L1", "L2")
     main_ret = map_record_helper(
-        expr_list, cn, tab1_dic, datadic, loop_vars, rwmode, parse_opts
+        expr_list, cn, tab1_dic, datadic, loop_vars, rwmode, parse_opts, logger
     )
     # treat parsing of table body as additional action step,
     # so don't parse list body if lookahead counter exhausted
@@ -243,7 +250,12 @@ def map_tab1_dic(
         create_missing = rwmode == "read"
         path = EndfPath(path)
         datadic, path = open_section(
-            tab1_name_node, datadic, loop_vars, create_missing, path=path
+            tab1_name_node,
+            datadic,
+            loop_vars,
+            create_missing,
+            path=path,
+            logger=logger,
         )
     # deal with the mapping of the variable names in the table first
     cn = ("NBT", "INT", "X", "Y")
@@ -256,14 +268,14 @@ def map_tab1_dic(
     tbl_dic = {} if rwmode != "read" else tab1_dic["table"]
     try:
         tbl_ret = map_record_helper(
-            expr_list, cn, tbl_dic, datadic, loop_vars, rwmode, parse_opts
+            expr_list, cn, tbl_dic, datadic, loop_vars, rwmode, parse_opts, logger
         )
     except VariableNotFoundError as exc:
         exc.varname = str(path + exc.varname)
         raise exc
     # close section if desired
     if tab1_name_node is not None:
-        datadic = close_section(tab1_name_node, datadic)
+        datadic = close_section(tab1_name_node, datadic, logger=logger)
     if rwmode != "read":
         main_ret["table"] = tbl_ret
     return main_ret
@@ -278,6 +290,7 @@ def map_list_dic(
     run_instruction=None,
     parse_opts=None,
     path="",
+    logger=None,
 ):
     list_dic = {} if list_dic is None else list_dic
     datadic = {} if datadic is None else datadic
@@ -313,10 +326,11 @@ def map_list_dic(
                     loop_vars,
                     rwmode,
                     parse_opts,
+                    logger,
                 )
             else:
                 list_val = map_record_helper(
-                    [node], ("val",), {}, datadic, loop_vars, rwmode, parse_opts
+                    [node], ("val",), {}, datadic, loop_vars, rwmode, parse_opts, logger
                 )
                 list_dic["vals"].append(list_val["val"])
 
@@ -347,6 +361,7 @@ def map_list_dic(
                 loop_name="list_loop",
                 head_name="list_for_head",
                 body_name="list_body",
+                logger=logger,
             )
 
         elif is_tree(node) and node_type == "list_body":
@@ -364,7 +379,9 @@ def map_list_dic(
     check_ctrl_spec(list_line_node, list_dic, datadic, rwmode)
     expr_list = get_child(list_line_node, "record_fields").children
     cn = ("C1", "C2", "L1", "L2", "N1", "N2", "vals")
-    map_record_helper(expr_list, cn, list_dic, datadic, loop_vars, rwmode, parse_opts)
+    map_record_helper(
+        expr_list, cn, list_dic, datadic, loop_vars, rwmode, parse_opts, logger
+    )
 
     # treat parsing of list_body as additional action step,
     # so don't parse list body if lookahead counter exhausted
@@ -380,7 +397,7 @@ def map_list_dic(
         create_missing = rwmode == "read"
         path = EndfPath(path)
         datadic, path = open_section(
-            list_name_node, datadic, loop_vars, create_missing, path=path
+            list_name_node, datadic, loop_vars, create_missing, path=path, logger=logger
         )
     # parse the list body
     list_body_node = get_child(list_line_node, "list_body")
@@ -391,7 +408,7 @@ def map_list_dic(
         raise exc
     # close subsection if opened
     if list_name_node is not None:
-        datadic = close_section(list_name_node, datadic)
+        datadic = close_section(list_name_node, datadic, logger=logger)
 
     numels_in_list = len(list_dic["vals"])
     if val_idx < numels_in_list:

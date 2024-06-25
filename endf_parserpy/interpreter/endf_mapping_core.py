@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2024/04/25
+# Last modified:   2024/06/25
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -68,8 +68,8 @@ def create_size_mismatch_error_msg(realval, expval, sourcekey):
     return msgpart1 + msgpart2 + msgpart3 + msgpart4
 
 
-def log_offending_line(record_dic, logging_method):
-    logfun = getattr(logging, logging_method)
+def log_offending_line(record_dic, logging_method, logger=None):
+    logfun = getattr(logger, logging_method)
     if "__record_spec" in record_dic:
         record_spec = record_dic["__record_spec"]
         logfun("Record specification: " + record_spec)
@@ -79,7 +79,7 @@ def log_offending_line(record_dic, logging_method):
 
 
 def map_recorddic_to_datadic(
-    basekeys, record_dic, expr_list, datadic, loop_vars, parse_opts
+    basekeys, record_dic, expr_list, datadic, loop_vars, parse_opts, logger=None
 ):
     parse_opts = parse_opts if parse_opts is not None else {}
     fuzzy_matching = parse_opts.get("fuzzy_matching", False)
@@ -145,16 +145,16 @@ def map_recorddic_to_datadic(
             )
             if value_mismatch_occurred:
                 if ignore_zero_mismatch and expr_vv[0] == 0:
-                    logging.warning(msg)
-                    log_offending_line(record_dic, "warning")
+                    logger.warning(msg)
+                    log_offending_line(record_dic, "warning", logger)
                 elif ignore_number_mismatch and contains_desired_number:
-                    logging.warning(msg)
-                    log_offending_line(record_dic, "warning")
+                    logger.warning(msg)
+                    log_offending_line(record_dic, "warning", logger)
                 elif ignore_varspec_mismatch and contains_inconsistent_varspec:
-                    logging.warning(msg)
-                    log_offending_line(record_dic, "warning")
+                    logger.warning(msg)
+                    log_offending_line(record_dic, "warning", logger)
                 elif not ignore_all_mismatches:
-                    log_offending_line(record_dic, "error")
+                    log_offending_line(record_dic, "error", logger)
                     raise NumberMismatchError(msg)
         # The else branch covers the case when there is still a dangling variable
         # but the linear equation given in the slot can be solved to obtain its value.
@@ -176,7 +176,7 @@ def map_recorddic_to_datadic(
     tmp = tuple(v for v in varnames if v is not None)
     if not should_skip_logging_info(tmp, datadic):
         varvals = tuple(abbreviate_valstr(datadic[v]) for v in tmp)
-        logging.info(
+        logger.info(
             "Variable names in this record: "
             + ", ".join([f"{v}: {vv}" for v, vv in zip(tmp, varvals)])
         )
@@ -190,7 +190,7 @@ def map_recorddic_to_datadic(
 
 
 def map_datadic_to_recorddic(
-    basekeys, record_dic, expr_list, datadic, loop_vars, parse_opts
+    basekeys, record_dic, expr_list, datadic, loop_vars, parse_opts, logger=None
 ):
     zipit = zip(basekeys, expr_list)
     for sourcekey, curexpr in zipit:
@@ -202,7 +202,14 @@ def map_datadic_to_recorddic(
 
 
 def map_record_helper(
-    expr_list, basekeys, record_dic, datadic, loop_vars, rwmode, parse_opts=None
+    expr_list,
+    basekeys,
+    record_dic,
+    datadic,
+    loop_vars,
+    rwmode,
+    parse_opts=None,
+    logger=None,
 ):
     # remove COMMA tokens as they are not needed
     expr_list = [
@@ -214,7 +221,13 @@ def map_record_helper(
         while parse_tries > 0:
             try:
                 return map_recorddic_to_datadic(
-                    basekeys, record_dic, expr_list, datadic, loop_vars, parse_opts
+                    basekeys,
+                    record_dic,
+                    expr_list,
+                    datadic,
+                    loop_vars,
+                    parse_opts,
+                    logger=logger,
                 )
             except SeveralUnboundVariablesError:
                 parse_tries -= 1
@@ -222,7 +235,13 @@ def map_record_helper(
         raise SeveralUnboundVariablesError("Found several unbound variables")
     else:
         return map_datadic_to_recorddic(
-            basekeys, record_dic, expr_list, datadic, loop_vars, parse_opts
+            basekeys,
+            record_dic,
+            expr_list,
+            datadic,
+            loop_vars,
+            parse_opts,
+            logger=logger,
         )
 
 

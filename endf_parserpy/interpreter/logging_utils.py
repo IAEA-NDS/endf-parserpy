@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/06/25
+# Last modified:   2024/06/26
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -14,16 +14,16 @@ import logging
 from endf_parserpy.utils.tree_utils import reconstruct_tree_str
 
 
-def setup_logger(logger_name, log_level):
+def setup_logger(logger_name, log_level, log_format=None):
     logger = logging.getLogger(logger_name)
     logger.setLevel(log_level)
     # create handlers
     ch = logging.StreamHandler()
     ch.setLevel(log_level)
     # create formatters
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    if log_format is None:
+        log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    formatter = logging.Formatter(log_format)
     ch.setFormatter(formatter)
     # add handler to logger
     if not logger.hasHandlers():

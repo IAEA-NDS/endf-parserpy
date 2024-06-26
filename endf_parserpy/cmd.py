@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/02/05
-# Last modified:   2024/04/26
+# Last modified:   2024/06/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -17,6 +17,8 @@ from glob import glob
 import os
 from endf_parserpy.utils.accessories import EndfPath
 from endf_parserpy.interpreter.endf_parser import EndfParser
+from endf_parserpy.interpreter.logging_utils import setup_logger
+from endf_parserpy.cpp_parsers.endf_parser_cpp import EndfParserCpp
 from endf_parserpy.utils.debugging_utils import compare_objects
 from endf_parserpy.utils.endf6_plumbing import (
     update_directory,
@@ -158,6 +160,11 @@ if __name__ == "__main__":
         help="suppress the message on cache location",
     )
     parser.add_argument(
+        "--no-cpp",
+        action="store_true",
+        help="use Python parser instead of faster cpp parser",
+    )
+    parser.add_argument(
         "-s", "--strict", action="store_true", help="switch to enable strict mode"
     )
     parser.add_argument(
@@ -236,25 +243,49 @@ if __name__ == "__main__":
     strict_mode = args.strict
     endf_format = args.format
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.CRITICAL)
+    logger = setup_logger(__name__, logging.WARNING)
 
     print_cache_info = not args.no_cache_info
     ignore_number_mismatch = not strict_mode
     ignore_zero_mismatch = not strict_mode
-    fuzzy_matching = not strict_mode
-    parser = EndfParser(
-        ignore_number_mismatch=ignore_number_mismatch,
-        ignore_zero_mismatch=ignore_zero_mismatch,
-        fuzzy_matching=fuzzy_matching,
-        ignore_varspec_mismatch=False,
-        accept_spaces=False,
-        ignore_blank_lines=False,
-        ignore_send_records=False,
-        ignore_missing_tpid=False,
-        print_cache_info=print_cache_info,
-        endf_format=endf_format,
-    )
+    fuzzy_matching = False
+    try:
+        if args.no_cpp:
+            raise NotImplementedError("Use Python parser instead of faster cpp parser")
+        if fuzzy_matching:
+            raise NotImplementedError(
+                "EndfParserCpp does not support (less strict) fuzzy matching: "
+                + "use the --no-cpp option to enable it."
+            )
+        if args.subcommand == "explain":
+            raise NotImplementedError(
+                "EndfParserCpp does not support the `explain` command "
+                + "- switching to EndfParser (slow)"
+            )
+        parser = EndfParserCpp(
+            ignore_number_mismatch=ignore_number_mismatch,
+            ignore_zero_mismatch=ignore_zero_mismatch,
+            ignore_varspec_mismatch=False,
+            accept_spaces=False,
+            ignore_blank_lines=False,
+            ignore_send_records=False,
+            ignore_missing_tpid=False,
+            endf_format=endf_format,
+        )
+    except:
+        parser = EndfParser(
+            ignore_number_mismatch=ignore_number_mismatch,
+            ignore_zero_mismatch=ignore_zero_mismatch,
+            fuzzy_matching=fuzzy_matching,
+            ignore_varspec_mismatch=False,
+            accept_spaces=False,
+            ignore_blank_lines=False,
+            ignore_send_records=False,
+            ignore_missing_tpid=False,
+            print_cache_info=print_cache_info,
+            endf_format=endf_format,
+            loglevel=logging.ERROR,
+        )
 
     if args.subcommand == "validate":
         files = []

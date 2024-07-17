@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/27
+# Last modified:   2024/07/17
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -124,7 +124,8 @@ def module_header_writing():
       cpp_write_mat_number(line, mat);
       cpp_write_mf_number(line, mf);
       cpp_write_mt_number(line, mt);
-      cpp_write_line_number(line, ++linenum);
+      cpp_write_line_number(line, (linenum % 99999)+1);
+      linenum++;
       return line;
     }
 

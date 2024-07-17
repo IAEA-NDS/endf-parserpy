@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/06/25
+# Last modified:   2024/07/17
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -1030,8 +1030,11 @@ class EndfParser:
                     # add the NS number to the lines except last one
                     # because the SEND (=section end) record already
                     # contains it
+                    linenum_width = 5
+                    linenum_max = 10**linenum_width - 1
                     curlines = [
-                        l + str(i).rjust(5) for i, l in enumerate(self.lines[:-1], 1)
+                        l + str(i % linenum_max + 1).rjust(linenum_width)
+                        for i, l in enumerate(self.lines[:-1])
                     ]
                     # prepare the SEND (=section end) line
                     curline_send = self.lines[-1]

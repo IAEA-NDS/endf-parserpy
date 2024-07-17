@@ -3,6 +3,7 @@ import os
 from endf_parserpy.interpreter.endf_parser import EndfParser
 from endf_parserpy.utils.debugging_utils import compare_objects
 from endf_parserpy.cpp_parsers.endf6_ext import parse_endf_file, write_endf_file
+from endf_parserpy.utils.accessories import EndfDict
 
 
 @pytest.fixture(scope="module")
@@ -78,3 +79,34 @@ def test_cpp_parser_include_exclude_argument_mixed(
         str(endf_file), exclude=exclude, include=include, parse_opts=cpp_parse_opts
     )
     compare_objects(endf_dict1, endf_dict2, atol=1e-10, rtol=1e-10)
+
+
+def test_linenum_wraparound():
+    linenum_width = 5
+    linenum_max = 10**linenum_width - 1
+    numels = linenum_max * 3
+    parser = EndfParser()
+    endf_dict = EndfDict()
+    endf_dict["3/1"] = {}
+    dd = endf_dict["3/1"]
+    dd["MAT"] = 2625
+    dd["MF"] = 3
+    dd["MT"] = 1
+    dd["ZA"] = 26054
+    dd["AWR"] = 53.47
+    dd["QM"] = 0.0
+    dd["QI"] = 0.0
+    dd["LR"] = 0
+    dd["xstable/E"] = [i * 0.01 for i in range(numels)]
+    dd["xstable/xs"] = [1.0 for i in range(numels)]
+    dd["xstable/NBT"] = [numels]
+    dd["xstable/INT"] = [2]
+    lines = parser.write(endf_dict)
+    lines = lines[:-4]  # remove FEND, MEND, TEND
+    linenum_strs = [l.rstrip()[75:] for l in lines]
+    assert all(len(l) == 5 for l in linenum_strs)
+    linenums = [int(l) for l in linenum_strs]
+    assert min(linenums) == 1
+    assert max(linenums) == linenum_max
+    assert len([lnum for lnum in linenums if lnum == 1]) > 1
+    assert all(n == (m % linenum_max) + 1 for m, n in enumerate(linenums))

@@ -10,6 +10,7 @@ from endf_parserpy.interpreter.custom_exceptions import (
     UnexpectedControlRecordError,
 )
 from endf_parserpy.utils.debugging_utils import compare_objects
+from copy import deepcopy
 
 
 @pytest.fixture(scope="function")
@@ -85,6 +86,28 @@ def test_creation_of_mf3(mf3_section):
         parser.write(mf3_section)
     except Exception:
         pytest.fail("Failed to generate a MF3 section from scratch")
+
+
+def test_linenum_wraparound(mf3_section):
+    parser = EndfParser()
+    endf_dict = deepcopy(mf3_section)
+    linenum_width = 5
+    linenum_max = 10**linenum_width - 1
+    numels = linenum_max * 3
+    dd = endf_dict["3/1"]
+    dd["xstable/E"] = [i * 0.01 for i in range(numels)]
+    dd["xstable/xs"] = [1.0 for i in range(numels)]
+    dd["xstable/NBT"] = [numels]
+    dd["xstable/INT"] = [2]
+    lines = parser.write(endf_dict)
+    lines = lines[:-4]  # remove FEND, MEND, TEND
+    linenum_strs = [l.rstrip()[75:] for l in lines]
+    assert all(len(l) == 5 for l in linenum_strs)
+    linenums = [int(l) for l in linenum_strs]
+    assert min(linenums) == 1
+    assert max(linenums) == linenum_max
+    assert len([lnum for lnum in linenums if lnum == 1]) > 1
+    assert all(n == (m % linenum_max) + 1 for m, n in enumerate(linenums))
 
 
 def test_creation_of_mf1_mt451(mf1_mt451_section):

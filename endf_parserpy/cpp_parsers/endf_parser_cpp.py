@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2024/05/29
+# Last modified:   2024/07/22
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -246,7 +246,11 @@ class EndfParserCpp:
         """
         if isinstance(endf_dict, EndfDict):
             endf_dict = endf_dict.unwrap()
-        return self._write_endf(endf_dict, exclude, include, self.write_opts)
+        cont = self._write_endf(endf_dict, exclude, include, self.write_opts)
+        lines = cont.split("\n")
+        if lines[-1] == "":
+            lines.pop()
+        return lines
 
     def writefile(
         self, filename, endf_dict, exclude=None, include=None, overwrite=False

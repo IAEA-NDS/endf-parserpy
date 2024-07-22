@@ -225,42 +225,42 @@ def read_send(lines, ofs=0, with_ctrl=True, **read_opts):
     return dic, ofs
 
 
-def write_send(dic, with_ctrl=True, with_ns=True, zero_as_blank=False, **write_opts):
+def write_send(dic, with_ctrl=True, zero_as_blank=False, **write_opts):
     C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank, **write_opts)
     ctrl_dic = get_ctrl(dic)
     ctrl_dic["MT"] = 0
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ""
-    NS = "99999" if with_ns else ""
+    with_linenum = with_ctrl and write_opts["include_linenum"]
+    NS = "99999" if with_linenum else ""
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
 
 
-def write_fend(dic, with_ctrl=True, with_ns=True, zero_as_blank=False, **write_opts):
+def write_fend(dic, with_ctrl=True, zero_as_blank=False, **write_opts):
     C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank, **write_opts)
     ctrl_dic = get_ctrl(dic)
     ctrl_dic["MF"] = 0
     ctrl_dic["MT"] = 0
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ""
-    NS = "0".rjust(5) if with_ns else ""
+    with_linenum = with_ctrl and write_opts["include_linenum"]
+    NS = "0".rjust(5) if with_linenum else ""
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
 
 
-def write_mend(
-    dic=None, with_ctrl=True, with_ns=True, zero_as_blank=False, **write_opts
-):
+def write_mend(dic=None, with_ctrl=True, zero_as_blank=False, **write_opts):
     C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank, **write_opts)
     ctrl_dic = {"MAT": 0, "MF": 0, "MT": 0}
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ""
-    NS = "0".rjust(5) if with_ns else ""
+    with_linenum = with_ctrl and write_opts["include_linenum"]
+    NS = "0".rjust(5) if with_linenum else ""
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
 
 
-def write_tend(
-    dic=None, with_ctrl=True, with_ns=True, zero_as_blank=False, **write_opts
-):
+def write_tend(dic=None, with_ctrl=True, zero_as_blank=False, **write_opts):
     C1, C2, L1, L2, N1, N2 = prepare_zerostr_fields(zero_as_blank, **write_opts)
     ctrl_dic = {"MAT": -1, "MF": 0, "MT": 0}
     CTRL = write_ctrl(ctrl_dic) if with_ctrl else ""
-    NS = "0".rjust(5) if with_ns else ""
+    with_linenum = with_ctrl and write_opts["include_linenum"]
+    NS = "0".rjust(5) if with_linenum else ""
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL + NS]
 
 

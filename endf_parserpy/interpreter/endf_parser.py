@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/07/17
+# Last modified:   2024/07/23
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -69,6 +69,7 @@ from .endf_utils import (
     write_list,
     split_sections,
     skip_blank_lines,
+    add_linenumbers_to_section,
 )
 from .custom_exceptions import (
     InconsistentSectionBracketsError,
@@ -114,6 +115,7 @@ class EndfParser:
         ignore_send_records=False,
         ignore_missing_tpid=False,
         keep_E=False,
+        include_linenum=True,
         width=11,
         check_arrays=True,
         strict_datatypes=False,
@@ -191,6 +193,9 @@ class EndfParser:
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
             compatibility with programming languages different from Fortran
             while the omission enhances numerical precision. *(writing)*
+        include_linenum : bool
+            Controls whether the 5-digit line number should be
+            included at the end of each line. *(writing)*
         width : int
             The number of character slots in an ENDF-6 field. The ENDF-6
             format requires 11 but the user may opt for a different width
@@ -290,6 +295,7 @@ class EndfParser:
             "skip_intzero": skip_intzero,
             "prefer_noexp": prefer_noexp,
             "keep_E": keep_E,
+            "include_linenum": include_linenum,
             "width": width,
             "check_arrays": check_arrays,
             "strict_datatypes": strict_datatypes,
@@ -1029,22 +1035,13 @@ class EndfParser:
                         raise type(exc)(errmsg)
                     # add the NS number to the lines except last one
                     # because the SEND (=section end) record already
-                    # contains it
-                    linenum_width = 5
-                    linenum_max = 10**linenum_width - 1
-                    curlines = [
-                        l + str(i % linenum_max + 1).rjust(linenum_width)
-                        for i, l in enumerate(self.lines[:-1])
-                    ]
+                    # contains it. For mf=0 (tape head), no SEND present
+                    curlines = self.lines[:-1] if mf != 0 else self.lines
+                    curlines = add_linenumbers_to_section(curlines, **self.write_opts)
                     # prepare the SEND (=section end) line
-                    curline_send = self.lines[-1]
-                    # in the case of tape head, which only is one line
-                    # curline_send contains the tape head line and
-                    # we need to append NS=0
-                    if mf == 0:
-                        curline_send += "0".rjust(5)
-                    # add the send line to the output
-                    curlines.append(curline_send)
+                    if mf != 0:
+                        curline_send = self.lines[-1]
+                        curlines.append(curline_send)
                     lines.extend(curlines)
                     # NOTE: the SEND record is part of the recipe
                     # and therefore will be added by the parser in
@@ -1061,8 +1058,8 @@ class EndfParser:
                     # list of strings in the parse step
                     # and we output that unchanged
                     curlines = endf_dic[mf][mt].copy()
-                    # except that we remove newlines that screw it up
-                    curlines = [t.replace("\n", "").replace("\r", "") for t in curlines]
+                    curlines = curlines[:-1] if mf != 0 else curlines
+                    curlines = add_linenumbers_to_section(curlines, **self.write_opts)
                     lines.extend(curlines)
                     # update the MAT, MF, MT number
                     self.datadic = read_ctrl(lines[-1], **self.read_opts)
@@ -1073,8 +1070,8 @@ class EndfParser:
                             write_send(
                                 self.datadic,
                                 with_ctrl=True,
-                                with_ns=True,
                                 zero_as_blank=zero_as_blank,
+                                **self.write_opts,
                             )
                         )
                 some_mf_output = True
@@ -1085,7 +1082,6 @@ class EndfParser:
                     write_fend(
                         self.datadic,
                         with_ctrl=True,
-                        with_ns=True,
                         zero_as_blank=zero_as_blank,
                         **self.write_opts,
                     )
@@ -1094,7 +1090,6 @@ class EndfParser:
         lines.extend(
             write_mend(
                 with_ctrl=True,
-                with_ns=True,
                 zero_as_blank=zero_as_blank,
                 **self.write_opts,
             )
@@ -1102,7 +1097,6 @@ class EndfParser:
         lines.extend(
             write_tend(
                 with_ctrl=True,
-                with_ns=True,
                 zero_as_blank=zero_as_blank,
                 **self.write_opts,
             )

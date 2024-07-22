@@ -40,3 +40,19 @@ def test_parsefile_exclude_option_with_mf_mt():
     assert not any(p[0] in (1, 6) for p in parsed_sections)
     assert not any(p[1] == 1 for p in parsed_sections if p[0] == 3)
     compare_objects(result1, result2)
+
+
+def test_writefile_include_linenum_false_option():
+    parser = EndfParser(include_linenum=False)
+    endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    endf_dict = parser.parsefile(endf_file, exclude=[3])
+    result = parser.write(endf_dict)
+    assert all(len(r) == 75 for r in result)
+
+
+def test_writefile_include_linenum_true_option():
+    parser = EndfParser(include_linenum=True)
+    endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    endf_dict = parser.parsefile(endf_file, exclude=[3])
+    result = parser.write(endf_dict)
+    assert all(len(r) == 80 for r in result)

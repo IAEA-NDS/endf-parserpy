@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/27
+# Last modified:   2024/07/22
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -50,9 +50,8 @@ def read_ctrl(line, nofail=False, **read_opts):
     return {"MAT": mat, "MF": mf, "MT": mt}
 
 
-def write_ctrl(dic, ns=None):
-    nsstr = "" if not ns else str(ns).rjust(5)
-    return "{:>4}{:>2}{:>3}".format(dic["MAT"], dic["MF"], dic["MT"]) + nsstr
+def write_ctrl(dic):
+    return "{:>4}{:>2}{:>3}".format(dic["MAT"], dic["MF"], dic["MT"])
 
 
 def get_ctrl(dic, nofail=False):

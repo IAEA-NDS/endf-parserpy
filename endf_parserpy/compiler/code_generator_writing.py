@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/28
+# Last modified:   2024/07/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -204,7 +204,13 @@ def _prepare_send_func_wrapper(vardict):
 
 def _prepare_line_func_wrapper(vardict):
     code = prepare_line_la(
-        "cpp_draft_line", "mat", "mf", "mt", "linenum", in_lookahead(vardict)
+        "cpp_draft_line",
+        "mat",
+        "mf",
+        "mt",
+        "linenum",
+        "write_opts",
+        in_lookahead(vardict),
     )
     return code
 

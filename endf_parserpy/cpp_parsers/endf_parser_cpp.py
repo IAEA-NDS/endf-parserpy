@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2024/07/22
+# Last modified:   2024/07/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -51,6 +51,7 @@ class EndfParserCpp:
         validate_control_records=False,
         abuse_signpos=False,
         keep_E=False,
+        include_linenum=True,
         skip_intzero=False,
         prefer_noexp=False,
         endf_format="endf6-ext",
@@ -106,6 +107,9 @@ class EndfParserCpp:
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
             compatibility with programming languages different from Fortran
             while the omission enhances numerical precision. *(writing)*
+        include_linenum : bool
+            Controls whether the 5-digit line number should be
+            included at the end of each line. *(writing)*
         skip_intzero: bool
             For numbers written out in decimal notation, eliminate
             the integer part if zero, e.g. `0.12` becomes `.12` to
@@ -135,6 +139,7 @@ class EndfParserCpp:
         self.write_opts = {
             "abuse_signpos": abuse_signpos,
             "keep_E": keep_E,
+            "include_linenum": include_linenum,
             "skip_intzero": skip_intzero,
             "prefer_noexp": prefer_noexp,
         }

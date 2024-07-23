@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/05/26
+# Last modified:   2024/07/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -13,15 +13,17 @@
 from . import cpp_primitives as cpp
 
 
-def prepare_line(linevar, mat, mf, mt, linenum):
-    code = cpp.statement(f"{linevar} = cpp_prepare_line({mat}, {mf}, {mt}, {linenum})")
+def prepare_line(linevar, mat, mf, mt, linenum, write_opts):
+    code = cpp.statement(
+        f"{linevar} = cpp_prepare_line({mat}, {mf}, {mt}, {linenum}, {write_opts})"
+    )
     return code
 
 
-def prepare_line_la(linevar, mat, mf, mt, linenum, lookahead):
+def prepare_line_la(linevar, mat, mf, mt, linenum, write_opts, lookahead):
     if lookahead:
         return ""
-    return prepare_line(linevar, mat, mf, mt, linenum)
+    return prepare_line(linevar, mat, mf, mt, linenum, write_opts)
 
 
 def prepare_send(linevar, mat, mf, write_opts):

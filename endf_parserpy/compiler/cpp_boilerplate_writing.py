@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/07/17
+# Last modified:   2024/07/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -21,6 +21,7 @@ def module_header_writing():
       bool keep_E;
       bool prefer_noexp;
       bool skip_intzero;
+      bool include_linenum;
     };
 
 
@@ -29,7 +30,8 @@ def module_header_writing():
         false,  // abuse_signpos
         false,  // keep_E
         false,  // prefer_noexp
-        false   // skip_intzero
+        false,  // skip_intzero
+        true    // include_linenum
       };
     }
 
@@ -55,6 +57,8 @@ def module_header_writing():
               value.prefer_noexp = d["prefer_noexp"].cast<bool>();
             else if (key_str == "skip_intzero")
               value.skip_intzero = d["skip_intzero"].cast<bool>();
+            else if (key_str == "include_linenum")
+              value.include_linenum = d["include_linenum"].cast<bool>();
             else
               throw std::runtime_error("unknown option `" + key_str + "` provided");
           }
@@ -74,6 +78,9 @@ def module_header_writing():
           if (! d.contains("skip_intzero")) {
             value.skip_intzero = default_opts.skip_intzero;
           }
+          if (! d.contains("include_linenum")) {
+            value.include_linenum = default_opts.include_linenum;
+          }
           return true;
         }
 
@@ -84,6 +91,7 @@ def module_header_writing():
           d["keep_E"] = src.keep_E;
           d["prefer_noexp"] = src.prefer_noexp;
           d["skip_intzero"] = src.skip_intzero;
+          d["include_linenum"] = src.include_linenum;
           return d.release();
         }
 
@@ -118,13 +126,18 @@ def module_header_writing():
     }
 
 
-    std::string cpp_prepare_line(int mat, int mf, int mt, int &linenum) {
-      std::string line(80, ' ');
+    std::string cpp_prepare_line(
+      int mat, int mf, int mt, int &linenum, WritingOptions &write_opts
+    ) {
+      int line_width = (write_opts.include_linenum) ? 80 : 75;
+      std::string line(line_width, ' ');
       line += '\n';
       cpp_write_mat_number(line, mat);
       cpp_write_mf_number(line, mf);
       cpp_write_mt_number(line, mt);
-      cpp_write_line_number(line, (linenum % 99999)+1);
+      if (write_opts.include_linenum) {
+        cpp_write_line_number(line, (linenum % 99999)+1);
+      }
       linenum++;
       return line;
     }
@@ -279,27 +292,27 @@ def module_header_writing():
       int nr = tab_body.INT.size();
       int np = tab_body.X.size();
       std::ostringstream oss;
-      std::string curline = cpp_prepare_line(mat, mf, mt, linenum);
+      std::string curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
       int j = 0;
       for (int i=0; i < nr; i++) {
         cpp_write_field(curline, j++, tab_body.NBT[i], write_opts);
         cpp_write_field(curline, j++, tab_body.INT[i], write_opts);
         if (j > 5 && i+1 < nr) {
           oss << curline;
-          curline = cpp_prepare_line(mat, mf, mt, linenum);
+          curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
           j = 0;
         }
       }
       oss << curline;
 
       j = 0;
-      curline = cpp_prepare_line(mat, mf, mt, linenum);
+      curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
       for (int i=0; i < np; i++) {
         cpp_write_field(curline, j++, tab_body.X[i], write_opts);
         cpp_write_field(curline, j++, tab_body.Y[i], write_opts);
         if (j > 5 && i+1 < np) {
           oss << curline;
-          curline = cpp_prepare_line(mat, mf, mt, linenum);
+          curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
           j = 0;
         }
       }
@@ -314,14 +327,14 @@ def module_header_writing():
       assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
       int nr = tab_body.INT.size();
       std::ostringstream oss;
-      std::string curline = cpp_prepare_line(mat, mf, mt, linenum);
+      std::string curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
       int j = 0;
       for (int i=0; i < nr; i++) {
         cpp_write_field(curline, j++, tab_body.NBT[i], write_opts);
         cpp_write_field(curline, j++, tab_body.INT[i], write_opts);
         if (j > 5 && i+1 < nr) {
           oss << curline;
-          curline = cpp_prepare_line(mat, mf, mt, linenum);
+          curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
           j = 0;
         }
       }
@@ -331,7 +344,8 @@ def module_header_writing():
 
 
     std::string cpp_prepare_send(int mat, int mf, WritingOptions &write_opts) {
-      std::string line(80, ' ');
+      int line_width = (write_opts.include_linenum) ? 80 : 75;
+      std::string line(line_width, ' ');
       line += '\n';
       cpp_write_mat_number(line, mat);
       cpp_write_mf_number(line, mf);
@@ -342,11 +356,13 @@ def module_header_writing():
       cpp_write_field(line, 3, 0, write_opts);
       cpp_write_field(line, 4, 0, write_opts);
       cpp_write_field(line, 5, 0, write_opts);
-      if (mf == 0) {
-        // for writing FEND/MEND/TEND record
-        cpp_write_line_number(line, 0);
-      } else {
-        cpp_write_line_number(line, 99999);
+      if (write_opts.include_linenum) {
+        if (mf == 0) {
+          // for writing FEND/MEND/TEND record
+          cpp_write_line_number(line, 0);
+        } else {
+          cpp_write_line_number(line, 99999);
+        }
       }
       return line;
     }
@@ -381,21 +397,28 @@ def module_header_writing():
       if (mfmt_section.size() == 0) {
         throw std::runtime_error("an MF/MT section must not be represented by an empty list");
       }
-      int mat;
-      int mf;
-      int mt;
+      std::string first_line = py::cast<std::string>(mfmt_section[0]);
+      int mat = cpp_read_mat_number(first_line.c_str());
+      int mf = cpp_read_mf_number(first_line.c_str());
+      int mt = cpp_read_mt_number(first_line.c_str());
+      int linenum = (mf != 0) ? 1 : 0;  // linenum starts at 0 for tape head
       for (const auto& item : mfmt_section) {
         std::string linestr = py::cast<std::string>(item);
+        if (write_opts.include_linenum) {
+          linestr.resize(80);
+          cpp_write_line_number(linestr, linenum++);
+        } else {
+          linestr.erase(75, std::string::npos);
+        }
         if (linestr.back() != '\n') {
           linestr.push_back('\n');
         }
-        mat = cpp_read_mat_number(linestr.c_str());
-        mf = cpp_read_mf_number(linestr.c_str());
-        mt = cpp_read_mt_number(linestr.c_str());
         oss << linestr;
       }
-      std::string send_line = cpp_prepare_send(mat, mf, write_opts);
-      oss << send_line;
+      if (mf != 0) {
+          std::string send_line = cpp_prepare_send(mat, mf, write_opts);
+          oss << send_line;
+      }
     }
     """
     return cpp.indent_code(code, -4)

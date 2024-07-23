@@ -42,7 +42,7 @@ def test_parsefile_exclude_option_with_mf_mt():
     compare_objects(result1, result2)
 
 
-def test_writefile_include_linenum_false_option():
+def test_write_include_linenum_false_option():
     parser = EndfParser(include_linenum=False)
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     endf_dict = parser.parsefile(endf_file, exclude=[3])
@@ -50,7 +50,7 @@ def test_writefile_include_linenum_false_option():
     assert all(len(r) == 75 for r in result)
 
 
-def test_writefile_include_linenum_true_option():
+def test_write_include_linenum_true_option():
     parser = EndfParser(include_linenum=True)
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     endf_dict = parser.parsefile(endf_file, exclude=[3])

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/07/22
+# Last modified:   2024/07/23
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -433,6 +433,22 @@ def skip_blank_lines(lines, ofs):
         if ofs >= len(lines):
             raise UnexpectedEndOfInputError("expected input but consumed all lines")
     return ofs
+
+
+def add_linenumbers_to_section(lines, **write_opts):
+    width = write_opts.get("width", 11)
+    mfdict = read_ctrl(lines[0], width=width)
+    linenum_field_start = width * 6 + 9  # mat + mf + mt field width = 9
+    lines = [t[:linenum_field_start] for t in lines]
+    if not write_opts["include_linenum"]:
+        return lines
+    ofs = 1 if mfdict["MF"] != 0 else 0
+    linenum_width = 5
+    linenum_max = 10**linenum_width - 1
+    lines = [
+        l + str(i % linenum_max + ofs).rjust(linenum_width) for i, l in enumerate(lines)
+    ]
+    return lines
 
 
 def split_sections(lines, **read_opts):

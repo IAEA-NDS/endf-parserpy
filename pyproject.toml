@@ -1,6 +1,5 @@
 [tool.poetry]
 name = "endf-parserpy"
-version = "0.0.0"
 description = "A Python package for reading, writing, verifying and translating ENDF-6 files"
 authors = ["Georg Schnabel"]
 license = "MIT"
@@ -26,6 +25,9 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12"
 ]
+# version will be retrieved from __version__
+# attribute defined in endf_parserpy/__init__.py
+version = "0.0.0"
 
 [tool.poetry.dependencies]
 python = ">=3.6.1"
@@ -46,7 +48,7 @@ generate-setup-file = true
 requires = [
     "setuptools>=58.0.0,<69.0.0",
     "pybind11>=2.10.0",
-    "poetry-core>=1.2",     # >=1.0",
+    "poetry-core>=1.2",
     "lark>=1.0.0",     # required for C++ compilation during
     "appdirs>=1.4.0",  # installation using functionality of endf-parserpy
 ]

@@ -18,6 +18,9 @@ from .utils.user_tools import (
 from .utils.endf6_plumbing import update_directory
 
 
+__version__ = "0.10.3"
+
+
 __all__ = (
     "EndfParser",
     "BasicEndfParser",

@@ -44,6 +44,7 @@ jobs:
 
       - name: Run tests (skip cpp parser tests)
         if: github.event_name == 'push'
-        run: poetry run pytest \
-          --ignore=tests/test_endf_cpp_parser.py \
-          --ignore=tests/test_endf_cpp_parser_options.py
+        run: |
+          poetry run pytest \
+            --ignore=tests/test_endf_cpp_parser.py \
+            --ignore=tests/test_endf_cpp_parser_options.py

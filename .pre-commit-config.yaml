@@ -6,6 +6,11 @@ repos:
       entry: python .pre-commit-hooks/update-last-modified-header.py
       language: python
 
+    - id: update-changelog-version
+      name: Update package version in changelog
+      entry: python .pre-commit-hooks/update-changelog-version.py
+      language: python
+
   - repo: https://github.com/python-poetry/poetry
     rev: 1.7.1
     hooks:

@@ -38,38 +38,7 @@ class OptionalBuildExt(pybind11_build_ext):
             )
 
 
-def get_version():
-    version_file = "endf_parserpy/__init__.py"
-    if not os.path.exists(version_file):
-        raise RuntimeError(f"Could not find {version_file}.")
-    with open(version_file, "r") as file:
-        for line in file:
-            if line.strip().startswith("__version"):
-                version = line.split("=")[1].strip().strip('"')
-                return version
-    raise RuntimeError("Could not find version string.")
-
-
-def update_version_in_pyproject(version):
-    pyproject_file = "pyproject.toml"
-    if not os.path.exists(pyproject_file):
-        raise RuntimeError(f"Could not find {pyproject_file}, can't update version")
-    lines = []
-    with open(pyproject_file, "r") as file:
-        for line in file:
-            if line.replace(" ", "").startswith("version="):
-                version_line = f'version = "{version}"\n'
-                lines.append(version_line)
-            else:
-                lines.append(line)
-    with open(pyproject_file, "w") as file:
-        file.writelines(lines)
-
-
 def build(setup_kwargs):
-    # dynamically update version string in pyproject.toml file
-    version = get_version()
-    update_version_in_pyproject(version)
     # perform option C++ module compilation
     compile_env_var = os.environ.get("INSTALL_ENDF_PARSERPY_CPP", "optional")
     if compile_env_var == "no":

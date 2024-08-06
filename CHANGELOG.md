@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- Avoid check of MAT/MF/MT consistency if `ignore_send_records` option is active
 
 ## [0.11.0]
 

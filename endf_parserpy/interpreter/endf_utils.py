@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/07/23
+# Last modified:   2024/08/06
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -520,8 +520,9 @@ def split_sections(lines, **read_opts):
         mat = d["MAT"]
         mf = d["MF"]
         mt = d["MT"]
-        # if branch entered if regular record
-        if mat != 0 and mf != 0 and mt != 0:
+        is_regular_record = mat != 0 and mf != 0 and mt != 0
+        # consistency checks for regular records
+        if is_regular_record and not ignore_send_records:
             if sec_level >= 3 and last_mt != mt:
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MT", mt, last_mt, ofs)
@@ -534,6 +535,9 @@ def split_sections(lines, **read_opts):
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MAT", mat, last_mat, ofs)
                 )
+
+        # dealing with regular records
+        if is_regular_record:
             cursec = mfdic.setdefault(mf, {}).setdefault(mt, [])
             cursec.append(line)
             sec_level = 3

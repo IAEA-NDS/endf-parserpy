@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/25
+# Last modified:   2024/08/13
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -25,7 +25,9 @@ def read_fort_int(valstr, blank_as_zero=False):
 
 def fortstr2float(valstr, blank=None, **read_opts):
     accept_spaces = read_opts.get("accept_spaces", True)
-    if valstr.strip() == "" and blank is not None:
+    if valstr.strip() == "":
+        if blank is None:
+            raise ValueError("blank field encountered but `blank=None`")
         return blank
     if accept_spaces:
         valstr = valstr.replace(" ", "")
@@ -162,13 +164,9 @@ def read_fort_floats(line, n=6, blank=None, **read_opts):
     assert isinstance(line, str)
     vals = []
     for i in range(0, n * width, width):
-        if line[i : i + width] == " " * width:
-            if blank is None:
-                raise ValueError("blank encountered but blank=None")
-            else:
-                vals.append(blank)
-        else:
-            vals.append(fortstr2float(line[i : i + width], accept_spaces=accept_spaces))
+        vals.append(
+            fortstr2float(line[i : i + width], blank=blank, accept_spaces=accept_spaces)
+        )
     return vals
 
 

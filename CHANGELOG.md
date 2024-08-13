@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Option `blank\_as\_zero` from `EndfParser` constructor---now blank numeric fields are always interpreted as zero.
+
 ### Fixed
 
 - Avoid check of MAT/MF/MT consistency if `ignore_send_records` option is active

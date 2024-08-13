@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/07/23
+# Last modified:   2024/08/13
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -106,7 +106,6 @@ class EndfParser:
         ignore_zero_mismatch=True,
         ignore_varspec_mismatch=True,
         fuzzy_matching=True,
-        blank_as_zero=True,
         abuse_signpos=False,
         skip_intzero=False,
         prefer_noexp=False,
@@ -159,10 +158,6 @@ class EndfParser:
         fuzzy_matching: bool
             Tolerate small inconsistencies between fields when they
             are linked by a mathematical relationship. *(parsing)*
-        blank_as_zero: bool
-            Interpret blank numeric fields in the ENDF-6 data as zero.
-            If this argument is `false`, blank fields will cause
-            the parsing process to fail. *(parsing)*
         abuse_signpos: bool
             Permit positive numbers to start in the first character slot
             of an ENDF-6 field, which is usually reserved for the sign,
@@ -301,7 +296,6 @@ class EndfParser:
             "strict_datatypes": strict_datatypes,
         }
         self.read_opts = {
-            "blank_as_zero": blank_as_zero,
             "accept_spaces": accept_spaces,
             "ignore_blank_lines": ignore_blank_lines,
             "ignore_send_records": ignore_send_records,

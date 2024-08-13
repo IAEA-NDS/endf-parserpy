@@ -13,8 +13,8 @@ from .custom_exceptions import InvalidIntegerError, InvalidFloatError
 from math import log10, floor
 
 
-def read_fort_int(valstr, blank_as_zero=False):
-    if blank_as_zero and valstr.strip() == "":
+def read_fort_int(valstr):
+    if valstr.strip() == "":
         return 0
     else:
         try:
@@ -23,14 +23,12 @@ def read_fort_int(valstr, blank_as_zero=False):
             raise InvalidIntegerError(valerr)
 
 
-def fortstr2float(valstr, blank=None, **read_opts):
+def fortstr2float(valstr, **read_opts):
     accept_spaces = read_opts.get("accept_spaces", True)
     width = read_opts.get("width", 11)
     valstr = valstr[:width]
     if valstr.strip() == "":
-        if blank is None:
-            raise ValueError("blank field encountered but `blank=None`")
-        return blank
+        return 0.0
     if accept_spaces:
         valstr = valstr.replace(" ", "")
     for i, c in enumerate(valstr):

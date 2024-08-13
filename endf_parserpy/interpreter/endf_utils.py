@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/08/06
+# Last modified:   2024/08/13
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -88,13 +88,12 @@ def write_text(dic, with_ctrl=True, **write_opts):
 
 def read_dir(lines, ofs=0, with_ctrl=True, **read_opts):
     width = read_opts.get("width", 11)
-    blank_as_zero = read_opts.get("blank_as_zero", False)
     line = lines[ofs]
     dic = {
-        "L1": read_fort_int(line[2 * width : 3 * width], blank_as_zero),
-        "L2": read_fort_int(line[3 * width : 4 * width], blank_as_zero),
-        "N1": read_fort_int(line[4 * width : 5 * width], blank_as_zero),
-        "N2": read_fort_int(line[5 * width : 6 * width], blank_as_zero),
+        "L1": read_fort_int(line[2 * width : 3 * width]),
+        "L2": read_fort_int(line[3 * width : 4 * width]),
+        "N1": read_fort_int(line[4 * width : 5 * width]),
+        "N2": read_fort_int(line[5 * width : 6 * width]),
     }
     if with_ctrl:
         ctrl = read_ctrl(line, **read_opts)
@@ -115,7 +114,6 @@ def write_dir(dic, with_ctrl=True, **write_opts):
 
 
 def read_intg(lines, ofs=0, with_ctrl=True, ndigit=None, **read_opts):
-    blank_as_zero = read_opts.get("blank_as_zero", False)
     if ndigit is None:
         raise ValueError("ndigit must be specified")
     if int(ndigit) != ndigit:
@@ -126,12 +124,9 @@ def read_intg(lines, ofs=0, with_ctrl=True, ndigit=None, **read_opts):
     range_iter = range(11, 65, ndigit + 1) if ndigit <= 5 else range(10, 65, ndigit + 1)
     line = lines[ofs]
     dic = {
-        "II": read_fort_int(line[0:5], blank_as_zero=blank_as_zero),
-        "JJ": read_fort_int(line[5:10], blank_as_zero=blank_as_zero),
-        "KIJ": [
-            read_fort_int(line[i : i + ndigit + 1], blank_as_zero=blank_as_zero)
-            for i in range_iter
-        ],
+        "II": read_fort_int(line[0:5]),
+        "JJ": read_fort_int(line[5:10]),
+        "KIJ": [read_fort_int(line[i : i + ndigit + 1]) for i in range_iter],
     }
     if with_ctrl:
         ctrl = read_ctrl(line, **read_opts)
@@ -152,20 +147,15 @@ def write_intg(dic, with_ctrl=True, ndigit=None, **write_opts):
 
 
 def read_cont(lines, ofs=0, with_ctrl=True, **read_opts):
-    blank_as_zero = read_opts.get("blank_as_zero", False)
     width = read_opts.get("width", 11)
     line = lines[ofs]
     dic = {
-        "C1": fortstr2float(
-            line[0:width], blank=0.0 if blank_as_zero else None, **read_opts
-        ),
-        "C2": fortstr2float(
-            line[width : 2 * width], blank=0.0 if blank_as_zero else None, **read_opts
-        ),
-        "L1": read_fort_int(line[2 * width : 3 * width], blank_as_zero),
-        "L2": read_fort_int(line[3 * width : 4 * width], blank_as_zero),
-        "N1": read_fort_int(line[4 * width : 5 * width], blank_as_zero),
-        "N2": read_fort_int(line[5 * width : 6 * width], blank_as_zero),
+        "C1": fortstr2float(line[0:width], **read_opts),
+        "C2": fortstr2float(line[width : 2 * width], **read_opts),
+        "L1": read_fort_int(line[2 * width : 3 * width]),
+        "L2": read_fort_int(line[3 * width : 4 * width]),
+        "N1": read_fort_int(line[4 * width : 5 * width]),
+        "N2": read_fort_int(line[5 * width : 6 * width]),
     }
     if with_ctrl:
         ctrl = read_ctrl(line, **read_opts)
@@ -389,13 +379,11 @@ def write_tab1_body_lines(NBT, INT, xvals, yvals, **write_opts):
 
 
 def read_endf_numbers(lines, num, ofs, to_int=False, **read_opts):
-    blank_as_zero = read_opts.get("blank_as_zero", False)
     vals = []
-    blank_symb = 0.0 if blank_as_zero else None
     while num > 0:
         l = lines[ofs]
         m = min(6, num)
-        vals += read_fort_floats(l, m, blank=blank_symb, **read_opts)
+        vals += read_fort_floats(l, m, **read_opts)
         num -= 6
         ofs += 1
     if to_int:

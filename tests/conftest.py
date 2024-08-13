@@ -9,7 +9,6 @@ def pytest_addoption(parser):
     parser.addoption("--ignore_number_mismatch", action="store", default="false")
     parser.addoption("--ignore_varspec_mismatch", action="store", default="false")
     parser.addoption("--fuzzy_matching", action="store", default="true")
-    parser.addoption("--blank_as_zero", action="store", default="true")
     # defaults writing options chosen to preserve maximal accuracy
     parser.addoption("--abuse_signpos", action="store", default="true")
     parser.addoption("--skip_intzero", action="store", default="true")
@@ -36,7 +35,6 @@ def pytest_generate_tests(metafunc):
         "ignore_number_mismatch",
         "ignore_varspec_mismatch",
         "fuzzy_matching",
-        "blank_as_zero",
         "abuse_signpos",
         "skip_intzero",
         "prefer_noexp",

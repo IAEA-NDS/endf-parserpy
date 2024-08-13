@@ -25,6 +25,8 @@ def read_fort_int(valstr, blank_as_zero=False):
 
 def fortstr2float(valstr, blank=None, **read_opts):
     accept_spaces = read_opts.get("accept_spaces", True)
+    width = read_opts.get("width", 11)
+    valstr = valstr[:width]
     if valstr.strip() == "":
         if blank is None:
             raise ValueError("blank field encountered but `blank=None`")
@@ -159,14 +161,11 @@ def float2fortstr(val, **write_opts):
 
 
 def read_fort_floats(line, n=6, blank=None, **read_opts):
-    accept_spaces = read_opts.get("accept_spaces", True)
     width = read_opts.get("width", 11)
     assert isinstance(line, str)
     vals = []
     for i in range(0, n * width, width):
-        vals.append(
-            fortstr2float(line[i : i + width], blank=blank, accept_spaces=accept_spaces)
-        )
+        vals.append(fortstr2float(line[i : i + width], blank=blank, **read_opts))
     return vals
 
 

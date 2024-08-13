@@ -122,7 +122,7 @@ def test_ignore_send_records_false_option_with_missing_send_record():
 
 
 def test_ignore_send_records_true_option_with_missing_send_record():
-    _test_ignore_send_records_true_option(73, 3)
+    _test_ignore_send_records_true_option(72, 3)
 
 
 def test_ignore_send_records_false_option_with_missing_fend_record():

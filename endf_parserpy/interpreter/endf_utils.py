@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/08/13
+# Last modified:   2024/08/15
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -27,7 +27,7 @@ from .custom_exceptions import (
 )
 
 
-def read_ctrl(line, nofail=False, **read_opts):
+def read_ctrl(line, nofail=False, read_opts=None):
     width = read_opts.get("width", 11)
     ofs = 6 * width
     if nofail:
@@ -68,13 +68,13 @@ def get_ctrl(dic, nofail=False):
     return {"MAT": mat, "MF": mf, "MT": mt}
 
 
-def read_text(lines, ofs=0, with_ctrl=True, **read_opts):
+def read_text(lines, ofs=0, with_ctrl=True, read_opts=None):
     width = read_opts.get("width", 11)
     ofs2 = width * 6
     line = lines[ofs]
     dic = {"HL": line[0:ofs2]}
     if with_ctrl:
-        ctrl = read_ctrl(line, **read_opts)
+        ctrl = read_ctrl(line, read_opts=read_opts)
         dic.update(ctrl)
     return dic, ofs + 1
 
@@ -86,7 +86,7 @@ def write_text(dic, with_ctrl=True, **write_opts):
     return [TEXT + CTRL]
 
 
-def read_dir(lines, ofs=0, with_ctrl=True, **read_opts):
+def read_dir(lines, ofs=0, with_ctrl=True, read_opts=None):
     width = read_opts.get("width", 11)
     line = lines[ofs]
     dic = {
@@ -96,7 +96,7 @@ def read_dir(lines, ofs=0, with_ctrl=True, **read_opts):
         "N2": read_fort_int(line[5 * width : 6 * width]),
     }
     if with_ctrl:
-        ctrl = read_ctrl(line, **read_opts)
+        ctrl = read_ctrl(line, read_opts=read_opts)
         dic.update(ctrl)
     return dic, ofs + 1
 
@@ -113,7 +113,7 @@ def write_dir(dic, with_ctrl=True, **write_opts):
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
 
-def read_intg(lines, ofs=0, with_ctrl=True, ndigit=None, **read_opts):
+def read_intg(lines, ofs=0, with_ctrl=True, ndigit=None, read_opts=None):
     if ndigit is None:
         raise ValueError("ndigit must be specified")
     if int(ndigit) != ndigit:
@@ -129,7 +129,7 @@ def read_intg(lines, ofs=0, with_ctrl=True, ndigit=None, **read_opts):
         "KIJ": [read_fort_int(line[i : i + ndigit + 1]) for i in range_iter],
     }
     if with_ctrl:
-        ctrl = read_ctrl(line, **read_opts)
+        ctrl = read_ctrl(line, read_opts=read_opts)
         dic.update(ctrl)
     return dic, ofs + 1
 
@@ -146,19 +146,19 @@ def write_intg(dic, with_ctrl=True, ndigit=None, **write_opts):
     return [(II + JJ + spacer + KIJ).ljust(width * 6) + CTRL]
 
 
-def read_cont(lines, ofs=0, with_ctrl=True, **read_opts):
+def read_cont(lines, ofs=0, with_ctrl=True, read_opts=None):
     width = read_opts.get("width", 11)
     line = lines[ofs]
     dic = {
-        "C1": fortstr2float(line[0:width], **read_opts),
-        "C2": fortstr2float(line[width : 2 * width], **read_opts),
+        "C1": fortstr2float(line[0:width], read_opts=read_opts),
+        "C2": fortstr2float(line[width : 2 * width], read_opts=read_opts),
         "L1": read_fort_int(line[2 * width : 3 * width]),
         "L2": read_fort_int(line[3 * width : 4 * width]),
         "N1": read_fort_int(line[4 * width : 5 * width]),
         "N2": read_fort_int(line[5 * width : 6 * width]),
     }
     if with_ctrl:
-        ctrl = read_ctrl(line, **read_opts)
+        ctrl = read_ctrl(line, read_opts=read_opts)
         dic.update(ctrl)
     return dic, ofs + 1
 
@@ -200,8 +200,8 @@ def prepare_zerostr_fields(zero_as_blank, **write_opts):
     return C1, C2, L1, L2, N1, N2
 
 
-def read_send(lines, ofs=0, with_ctrl=True, **read_opts):
-    dic, ofs = read_cont(lines, ofs, with_ctrl, **read_opts)
+def read_send(lines, ofs=0, with_ctrl=True, read_opts=None):
+    dic, ofs = read_cont(lines, ofs, with_ctrl, read_opts=read_opts)
     if (
         dic["C1"] != 0
         or dic["C2"] != 0
@@ -261,13 +261,13 @@ write_head = write_cont
 read_head = read_cont
 
 
-def read_list(lines, ofs=0, with_ctrl=True, callback=None, **read_opts):
-    dic, ofs = read_cont(lines, ofs, with_ctrl, **read_opts)
+def read_list(lines, ofs=0, with_ctrl=True, callback=None, read_opts=None):
+    dic, ofs = read_cont(lines, ofs, with_ctrl, read_opts=read_opts)
     NPL = dic["N1"]
     if NPL == 0:
         dic["vals"] = []
     else:
-        vals, ofs = read_endf_numbers(lines, NPL, ofs, **read_opts)
+        vals, ofs = read_endf_numbers(lines, NPL, ofs, read_opts=read_opts)
         dic["vals"] = vals
     return dic, ofs
 
@@ -297,15 +297,17 @@ def write_list(dic, with_ctrl=True, **write_opts):
     return lines
 
 
-def read_tab2(lines, ofs=0, with_ctrl=True, **read_opts):
+def read_tab2(lines, ofs=0, with_ctrl=True, read_opts=None):
     startline = lines[ofs]
-    dic, ofs = read_cont(lines, ofs, **read_opts)
-    vals, ofs = read_endf_numbers(lines, 2 * dic["N1"], ofs, to_int=True, **read_opts)
+    dic, ofs = read_cont(lines, ofs, read_opts=read_opts)
+    vals, ofs = read_endf_numbers(
+        lines, 2 * dic["N1"], ofs, to_int=True, read_opts=read_opts
+    )
     NBT = vals[::2]
     INT = vals[1::2]
     dic["table"] = {"NBT": NBT, "INT": INT}
     if with_ctrl:
-        ctrl = read_ctrl(startline, **read_opts)
+        ctrl = read_ctrl(startline, read_opts=read_opts)
         dic.update(ctrl)
     return dic, ofs
 
@@ -329,13 +331,15 @@ def write_tab2(dic, with_ctrl=True, **write_opts):
     return lines + tbl_lines
 
 
-def read_tab1(lines, ofs=0, with_ctrl=True, **read_opts):
+def read_tab1(lines, ofs=0, with_ctrl=True, read_opts=None):
     startline = lines[ofs]
-    dic, ofs = read_cont(lines, ofs, with_ctrl, **read_opts)
-    tbl_dic, ofs = read_tab1_body_lines(lines, ofs, dic["N1"], dic["N2"], **read_opts)
+    dic, ofs = read_cont(lines, ofs, with_ctrl, read_opts=read_opts)
+    tbl_dic, ofs = read_tab1_body_lines(
+        lines, ofs, dic["N1"], dic["N2"], read_opts=read_opts
+    )
     dic["table"] = tbl_dic
     if with_ctrl:
-        ctrl = read_ctrl(startline, **read_opts)
+        ctrl = read_ctrl(startline, read_opts=read_opts)
         dic.update(ctrl)
     return dic, ofs
 
@@ -354,11 +358,11 @@ def write_tab1(dic, with_ctrl=True, **write_opts):
     return lines + tbl_lines
 
 
-def read_tab1_body_lines(lines, ofs, nr, np, **read_opts):
-    vals, ofs = read_endf_numbers(lines, 2 * nr, ofs, to_int=True, **read_opts)
+def read_tab1_body_lines(lines, ofs, nr, np, read_opts=None):
+    vals, ofs = read_endf_numbers(lines, 2 * nr, ofs, to_int=True, read_opts=read_opts)
     NBT = vals[::2]
     INT = vals[1::2]
-    vals, ofs = read_endf_numbers(lines, 2 * np, ofs, to_int=False, **read_opts)
+    vals, ofs = read_endf_numbers(lines, 2 * np, ofs, to_int=False, read_opts=read_opts)
     xvals = vals[::2]
     yvals = vals[1::2]
     return {"NBT": NBT, "INT": INT, "X": xvals, "Y": yvals}, ofs
@@ -378,12 +382,12 @@ def write_tab1_body_lines(NBT, INT, xvals, yvals, **write_opts):
     return lines
 
 
-def read_endf_numbers(lines, num, ofs, to_int=False, **read_opts):
+def read_endf_numbers(lines, num, ofs, to_int=False, read_opts=None):
     vals = []
     while num > 0:
         l = lines[ofs]
         m = min(6, num)
-        vals += read_fort_floats(l, m, **read_opts)
+        vals += read_fort_floats(l, m, read_opts=read_opts)
         num -= 6
         ofs += 1
     if to_int:
@@ -425,7 +429,7 @@ def skip_blank_lines(lines, ofs):
 
 def add_linenumbers_to_section(lines, **write_opts):
     width = write_opts.get("width", 11)
-    mfdict = read_ctrl(lines[0], width=width)
+    mfdict = read_ctrl(lines[0], read_opts={"width": width})
     linenum_field_start = width * 6 + 9  # mat + mf + mt field width = 9
     lines = [t[:linenum_field_start] for t in lines]
     if not write_opts["include_linenum"]:
@@ -439,7 +443,7 @@ def add_linenumbers_to_section(lines, **write_opts):
     return lines
 
 
-def split_sections(lines, **read_opts):
+def split_sections(lines, read_opts=None):
     def make_control_error_message(sectype, secnum, expsecnum, ofs):
         return (
             f"Currently in {sectype}={expsecnum} section but encountered "
@@ -469,7 +473,7 @@ def split_sections(lines, **read_opts):
             raise BlankLineError(f"Line {ofs} is a blank line.")
         ofs += 1
     mfdic = {}
-    th = read_ctrl(lines[ofs], **read_opts)
+    th = read_ctrl(lines[ofs], read_opts=read_opts)
     th_mat = th["MAT"]
     th_mf = th["MF"]
     th_mt = th["MT"]
@@ -504,7 +508,7 @@ def split_sections(lines, **read_opts):
                 "Already encountered Tape End (TEND) record. "
                 + "Nothing else is allowed to follow afterwards."
             )
-        d = read_ctrl(line, **read_opts)
+        d = read_ctrl(line, read_opts=read_opts)
         mat = d["MAT"]
         mf = d["MF"]
         mt = d["MT"]
@@ -560,7 +564,7 @@ def split_sections(lines, **read_opts):
             )
         sec_level -= 1
         # Next line just for checking all fields are zero or blank
-        read_send([line], **read_opts)
+        read_send([line], read_opts=read_opts)
 
     if not ignore_send_records:
         if sec_level >= 1:

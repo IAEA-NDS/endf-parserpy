@@ -23,10 +23,13 @@ def read_fort_int(valstr):
             raise InvalidIntegerError(valerr)
 
 
-def fortstr2float(valstr, **read_opts):
+def fortstr2float(valstr, read_opts=None):
+    if read_opts is None:
+        read_opts = {}
     accept_spaces = read_opts.get("accept_spaces", True)
-    width = read_opts.get("width", 11)
-    valstr = valstr[:width]
+    width = read_opts.get("width", None)
+    if width is not None:
+        valstr = valstr[:width]
     if valstr.strip() == "":
         return 0.0
     if accept_spaces:
@@ -139,12 +142,12 @@ def float2fortstr(val, **write_opts):
     return valstr_basic
 
 
-def read_fort_floats(line, n=6, blank=None, **read_opts):
+def read_fort_floats(line, n=6, read_opts=None):
     width = read_opts.get("width", 11)
     assert isinstance(line, str)
     vals = []
     for i in range(0, n * width, width):
-        vals.append(fortstr2float(line[i : i + width], blank=blank, **read_opts))
+        vals.append(fortstr2float(line[i : i + width], read_opts=read_opts))
     return vals
 
 

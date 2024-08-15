@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/08/13
+# Last modified:   2024/08/15
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -429,7 +429,7 @@ class EndfParser:
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             write_info(self.logger, "Reading a TEXT record", self.ofs)
             text_dic, self.ofs = read_text(
-                self.lines, self.ofs, with_ctrl=True, **self.read_opts
+                self.lines, self.ofs, with_ctrl=True, read_opts=self.read_opts
             )
             text_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
             map_text_dic(
@@ -480,7 +480,7 @@ class EndfParser:
                 self.lines,
                 self.ofs,
                 with_ctrl=True,
-                **self.read_opts,
+                read_opts=self.read_opts,
             )
             cont_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
             write_info(
@@ -520,7 +520,7 @@ class EndfParser:
             cont_dic, self.ofs = read_cont(
                 self.lines,
                 self.ofs,
-                **self.read_opts,
+                read_opts=self.read_opts,
             )
             cont_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
             write_info(self.logger, "Content of the CONT record: " + str(cont_dic))
@@ -556,7 +556,7 @@ class EndfParser:
             dir_dic, self.ofs = read_dir(
                 self.lines,
                 self.ofs,
-                **self.read_opts,
+                read_opts=self.read_opts,
             )
             dir_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
             map_dir_dic(
@@ -595,7 +595,7 @@ class EndfParser:
                 self.lines,
                 self.ofs,
                 ndigit=ndigit,
-                **self.read_opts,
+                read_opts=self.read_opts,
             )
             intg_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
             map_intg_dic(
@@ -636,7 +636,7 @@ class EndfParser:
             tab1_dic, self.ofs = read_tab1(
                 self.lines,
                 self.ofs,
-                **self.read_opts,
+                read_opts=self.read_opts,
             )
             tab1_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
             map_tab1_dic(
@@ -673,7 +673,7 @@ class EndfParser:
             tab2_dic, self.ofs = read_tab2(
                 self.lines,
                 self.ofs,
-                **self.read_opts,
+                read_opts=self.read_opts,
             )
             tab2_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
             map_tab2_dic(
@@ -709,7 +709,7 @@ class EndfParser:
             list_dic, self.ofs = read_list(
                 self.lines,
                 self.ofs,
-                **self.read_opts,
+                read_opts=self.read_opts,
             )
             list_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
             map_list_dic(
@@ -743,7 +743,7 @@ class EndfParser:
             read_send(
                 self.lines,
                 self.ofs,
-                **self.read_opts,
+                read_opts=self.read_opts,
             )
         else:
             self.logbuffer.save_reduced_record_log(tree)
@@ -905,11 +905,11 @@ class EndfParser:
             lines = lines.split("\n")
         tree_dic = self.tree_dic
         self.variable_descriptions = EndfDict()
-        mfmt_dic = split_sections(lines, **self.read_opts)
+        mfmt_dic = split_sections(lines, read_opts=self.read_opts)
         for mf in mfmt_dic:
             write_info(self.logger, f"Parsing section MF{mf}")
             for mt in mfmt_dic[mf]:
-                curmat = read_ctrl(mfmt_dic[mf][mt][0], **self.read_opts)
+                curmat = read_ctrl(mfmt_dic[mf][mt][0], read_opts=self.read_opts)
                 write_info(self.logger, f"Parsing subsection MF/MT {mf}/{mt}")
                 curlines = mfmt_dic[mf][mt]
                 cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
@@ -1056,7 +1056,7 @@ class EndfParser:
                     curlines = add_linenumbers_to_section(curlines, **self.write_opts)
                     lines.extend(curlines)
                     # update the MAT, MF, MT number
-                    self.datadic = read_ctrl(lines[-1], **self.read_opts)
+                    self.datadic = read_ctrl(lines[-1], read_opts=self.read_opts)
                     # add the SEND record in between the MT subections
                     # if it was not a tape head record (mf=0)
                     if mf != 0:

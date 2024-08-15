@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/02/05
-# Last modified:   2024/06/26
+# Last modified:   2024/08/15
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -126,7 +126,7 @@ def show_file_content(parser, endfpath, file):
 
 def update_mf1mt451_directory(parser, file, create_backup):
     endf_dict = parser.parsefile(file, include=[(1, 451)])
-    update_directory(endf_dict, parser, **parser.read_opts)
+    update_directory(endf_dict, parser, read_opts=parser.read_opts)
     if create_backup:
         create_backup_file(file)
     parser.writefile(file, endf_dict, overwrite=(not create_backup))

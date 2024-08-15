@@ -122,7 +122,7 @@ building process:
 
 .. code:: Python
 
-   from endf_parserpy.accessories import EndfDict
+   from endf_parserpy import EndfDict
    endf_dict = EndfDict()
 
 Next, we create an empty MF=1/MT=451 section and associate it with a
@@ -780,7 +780,7 @@ in the following Python script:
 .. code:: python
 
     from endf_parserpy import EndfParser
-    from endf_parserpy.accessories import EndfDict
+    from endf_parserpy import EndfDict
     from endf_parserpy import update_directory
     import numpy as np
 

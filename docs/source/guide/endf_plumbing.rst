@@ -54,7 +54,7 @@ The following code snippet achieves this:
 .. code:: python
 
    from endf_parserpy import EndfParser
-   from endf_parserpy.accessories import EndfDict
+   from endf_parserpy import EndfDict
    import numpy as np
 
    parser = EndfParser()

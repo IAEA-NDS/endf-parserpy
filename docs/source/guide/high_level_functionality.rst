@@ -63,7 +63,7 @@ could look something like this:
 
     import numpy as np
     from copy import copy
-    from endf_parserpy.accessories import EndfVariable
+    from endf_parserpy import EndfVariable
 
 
     class LinearCrossSectionInterpolation:
@@ -108,7 +108,7 @@ cross section (MF3/MT1):
 .. code:: python
 
    from endf_parserpy import EndfParser
-   from endf_parserpy.accessories import EndfVariable
+   from endf_parserpy import EndfVariable
 
    parser = EndfParser()
    endf_dict = parser.parsefile('input.endf')

@@ -144,6 +144,9 @@ def update_directory(endf_dic, parser=None, lines=None, read_opts=None):
         corresponding to the data in ``endf_dict``.
         If this argument is provided, the ``parser``
         argument will be ignored.
+    read_opts : dict
+        A dictionary with reading options provided as ``read_opts`` argument
+        overrides the reading options of the ``EndfParser`` instance.
     """
     if read_opts is None:
         read_opts = {}

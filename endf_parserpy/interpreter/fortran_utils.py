@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/08/13
+# Last modified:   2024/08/15
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -115,25 +115,6 @@ def float2expformstr(val, **write_opts):
         tmp_str = sign_str + mantissa_str + "e" + exposign_str + exponent_str
         res_str = float2expformstr(float(tmp_str), **write_opts)
     return res_str
-
-
-def count_signif_digits(valstr):
-    num_signif = 0
-    in_signif = False
-    zero_acc = 0
-    for c in valstr:
-        if not in_signif and c.isdigit() and c != "0":
-            in_signif = True
-        if in_signif:
-            if c.isdigit():
-                if c != "0":
-                    num_signif += 1 + zero_acc
-                    zero_acc = 0
-                else:
-                    zero_acc += 1
-            elif c != ".":
-                break
-    return num_signif
 
 
 def float2fortstr(val, **write_opts):

@@ -44,7 +44,7 @@ def fortstr2float(valstr, read_opts=None):
         raise InvalidFloatError(valerr)
 
 
-def float2basicnumstr(val, **write_opts):
+def float2basicnumstr(val, write_opts=None):
     width = write_opts.get("width", 11)
     effwidth = width
     abuse_signpos = write_opts.get("abuse_signpos", False)
@@ -81,7 +81,7 @@ def float2basicnumstr(val, **write_opts):
     return numstr
 
 
-def float2expformstr(val, **write_opts):
+def float2expformstr(val, write_opts=None):
     width = write_opts.get("width", 11)
     abuse_signpos = write_opts.get("abuse_signpos", False)
     keep_E = write_opts.get("keep_E", False)
@@ -116,17 +116,17 @@ def float2expformstr(val, **write_opts):
         #               be rounded to 10.0000000 so we have too many digits.
         #               Hack: Pass the rounded number again to this function.
         tmp_str = sign_str + mantissa_str + "e" + exposign_str + exponent_str
-        res_str = float2expformstr(float(tmp_str), **write_opts)
+        res_str = float2expformstr(float(tmp_str), write_opts=write_opts)
     return res_str
 
 
-def float2fortstr(val, **write_opts):
+def float2fortstr(val, write_opts=None):
     width = write_opts.get("width", 11)
     prefer_noexp = write_opts.get("prefer_noexp", False)
-    valstr_exp = float2expformstr(val, **write_opts)
+    valstr_exp = float2expformstr(val, write_opts=write_opts)
     if not prefer_noexp:
         return valstr_exp
-    valstr_basic = float2basicnumstr(val, **write_opts)
+    valstr_basic = float2basicnumstr(val, write_opts=write_opts)
     if "." in valstr_basic:
         valstr_basic = valstr_basic.rstrip("0").rstrip(".")
         # next line to deal with case -.00 and .00
@@ -151,8 +151,8 @@ def read_fort_floats(line, n=6, read_opts=None):
     return vals
 
 
-def write_fort_floats(vals, **write_opts):
+def write_fort_floats(vals, write_opts=None):
     line = ""
     for i, v in enumerate(vals):
-        line += float2fortstr(v, **write_opts)
+        line += float2fortstr(v, write_opts=write_opts)
     return line

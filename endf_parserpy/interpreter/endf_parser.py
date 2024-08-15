@@ -458,7 +458,7 @@ class EndfParser:
                 logger=self.logger,
             )
             text_dic.update(get_ctrl(self.datadic))
-            newlines = write_text(text_dic, with_ctrl=True, **self.write_opts)
+            newlines = write_text(text_dic, with_ctrl=True, write_opts=self.write_opts)
             self.lines += newlines
 
     def process_head_or_cont_line(self, tree):
@@ -508,7 +508,7 @@ class EndfParser:
                 logger=self.logger,
             )
             head_dic.update(get_ctrl(self.datadic))
-            newlines = write_head(head_dic, with_ctrl=True, **self.write_opts)
+            newlines = write_head(head_dic, with_ctrl=True, write_opts=self.write_opts)
             self.lines += newlines
 
     def process_cont_line(self, tree):
@@ -545,7 +545,7 @@ class EndfParser:
                 logger=self.logger,
             )
             cont_dic.update(get_ctrl(self.datadic))
-            newlines = write_cont(cont_dic, with_ctrl=True, **self.write_opts)
+            newlines = write_cont(cont_dic, with_ctrl=True, write_opts=self.write_opts)
             self.lines += newlines
 
     def process_dir_line(self, tree):
@@ -580,7 +580,7 @@ class EndfParser:
                 logger=self.logger,
             )
             dir_dic.update(get_ctrl(self.datadic))
-            newlines = write_dir(dir_dic, with_ctrl=True, **self.write_opts)
+            newlines = write_dir(dir_dic, with_ctrl=True, write_opts=self.write_opts)
             self.lines += newlines
 
     def process_intg_line(self, tree):
@@ -623,7 +623,7 @@ class EndfParser:
                 get_child(tree, "ndigit_expr"), self.datadic, self.loop_vars
             )
             newlines = write_intg(
-                intg_dic, with_ctrl=True, ndigit=ndigit, **self.write_opts
+                intg_dic, with_ctrl=True, ndigit=ndigit, write_opts=self.write_opts
             )
             self.lines += newlines
 
@@ -661,7 +661,7 @@ class EndfParser:
                 logger=self.logger,
             )
             tab1_dic.update(get_ctrl(self.datadic))
-            newlines = write_tab1(tab1_dic, with_ctrl=True, **self.write_opts)
+            newlines = write_tab1(tab1_dic, with_ctrl=True, write_opts=self.write_opts)
             self.lines += newlines
 
     def process_tab2_line(self, tree):
@@ -697,7 +697,7 @@ class EndfParser:
                 logger=self.logger,
             )
             tab2_dic.update(get_ctrl(self.datadic))
-            newlines = write_tab2(tab2_dic, with_ctrl=True, **self.write_opts)
+            newlines = write_tab2(tab2_dic, with_ctrl=True, write_opts=self.write_opts)
             self.lines += newlines
 
     def process_list_line(self, tree):
@@ -733,7 +733,7 @@ class EndfParser:
                 logger=self.logger,
             )
             list_dic.update(get_ctrl(self.datadic))
-            newlines = write_list(list_dic, with_ctrl=True, **self.write_opts)
+            newlines = write_list(list_dic, with_ctrl=True, write_opts=self.write_opts)
             self.lines += newlines
 
     def process_send_line(self, tree):
@@ -751,7 +751,7 @@ class EndfParser:
                 self.datadic,
                 with_ctrl=True,
                 zero_as_blank=self.zero_as_blank,
-                **self.write_opts,
+                write_opts=self.write_opts,
             )
             self.lines += newlines
 
@@ -920,7 +920,7 @@ class EndfParser:
                 if cur_parsefun is not None and not should_skip:
                     try:
                         curlines += write_send(
-                            curmat, with_ctrl=True, **self.write_opts
+                            curmat, with_ctrl=True, write_opts=self.write_opts
                         )
                         curlines = "".join(curlines)
                         mfmt_dic[mf][mt] = cur_parsefun(curlines)
@@ -933,7 +933,9 @@ class EndfParser:
                 elif cur_tree is not None and not should_skip:
                     # we add the SEND line so that parsing fails
                     # if the MT section cannot be completely parsed
-                    curlines += write_send(curmat, with_ctrl=True, **self.write_opts)
+                    curlines += write_send(
+                        curmat, with_ctrl=True, write_opts=self.write_opts
+                    )
                     self.reset_parser_state(rwmode="read", lines=curlines)
                     self.current_path = EndfPath((mf, mt))
                     try:
@@ -1031,7 +1033,9 @@ class EndfParser:
                     # because the SEND (=section end) record already
                     # contains it. For mf=0 (tape head), no SEND present
                     curlines = self.lines[:-1] if mf != 0 else self.lines
-                    curlines = add_linenumbers_to_section(curlines, **self.write_opts)
+                    curlines = add_linenumbers_to_section(
+                        curlines, write_opts=self.write_opts
+                    )
                     # prepare the SEND (=section end) line
                     if mf != 0:
                         curline_send = self.lines[-1]
@@ -1053,7 +1057,9 @@ class EndfParser:
                     # and we output that unchanged
                     curlines = endf_dic[mf][mt].copy()
                     curlines = curlines[:-1] if mf != 0 else curlines
-                    curlines = add_linenumbers_to_section(curlines, **self.write_opts)
+                    curlines = add_linenumbers_to_section(
+                        curlines, write_opts=self.write_opts
+                    )
                     lines.extend(curlines)
                     # update the MAT, MF, MT number
                     self.datadic = read_ctrl(lines[-1], read_opts=self.read_opts)
@@ -1065,7 +1071,7 @@ class EndfParser:
                                 self.datadic,
                                 with_ctrl=True,
                                 zero_as_blank=zero_as_blank,
-                                **self.write_opts,
+                                write_opts=self.write_opts,
                             )
                         )
                 some_mf_output = True
@@ -1077,7 +1083,7 @@ class EndfParser:
                         self.datadic,
                         with_ctrl=True,
                         zero_as_blank=zero_as_blank,
-                        **self.write_opts,
+                        write_opts=self.write_opts,
                     )
                 )
 
@@ -1085,14 +1091,14 @@ class EndfParser:
             write_mend(
                 with_ctrl=True,
                 zero_as_blank=zero_as_blank,
-                **self.write_opts,
+                write_opts=self.write_opts,
             )
         )
         lines.extend(
             write_tend(
                 with_ctrl=True,
                 zero_as_blank=zero_as_blank,
-                **self.write_opts,
+                write_opts=self.write_opts,
             )
         )
         del self.zero_as_blank

@@ -197,7 +197,7 @@ class EndfParserCpp:
             See explanation in :func:`parsefile`.
         """
         if isinstance(lines, list):
-            lines = "".join(lines)
+            lines = "\n".join(lines)
         return self._parse_endf(lines, exclude, include, self.read_opts)
 
     def parsefile(self, filename, exclude=None, include=None):

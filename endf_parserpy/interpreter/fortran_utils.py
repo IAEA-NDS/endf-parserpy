@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/08/15
+# Last modified:   2024/09/06
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -11,6 +11,34 @@
 
 from .custom_exceptions import InvalidIntegerError, InvalidFloatError
 from math import log10, floor
+
+
+class EndfFloat(float):
+    """float that keeps track of string representation.
+
+    Instances of this class behave exactly like `float` variables.
+    Additionally, each instance stores a string that should
+    be the source string from which the float value was obtained.
+    """
+
+    def __new__(cls, value, orig_str):
+        """Creation of EndfFloat instance.
+
+        Parameters
+        ----------
+        value : object
+            Any object that can be converted to a float via `float(value)`.
+        orig_str:
+            A string representation that corresponds to the float
+            number given as ``value`` argument.
+        """
+        inst = super().__new__(cls, value)
+        inst._orig_str = orig_str
+        return inst
+
+    def get_original_string(self):
+        """Return the string representation of the float value."""
+        return self._orig_str
 
 
 def read_fort_int(valstr):

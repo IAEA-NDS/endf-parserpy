@@ -176,6 +176,9 @@ implements the described actions for this case:
    endf_dict2['3/2'] = deepcopy(endf_dict1['3/2'])
    parser.writefile('output.endf', endf_dict2)
 
+The ``include=[]`` argument ensures that the sections aren't parsed but
+read verbatim into lists of strings. This measure ensures that all string
+representations are copied verbatim to the output file.
 The invocation of the :func:`~copy.deepcopy` function is not really necessary.
 However, without this operation,
 ``endf_dict1`` and ``endf_dict2`` would share the same dictionary

@@ -27,7 +27,7 @@ class EndfFloat(float):
         Parameters
         ----------
         value : object
-            Any object that can be converted to a float via `float(value)`.
+            Any object that can be converted to a float via ``float(value)``.
         orig_str:
             A string representation that corresponds to the float
             number given as ``value`` argument.
@@ -52,9 +52,11 @@ def read_fort_int(valstr):
 
 
 def fortstr2float(valstr, read_opts=None):
+    orig_valstr = valstr
     if read_opts is None:
         read_opts = {}
     accept_spaces = read_opts.get("accept_spaces", True)
+    preserve_value_strings = read_opts.get("preserve_value_strings", False)
     width = read_opts.get("width", None)
     if width is not None:
         valstr = valstr[:width]
@@ -67,7 +69,10 @@ def fortstr2float(valstr, read_opts=None):
             if valstr[i - 1].isdigit():
                 return float(valstr[:i] + "E" + valstr[i:])
     try:
-        return float(valstr)
+        if preserve_value_strings:
+            return EndfFloat(valstr, orig_valstr)
+        else:
+            return float(valstr)
     except ValueError as valerr:
         raise InvalidFloatError(valerr)
 
@@ -150,6 +155,15 @@ def float2expformstr(val, write_opts=None):
 
 def float2fortstr(val, write_opts=None):
     width = write_opts.get("width", 11)
+    preserve_value_strings = write_opts.get("preserve_value_strings", False)
+    if preserve_value_strings and isinstance(val, EndfFloat):
+        orig_str = val.get_original_string()
+        if width != len(orig_str):
+            raise InvalidFloatError(
+                f"Length of string representation of float number "
+                f"'{orig_str}' incompatible with specified width={width}"
+            )
+        return orig_str
     prefer_noexp = write_opts.get("prefer_noexp", False)
     valstr_exp = float2expformstr(val, write_opts=write_opts)
     if not prefer_noexp:

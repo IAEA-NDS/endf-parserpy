@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/08/15
+# Last modified:   2024/09/06
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -114,6 +114,7 @@ class EndfParser:
         ignore_send_records=False,
         ignore_missing_tpid=False,
         keep_E=False,
+        preserve_value_strings=False,
         include_linenum=True,
         width=11,
         check_arrays=True,
@@ -188,6 +189,14 @@ class EndfParser:
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
             compatibility with programming languages different from Fortran
             while the omission enhances numerical precision. *(writing)*
+        preserve_value_strings : bool
+            If ``True``, also the string representations of float numbers will
+            be recorded during the parsing process (via the
+            :class:`~endf_parserpy.interpreter.fortran_utils.EndfFloat` class).
+            These string representations when available will be used verbatim
+            for outputting ENDF-6 formatted data, overruling any of the other
+            options provided for controling the output format of floats.
+            *(parsing, writing)*
         include_linenum : bool
             Controls whether the 5-digit line number should be
             included at the end of each line. *(writing)*
@@ -290,6 +299,7 @@ class EndfParser:
             "skip_intzero": skip_intzero,
             "prefer_noexp": prefer_noexp,
             "keep_E": keep_E,
+            "preserve_value_strings": preserve_value_strings,
             "include_linenum": include_linenum,
             "width": width,
             "check_arrays": check_arrays,
@@ -301,6 +311,7 @@ class EndfParser:
             "ignore_send_records": ignore_send_records,
             "ignore_missing_tpid": ignore_missing_tpid,
             "width": width,
+            "preserve_value_strings": preserve_value_strings,
         }
         self.explain_missing_variable = explain_missing_variable
         self.variable_descriptions = EndfDict()

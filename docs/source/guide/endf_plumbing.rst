@@ -132,14 +132,19 @@ from an ENDF-6 file:
 
 .. code:: python
 
+   from endf_parserpy import update_directory
    endf_dict = EndfDict(parser.parsefile('input.endf', include=[])
    del endf_dict['3/2']
+   update_directory(endf_dict, parser)
    parser.writefile('output.endf')
 
 The ``include=[]`` argument causes the parser to not parse any
 MF/MT section in the ENDF-6 files and to store the raw strings
 in the dictionary instead. In this way, we ensure that all preserved
 sections are copied verbatim to the new file.
+The :func:`~endf_parserpy.update_directory` invocation ensures
+that line counts are properly updated in the directory listing in
+MF1/MT451 (see :endf6manshort:`57`).
 
 To check if everything worked as expected, we can again compare
 the input and output file:
@@ -169,16 +174,19 @@ implements the described actions for this case:
 .. code:: python
 
    from copy import deepcopy
+   from endf_parserpy import update_directory
    endf_dict1 = parser.parsefile('input1.endf', include=[])
    endf_dict2 = parser.parsefile('input2.endf', include=[])
    endf_dict1 = EndfDict(endf_dict1)
    endf_dict2 = EndfDict(endf_dict2)
    endf_dict2['3/2'] = deepcopy(endf_dict1['3/2'])
+   update_directory(endf_dict2, parser)
    parser.writefile('output.endf', endf_dict2)
 
-The ``include=[]`` argument ensures that the sections aren't parsed but
-read verbatim into lists of strings. This measure ensures that all string
-representations are copied verbatim to the output file.
+The argument ``include=[]`` prevents parsing so that all sections are
+read verbatim into lists of strings. Thereby, all string
+representations of numbers in the input files  are copied as they are to the
+output file.
 The invocation of the :func:`~copy.deepcopy` function is not really necessary.
 However, without this operation,
 ``endf_dict1`` and ``endf_dict2`` would share the same dictionary
@@ -186,6 +194,9 @@ for the MF3/MT2 data. In this case, assignments such as
 ``endf_dict2['3/2/AWR'] = 10`` would cause  the same change
 in ``endf_dict1``. Using the :func:`~copy.deepcopy` function
 prevents this coupling.
+The :func:`~endf_parserpy.update_directory` invocation ensures
+that line counts are properly updated in the directory listing in
+MF1/MT451 (see :endf6manshort:`57`).
 
 .. _modifying_arrays_sec:
 

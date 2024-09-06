@@ -169,7 +169,7 @@ implements the described actions for this case:
 .. code:: python
 
    from copy import deepcopy
-   endf_dict1 = parser.parsefile('input1.endf', include=[]))
+   endf_dict1 = parser.parsefile('input1.endf', include=[])
    endf_dict2 = parser.parsefile('input2.endf', include=[])
    endf_dict1 = EndfDict(endf_dict1)
    endf_dict2 = EndfDict(endf_dict2)

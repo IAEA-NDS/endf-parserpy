@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2024/07/23
+# Last modified:   2024/09/06
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -126,7 +126,7 @@ class EndfParserCpp:
             ENDF-6 formats manual and `jendl` with JENDL specific
             conventions, which are also implemented in `endf6-ext`.
         """
-        self.parse_opts = {
+        self.read_opts = {
             "ignore_number_mismatch": ignore_number_mismatch,
             "ignore_zero_mismatch": ignore_zero_mismatch,
             "ignore_varspec_mismatch": ignore_varspec_mismatch,
@@ -198,7 +198,7 @@ class EndfParserCpp:
         """
         if isinstance(lines, list):
             lines = "".join(lines)
-        return self._parse_endf(lines, exclude, include, self.parse_opts)
+        return self._parse_endf(lines, exclude, include, self.read_opts)
 
     def parsefile(self, filename, exclude=None, include=None):
         """Parse ENDF-6 formatted data stored in a file.
@@ -236,7 +236,7 @@ class EndfParserCpp:
             `MF`/`MT` combination is determined by the
             corresponding ENDF recipe.
         """
-        return self._parse_endf_file(str(filename), exclude, include, self.parse_opts)
+        return self._parse_endf_file(str(filename), exclude, include, self.read_opts)
 
     def write(self, endf_dict, exclude=None, include=None):
         """Convert data into the ENDF-6 format.

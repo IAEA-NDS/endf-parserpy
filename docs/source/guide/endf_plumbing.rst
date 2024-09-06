@@ -132,7 +132,9 @@ from an ENDF-6 file:
 
 .. code:: python
 
+   from endf_parserpy import EndfParser, EndfDict
    from endf_parserpy import update_directory
+   parser = EndfParser()
    endf_dict = EndfDict(parser.parsefile('input.endf', include=[])
    del endf_dict['3/2']
    update_directory(endf_dict, parser)
@@ -174,6 +176,7 @@ implements the described actions for this case:
 .. code:: python
 
    from copy import deepcopy
+   from endf_parserpy import EndfParser, EndfDict
    from endf_parserpy import update_directory
    endf_dict1 = parser.parsefile('input1.endf', include=[])
    endf_dict2 = parser.parsefile('input2.endf', include=[])

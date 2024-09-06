@@ -43,6 +43,15 @@ def test_parsefile_exclude_option_with_mf_mt():
     compare_objects(result1, result2)
 
 
+def test_preserve_value_strings_option():
+    for flag in (True, False):
+        parser = EndfParser(preserve_value_strings=flag)
+        endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+        result1 = parser.parsefile(endf_file)
+        result2 = parser.parse(parser.write(result1))
+        compare_objects(result1, result2)
+
+
 def test_write_include_linenum_false_option():
     parser = EndfParser(include_linenum=False)
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")

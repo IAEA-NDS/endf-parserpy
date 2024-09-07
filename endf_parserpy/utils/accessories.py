@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2024/04/25
+# Last modified:   2024/09/07
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
@@ -18,7 +18,7 @@ class EndfPath(Sequence):
     An instance of this class maintains a reference that points to a specific
     location in a nested dictionary.
     It is assumed that all keys in the dictionaries are either of type
-    ``str`` or ``int`` and that keys of type ``str`` do not contain slashes.
+    :class:`str` or :class:`int` and that keys of type :class:`str` do not contain slashes.
     Under these assumptions, objects in a nested dictionary can be
     referenced by concatenating the keys referring to different levels in
     the nested hierarchy in a single string, with the individual keys
@@ -37,14 +37,14 @@ class EndfPath(Sequence):
     at the referenced location and finally the function
     :func:`remove` allows to remove a key rom the nested dictionary.
 
-    This class is derived from ``Sequence`` (like ``tuple``)
+    This class is derived from :class:`collections.abc.Sequence` (like :class:`tuple`)
     with each element in the Sequence being a key associated with
     a specific level in the hierarchy of a nested dictionary.
-    As for the ``tuple`` datatype, references can be concatenated
+    As for the :class:`tuple` datatype, references can be concatenated
     using the ``+`` operator and two references can be compared
     using the ``==`` operator. Also iterating over the individual
     keys within a reference works, which are returned as
-    ``EndPath`` instances.
+    :class:`EndfPath` instances.
     """
 
     def __init__(self, pathspec=""):
@@ -69,10 +69,9 @@ class EndfPath(Sequence):
         >>> p3 = EndfPath(('a', '1', '2', 'c'))
         >>> p4 = EndfPath(('a', 1, '2', 'c'))
         >>> p5 = EndfPath('a[1,2]/c')
-        >>> p5 = EndfPath('a[1]']) + EndfPath('2/c')
+        >>> p6 = EndfPath('a[1]']) + EndfPath('2/c')
         >>> assert p1 == p2 and p2 == p3 and p3 == p4
         >>> assert p4 == p5 and p5 == p6
-        >>> assert p6 == p7
         """
         if isinstance(pathspec, EndfPath):
             self._path_elements = pathspec._path_elements
@@ -162,7 +161,7 @@ class EndfPath(Sequence):
         Returns
         -------
         object
-            The object at the location referred to by this ``EndfPath`` instance.
+            The object at the location referred to by this :class:`EndfPath` instance.
 
         Example
         -------
@@ -176,7 +175,7 @@ class EndfPath(Sequence):
         return cur
 
     def set(self, dict_like, value):
-        """Insert an object into a nested dictionary at the ``EndfPath`` location.
+        """Insert an object into a nested dictionary at the :class:`EndfPath` location.
 
         Parameters
         ----------
@@ -184,13 +183,13 @@ class EndfPath(Sequence):
             The (nested) dictionary to be extended/altered.
         value : Object
             The object that should be inserted at the location
-            referenced by this ``EndfPath`` instance.
+            referenced by this :class:`EndfPath` instance.
 
         Note
         ----
         Intermediate dictionaries will be created if missing.
         If an intermediate key exists that does not refer to
-        a ``dict`` (or other datatype derived from ``MutableMapping``),
+        a :class:`dict` (or other datatype derived from :class:`collections.abc.MutableMapping`),
         this method will fail.
 
         Example
@@ -208,19 +207,19 @@ class EndfPath(Sequence):
         cur[self._path_elements[-1]] = value
 
     def exists(self, dict_like):
-        """Test whether a key exists at the ``EndfPath`` location.
+        """Test whether a key exists at the :class:`EndfPath` location.
 
         Parameters
         ----------
         dict_like : dict
             The (nested) dictionary for which the existence
-            of a key at the ``EndfPath`` location should be checked.
+            of a key at the :class:`EndfPath` location should be checked.
 
         Returns
         -------
         bool
-            ``true`` if key exists at ``EndfPath`` location,
-            otherwise ``false``.
+            ``True`` if key exists at :class:`EndfPath` location,
+            otherwise ``False``.
 
         Example
         -------
@@ -237,13 +236,13 @@ class EndfPath(Sequence):
         return True
 
     def remove(self, dict_like):
-        """Remove key from nested dictionary at ``EndfPath`` location.
+        """Remove key from nested dictionary at :class:`EndfPath` location.
 
         Parameters
         ----------
         dict_like : dict
             The (nested) dictionary from which the key
-            at the ``EndfPath`` location should be removed.
+            at the :class:`EndfPath` location should be removed.
 
         Example
         -------
@@ -262,7 +261,7 @@ class EndfVariable:
 
     An instance of this class is connected to a specific key
     in a (nested) dictionary and its associated object.
-    The instance attribute ``.value`` allows to set or retrieve
+    The instance attribute :attr:`value` allows to set or retrieve
     the object linked to the specific key in the dictionary.
     The purpose of this class is to provide a mechanism to
     pass around objects that can be treated like variables
@@ -270,16 +269,16 @@ class EndfVariable:
     """
 
     def __init__(self, endf_path, endf_dict, value=None):
-        """Create and associate ``EndfVariable`` with location in dictionary.
+        """Create and associate :class:`EndfVariable` with location in dictionary.
 
         Parameters
         ----------
         endf_path : EndfPath
             An :class:`EndfPath` instance (or an object that is accepted
-            by the ``EndfPath`` constructor) establishing the link
-            to a specific location in a nested ``dict_like`` object.
+            by the :class:`EndfPath` constructor) establishing the link
+            to a specific location in a nested :class:`dict`-like object.
         endf_dict : dict
-            A (nested) ``dict_like`` object that contains a key
+            A (nested) :class:`dict`-like object that contains a key
             referenced by the ``endf_path`` argument.
         """
         if isinstance(endf_dict, EndfDict):
@@ -323,7 +322,7 @@ class EndfVariable:
 
         The value of this propert can also be modified, which
         accordingly modifies the value stored under the associated
-        key in the nested ``dict_like`` object.
+        key in the nested :class:`dict`-like object.
 
         Example
         -------
@@ -374,13 +373,13 @@ class EndfDict(MutableMapping):
     ``d['a/b/1/c']`` and ``d['a/b[1]/c']``.
     Apart from the enhanced capabilities to refer to objects
     in a nested dictionary, this class behaves
-    almost in the same way as a normal Python ``dict``.
+    almost in the same way as a normal Python :class:`dict`.
     The only exception is that whenever an object
-    is retrieved that is ``dict_like``, it will
-    be converted on-the-fly to an ``EndfDict`` instance
-    and returned in that form to the user. Similary,
-    ``EndfDict`` instances to be associated with a key
-    are converted to the underlying ``dict_like`` object
+    is retrieved that is :class:`dict`-like, it will
+    be converted on-the-fly to an :class:`EndfDict`
+    instance and returned in that form to the user. Similary,
+    :class:`EndfDict` instances to be associated with a key
+    are converted to the underlying :class:`dict`-like object
     before being stored (see :func:`unwrap` method).
     """
 
@@ -390,7 +389,7 @@ class EndfDict(MutableMapping):
         Parameters
         ----------
         mapping : [None, Dict]
-            The ``dict_like`` object for which enhanced
+            The :class:`dict`-like object for which enhanced
             access is desired. If this argument is ``None``,
             an empty dictionary will be created.
 
@@ -530,33 +529,33 @@ class EndfDict(MutableMapping):
     def unwrap(self, recursive=False):
         """Returns the underlying dictionary.
 
-        The EndfDict class can be regarded as an interface wrapping
-        around an underlying ``dict_like`` object. This function
+        The :class:`EndfDict` class can be regarded as an interface wrapping
+        around an underlying :class:`dict`-like object. This function
         permits the retrieval of the underlying object.
 
         Parameters
         ----------
         recursive : bool
-            If ``true``, all ``EndfDict`` objects present in the
-            underlying ``dict_like`` object are recursively
-            converted to type ``dict``.
+            If ``True``, all :class:`EndfDict` objects present in the
+            underlying :class:`dict`-like object are recursively
+            converted to type :class:`dict`.
 
         Returns
         -------
         Dict
-            The underlying ``dict_like`` object.
+            The underlying :class:`dict`-like object.
 
         Note
         ----
-        The use of ``recursive=true`` is only necessary if the
-        user has stored an ``EndfDict`` object anywhere in the
-        underlying ``dict_like`` object. In contrast, if an attempt
-        is made to store an ``EndfDict`` object in another ``EndfDict``
+        The use of ``recursive=True`` is only necessary if the
+        user has stored an :class:`EndfDict` object anywhere in the
+        underlying :class:`dict`-like object. In contrast, if an attempt
+        is made to store an :class:`EndfDict` object in another :class:`EndfDict`
         object, the former object is (non-recursively) unwrapped
-        (with :func:`unwrap`) before being stored. In other words,
-        as long as the underlying ``dict_like`` object is only
-        accessed via an ``EndfDict`` instance, there should never be
-        an ``EndfDict`` object in the underlying ``dict_like`` object.
+        (with :func:`unwrap`) before being stored. Therefore,
+        as long as the underlying :class:`dict`-like object is only
+        accessed via an :class:`EndfDict` instance, there should never be
+        an :class:`EndfDict` object in the underlying :class:`dict`-like object.
 
         Example
         -------
@@ -572,13 +571,13 @@ class EndfDict(MutableMapping):
 
     @property
     def root(self):
-        """Get the ``EndfDict`` instance associated with the root dictionary.
+        """Get the :class:`EndfDict` instance associated with the root dictionary.
 
-        Any ``dict_like`` object retrieved from an ``EndfDict``
+        Any :class:`dict`-like object retrieved from an :class:`EndfDict`
         (termed the root ``EndfDict``) is automatically enwrapped in
-        an ``EndfDict`` instances before being returned to the user.
-        The ``root`` attribute of the returned ``EndDict`` instances
-        holds a reference to the root ``EndfDict`` object.
+        an :class:`EndfDict` instances before being returned to the user.
+        The ``root`` attribute of the returned :class:`EndfDict` instances
+        holds a reference to the root :class:`EndfDict` object.
 
         Example
         -------
@@ -592,9 +591,9 @@ class EndfDict(MutableMapping):
 
     @property
     def path(self):
-        """Get the ``EndfPath`` associated with this ``EndfDict``.
+        """Get the :class:`EndfPath` associated with this :class:`EndfDict`.
 
-        If this ``EndfDict`` was retrieved from another ``EndfDict``,
+        If this :class:`EndfDict` was retrieved from another :class:`EndfDict`,
         the ``path`` attribute contains the associated location in
         the nested dictionary.
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2024/04/30
+# Last modified:   2024/09/07
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -39,42 +39,43 @@ def compare_objects(
     """Compare recursively two objects.
 
     This function enables the recursive comparison of two objects
-    possible being or containing objects of type ``dict`` or
+    possible being or containing objects of type :class:`dict` or
     iterable array-like objects. For example, this class can be
     used to confirm or reject the equality of two nested dictionaries
-    resulting from the parsing of ENDF-6 files via the ``parsefile()``
-    method of the :class:`endf_parserpy.EndfParser` class.
+    resulting from the parsing of ENDF-6 files via the
+    :func:`~endf_parserpy.EndfParser.parsefile`
+    method of the :class:`~endf_parserpy.EndfParser` class.
     The function can print out meaningful information where the
     discrepancies are present in the objects with a nested structure.
 
     Parameters
     ----------
     obj1 : object
-        Any kind of object but usually it will be a nested ``dict_like`` structure.
+        Any kind of object but usually it will be a nested :class:`dict`-like structure.
     obj2 : object
-        Any kind of object but usually it will be a nested ``dict_like`` structure.
+        Any kind of object but usually it will be a nested :class:`dict`-like structure.
     atol : float
-        The absolute tolerance for the comparison of two ``float`` variables.
+        The absolute tolerance for the comparison of two :class:`float` variables.
     rtol : float
-        The relative tolerance for the comparison of two ``float`` variables.
+        The relative tolerance for the comparison of two :class:`float` variables.
     strlen_only : bool
-        If ``true``, only compare the lengths of strings, otherwise also
+        If ``True``, only compare the lengths of strings, otherwise also
         the content of the strings is considered in the comparison.
     do_rstrip : bool
-        If ``true``, strip whitespace
+        If ``True``, strip whitespace
         characters at the end of the strings before comparison.
     rstrcut : Union[None, int]
         If an integer is provided, only retain the first ``rstrcut`` characters
         of the strings in the comparison. If ``None``, strings are compared
         as they are.
     fail_on_diff : bool
-        If ``true``, this function will raise an exception at the first encounter
+        If ``True``, this function will raise an exception at the first encounter
         of a difference. Otherwise, the function will fully compare the objects
-        and return ``true`` if the two objects are equal and ``false`` if they
+        and return ``True`` if the two objects are equal and ``False`` if they
         exhibit differences. The second option is mostly useful in combination
         with ``diff_log=True``.
     diff_log : Union[None, List]
-        A ``list`` object can be passed which will be filled with
+        A :class:`list` object can be passed which will be filled with
         strings that indicate the differences found.
         This option is only useful in combination with ``fail_on_diff=false``.
     """
@@ -217,34 +218,36 @@ def _compare_objects(
 
 
 class TrackingDict(MutableMapping):
-    """Class for tracking read access of elements in ``dict_like`` objects.
+    """Class for tracking read access of elements in :class:`dict`-like objects.
 
-    This class implements an interface to ``dict_like`` objects for
+    This class implements an interface to :class:`dict`-like objects for
     the purpose of tracking keys whose associated elements were
     retrieved. This tracking is applied recursively, hence also
-    keys of ``dict_like`` objects  stored within the root ``dict_like``
+    keys of :class:`dict`-like objects  stored within the root :class:`dict`-like
     object are potentially tracked. Not all keys are tracked, though.
     Read access to a key is only tracked if the following two criteria are
     met:
 
-    - The key is an integer, i.e. of type ``int``
-    - Keys within ``dict_like`` objects are never tracked if
-      the ``dict_like`` object itself is stored under a
+    - The key is an integer, i.e. of type :class:`int`
+    - Keys within :class:`dict`-like`` objects are never tracked if
+      the :class:`dict`-like object itself is stored under a
       key that starts with two underscores (``__``).
 
     These two rules are owed to the mode of operation of the
-    :class:`endf_parserpy.endf_parser.EndfParser` class.
-    The methods ``.parsefile()`` and ``.writefile()`` of the
-    ``EndfParser`` class will temporarily create auxiliary
+    :class:`~endf_parserpy.EndfParser` class.
+    The methods :func:`~endf_parserpy.EndfParser.parsefile` and
+    :func:`~endf_parserpy.EndfParser.writefile` of the
+    :class:`~endf_parserpy.EndfParser` class will temporarily create auxiliary
     variables stored under keys starting with two underscores.
     It is not pertinent to track read access to those ephemeral
-    objects. The purpose of the ``TrackingDict`` class---
+    objects. The purpose of the
+    :class:`~endf_parserpy.utils.debugging_utils.TrackingDict` class---
     when it comes to writing ENDF-6 formatted data---is to ensure
-    that all elements in arrays (emulated with ``dict_like``
+    that all elements in arrays (emulated with :class:`dict`-like
     objects containing only integer keys) are accessed.
     Otherwise, it means that some elements have not been written
     to the ENDF-6 file and this situation indicates an inconsistency
-    between counter variables and the index range of arrays.
+    between counter variables and the index ranges of arrays.
     """
 
     def __init__(self, dict_like):
@@ -253,7 +256,7 @@ class TrackingDict(MutableMapping):
         Parameters
         __________
         dict_like : dict
-            The ``dict_like`` object for which read access should be tracked.
+            The :class:`dict`-like object for which read access should be tracked.
         """
         self._basedict = dict_like
         self._trackingdicts = {}
@@ -305,8 +308,8 @@ class TrackingDict(MutableMapping):
         """Verify that all array elements have been accessed.
 
         This function will raise an ``IndexError`` exception
-        if there are ``dict_like`` objects where at least
-        one key of type ``int`` has been accessed but
+        if there are :class:`dict`-like objects where at least
+        one key of type :class:`int` has been accessed but
         more keys exist that have not been accessed.
         """
         self._verify_complete_retrieval()

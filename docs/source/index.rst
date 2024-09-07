@@ -95,7 +95,7 @@ Install endf-parserpy
 .. note::
 
    The package is still evolving and will be
-   extended with convenience function to enhance
+   extended with convenience functions to enhance
    the user experience. You can always check for updated versions
    `on PyPI <https://pypi.org/project/endf-parserpy/>`_.
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2024/09/06
+# Last modified:   2024/09/07
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -89,21 +89,21 @@ class EndfParserCpp:
             Eliminate spaces in a number before trying to parse it, e.g.
             `1.234 +8` is transformed to `1.234+8`. *(parsing)*
         ignore_blank_lines: bool
-            If `True`, skip blank lines in ENDF-6 formatted input without
+            If ``True``, skip blank lines in ENDF-6 formatted input without
             complaining. Otherwise, blank lines will lead to parsing failure.
             *(parsing)*
         ignore_send_records: bool
-            If `True`, the correct positioning of SEND/FEND/MEND/TEND
+            If ``True``, the correct positioning of SEND/FEND/MEND/TEND
             to indicate the end of a section is not checked. *(parsing)*
         ignore_missing_tpid: bool
-            If `True`, the parser will tolerate a missing TPID
+            If ``True``, the parser will tolerate a missing TPID
             record at the beginning of the file. *(parsing)*
         abuse_signpos: bool
             Permit positive numbers to start in the first character slot
             of an ENDF-6 field, which is usually reserved for the sign,
             to enhance numerical precision. *(writing)*
         keep_E : bool
-            If `true`, include the `e` character in scientific notation,
+            If ```True```, include the `e` character in scientific notation,
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
             compatibility with programming languages different from Fortran
             while the omission enhances numerical precision. *(writing)*
@@ -232,7 +232,7 @@ class EndfParserCpp:
         dict
             A nested dictionary. The keys of the first level are
             MF numbers and of the second level MT numbers.
-            The structure of the `dict` stored under a specific
+            The structure of the :class:`dict` stored under a specific
             `MF`/`MT` combination is determined by the
             corresponding ENDF recipe.
         """
@@ -269,7 +269,7 @@ class EndfParserCpp:
         endf_dict : dict
             Nested dictionary with nuclear data. Keys of first level
             are MF numbers and the keys of second level MT numbers.
-            The structure of the ``dict`` stored under an MF/MT combination
+            The structure of the :class:`dict` stored under an MF/MT combination
             depends on the corresponding ENDF recipe.
         exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             A section will only be written to the file if
@@ -285,7 +285,7 @@ class EndfParserCpp:
             of :func:`parsefile`.
         overwrite : bool
             Existing files will only be overwritten if this argument
-            is ``true``, otherwise this function will abort.
+            is ``True``, otherwise this function will abort.
         """
         if isinstance(endf_dict, EndfDict):
             endf_dict = endf_dict.unwrap()

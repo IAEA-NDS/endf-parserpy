@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/09/06
+# Last modified:   2024/09/07
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -93,7 +93,7 @@ class EndfParser:
 
     This class provides functions for
     (1) parsing ENDF-6 formatted data, and (2) converting data
-    given in a `dict`-like object into the ENDF-6 format.
+    given in a :class:`dict`-like object into the ENDF-6 format.
     The ENDF-6 formatted data may be given
     in a text file, a string, or a list of strings containing
     separate lines. The essential methods of this class
@@ -175,17 +175,17 @@ class EndfParser:
             Eliminate spaces in a number before trying to parse it, e.g.
             `1.234 +8` is transformed to `1.234+8`. *(parsing)*
         ignore_blank_lines: bool
-            If `True`, skip blank lines in ENDF-6 formatted input without
+            If ``True``, skip blank lines in ENDF-6 formatted input without
             complaining. Otherwise, blank lines will lead to parsing failure.
             *(parsing)*
         ignore_send_records: bool
-            If `True`, the correct positioning of SEND/FEND/MEND/TEND
+            If ``True``, the correct positioning of SEND/FEND/MEND/TEND
             to indicate the end of a section is not checked. *(parsing)*
         ignore_missing_tpid: bool
-            If `True`, the parser will tolerate a missing TPID
+            If ``True``, the parser will tolerate a missing TPID
             record at the beginning of the file. *(parsing)*
         keep_E : bool
-            If `true`, include the `e` character in scientific notation,
+            If ``True``, include the `e` character in scientific notation,
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
             compatibility with programming languages different from Fortran
             while the omission enhances numerical precision. *(writing)*
@@ -205,10 +205,10 @@ class EndfParser:
             format requires 11 but the user may opt for a different width
             for their storage/application needs. *(parsing, writing)*
         check_arrays : bool
-            Ensures that index ranges provided in the Python ``dict``
+            Ensures that index ranges provided in the Python :class:`dict`
             passed as argument to the :func:`write` and :func:`writefile`
             method are consistent with the values of counter variables.
-            If `true`, a ``dict`` containing larger index ranges than
+            If ``True``, a :class:`dict` containing larger index ranges than
             expected by counter variables will lead to failure, otherwise
             the presence of additional indices will be ignored. *(writing)*
         strict_datatypes : bool
@@ -228,7 +228,7 @@ class EndfParser:
             whenever this class is instantiated. Finally, the user can
             provide a custom directory as a string.
         print_cache_info : bool
-            If `true`, print out a message regarding the location of the
+            If ``True``, print out a message regarding the location of the
             cache directory if it was automatically determined.
         endf_format : str
             Allow the user to pick specific ENDF format flavors.
@@ -1144,7 +1144,7 @@ class EndfParser:
             The MF and MF/MT sections are specified exactly in the
             same way as for the ``exclude`` argument.
         nofail : bool
-            If this argument is `true`, the parser will attempt to
+            If this argument is ``True``, the parser will attempt to
             parse *all* MF/MT sections desired by the user, irrespective
             of failure in the parsing of any section. Sections where
             parsing failed will only be available as list of strings.
@@ -1156,7 +1156,7 @@ class EndfParser:
         dict
             A nested dictionary. The keys of the first level are
             MF numbers and of the second level MT numbers.
-            The structure of the `dict` stored under a specific
+            The structure of the :class:`dict` stored under a specific
             `MF`/`MT` combination is determined by the
             corresponding ENDF recipe.
         """
@@ -1182,7 +1182,7 @@ class EndfParser:
         endf_dic : dict
             Nested dictionary with nuclear data. Keys of first level
             are MF numbers and the keys of second level MT numbers.
-            The structure of the ``dict`` stored under an MF/MT combination
+            The structure of the :class:`dict` stored under an MF/MT combination
             depends on the corresponding ENDF recipe.
         exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             A section will only be written to the file if
@@ -1198,7 +1198,7 @@ class EndfParser:
             of :func:`parsefile`.
         overwrite : bool
             Existing files will only be overwritten if this argument
-            is ``true``, otherwise this function will abort.
+            is ``True``, otherwise this function will abort.
         """
         if file_exists(filename) and not overwrite:
             raise FileExistsError(

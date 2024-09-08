@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/06/25
+# Last modified:   2024/09/08
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -103,11 +103,11 @@ def generate_varname_str(expr, loop_vars):
     # we assume it is an extvarname node
     retstr = ""
     for child in expr.children:
-        child_name = get_name(expr)
+        child_name = get_name(child)
         if child_name == "VARNAME":
             retstr += get_value(child)
         elif child_name == "indexquant":
-            idxval = get_indexvalue(expr, loop_vars)
+            idxval = get_indexvalue(child, loop_vars)
             retstr += str(idxval)
         else:
             retstr += get_value(child)

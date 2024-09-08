@@ -8,10 +8,10 @@ three classes that facilitate the access to
 objects in nested dictionaries by introducing
 enhanced indexing functionality. The enhanced indexing
 functionality, established by the
-:doc:`EndfPath <endf_path_class>` class, is leveraged
-by the :doc:`EndfDict <endf_dict_class>` class to enable
+:class:`~endf_parserpy.EndfPath` class is leveraged
+by the :class:`~endf_parserpy.EndfDict` class to enable
 advanced indexing into nested dictionaries.
-Finally, an instance of the :doc:`EndfVariable <endf_variable_class>`
+Finally, an instance of the :class:`~endf_parserpy.EndfVariable`
 class serves the same purpose as a regular variables but
 is kept in sync with a specific location in a nested dictionary
 and the data stored there.

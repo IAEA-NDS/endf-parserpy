@@ -6,8 +6,8 @@ endf6_plumbing
 The ``endf_parserpy.utils.endf6_plumbing`` module implements
 convenience functions for common operations on
 dictionaries with ENDF-6 data,
-as returned by the ``parsefile()`` method of the
-:doc:`../endf_parser/endf_parser_class` class.
+as returned by the :meth:`~endf_parserpy.EndfParser.parsefile` method of the
+:class:`~endf_parserpy.EndfParser` class.
 
 .. currentmodule:: endf_parserpy
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/25
+# Last modified:   2024/09/08
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -53,7 +53,7 @@ def list_unparsed_sections(dic):
     ----------
     dic : dict
         A ``dict`` in the form as returned by the
-        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.EndfParser` class.
+        :meth:`~endf_parserpy.EndfParser.parsefile` method of the :class:`~endf_parserpy.EndfParser` class.
 
     Returns
     -------
@@ -97,26 +97,26 @@ def list_parsed_sections(dic):
 def sanitize_fieldname_types(dic):
     """Sanitize the keys of a ``dict`` object with ENDF-6 data.
 
-    The Python ``dict`` datatype supports the use of keys of
-    type ``int`` whereas hashtable implementations in other
+    The Python :class:`dict` datatype supports the use of keys of
+    type :class:`int` whereas hashtable implementations in other
     language may only allow the use of strings. For example,
     the JSON format only allows strings as keys. This function
     recursively replaces all keys containing integer numbers
-    but being of type ``str`` to type ``int``.
+    but being of type :class:`str` to type :class:`int`.
 
-    Noteworthy, this conversion is necessary before using the ``.writefile``
-    method of the :class:`endf_parserpy.endf_parser.EndfParser`
+    Noteworthy, this conversion is necessary before using the :meth:`~endf_parserpy.EndfParser.writefile`
+    method of the :class:`~endf_parserpy.EndfParser`
     class if the dictionary with ENDF-6 data has been retrieved from a JSON file.
 
     Parameters
     ----------
     dic : dict
-        A ``dict_like`` object.
+        A :class:`dict`-like object.
 
     Returns
     -------
     None
-        Datatypes are changed in-place in the ``dict_like`` object provided as ``dic`` argument.
+        Datatypes are changed in-place in the :class:`dict`-like object provided as ``dic`` argument.
     """
     if not isinstance(dic, dict):
         raise TypeError("please provide dictionary")

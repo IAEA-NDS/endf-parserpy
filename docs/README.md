@@ -9,9 +9,10 @@ on your computer, follow these steps:
 2) Create a virtual environment via `python -m venv docenv`
 3) Activate the environment: for Linux and MacOS, run `source docenv/bin/activate` and for Windows `docenv\Scripts\activate.bat`
 4) Install the requirements to build the documentation: `pip install -r requirements.txt`
-5) Install the `endf-parserpy` package: `pip install ../`
-6) Build the documentation by running `make html`
-7) Deactivate the virtual environment by running `deactivate`
+5) Deactivate C++ module compilation: `export INSTALL_ENDF_PARSERPY_CPP=no` (Linux, MacOS) or `set INSTALL_ENDF_PARSERPY_CPP=no` (Windows)
+6) Install the `endf-parserpy` package: `pip install ../`
+7) Build the documentation by running `make html`
+8) Deactivate the virtual environment by running `deactivate`
 
 After these steps, the `html` files are available in `build/html`.
 The start page of the documentation is accessible via `build/html/index.html`.

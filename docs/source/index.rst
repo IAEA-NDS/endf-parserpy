@@ -19,6 +19,7 @@
    guide/endf_plumbing
    guide/creation_endf_scratch
    guide/format_extensions
+   guide/working_with_legacy_formats
    guide/high_level_functionality
    guide/accelerated_parsing_and_writing
 
@@ -115,6 +116,7 @@ Resources
   - :doc:`guide/endf_plumbing`
   - :doc:`guide/creation_endf_scratch`
   - :doc:`guide/format_extensions`
+  - :doc:`guide/working_with_legacy_formats`
   - :doc:`guide/high_level_functionality`
   - :doc:`guide/accelerated_parsing_and_writing`
 

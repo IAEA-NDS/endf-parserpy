@@ -11,8 +11,8 @@ is available. However, the disadvantage is slow execution
 speed compared to parsers implemented in compiled
 languages, such as C++. The speed disadvantage is
 exacerbated by the fact that ``endf-parserpy`` implements
-at its core an interpreter for ENDF recipe files which
-contain the necessary information to properly parse and write
+at its core an interpreter for :ref:`ENDF recipe files <endf6_recipe_sec>`
+which contain the necessary information to properly parse and write
 ENDF-6 formatted files. Understandably, the implementation of
 an interpreter in an interpreted language (Python) is even
 slower than a direct implementation of the specific instructions

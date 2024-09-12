@@ -17,7 +17,8 @@ supporting several materials in a single file.
 
 The format underlying EAF-2007 is described in `this document
 <https://www.oecd-nea.org/dbdata/data/manual-endf/EAF-format(Based_on_UKAEA-FUS-535).pdf>`_.
-To try out the following code blocks, download the abridged version
+To try out the following code blocks, download the
+`abridged version <https://raw.githubusercontent.com/IAEA-NDS/endf-parserpy/6a7e85470fcc2c711b7e953af43253118bd8766b/examples/data/eaf2007_abridged.endf>`_
 of the EAF-2007 file stored in the ``examples/data`` directory of the
 ``endf-parserpy`` GitHub repository.
 

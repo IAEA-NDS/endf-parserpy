@@ -73,7 +73,8 @@ Install endf-parserpy
 
 .. note::
 
-   The package contains C++ source files for accelerated parsing.
+   The package contains C++ source files for
+   :ref:`accelerated parsing <accelerated_parsing_and_writing_sec>`.
    If a suitable binary wheel isn't available for your platform,
    an attempt will be made to compile the source files during
    installation, which may take up to ten minutes. If you don't

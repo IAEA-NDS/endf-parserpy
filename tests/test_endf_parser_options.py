@@ -1,3 +1,4 @@
+import pytest
 from pathlib import Path
 from endf_parserpy.interpreter import EndfParser
 from endf_parserpy.utils.debugging_utils import compare_objects
@@ -148,3 +149,20 @@ def test_ignore_send_records_false_option_with_missing_mend_record():
 
 def test_ignore_send_records_true_option_with_missing_mend_record():
     _test_ignore_send_records_true_option(66, 4)
+
+
+def test_missing_tpid_option_true_with_missing_tpid():
+    parser = EndfParser(ignore_missing_tpid=True)
+    endf_file = Path(__file__).parent.joinpath(
+        "testdata", "malformed_endf", "jeff33_13-Al-27g_mf4_mt2.endf"
+    )
+    endf_dict = parser.parsefile(endf_file)
+
+
+def test_missing_tpid_option_false_with_missing_tpid():
+    parser = EndfParser(ignore_missing_tpid=False)
+    endf_file = Path(__file__).parent.joinpath(
+        "testdata", "malformed_endf", "jeff33_13-Al-27g_mf4_mt2.endf"
+    )
+    with pytest.raises(Exception):
+        endf_dict = parser.parsefile(endf_file)

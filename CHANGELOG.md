@@ -19,10 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Avoid check of MAT/MF/MT consistency if `ignore_send_records` option is active
 - Add forgotten newline character while joining list of strings in `EndfParserCpp.parse` method.
+- Do not remove last line when writing verbatim MF/MT section with `EndfParser`
 
 ### Changed
 
 - Options for reading and writing are now passed as dictionaries (`read_opts` and `write_opts`) to functions.
+- Redesigned command-line interface
 
 ## [0.11.0]
 

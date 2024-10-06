@@ -77,7 +77,7 @@ def fortstr2float(valstr, read_opts=None):
     for i, c in enumerate(valstr):
         if i > 0 and (c == "+" or c == "-"):
             if valstr[i - 1].isdigit():
-                return float(valstr[:i] + "E" + valstr[i:])
+                valstr = valstr[:i] + "E" + valstr[i:]
     try:
         if preserve_value_strings:
             return EndfFloat(valstr, orig_valstr)

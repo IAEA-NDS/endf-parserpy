@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/09/08
+# Last modified:   2024/10/06
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -99,7 +99,7 @@ def set_description(endf_dic, text):
     endf_dic[1][451]["NWD"] = numlines + 5
     descr_dic = {}
     for k in range(1, numlines + 1):
-        descr_dic[k] = lines[k - 1]
+        descr_dic[k] = lines[k - 1].ljust(66)
     endf_dic[1][451]["DESCRIPTION"] = descr_dic
 
 

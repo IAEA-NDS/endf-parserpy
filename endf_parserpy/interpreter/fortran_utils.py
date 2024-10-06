@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/09/06
+# Last modified:   2024/10/06
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -11,6 +11,7 @@
 
 from .custom_exceptions import InvalidIntegerError, InvalidFloatError
 from math import log10, floor
+from copy import deepcopy
 
 
 class EndfFloat(float):
@@ -35,6 +36,15 @@ class EndfFloat(float):
         inst = super().__new__(cls, value)
         inst._orig_str = orig_str
         return inst
+
+    def __deepcopy__(self, memo):
+        """Create a deepcopy of the EndfFloat instance."""
+        if id(self) in memo:
+            return memo[id(self)]
+        obj_copy = self.__class__.__new__(self.__class__, float(self), self._orig_str)
+        obj_copy._orig_str = deepcopy(self._orig_str, memo)
+        memo[id(self)] = obj_copy
+        return obj_copy
 
     def get_original_string(self):
         """Return the string representation of the float value."""

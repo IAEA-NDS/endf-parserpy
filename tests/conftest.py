@@ -27,8 +27,10 @@ def pytest_generate_tests(metafunc):
         if file_opt is not None:
             endf_files = [endf_dir / file_opt]
         else:
-            endf_files = endf_dir.glob("*.endf")
-        metafunc.parametrize("endf_file", endf_files)
+            endf_files = list(endf_dir.glob("*.endf"))
+        metafunc.parametrize(
+            "endf_file", endf_files, ids=[str(f.name) for f in endf_files]
+        )
 
     parse_opts = (
         "ignore_zero_mismatch",

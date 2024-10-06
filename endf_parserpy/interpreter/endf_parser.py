@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/09/07
+# Last modified:   2024/10/06
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -1067,7 +1067,6 @@ class EndfParser:
                     # list of strings in the parse step
                     # and we output that unchanged
                     curlines = endf_dic[mf][mt].copy()
-                    curlines = curlines[:-1] if mf != 0 else curlines
                     curlines = add_linenumbers_to_section(
                         curlines, write_opts=self.write_opts
                     )

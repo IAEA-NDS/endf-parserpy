@@ -33,6 +33,24 @@ def test_parsefile_include_option_with_mf_mt():
     compare_objects(result1, result2)
 
 
+def test_roundtrip_with_include_mf_mt_option():
+    parser = EndfParser()
+    endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    result1 = parser.parsefile(endf_file)
+    tmpres = parser.parsefile(endf_file, include=[(3, 1)])
+    result2 = parser.parse(parser.write(tmpres))
+    compare_objects(result1, result2)
+
+
+def test_roundtrip_with_exclude_mf_mt_option():
+    parser = EndfParser()
+    endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    result1 = parser.parsefile(endf_file)
+    tmpres = parser.parsefile(endf_file, exclude=[(3, 1)])
+    result2 = parser.parse(parser.write(tmpres))
+    compare_objects(result1, result2)
+
+
 def test_parsefile_exclude_option_with_mf_mt():
     parser = EndfParser()
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")

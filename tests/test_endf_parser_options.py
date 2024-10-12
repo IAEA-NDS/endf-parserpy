@@ -184,3 +184,24 @@ def test_missing_tpid_option_false_with_missing_tpid():
     )
     with pytest.raises(Exception):
         endf_dict = parser.parsefile(endf_file)
+
+
+def test_array_type_list_option():
+    parser_dict = EndfParser(array_type="dict")
+    endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    endf_dict1 = parser_dict.parsefile(endf_file)
+    for array_type in ("list", "list_slow"):
+        parser_list = EndfParser(array_type=array_type)
+        endf_dict2a = parser_list.parsefile(endf_file)
+        endf6text = parser_list.write(endf_dict2a)
+        endf_dict2c = parser_dict.parse(endf6text)
+        compare_objects(endf_dict1, endf_dict2c)
+
+
+def test_array_type_list_and_list_slow_equivalent():
+    parser1 = EndfParser(array_type="list")
+    parser2 = EndfParser(array_type="list_slow")
+    endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    endf_dict1 = parser1.parsefile(endf_file)
+    endf_dict2 = parser2.parsefile(endf_file)
+    compare_objects(endf_dict1, endf_dict2)

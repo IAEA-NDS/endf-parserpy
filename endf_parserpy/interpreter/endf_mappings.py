@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/06/25
+# Last modified:   2024/10/13
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -194,7 +194,13 @@ def map_tab2_dic(
         create_missing = rwmode == "read"
         path = EndfPath(path)
         datadic, path = open_section(
-            tab2_name_node, datadic, loop_vars, create_missing, path=path, logger=logger
+            tab2_name_node,
+            datadic,
+            loop_vars,
+            parse_opts,
+            create_missing,
+            path=path,
+            logger=logger,
         )
     # deal with the mapping of the variable names in the table first
     cn = ("NBT", "INT")
@@ -253,6 +259,7 @@ def map_tab1_dic(
             tab1_name_node,
             datadic,
             loop_vars,
+            parse_opts,
             create_missing,
             path=path,
             logger=logger,
@@ -287,8 +294,8 @@ def map_list_dic(
     datadic=None,
     loop_vars=None,
     rwmode="read",
-    run_instruction=None,
     parse_opts=None,
+    run_instruction=None,
     path="",
     logger=None,
 ):
@@ -358,6 +365,7 @@ def map_list_dic(
                 parse_list_body_node,
                 datadic,
                 loop_vars,
+                parse_opts,
                 loop_name="list_loop",
                 head_name="list_for_head",
                 body_name="list_body",
@@ -397,7 +405,13 @@ def map_list_dic(
         create_missing = rwmode == "read"
         path = EndfPath(path)
         datadic, path = open_section(
-            list_name_node, datadic, loop_vars, create_missing, path=path, logger=logger
+            list_name_node,
+            datadic,
+            loop_vars,
+            parse_opts,
+            create_missing,
+            path=path,
+            logger=logger,
         )
     # parse the list body
     list_body_node = get_child(list_line_node, "list_body")

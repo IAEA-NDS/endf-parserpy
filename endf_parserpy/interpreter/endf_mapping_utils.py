@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/09/08
+# Last modified:   2024/10/13
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -33,6 +33,11 @@ from .custom_exceptions import (
     InvalidIntegerError,
     SeveralUnboundVariablesError,
 )
+from .helpers import (
+    list_set,
+    list_setdefault,
+    shift_indices,
+)
 import re
 
 
@@ -56,18 +61,17 @@ def get_indexvalue(token, loop_vars):
         )
 
 
-def substitute_abbreviation(val, datadic, loop_vars, look_up):
+def substitute_abbreviation(val, datadic, loop_vars, parse_opts, look_up):
     if not is_tree(val):
         return val
     assert get_name(val) == "expr"
-    val = eval_expr_without_unknown_var(val, datadic, loop_vars, look_up)
+    val = eval_expr_without_unknown_var(val, datadic, loop_vars, parse_opts, look_up)
     return val
 
 
-def get_array_value(varname, idxquants, datadic, loop_vars):
-    curdic = datadic[varname]
-    for idxquant in idxquants:
-        idx = get_indexvalue(idxquant, loop_vars)
+def _get_array_value_in_dict_mode(varname, array_cont, idcs):
+    curdic = array_cont
+    for idx in idcs:
         if idx in curdic:
             curdic = curdic[idx]
         else:
@@ -77,13 +81,53 @@ def get_array_value(varname, idxquants, datadic, loop_vars):
     return curdic
 
 
-def set_array_value(varname, idxquants, value, datadic, loop_vars):
+def _get_array_value_in_list_mode(varname, array_cont, idcs):
+    curlst = array_cont
+    for idx in idcs:
+        if idx >= 0 and idx < len(curlst):
+            curlst = curlst[idx]
+        else:
+            raise UnavailableIndexError(
+                f"index {idx} does not exist in array {varname}"
+            )
+    return curlst
+
+
+def get_array_value(varname, idxquants, datadic, loop_vars, parse_opts):
+    in_list_mode = parse_opts["internal_array_type"] == "list"
+    array_obj = datadic[varname]
+    idcs = [get_indexvalue(q, loop_vars) for q in idxquants]
+    if in_list_mode:
+        idcs = shift_indices(varname, idcs, datadic)
+        return _get_array_value_in_list_mode(varname, array_obj, idcs)
+    else:
+        return _get_array_value_in_dict_mode(varname, array_obj, idcs)
+
+
+def _set_array_value_in_dict_mode(varname, idxquants, value, datadic, loop_vars):
     curdic = datadic.setdefault(varname, {})
     for idxquant in idxquants[:-1]:
         idx = get_indexvalue(idxquant, loop_vars)
         curdic = curdic.setdefault(idx, {})
     idx = get_indexvalue(idxquants[-1], loop_vars)
     curdic[idx] = value
+
+
+def _set_array_value_in_list_mode(varname, idxquants, value, datadic, loop_vars):
+    idcs = [get_indexvalue(q, loop_vars) for q in idxquants]
+    idcs = shift_indices(varname, idcs, datadic)
+    curlist = datadic.setdefault(varname, [])
+    for idx in idcs[:-1]:
+        curlist = list_setdefault(curlist, idx, [])
+    list_set(curlist, idcs[-1], value)
+
+
+def set_array_value(varname, idxquants, value, datadic, loop_vars, parse_opts):
+    in_list_mode = parse_opts["internal_array_type"] == "list"
+    if not in_list_mode:
+        _set_array_value_in_dict_mode(varname, idxquants, value, datadic, loop_vars)
+    else:
+        _set_array_value_in_list_mode(varname, idxquants, value, datadic, loop_vars)
 
 
 def varname_or_extvarname_check(expr):
@@ -114,7 +158,7 @@ def generate_varname_str(expr, loop_vars):
     return retstr
 
 
-def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
+def get_varval(expr, datadic, loop_vars, parse_opts, look_up=True, eval_abbrev=True):
     varname_or_extvarname_check(expr)
     varname = get_varname(expr)
     idxquants = get_indexquants(expr)
@@ -136,36 +180,38 @@ def get_varval(expr, datadic, loop_vars, look_up=True, eval_abbrev=True):
     if idxquants is None:
         if eval_abbrev:
             return substitute_abbreviation(
-                datadic[varname], orig_datadic, loop_vars, look_up
+                datadic[varname], orig_datadic, loop_vars, parse_opts, look_up
             )
         else:
             return datadic[varname]
     else:
-        val = get_array_value(varname, idxquants, datadic, loop_vars)
+        val = get_array_value(varname, idxquants, datadic, loop_vars, parse_opts)
         if eval_abbrev:
-            return substitute_abbreviation(val, orig_datadic, loop_vars, look_up)
+            return substitute_abbreviation(
+                val, orig_datadic, loop_vars, parse_opts, look_up
+            )
         else:
             return val
 
 
-def set_varval(expr, datadic, loop_vars, value):
+def set_varval(expr, datadic, loop_vars, value, parse_opts):
     varname_or_extvarname_check(expr)
     varname = get_varname(expr)
     idxquants = get_indexquants(expr)
     if idxquants is None:
         datadic[varname] = value
     else:
-        set_array_value(varname, idxquants, value, datadic, loop_vars)
+        set_array_value(varname, idxquants, value, datadic, loop_vars, parse_opts)
 
 
-def count_unassigned_vars(expr, datadic, loop_vars, look_up=True):
+def count_unassigned_vars(expr, datadic, loop_vars, parse_opts, look_up=True):
     if is_tree(expr) and get_name(expr) != "extvarname":
         return sum(
             [count_unassigned_vars(ch, datadic, loop_vars) for ch in expr.children]
         )
     elif is_tree(expr) or (is_token(expr) and get_name(expr) == "VARNAME"):
         try:
-            get_varval(expr, datadic, loop_vars, look_up)
+            get_varval(expr, datadic, loop_vars, parse_opts, look_up)
         except VariableNotFoundError:
             return 1
         except UnavailableIndexError:
@@ -241,14 +287,20 @@ def varvalue_expr_conversion(vv, val, rwmode, cast_int=True):
 
 
 def eval_expr_without_unknown_var(
-    expr, datadic=None, loop_vars=None, look_up=True, cast_int=True
+    expr, datadic=None, loop_vars=None, parse_opts=None, look_up=True, cast_int=True
 ):
-    ret = eval_expr(expr, datadic, loop_vars, look_up, cast_int, False)
+    ret = eval_expr(expr, datadic, loop_vars, parse_opts, look_up, cast_int, False)
     return ret[0]
 
 
 def eval_expr(
-    expr, datadic=None, loop_vars=None, look_up=True, cast_int=True, accept_missing=True
+    expr,
+    datadic=None,
+    loop_vars=None,
+    parse_opts=None,
+    look_up=True,
+    cast_int=True,
+    accept_missing=True,
 ):
     name = get_name(expr, nofail=True)
     # reminder: VARNAME is is a string of letters and number, e.g., foo1
@@ -260,10 +312,16 @@ def eval_expr(
             # if datadic and variable exists in datadic
             # we substitute the variable name by its value
             try:
-                val = get_varval(expr, datadic, loop_vars, look_up, False)
+                val = get_varval(expr, datadic, loop_vars, parse_opts, look_up, False)
                 if is_tree(val) and get_name(val) == "expr":
                     return eval_expr(
-                        val, datadic, loop_vars, look_up, cast_int, accept_missing
+                        val,
+                        datadic,
+                        loop_vars,
+                        parse_opts,
+                        look_up,
+                        cast_int,
+                        accept_missing,
                     )
                 else:
                     return (val, 0, None)
@@ -288,16 +346,34 @@ def eval_expr(
         return (v, 0, None)
     elif name == "minusexpr":
         v = eval_expr(
-            expr.children[0], datadic, loop_vars, look_up, cast_int, accept_missing
+            expr.children[0],
+            datadic,
+            loop_vars,
+            parse_opts,
+            look_up,
+            cast_int,
+            accept_missing,
         )
         return (math_neg(v[0]), -v[1], v[2])
     elif name in ("addition", "subtraction", "multiplication", "modulo", "division"):
         v1 = eval_expr(
-            expr.children[0], datadic, loop_vars, look_up, cast_int, accept_missing
+            expr.children[0],
+            datadic,
+            loop_vars,
+            parse_opts,
+            look_up,
+            cast_int,
+            accept_missing,
         )
         # children[1] contains the operator symbol *,/,+,-
         v2 = eval_expr(
-            expr.children[2], datadic, loop_vars, look_up, cast_int, accept_missing
+            expr.children[2],
+            datadic,
+            loop_vars,
+            parse_opts,
+            look_up,
+            cast_int,
+            accept_missing,
         )
         if name == "multiplication":
             if v1[1] != 0 and v2[1] != 0:
@@ -345,7 +421,9 @@ def eval_expr(
             return (math_sub(v1[0], v2[0]), math_sub(v1[1], v2[1]), vexpr)
     elif name == "inconsistent_varspec":
         ch = get_child(expr, "extvarname")
-        return eval_expr(ch, datadic, loop_vars, look_up, cast_int, accept_missing)
+        return eval_expr(
+            ch, datadic, loop_vars, parse_opts, look_up, cast_int, accept_missing
+        )
     else:
         # we remove enclosing brackets if present
         ch_first = expr.children[0]
@@ -361,5 +439,11 @@ def eval_expr(
             trimmed_children = expr.children
         assert len(trimmed_children) == 1
         return eval_expr(
-            trimmed_children[0], datadic, loop_vars, look_up, cast_int, accept_missing
+            trimmed_children[0],
+            datadic,
+            loop_vars,
+            parse_opts,
+            look_up,
+            cast_int,
+            accept_missing,
         )

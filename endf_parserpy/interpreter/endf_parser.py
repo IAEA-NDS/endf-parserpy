@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/10/06
+# Last modified:   2024/10/13
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -39,9 +39,9 @@ from .meta_control_utils import (
     open_section,
     close_section,
     should_proceed,
-    initialize_abbreviations,
+    initialize_working_vars,
     introduce_abbreviation,
-    finalize_abbreviations,
+    remove_working_vars,
 )
 from .endf_utils import (
     read_cont,
@@ -86,6 +86,7 @@ from .endf_recipe_utils import (
 )
 from endf_parserpy.endf_recipes import get_recipe_dict
 from endf_parserpy.utils.debugging_utils import TrackingDict
+from .helpers import array_dict_to_list
 
 
 class EndfParser:
@@ -119,6 +120,7 @@ class EndfParser:
         width=11,
         check_arrays=True,
         strict_datatypes=False,
+        array_type="dict",
         explain_missing_variable=True,
         cache_dir=None,
         print_cache_info=True,
@@ -216,6 +218,10 @@ class EndfParser:
             needs to be cast to an `int`. If `false`, the writing process
             will only fail if the a value in the `float` cannot be
             perfectly represented by an `int`. *(writing)*
+        array_type : str
+            The Python datatype to use for representing arrays read from
+            ENDF-6 files. The two options are ```dict``` (default) and
+            ```list```.  *(parsing)*
         explain_missing_variable : bool
             If the :func:`write` or :func:`writefile` method
             fail because a variable is missing in the dictionary,
@@ -293,6 +299,7 @@ class EndfParser:
             "ignore_number_mismatch": ignore_number_mismatch,
             "ignore_varspec_mismatch": ignore_varspec_mismatch,
             "fuzzy_matching": fuzzy_matching,
+            "array_type": array_type,
         }
         self.write_opts = {
             "abuse_signpos": abuse_signpos,
@@ -786,14 +793,15 @@ class EndfParser:
             section_head,
             self.datadic,
             self.loop_vars,
+            self.parse_opts,
             create_missing,
             path=self.current_path,
             logger=self.logger,
         )
         section_body = get_child(tree, "section_body")
-        initialize_abbreviations(self.datadic)
+        initialize_working_vars(self.datadic)
         self.run_instruction(section_body)
-        finalize_abbreviations(self.datadic)
+        remove_working_vars(self.datadic)
         self.datadic = close_section(section_head, self.datadic, logger=self.logger)
         self.current_path = previous_path
 
@@ -802,7 +810,12 @@ class EndfParser:
             for_head = get_child(tree, "for_head")
             self.logbuffer.save_reduced_record_log(for_head)
         return cycle_for_loop(
-            tree, self.run_instruction, self.datadic, self.loop_vars, logger=self.logger
+            tree,
+            self.run_instruction,
+            self.datadic,
+            self.loop_vars,
+            self.parse_opts,
+            logger=self.logger,
         )
 
     def process_if_clause(self, tree):
@@ -810,6 +823,7 @@ class EndfParser:
             tree,
             self.datadic,
             self.loop_vars,
+            self.parse_opts,
             self.run_instruction,
             set_parser_state=self.set_parser_state,
             get_parser_state=self.get_parser_state,
@@ -914,6 +928,10 @@ class EndfParser:
         """
         if isinstance(lines, str):
             lines = lines.split("\n")
+        array_type = self.parse_opts["array_type"]
+        self.parse_opts["internal_array_type"] = (
+            "list" if array_type == "list_slow" else "dict"
+        )
         tree_dic = self.tree_dic
         self.variable_descriptions = EndfDict()
         mfmt_dic = split_sections(lines, read_opts=self.read_opts)
@@ -950,19 +968,23 @@ class EndfParser:
                     self.reset_parser_state(rwmode="read", lines=curlines)
                     self.current_path = EndfPath((mf, mt))
                     try:
-                        initialize_abbreviations(self.datadic)
+                        initialize_working_vars(self.datadic)
                         self.run_instruction(cur_tree)
-                        finalize_abbreviations(self.datadic)
+                        remove_working_vars(self.datadic)
                         mfmt_dic[mf][mt] = self.datadic
+                        if self.parse_opts["array_type"] == "list":
+                            array_dict_to_list(mfmt_dic[mf][mt])
                     except ParserException as exc:
                         if not nofail:
                             logstr = self.logbuffer.display_record_logs()
+                            del self.parse_opts["internal_array_type"]
                             raise type(exc)(
                                 "\nHere is the parser record log until failure:\n\n"
                                 + logstr
                                 + "Error message: "
                                 + str(exc)
                             )
+        del self.parse_opts["internal_array_type"]
         return mfmt_dic
 
     def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
@@ -977,6 +999,10 @@ class EndfParser:
             List of lines with the ENDF-6 formatted data.
         """
         self.zero_as_blank = zero_as_blank
+        array_type = self.parse_opts["array_type"]
+        self.parse_opts["internal_array_type"] = (
+            "list" if array_type in ("list", "list_slow") else "dict"
+        )
         self.reset_parser_state(rwmode="write", datadic={})
         self.variable_descriptions = EndfDict()
         should_check_arrays = self.write_opts["check_arrays"]
@@ -1007,9 +1033,9 @@ class EndfParser:
                             f"expected MT={mt} but found MT={datadic['MT']}"
                         )
                     try:
-                        initialize_abbreviations(self.datadic)
+                        initialize_working_vars(self.datadic)
                         self.run_instruction(cur_tree)
-                        finalize_abbreviations(self.datadic)
+                        remove_working_vars(self.datadic)
                     except Exception as exc:
                         logstr = self.logbuffer.display_reduced_record_logs()
                         errmsg = (
@@ -1039,6 +1065,7 @@ class EndfParser:
                             errmsg += "\n\n" + explain_header + "\n"
                             errmsg += "-" * len(explain_header) + "\n"
                             errmsg += explanation
+                        del self.parse_opts["internal_array_type"]
                         raise type(exc)(errmsg)
                     # add the NS number to the lines except last one
                     # because the SEND (=section end) record already
@@ -1112,6 +1139,7 @@ class EndfParser:
             )
         )
         del self.zero_as_blank
+        del self.parse_opts["internal_array_type"]
         if should_check_arrays:
             endf_dic.verify_complete_retrieval()
         return lines

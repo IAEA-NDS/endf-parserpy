@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2024/06/25
+# Last modified:   2024/10/12
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -94,7 +94,12 @@ def map_recorddic_to_datadic(
     for sourcekey, curexpr in zipit:
         try:
             expr_vv = eval_expr(
-                curexpr, datadic, loop_vars, look_up=False, cast_int=cast_int
+                curexpr,
+                datadic,
+                loop_vars,
+                parse_opts,
+                look_up=False,
+                cast_int=cast_int,
             )
         except SeveralUnboundVariablesError:
             found_unbound = True
@@ -170,7 +175,9 @@ def map_recorddic_to_datadic(
             if idxquants is None:
                 datadic[targetkey] = val
             else:
-                set_array_value(targetkey, idxquants, val, datadic, loop_vars)
+                set_array_value(
+                    targetkey, idxquants, val, datadic, loop_vars, parse_opts
+                )
 
     # Logging info is only produced the first time we encounter a variable
     tmp = tuple(v for v in varnames if v is not None)
@@ -195,7 +202,7 @@ def map_datadic_to_recorddic(
     zipit = zip(basekeys, expr_list)
     for sourcekey, curexpr in zipit:
         val = eval_expr_without_unknown_var(
-            curexpr, datadic, loop_vars, look_up=False, cast_int=False
+            curexpr, datadic, loop_vars, parse_opts, look_up=False, cast_int=False
         )
         record_dic[sourcekey] = val
     return record_dic
@@ -269,7 +276,7 @@ def map_text_record_helper(
                 )
             curstr = fullstring[charcount:upper_index]
             if extvarname_node is not None:
-                set_varval(extvarname_node, datadic, loop_vars, curstr)
+                set_varval(extvarname_node, datadic, loop_vars, curstr, parse_opts)
             charcount = upper_index
         return datadic
     else:
@@ -281,7 +288,7 @@ def map_text_record_helper(
             if textlength_node is not None:
                 textlength = int(get_value(textlength_node))
             if extvarname_node is not None:
-                curstr = get_varval(extvarname_node, datadic, loop_vars)
+                curstr = get_varval(extvarname_node, datadic, loop_vars, parse_opts)
                 if textlength is not None and len(curstr) != textlength:
                     varnamestr = generate_varname_str(extvarname_node, loop_vars)
                     raise SizeMismatchError(

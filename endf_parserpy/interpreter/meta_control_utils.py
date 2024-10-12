@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/06/25
+# Last modified:   2024/10/13
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -31,11 +31,16 @@ from .custom_exceptions import (
     UnexpectedControlRecordError,
     MissingSectionError,
 )
+from .helpers import (
+    shift_indices,
+    list_setdefault,
+)
 from copy import deepcopy
 
 
-def initialize_abbreviations(datadic):
+def initialize_working_vars(datadic):
     datadic["__abbrevs"] = set()
+    datadic["__startidcs"] = dict()
 
 
 def introduce_abbreviation(tree, datadic):
@@ -51,23 +56,28 @@ def introduce_abbreviation(tree, datadic):
     datadic[varname] = expr
 
 
-def finalize_abbreviations(datadic):
+def remove_working_vars(datadic):
     assert "__abbrevs" in datadic
     for abbrev in datadic["__abbrevs"]:
         del datadic[abbrev]
     del datadic["__abbrevs"]
+    del datadic["__startidcs"]
 
 
 def open_section(
-    extvarname, datadic, loop_vars, create_missing, path=None, logger=None
+    extvarname, datadic, loop_vars, parse_opts, create_missing, path=None, logger=None
 ):
+    in_list_mode = parse_opts["internal_array_type"] == "list"
     varname = get_varname(extvarname)
     if path is not None:
         path += (varname,)
     indexquants = get_indexquants(extvarname)
     curdatadic = datadic
     if create_missing:
-        datadic.setdefault(varname, {})
+        if indexquants is None or not in_list_mode:
+            datadic.setdefault(varname, {})
+        else:
+            datadic.setdefault(varname, [])
     try:
         datadic = datadic[varname]
     except KeyError:
@@ -82,11 +92,17 @@ def open_section(
 
     idcsstr_list = []
     if indexquants is not None:
-        for idxquant in indexquants:
-            idx = get_indexvalue(idxquant, loop_vars)
+        idcs = [get_indexvalue(q, loop_vars) for q in indexquants]
+        if in_list_mode:
+            idcs = shift_indices(varname, idcs, curdatadic)
+        for i, idx in enumerate(idcs):
             idcsstr_list.append(str(idx))
             if create_missing:
-                datadic.setdefault(idx, {})
+                if in_list_mode:
+                    new_el = [] if i + 1 < len(idcs) else {}
+                    list_setdefault(datadic, idx, new_el)
+                else:
+                    datadic.setdefault(idx, {})
             try:
                 datadic = datadic[idx]
             except KeyError:
@@ -122,6 +138,7 @@ def cycle_for_loop(
     tree_handler,
     datadic,
     loop_vars,
+    parse_opts,
     loop_name="for_loop",
     head_name="for_head",
     body_name="for_body",
@@ -133,8 +150,8 @@ def cycle_for_loop(
     # determine range for loop counter
     start_expr = get_child(for_head, "for_start")
     stop_expr = get_child(for_head, "for_stop")
-    start = eval_expr_without_unknown_var(start_expr, datadic, loop_vars)
-    stop = eval_expr_without_unknown_var(stop_expr, datadic, loop_vars)
+    start = eval_expr_without_unknown_var(start_expr, datadic, loop_vars, parse_opts)
+    stop = eval_expr_without_unknown_var(stop_expr, datadic, loop_vars, parse_opts)
     if float(start) != int(start):
         raise LoopVariableError("Loop start index must evaluate to an integer")
     if float(stop) != int(stop):
@@ -170,7 +187,7 @@ def cycle_for_loop(
 
 
 def eval_if_condition(
-    if_condition, datadic, loop_vars, missing_as_false=False, logger=None
+    if_condition, datadic, loop_vars, parse_opts, missing_as_false=False, logger=None
 ):
     if len(if_condition.children) != 3:
         raise IndexError("if_condition must have three children")
@@ -181,8 +198,12 @@ def eval_if_condition(
     cmpop = get_child_value(if_condition, "IF_RELATION")
     right_expr = if_condition.children[2]
     try:
-        left_val = eval_expr_without_unknown_var(left_expr, datadic, loop_vars)
-        right_val = eval_expr_without_unknown_var(right_expr, datadic, loop_vars)
+        left_val = eval_expr_without_unknown_var(
+            left_expr, datadic, loop_vars, parse_opts
+        )
+        right_val = eval_expr_without_unknown_var(
+            right_expr, datadic, loop_vars, parse_opts
+        )
     except VariableNotFoundError as exc:
         if missing_as_false:
             return False
@@ -204,11 +225,13 @@ def eval_if_condition(
         return False
 
 
-def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False, logger=None):
+def determine_truthvalue(
+    node, datadic, loop_vars, parse_opts, missing_as_false=False, logger=None
+):
     name = get_name(node)
     if name == "if_condition":
         return eval_if_condition(
-            node, datadic, loop_vars, missing_as_false, logger=logger
+            node, datadic, loop_vars, parse_opts, missing_as_false, logger=logger
         )
     elif name == "comparison":
         # we strip away brackets because the information they
@@ -225,7 +248,7 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False, logge
                 'Child node must be either "if_condition" or "disjunction"'
             )
         return determine_truthvalue(
-            ch, datadic, loop_vars, missing_as_false, logger=logger
+            ch, datadic, loop_vars, parse_opts, missing_as_false, logger=logger
         )
     elif name == "conjunction":
         # the following code is a bit messy because of the order of
@@ -235,12 +258,12 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False, logge
         comp = get_child(node, "comparison")
         if conj is not None:
             conj_truthval = determine_truthvalue(
-                conj, datadic, loop_vars, missing_as_false, logger=logger
+                conj, datadic, loop_vars, parse_opts, missing_as_false, logger=logger
             )
             if conj_truthval is False:
                 return False
         comp_truthval = determine_truthvalue(
-            comp, datadic, loop_vars, missing_as_false, logger=logger
+            comp, datadic, loop_vars, parse_opts, missing_as_false, logger=logger
         )
         if conj is None:
             return comp_truthval
@@ -251,12 +274,12 @@ def determine_truthvalue(node, datadic, loop_vars, missing_as_false=False, logge
         conj = get_child(node, "conjunction")
         if disj is not None:
             disj_truthval = determine_truthvalue(
-                disj, datadic, loop_vars, missing_as_false, logger=logger
+                disj, datadic, loop_vars, parse_opts, missing_as_false, logger=logger
             )
             if disj_truthval is True:
                 return True
         conj_truthval = determine_truthvalue(
-            conj, datadic, loop_vars, missing_as_false, logger=logger
+            conj, datadic, loop_vars, parse_opts, missing_as_false, logger=logger
         )
         if disj is None:
             return conj_truthval
@@ -273,6 +296,7 @@ def evaluate_if_clause(
     tree,
     datadic,
     loop_vars,
+    parse_opts,
     tree_handler=None,
     set_parser_state=None,
     get_parser_state=None,
@@ -285,6 +309,7 @@ def evaluate_if_clause(
         first_if_statement,
         datadic,
         loop_vars,
+        parse_opts,
         tree_handler,
         set_parser_state,
         get_parser_state,
@@ -299,6 +324,7 @@ def evaluate_if_clause(
                 elif_tree,
                 datadic,
                 loop_vars,
+                parse_opts,
                 tree_handler,
                 set_parser_state,
                 get_parser_state,
@@ -321,6 +347,7 @@ def evaluate_if_statement(
     tree,
     datadic,
     loop_vars,
+    parse_opts,
     tree_handler=None,
     set_parser_state=None,
     get_parser_state=None,
@@ -340,6 +367,7 @@ def evaluate_if_statement(
             tree_handler,
             datadic,
             loop_vars,
+            parse_opts,
             set_parser_state,
             get_parser_state,
             logger=logger,
@@ -349,7 +377,7 @@ def evaluate_if_statement(
     write_info(logger, "Evaluate if head " + reconstruct_tree_str(if_head))
     disj = get_child(if_head, "disjunction")
     truthval = determine_truthvalue(
-        disj, datadic, loop_vars, missing_as_false=True, logger=logger
+        disj, datadic, loop_vars, parse_opts, missing_as_false=True, logger=logger
     )
     if should_perform_lookahead:
         datadic, loop_vars = undo_lookahead_changes(
@@ -372,6 +400,7 @@ def perform_lookahead(
     tree_handler,
     datadic,
     loop_vars,
+    parse_opts,
     set_parser_state,
     get_parser_state,
     logger=None,
@@ -382,7 +411,9 @@ def perform_lookahead(
     write_info(logger, "Start lookahead for if head " + reconstruct_tree_str(if_head))
     lookahead_option = get_child(tree, "lookahead_option", nofail=True)
     lookahead_expr = get_child(lookahead_option, "expr")
-    lookahead = eval_expr_without_unknown_var(lookahead_expr, datadic, loop_vars)
+    lookahead = eval_expr_without_unknown_var(
+        lookahead_expr, datadic, loop_vars, parse_opts
+    )
     if int(lookahead) != lookahead:
         raise ValueError(
             "lookahead argument must evaluate to an integer" + f"(got {lookahead})"

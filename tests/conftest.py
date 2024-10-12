@@ -1,23 +1,33 @@
 from pathlib import Path
 
 
+def str_to_bool(value):
+    if value.lower() in ["true", "1", "yes", "on"]:
+        return True
+    elif value.lower() in ["false", "0", "no", "off"]:
+        return False
+    else:
+        raise ValueError(f"Invalid truth value: {value}")
+
+
 def pytest_addoption(parser):
-    parser.addoption("--endfdir", action="store", default="testdata")
-    parser.addoption("--endffile", action="store", default=None)
-    parser.addoption("--mf", action="store", default=None)
-    parser.addoption("--ignore_zero_mismatch", action="store", default="true")
-    parser.addoption("--ignore_number_mismatch", action="store", default="false")
-    parser.addoption("--ignore_varspec_mismatch", action="store", default="false")
-    parser.addoption("--fuzzy_matching", action="store", default="true")
+    parser.addoption("--endfdir", type=str, default="testdata")
+    parser.addoption("--endffile", type=str, default=None)
+    parser.addoption("--mf", type=int, default=None)
+    parser.addoption("--ignore_zero_mismatch", type=str_to_bool, default=True)
+    parser.addoption("--ignore_number_mismatch", type=str_to_bool, default=False)
+    parser.addoption("--ignore_varspec_mismatch", type=str_to_bool, default=False)
+    parser.addoption("--fuzzy_matching", type=str_to_bool, default=True)
+    parser.addoption("--array_type", type=str, default="dict")
     # defaults writing options chosen to preserve maximal accuracy
-    parser.addoption("--abuse_signpos", action="store", default="true")
-    parser.addoption("--skip_intzero", action="store", default="true")
-    parser.addoption("--prefer_noexp", action="store", default="true")
+    parser.addoption("--abuse_signpos", type=str_to_bool, default=True)
+    parser.addoption("--skip_intzero", type=str_to_bool, default=True)
+    parser.addoption("--prefer_noexp", type=str_to_bool, default=True)
     # defaults for reading options
-    parser.addoption("--accept_spaces", action="store", default="true")
-    parser.addoption("--ignore_blank_lines", action="store", default="False")
-    parser.addoption("--ignore_send_records", action="store", default="False")
-    parser.addoption("--ignore_missing_tpid", action="store", default="False")
+    parser.addoption("--accept_spaces", type=str_to_bool, default=True)
+    parser.addoption("--ignore_blank_lines", type=str_to_bool, default=False)
+    parser.addoption("--ignore_send_records", type=str_to_bool, default=False)
+    parser.addoption("--ignore_missing_tpid", type=str_to_bool, default=False)
 
 
 def pytest_generate_tests(metafunc):
@@ -37,6 +47,7 @@ def pytest_generate_tests(metafunc):
         "ignore_number_mismatch",
         "ignore_varspec_mismatch",
         "fuzzy_matching",
+        "array_type",
         "abuse_signpos",
         "skip_intzero",
         "prefer_noexp",
@@ -49,8 +60,7 @@ def pytest_generate_tests(metafunc):
     opts = metafunc.config.option
     for curopt in parse_opts:
         if curopt in metafunc.fixturenames:
-            argval = opts.__dict__[curopt].lower().strip()
-            argval = argval == "true"
+            argval = opts.__dict__[curopt]
             metafunc.parametrize(curopt, [argval], scope="module")
 
     # to selectively test MF sections and MF/MT subsections

@@ -220,8 +220,8 @@ class EndfParser:
             perfectly represented by an `int`. *(writing)*
         array_type : str
             The Python datatype to use for representing arrays read from
-            ENDF-6 files. The two options are ```dict``` (default) and
-            ```list```.  *(parsing)*
+            ENDF-6 files. The two options are ``"dict"`` (default) and
+            ``"list"``.  *(parsing)*
         explain_missing_variable : bool
             If the :func:`write` or :func:`writefile` method
             fail because a variable is missing in the dictionary,

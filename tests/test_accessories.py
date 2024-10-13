@@ -66,6 +66,15 @@ def test_endfdict_equal(testdict, testdict2):
     assert testdict2 != testdict3
 
 
+def test_endfdict_list_mode():
+    p = EndfPath("3/151/a/0")
+    testdict = EndfDict(array_type="list")
+    testdict[p] = 5
+    assert type(testdict[3].unwrap()) == dict
+    assert type(testdict["3/151"].unwrap()) == dict
+    assert type(testdict["3/151/a"]) == list
+
+
 def test_endfpath_get_and_set(testdict, testdict2, testpath):
     testpath.set(testdict, 13)
     assert testpath.get(testdict) == 13

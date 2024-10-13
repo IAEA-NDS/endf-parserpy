@@ -3,13 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2024/09/07
+# Last modified:   2024/10/13
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, MutableSequence
 from endf_parserpy.utils.math_utils import math_allclose
 from endf_parserpy.utils.accessories import EndfDict
 
@@ -316,3 +316,74 @@ class TrackingDict(MutableMapping):
 
     def unwrap(self):
         return self._basedict
+
+
+class TrackingList(MutableSequence):
+
+    def __init__(self, list_like):
+        """Initialize a ``TrackingList`` object.
+
+        Parameters
+        __________
+        list_like : list
+            The :class:`list`-like object for which read access should be tracked.
+        """
+        self._baselist = list_like
+        self._trackinglists = [None] * len(list_like)
+        self._accessed = [False] * len(list_like)
+
+    def __getitem__(self, key):
+        retval = self._baselist.__getitem__(key)
+        self._accessed[key] = True
+        if isinstance(retval, MutableSequence):
+            if key not in self._trackinglists:
+                self._trackinglists[key] = TrackingList(retval)
+            retval = self._trackinglists[key]
+        return retval
+
+    def __setitem__(self, key, value):
+        retval = self._baselist.__setitem__(key, value)
+        self._accessed[key] = False
+        self._trackinglists[key] = None
+        return retval
+
+    def __delitem__(self, key):
+        retval = self._baselists.__delitem__(key)
+        self._accessed.__delitem__(key)
+        self._trackinglists.__delitem__(key)
+        return retval
+
+    def __iter__(self):
+        return self._baselist.__iter__()
+
+    def __len__(self):
+        return self._baselist.__len__()
+
+    def insert(self, key, value):
+        retval = self._baselist.insert(key, value)
+        self._accessed.insert(key, False)
+        self._trackinglists.insert(key, None)
+        return retval
+
+    def _verify_complete_retrieval(self, path=""):
+        if len(self._accessed) > 0:
+            for k in range(len(self._baselist)):
+                if not self._accessed[k]:
+                    indexpath = path + "/" + str(k)
+                    raise IndexError(f"The content of {indexpath} was not accessed")
+        for k, curval in enumerate(self._baselist):
+            if isinstance(curval, TrackingList):
+                indexpath = path + "/" + str(k)
+                curval._verify_complete_retrieval(indexpath)
+
+    def verify_complete_retrieval(self):
+        """Verify that all array elements have been accessed.
+
+        This function will raise an ``IndexError`` exception
+        if not all elements of :class:`list`-like objects
+        have been accessed.
+        """
+        self._verify_complete_retrieval()
+
+    def unwrap(self):
+        return self._baselist

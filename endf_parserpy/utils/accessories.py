@@ -10,7 +10,10 @@
 ############################################################
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from ..interpreter.helpers import list_setdefault
+from ..interpreter.helpers import (
+    list_setdefault,
+    list_set,
+)
 
 
 class EndfPath(Sequence):
@@ -86,6 +89,8 @@ class EndfPath(Sequence):
         """
         if isinstance(pathspec, EndfPath):
             self._path_elements = pathspec._path_elements
+            self.array_type = pathspec.array_type
+            self.leading = pathspec.leading
             return
         if isinstance(pathspec, int):
             pathspec = str(pathspec)
@@ -151,7 +156,10 @@ class EndfPath(Sequence):
     def __add__(self, other):
         if not isinstance(other, EndfPath):
             other = EndfPath(other)
-        return EndfPath(self._path_elements + other._path_elements)
+        new_endfpath = EndfPath(
+            self._path_elements + other._path_elements, self.array_type, self.leading
+        )
+        return new_endfpath
 
     def __radd__(self, other):
         other = EndfPath(other)
@@ -212,26 +220,37 @@ class EndfPath(Sequence):
         >>> p.set(testdict, 12)
         >>> print(testdict)
         """
+        if isinstance(value, EndfDict):
+            value = value.unwrap()
         cur = dict_like
         in_leading = True
         pathels = self._path_elements
+        num_pathels = len(pathels)
         dict_mode = self.array_type == "dict"
-        for i, el in enumerate(pathels[:-1]):
+        for i, el in enumerate(pathels):
             is_el_int = isinstance(el, int)
             in_leading &= is_el_int
             if dict_mode or (in_leading and self.leading == "dict"):
-                cur = cur.setdefault(el, {})
-            else:
-                is_next_el_int = isinstance(pathels[i + 1], int)
-                new_cont = [] if is_next_el_int and not dict_mode else {}
-                if is_el_int:
-                    cur = list_setdefault(cur, el, new_cont)
+                if i + 1 < num_pathels:
+                    cur = cur.setdefault(el, {})
                 else:
-                    cur = cur.setdefault(el, new_cont)
-
-        if isinstance(value, EndfDict):
-            value = value.unwrap()
-        cur[self._path_elements[-1]] = value
+                    cur[el] = value
+            else:
+                if i + 1 < num_pathels:
+                    is_next_el_int = isinstance(pathels[i + 1], int)
+                    new_cont = [] if is_next_el_int and not dict_mode else {}
+                    if is_el_int:
+                        try:
+                            cur = list_setdefault(cur, el, new_cont)
+                        except:
+                            breakpoint()
+                    else:
+                        cur = cur.setdefault(el, new_cont)
+                else:
+                    if is_el_int:
+                        list_set(cur, el, value)
+                    else:
+                        cur[el] = value
 
     def exists(self, dict_like):
         """Test whether a key exists at the :class:`EndfPath` location.

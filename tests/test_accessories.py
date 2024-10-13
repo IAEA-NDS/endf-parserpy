@@ -1,6 +1,11 @@
 import pytest
 from copy import deepcopy
-from endf_parserpy.utils.accessories import EndfPath, EndfVariable, EndfDict
+from endf_parserpy.utils.accessories import (
+    EndfPath,
+    EndfVariable,
+    EndfDict,
+    EndfList,
+)
 
 
 @pytest.fixture(scope="function")
@@ -70,9 +75,36 @@ def test_endfdict_list_mode():
     p = EndfPath("3/151/a/0")
     testdict = EndfDict(array_type="list")
     testdict[p] = 5
-    assert type(testdict[3].unwrap()) == dict
-    assert type(testdict["3/151"].unwrap()) == dict
-    assert type(testdict["3/151/a"]) == list
+    assert type(testdict[3]) == EndfDict
+    assert type(testdict["3/151"]) == EndfDict
+    assert type(testdict["3/151/a"]) == EndfList
+    assert testdict["3/151/a/0"] == 5
+
+
+def test_endfdict_dict_mode():
+    p = EndfPath("3/151/a/0")
+    testdict = EndfDict(array_type="dict")
+    testdict[p] = 5
+    assert type(testdict[3]) == EndfDict
+    assert type(testdict["3/151"]) == EndfDict
+    assert type(testdict["3/151/a"]) == EndfDict
+    assert testdict["3/151/a/0"] == 5
+
+
+def test_endfdict_list_mode_split():
+    p = EndfPath("3/151/a/0/0/b/0")
+    testdict = EndfDict(array_type="list")
+    testdict[p] = 8
+    testobj1 = testdict["3/151"]
+    assert type(testobj1) == EndfDict
+    testobj2 = testobj1["a"]
+    assert type(testobj2) == EndfList
+    testobj3 = testobj2["0"]
+    assert type(testobj3) == EndfList
+    testobj4 = testobj3["0"]
+    assert type(testobj4) == EndfDict
+    testobj5 = testobj4["b"]
+    assert type(testobj5) == EndfList
 
 
 def test_endfpath_get_and_set(testdict, testdict2, testpath):

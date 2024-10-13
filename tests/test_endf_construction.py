@@ -1,5 +1,6 @@
 import pytest
 from endf_parserpy.interpreter.endf_parser import EndfParser
+from endf_parserpy.interpreter.helpers import array_dict_to_list
 from endf_parserpy.utils.accessories import EndfDict
 from endf_parserpy.interpreter.custom_exceptions import (
     InvalidIntegerError,
@@ -80,12 +81,33 @@ def mf3_section():
     return d
 
 
-def test_creation_of_mf3(mf3_section):
+def test_creation_of_mf3_in_dict_mode(mf3_section):
     parser = EndfParser()
     try:
         parser.write(mf3_section)
     except Exception:
         pytest.fail("Failed to generate a MF3 section from scratch")
+
+
+def test_creation_of_mf3_in_list_mode(mf3_section):
+    parser = EndfParser(array_type="list")
+    sec = deepcopy(mf3_section)
+    array_dict_to_list(sec[3][1])
+    try:
+        parser.write(sec)
+    except Exception:
+        pytest.fail("Failed to generate a MF3 section from scratch")
+
+
+def test_creation_of_mf3_in_list_and_dict_mode_equivalent(mf3_section):
+    parser1 = EndfParser(array_type="dict")
+    parser2 = EndfParser(array_type="list")
+    sec1 = mf3_section
+    sec2 = deepcopy(mf3_section)
+    array_dict_to_list(sec2[3][1])
+    res1 = parser1.write(sec1)
+    res2 = parser2.write(sec2)
+    assert res1 == res2
 
 
 def test_linenum_wraparound(mf3_section):
@@ -110,12 +132,33 @@ def test_linenum_wraparound(mf3_section):
     assert all(n == (m % linenum_max) + 1 for m, n in enumerate(linenums))
 
 
-def test_creation_of_mf1_mt451(mf1_mt451_section):
+def test_creation_of_mf1_mt451_in_dict_mode(mf1_mt451_section):
     parser = EndfParser()
     try:
         parser.write(mf1_mt451_section)
     except Exception:
         pytest.fail("Failed to generate a MF1/MT451 section from scratch")
+
+
+def test_creation_of_mf1_mt451_in_list_mode(mf1_mt451_section):
+    parser = EndfParser(array_type="list")
+    sec = deepcopy(mf1_mt451_section)
+    array_dict_to_list(sec[1][451])
+    try:
+        parser.write(sec)
+    except Exception:
+        pytest.fail("Failed to generate a MF1/MT451 section from scratch")
+
+
+def test_creation_of_mf1_mt451_in_list_and_dict_mode_equivalent(mf1_mt451_section):
+    parser1 = EndfParser(array_type="dict")
+    parser2 = EndfParser(array_type="list")
+    sec1 = mf1_mt451_section
+    sec2 = deepcopy(mf1_mt451_section)
+    array_dict_to_list(sec2[1][451])
+    res1 = parser1.write(sec1)
+    res2 = parser2.write(sec2)
+    assert res1 == res2
 
 
 def test_creation_of_mf3_without_strict_datatypes(mf3_section):
@@ -186,24 +229,48 @@ def test_creation_of_mf1_mt451_fails_if_variable_missing(mf1_mt451_section):
         pass
 
 
-def test_creation_of_mf1_mt451_fails_if_counter_larger_than_array(mf1_mt451_section):
+def test_creation_of_mf1_mt451_fails_if_counter_larger_than_array_in_dict_mode(
+    mf1_mt451_section,
+):
     parser = EndfParser(check_arrays=False)
     d = mf1_mt451_section
-    d["1/451/NWD"] = len(d["1/451/DESCRIPTION"]) + 1
-    try:
+    d["1/451/NWD"] = 5 + len(d["1/451/DESCRIPTION"]) + 1
+    with pytest.raises(UnavailableIndexError):
         parser.write(d)
-    except UnavailableIndexError:
-        pass
 
 
-def test_creation_of_mf1_mt451_fails_if_counter_smaller_than_array(mf1_mt451_section):
-    parser = EndfParser()
+def test_creation_of_mf1_mt451_fails_if_counter_larger_than_array_in_list_mode(
+    mf1_mt451_section,
+):
+    parser = EndfParser(check_arrays=False, array_type="list")
     d = mf1_mt451_section
-    d["1/451/NWD"] = len(d["1/451/DESCRIPTION"]) - 1
-    try:
+    d["1/451/NWD"] = 5 + len(d["1/451/DESCRIPTION"]) + 1
+    sec = deepcopy(mf1_mt451_section)
+    array_dict_to_list(sec[1][451])
+    with pytest.raises(UnavailableIndexError):
+        parser.write(sec)
+
+
+def test_creation_of_mf1_mt451_fails_if_counter_smaller_than_array_in_dict_mode(
+    mf1_mt451_section,
+):
+    parser = EndfParser(check_arrays=True, array_type="dict")
+    d = mf1_mt451_section
+    d["1/451/NWD"] = 5 + len(d["1/451/DESCRIPTION"]) - 1
+    with pytest.raises(IndexError):
         parser.write(d)
-    except IndexError:
-        pass
+
+
+def test_creation_of_mf1_mt451_fails_if_counter_smaller_than_array_in_list_mode(
+    mf1_mt451_section,
+):
+    parser = EndfParser(check_arrays=True, array_type="list")
+    d = mf1_mt451_section
+    d["1/451/NWD"] = 5 + len(d["1/451/DESCRIPTION"]) - 1
+    sec = deepcopy(mf1_mt451_section)
+    array_dict_to_list(sec[1][451])
+    with pytest.raises(IndexError):
+        parser.write(sec)
 
 
 def test_ignore_blank_lines_option_does_not_impact_result(mf1_mt451_section):

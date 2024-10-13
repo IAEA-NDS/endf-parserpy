@@ -429,7 +429,7 @@ class EndfDict(MutableMapping):
     before being stored (see :func:`unwrap` method).
     """
 
-    def __init__(self, mapping=None):
+    def __init__(self, mapping=None, array_type="dict"):
         """The constructor takes a single argument.
 
         Parameters
@@ -459,6 +459,7 @@ class EndfDict(MutableMapping):
             raise TypeError("expected `mapping` to be an instance of MutableMapping")
         self._root = self
         self._path = EndfPath("")
+        self._array_type = array_type
 
     def __repr__(self):
         return f"{self._store!r}"
@@ -505,16 +506,16 @@ class EndfDict(MutableMapping):
 
     def __getitem__(self, key):
         if isinstance(key, (str, int)):
-            endf_path = EndfPath(key)
+            endf_path = EndfPath(key, self._array_type, "dict")
         elif isinstance(key, Sequence):
-            endf_path = EndfPath("")
+            endf_path = EndfPath("", self._array_type, "dict")
             for p in key:
                 endf_path += p
         else:
             raise ValueError("unsupported key data type")
         ret = endf_path.get(self._store)
         if isinstance(ret, MutableMapping) and not isinstance(ret, EndfDict):
-            ret = EndfDict(ret)
+            ret = EndfDict(ret, self._array_type)
             ret._root = self._root
             ret._path = endf_path
         return ret
@@ -523,9 +524,9 @@ class EndfDict(MutableMapping):
         if isinstance(value, EndfDict):
             value = value.unwrap()
         if isinstance(key, (str, int)):
-            endf_path = EndfPath(key)
+            endf_path = EndfPath(key, self._array_type, "dict")
         elif isinstance(key, Sequence):
-            endf_path = EndfPath("")
+            endf_path = EndfPath("", self._array_type, "dict")
             for p in key:
                 endf_path += p
         else:
@@ -534,7 +535,7 @@ class EndfDict(MutableMapping):
 
     def __delitem__(self, key):
         if not isinstance(key, EndfPath):
-            endf_path = EndfPath(key)
+            endf_path = EndfPath(key, self._array_type, "dict")
         endf_path.remove(self._store)
 
     def __iter__(self):
@@ -552,7 +553,7 @@ class EndfDict(MutableMapping):
             An :class:`EndfPath` or object that is accepted
             by its constructor.
         """
-        path = EndfPath(path)
+        path = EndfPath(path, self._array_type, "dict")
         return path.exists(self._store)
 
     def keys(self):

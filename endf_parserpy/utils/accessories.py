@@ -3,13 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2024/09/07
+# Last modified:   2024/10/13
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from collections.abc import Mapping, MutableMapping, Sequence
+from ..interpreter.helpers import list_setdefault
 
 
 class EndfPath(Sequence):
@@ -47,7 +48,7 @@ class EndfPath(Sequence):
     :class:`EndfPath` instances.
     """
 
-    def __init__(self, pathspec=""):
+    def __init__(self, pathspec="", array_type="dict", leading="dict"):
         """The EndfPath constructor accepts the following parameters.
 
         Parameters
@@ -61,6 +62,16 @@ class EndfPath(Sequence):
             or equivalently ``a/b[1]``. This argument can
             also be a tuple containing the indvidual keys,
             e.g. ``('a', 'b', 1)``.
+        array_type : str
+            Must be either ``"dict"`` or ``"list"`` and determines
+            if arrays should be assumed to be represented as
+            :class:`dict` (default) or :class:`list`.
+        leading : str
+            Must be either ``"dict"`` or ``"list"``.
+            Arrays with leading consecutive integer path will be
+            represented according to this argument choice,
+            e.g. for ``(1, 2, a, 3)`` and ``leading="dict"``,
+            the first two levels will be of type :class:`dict`.
 
         Examples
         --------
@@ -83,6 +94,8 @@ class EndfPath(Sequence):
         if not isinstance(pathspec, Sequence):
             raise TypeError("expected pathspec to be sequence or string")
         self._path_elements = self._standardize_path_tuple(pathspec)
+        self.array_type = array_type
+        self.leading = leading
 
     def _standardize_path_tuple(self, path_tuple):
         p = path_tuple
@@ -200,8 +213,22 @@ class EndfPath(Sequence):
         >>> print(testdict)
         """
         cur = dict_like
-        for el in self._path_elements[:-1]:
-            cur = cur.setdefault(el, {})
+        in_leading = True
+        pathels = self._path_elements
+        dict_mode = self.array_type == "dict"
+        for i, el in enumerate(pathels[:-1]):
+            is_el_int = isinstance(el, int)
+            in_leading &= is_el_int
+            if dict_mode or (in_leading and self.leading == "dict"):
+                cur = cur.setdefault(el, {})
+            else:
+                is_next_el_int = isinstance(pathels[i + 1], int)
+                new_cont = [] if is_next_el_int and not dict_mode else {}
+                if is_el_int:
+                    cur = list_setdefault(cur, el, new_cont)
+                else:
+                    cur = cur.setdefault(el, new_cont)
+
         if isinstance(value, EndfDict):
             value = value.unwrap()
         cur[self._path_elements[-1]] = value
@@ -229,7 +256,7 @@ class EndfPath(Sequence):
         """
         try:
             self.get(dict_like)
-        except KeyError:
+        except (KeyError, IndexError):
             return False
         except TypeError:
             return False

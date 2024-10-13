@@ -1006,8 +1006,6 @@ class EndfParser:
         self.reset_parser_state(rwmode="write", datadic={})
         self.variable_descriptions = EndfDict()
         should_check_arrays = self.write_opts["check_arrays"]
-        if should_check_arrays:
-            endf_dic = TrackingDict(endf_dic)
         tree_dic = self.tree_dic
         lines = []
         for mf in sorted(endf_dic):
@@ -1020,6 +1018,8 @@ class EndfParser:
                 is_parsed = isinstance(endf_dic[mf][mt], Mapping)
                 if cur_tree is not None and is_parsed:
                     datadic = endf_dic[mf][mt]
+                    if should_check_arrays:
+                        datadic = TrackingDict(datadic)
                     self.reset_parser_state(rwmode="write", datadic=datadic)
                     self.current_path = EndfPath((mf, mt))
                     datadic.setdefault("MF", mf)
@@ -1067,6 +1067,9 @@ class EndfParser:
                             errmsg += explanation
                         del self.parse_opts["internal_array_type"]
                         raise type(exc)(errmsg)
+                    # check if arrays have been written in their entirety
+                    if should_check_arrays:
+                        self.datadic.verify_complete_retrieval()
                     # add the NS number to the lines except last one
                     # because the SEND (=section end) record already
                     # contains it. For mf=0 (tape head), no SEND present
@@ -1140,8 +1143,6 @@ class EndfParser:
         )
         del self.zero_as_blank
         del self.parse_opts["internal_array_type"]
-        if should_check_arrays:
-            endf_dic.verify_complete_retrieval()
         return lines
 
     def parsefile(self, filename, exclude=None, include=None, nofail=False):

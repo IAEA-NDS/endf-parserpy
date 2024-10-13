@@ -22,6 +22,8 @@ description of these classes:
 .. toctree::
    :maxdepth: 1
 
+   endf_object_class
    endf_dict_class
+   endf_list_class
    endf_path_class
    endf_variable_class

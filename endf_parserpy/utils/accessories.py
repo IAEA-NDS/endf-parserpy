@@ -9,7 +9,12 @@
 #
 ############################################################
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    Sequence,
+    MutableSequence,
+)
 from ..interpreter.helpers import (
     list_setdefault,
     list_set,
@@ -444,39 +449,47 @@ class EndfVariable:
         return self._parent
 
 
-class EndfDict(MutableMapping):
-    """Class for enhanced access to nested dictionaries.
+class EndfObject:
+    """Class for enhanced access to nested data structures.
 
     This class facilitates the interaction with
-    nested dictionaries. More precisely,
-    the retrieval of objects from the nested
-    structured and the insertion and modification
+    nested data structures composed of :class:`dict`- and
+    :class:`list`-like objects as well as primitive data types
+    (:class:`str`, :class:`int`, and :class:`float`).
+    More precisely, the retrieval of objects from the nested
+    structure and the insertion and modification
     of objects can be performed by making use of
     references as enabled by the
     :class:`EndfPath` class. Therefore access to
     elements is possible with syntax, such as
     ``d['a/b/1/c']`` and ``d['a/b[1]/c']``.
     Apart from the enhanced capabilities to refer to objects
-    in a nested dictionary, this class behaves
-    almost in the same way as a normal Python :class:`dict`.
-    The only exception is that whenever an object
-    is retrieved that is :class:`dict`-like, it will
-    be converted on-the-fly to an :class:`EndfDict`
-    instance and returned in that form to the user. Similary,
-    :class:`EndfDict` instances to be associated with a key
-    are converted to the underlying :class:`dict`-like object
+    in a nested data structure, this class behaves
+    almost in the same way as a normal Python :class:`dict`
+    or :class:`list` (depending on constructor argument ``obj``).
+    The exception is that whenever an object
+    is retrieved that is :class:`dict`- or :class:`list`-like,
+    it will be converted on-the-fly to an :class:`EndfDict`
+    or :class:`EndfList`, respectively,
+    and returned in that form to the user. Also,
+    :class:`EndfDict` and :class:`EndfList` instances to be associated
+    with a key are converted to the underlying base object
     before being stored (see :func:`unwrap` method).
     """
 
-    def __init__(self, mapping=None, array_type="dict"):
-        """The constructor takes a single argument.
+    def __init__(self, obj, array_type, leading):
+        """The constructor takes two arguments.
 
         Parameters
         ----------
-        mapping : [None, Dict]
-            The :class:`dict`-like object for which enhanced
-            access is desired. If this argument is ``None``,
-            an empty dictionary will be created.
+        obj : Union[None, dict, list]
+            The :class:`dict`- or :class:`list`-like object for
+            which enhanced access is desired.
+        array_type : str
+            Either ``"dict"`` or ``"list"``. With the former choice,
+            if an array needs to be created, it will be represented
+            as :class:`dict`. With the latter choice, it will be
+            represented by a :class:`list`.
 
         Example
         -------
@@ -488,17 +501,16 @@ class EndfDict(MutableMapping):
         >>> viewdict[2, 3] = 7
         >>> assert viewdict['2/3'] == 7
         """
-        if mapping is None:
-            self._store = dict()
-        elif isinstance(mapping, MutableMapping):
-            if isinstance(mapping, EndfDict):
-                mapping = mapping.unwrap()
-            self._store = mapping
+        if isinstance(obj, (MutableMapping, MutableSequence)):
+            if isinstance(obj, EndfObject):
+                obj = obj.unwrap()
+            self._store = obj
         else:
-            raise TypeError("expected `mapping` to be an instance of MutableMapping")
+            raise TypeError("expected `obj` to be an instance of MutableMapping")
         self._root = self
         self._path = EndfPath("")
         self._array_type = array_type
+        self._leading = leading
 
     def __repr__(self):
         return f"{self._store!r}"
@@ -507,36 +519,41 @@ class EndfDict(MutableMapping):
         return str(self._store)
 
     def __eq__(self, other):
-        if not isinstance(other, EndfDict):
-            other = EndfDict(other)
         obj1 = self._store
-        obj2 = other._store
+        obj2 = other
         ret = recursive_equality_check(obj1, obj2, set())
         return ret
 
     def __getitem__(self, key):
         if isinstance(key, (str, int)):
-            endf_path = EndfPath(key, self._array_type, "dict")
+            endf_path = EndfPath(key, self._array_type, self._leading)
         elif isinstance(key, Sequence):
-            endf_path = EndfPath("", self._array_type, "dict")
+            endf_path = EndfPath("", self._array_type, self._leading)
             for p in key:
                 endf_path += p
         else:
             raise ValueError("unsupported key data type")
+
         ret = endf_path.get(self._store)
+
         if isinstance(ret, MutableMapping) and not isinstance(ret, EndfDict):
             ret = EndfDict(ret, self._array_type)
             ret._root = self._root
             ret._path = endf_path
+        elif isinstance(ret, MutableSequence) and not isinstance(ret, EndfList):
+            ret = EndfList(ret, self._array_type)
+            ret._root = self._root
+            ret._path = endf_path
+
         return ret
 
     def __setitem__(self, key, value):
-        if isinstance(value, EndfDict):
+        if isinstance(value, EndfObject):
             value = value.unwrap()
         if isinstance(key, (str, int)):
-            endf_path = EndfPath(key, self._array_type, "dict")
+            endf_path = EndfPath(key, self._array_type, self._leading)
         elif isinstance(key, Sequence):
-            endf_path = EndfPath("", self._array_type, "dict")
+            endf_path = EndfPath("", self._array_type, self._leading)
             for p in key:
                 endf_path += p
         else:
@@ -545,7 +562,7 @@ class EndfDict(MutableMapping):
 
     def __delitem__(self, key):
         if not isinstance(key, EndfPath):
-            endf_path = EndfPath(key, self._array_type, "dict")
+            endf_path = EndfPath(key, self._array_type, self._leading)
         endf_path.remove(self._store)
 
     def __iter__(self):
@@ -563,17 +580,8 @@ class EndfDict(MutableMapping):
             An :class:`EndfPath` or object that is accepted
             by its constructor.
         """
-        path = EndfPath(path, self._array_type, "dict")
+        path = EndfPath(path, self._array_type, self._leading)
         return path.exists(self._store)
-
-    def keys(self):
-        return self._store.keys()
-
-    def values(self):
-        return self._store.values()
-
-    def items(self):
-        return self._store.items()
 
     def _recursive_unwrap(self, element):
         if isinstance(element, MutableMapping):
@@ -581,38 +589,43 @@ class EndfDict(MutableMapping):
                 element = element.unwrap()
             for curkey in element:
                 element[curkey] = self._recursive_unwrap(element[curkey])
+        if isinstance(element, MutableSequence):
+            if isinstance(element, EndfList):
+                element = element.unwrap()
+            for curidx in range(len(element)):
+                element[curidx] = self._recursive_unwrap(element[curidx])
         return element
 
     def unwrap(self, recursive=False):
-        """Returns the underlying dictionary.
+        """Returns the underlying base object.
 
-        The :class:`EndfDict` class can be regarded as an interface wrapping
-        around an underlying :class:`dict`-like object. This function
-        permits the retrieval of the underlying object.
+        The :class:`EndfObject` class can be regarded as an interface wrapping
+        around an underlying :class:`dict`- or :class:`list`-like object.
+        This function permits the retrieval of the underlying object.
 
         Parameters
         ----------
         recursive : bool
-            If ``True``, all :class:`EndfDict` objects present in the
-            underlying :class:`dict`-like object are recursively
-            converted to type :class:`dict`.
+            If ``True``, all :class:`EndfObject` objects present in the
+            underlying object are recursively converted to their base type,
+            i.e. either :class:`dict` or :class:`list`.
 
         Returns
         -------
-        Dict
-            The underlying :class:`dict`-like object.
+        Union[dict, list]
+            The underlying base object.
 
         Note
         ----
         The use of ``recursive=True`` is only necessary if the
-        user has stored an :class:`EndfDict` object anywhere in the
-        underlying :class:`dict`-like object. In contrast, if an attempt
-        is made to store an :class:`EndfDict` object in another :class:`EndfDict`
-        object, the former object is (non-recursively) unwrapped
-        (with :func:`unwrap`) before being stored. Therefore,
-        as long as the underlying :class:`dict`-like object is only
+        user has stored an :class:`EndfObject` object anywhere in the
+        underlying base object. In contrast, if an attempt
+        is made to store an :class:`EndfObject` object in another
+        :class:`EndfObject` object, the former object is (non-recursively)
+        unwrapped (with :func:`unwrap`) before being stored. Therefore,
+        as long as the underlying base object is only
         accessed via an :class:`EndfDict` instance, there should never be
-        an :class:`EndfDict` object in the underlying :class:`dict`-like object.
+        an :class:`EndfObject` object in the underlying base object.
 
         Example
         -------
@@ -662,3 +675,77 @@ class EndfDict(MutableMapping):
         >>> assert viewdict2.path == EndfPath('a/b')
         """
         return self._path
+
+
+class EndfDict(EndfObject, MutableMapping):
+    """EndfDict class extends :class:`dict` with :class:`EndfPath` functionality.
+
+    The :class:`EndfDict` class behaves like a :class:`list`
+    but offers in addition enhanced indexing capabilities.
+    This class is derived from the :class:`EndfObject` class
+    and inherits its methods.
+    """
+
+    def __init__(self, obj=None, array_type="dict"):
+        """Constructor for the :class:`EndfDict` class.
+
+        Parameters
+        ----------
+        obj : Optional[dict]
+            If ``obj`` is provided, the instantiated
+            :class:`EndfDict` class provides a view object.
+            Otherwise, the created instance will be initialized
+            with an empty dictionary.
+        array_type: str
+            Can be ``"dict"`` or ``"list"`` and indicates
+            the datatype to use for representing arrays.
+        """
+        if obj is None:
+            obj = dict()
+        elif not isinstance(obj, MutableMapping):
+            raise TypeError("Expected a dict-like object")
+        EndfObject.__init__(self, obj, array_type, "dict")
+
+    def keys(self):
+        return self._store.keys()
+
+    def values(self):
+        return self._store.values()
+
+    def items(self):
+        return self._store.items()
+
+
+class EndfList(EndfObject, MutableSequence):
+    """EndfList class extends :class:`list` with :class:`EndfPath` functionality.
+
+    The :class:`EndfDict` class behaves like a :class:`list`
+    but offers enhanced indexing capabilities.
+    This class is derived from the :class:`EndfObject` class
+    and inherits its methods.
+    """
+
+    def __init__(self, obj, array_type="list"):
+        """Constructor for the :class:`EndfList` class.
+
+        Parameters
+        ----------
+        obj : Optional[list]
+            If ``obj`` is provided, the instantiated
+            :class:`EndfDict` class provides a view object.
+            Otherwise, the created instance will be initialized
+            with an empty list.
+        array_type: str
+            Can be ``"dict"`` or ``"list"`` and indicates
+            the datatype to use for representing arrays.
+        """
+        if obj is None:
+            obj = list()
+        elif not isinstance(obj, MutableSequence):
+            raise TypeError("Expected a list-like object")
+        EndfObject.__init__(self, obj, array_type, "list")
+
+    def insert(self, idx, value):
+        if isinstance(value, EndfObject):
+            value = value.unwrap()
+        self._store.insert(idx, value)

@@ -72,9 +72,47 @@ def test_endfpath_get_and_set(testdict, testdict2, testpath):
     assert testdict2[str(testpath)] == 13
 
 
+def test_endfpath_get_and_set_with_lists():
+    testpath = EndfPath("a/1/b", array_type="list")
+    testdict = {"a": [0, {"b": 5}, 0]}
+    assert testpath.get(testdict) == 5
+    testpath.set(testdict, 15)
+    assert testdict["a"][1]["b"] == 15
+    assert testpath.get(testdict) == 15
+
+
+def test_endfpath_remove_with_lists():
+    testpath = EndfPath("a/1/b", array_type="list")
+    testdict = {"a": [0, {"b": 5}, 2]}
+    assert testpath.exists(testdict)
+    testpath.remove(testdict)
+    assert "b" not in testdict["a"][1]
+    assert not testpath.exists(testdict)
+    testpath[:-1].remove(testdict)
+    assert testdict["a"][1] == 2
+
+
 def test_endfpath_get_type(testdict, testdict2, testpath):
     assert type(testpath[:-1].get(testdict)) == dict
     assert type(testpath[:-1].get(testdict2)) == EndfDict
+
+
+def test_endfpath_with_list_mode_and_leading_dict():
+    testpath1 = EndfPath("0/0/a/0/b", array_type="list", leading="dict")
+    testpath2 = EndfPath("0/0/a/1/b", array_type="list", leading="dict")
+    testpath3 = EndfPath("0/1/a/0/b", array_type="list", leading="dict")
+    testdict = {}
+    testpath1.set(testdict, 5)
+    testpath2.set(testdict, 6)
+    testpath3.set(testdict, 7)
+    assert type(testdict[0]) == dict
+    assert type(testdict[0][0]) == dict
+    assert type(testdict[0][1]) == dict
+    assert type(testdict[0][1]["a"]) == list
+    assert type(testdict[0][0]["a"][1]) == dict
+    assert testdict[0][0]["a"][0]["b"] == 5
+    assert testdict[0][0]["a"][1]["b"] == 6
+    assert testdict[0][1]["a"][0]["b"] == 7
 
 
 def test_endfpath_set_type(testdict, testdict2, testpath):

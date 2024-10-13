@@ -16,6 +16,45 @@ from ..interpreter.helpers import (
 )
 
 
+def recursive_equality_check(obj1, obj2, ids):
+    """Compare recursively two nested data structures.
+
+    This function performs a comparison of two nested
+    data structures that may contain basic datatypes
+    (:class:`int`, :class:`float`, :class:`str`),
+    objects that are subclasses of :class:`collections.abc.Sequence`
+    (e.g. :class:`list` and :class:`tuple`)
+    and :class:`collections.abc.Mapping` (e.g. :class:`dict`).
+    """
+    if id(obj1) == id(obj2):
+        return True
+    elif isinstance(obj1, Sequence) and isinstance(obj2, Sequence):
+        if len(obj1) != len(obj2):
+            return False
+        if isinstance(obj1, str):
+            return obj1 == obj2
+        if id(obj1) in ids:
+            raise IndexError("there is a cycle in the nested data structure")
+        ids.add(id(obj1))
+        for x, y in zip(obj1, obj2):
+            if not recursive_equality_check(x, y, ids):
+                return False
+    elif isinstance(obj1, Mapping) and isinstance(obj2, Mapping):
+        if len(obj1) != len(obj2):
+            return False
+        if len(set(obj1).intersection(obj2)) != len(obj1):
+            return False
+        if id(obj1) in ids:
+            raise IndexError("there is a cycle in the nested data structure")
+        ids.add(id(obj1))
+        for k in obj1:
+            if not recursive_equality_check(obj1[k], obj2[k], ids):
+                return False
+    else:
+        return obj1 == obj2
+    return True
+
+
 class EndfPath(Sequence):
     """Class to store a reference to a location in a nested dictionary.
 
@@ -467,41 +506,12 @@ class EndfDict(MutableMapping):
     def __str__(self):
         return str(self._store)
 
-    def _recursive_equality_check(self, obj1, obj2, ids):
-        if id(obj1) == id(obj2):
-            return True
-        elif isinstance(obj1, Sequence) and isinstance(obj2, Sequence):
-            if len(obj1) != len(obj2):
-                return False
-            if isinstance(obj1, str):
-                return obj1 == obj2
-            if id(obj1) in ids:
-                raise IndexError("there is a cycle in the nested data structure")
-            ids.add(id(obj1))
-            for x, y in zip(obj1, obj2):
-                if not self._recursive_equality_check(x, y, ids):
-                    return False
-        elif isinstance(obj1, Mapping) and isinstance(obj2, Mapping):
-            if len(obj1) != len(obj2):
-                return False
-            if len(set(obj1).intersection(obj2)) != len(obj1):
-                return False
-            if id(obj1) in ids:
-                raise IndexError("there is a cycle in the nested data structure")
-            ids.add(id(obj1))
-            for k in obj1:
-                if not self._recursive_equality_check(obj1[k], obj2[k], ids):
-                    return False
-        else:
-            return obj1 == obj2
-        return True
-
     def __eq__(self, other):
         if not isinstance(other, EndfDict):
             other = EndfDict(other)
         obj1 = self._store
         obj2 = other._store
-        ret = self._recursive_equality_check(obj1, obj2, set())
+        ret = recursive_equality_check(obj1, obj2, set())
         return ret
 
     def __getitem__(self, key):

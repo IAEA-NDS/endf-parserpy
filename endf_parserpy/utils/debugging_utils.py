@@ -223,17 +223,19 @@ class TrackingDict(MutableMapping):
     This class implements an interface to :class:`dict`-like objects for
     the purpose of tracking keys whose associated elements were
     retrieved. This tracking is applied recursively, hence also
-    keys of :class:`dict`-like objects  stored within the root :class:`dict`-like
-    object are potentially tracked. Not all keys are tracked, though.
+    elements of :class:`dict`-like and :class:`list`-like objects
+    stored within the root :class:`dict`-like object are potentially tracked.
+    Not all keys are tracked, though.
     Read access to a key is only tracked if the following two criteria are
     met:
 
     - The key is an integer, i.e. of type :class:`int`
-    - Keys within :class:`dict`-like`` objects are never tracked if
+    - Elements within :class:`dict`-like`` objects are never tracked if
       the :class:`dict`-like object itself is stored under a
       key that starts with two underscores (``__``).
+    - If an object is :class:`list`-like, it's elements are tracked.
 
-    These two rules are owed to the mode of operation of the
+    The first criteria are owed to the mode of operation of the
     :class:`~endf_parserpy.EndfParser` class.
     The methods :func:`~endf_parserpy.EndfParser.parsefile` and
     :func:`~endf_parserpy.EndfParser.writefile` of the
@@ -259,31 +261,46 @@ class TrackingDict(MutableMapping):
             The :class:`dict`-like object for which read access should be tracked.
         """
         self._basedict = dict_like
-        self._trackingdicts = {}
+        self._trackingobjs = {}
         self._accessed = set()
 
+    def _should_track(self, key, obj):
+        return not str(key).startswith("__") and isinstance(
+            obj, (MutableMapping, MutableSequence)
+        )
+
+    def _is_tracked(self, key):
+        return key in self._trackingobjs
+
+    def _create_trackobj(self, obj):
+        if isinstance(obj, MutableMapping):
+            return TrackingDict(obj)
+        elif isinstance(obj, MutableSequence):
+            return TrackingList(obj)
+        else:
+            raise TypeError(f"This object of type {type(obj)}  cannot be tracked.")
+
     def __getitem__(self, key):
+        retval = self._basedict.__getitem__(key)
         if isinstance(key, int):
             self._accessed.add(key)
-        retval = self._basedict.__getitem__(key)
-        if isinstance(retval, MutableMapping) and not str(key).startswith("__"):
-            if key not in self._trackingdicts:
-                self._trackingdicts[key] = TrackingDict(retval)
-            retval = self._trackingdicts[key]
+        if self._should_track(key, retval) and not self._is_tracked(key):
+            self._trackingobjs[key] = self._create_trackobj(retval)
+        retval = self._trackingobjs.get(key, retval)
         return retval
 
     def __setitem__(self, key, value):
         if key in self._accessed:
             self._accessed.remove(key)
-        if key in self._trackingdicts:
-            self._trackingdicts.__delitem__(key)
+        if key in self._trackingobjs:
+            self._trackingobjs.__delitem__(key)
         return self._basedict.__setitem__(key, value)
 
     def __delitem__(self, key):
         if key in self._accessed:
             self._accessed.__delitem__(key)
-        if key in self._trackingdicts:
-            self._trackingdicts.__delitem__(key)
+        if key in self._trackingobjs:
+            self._trackingobjs.__delitem__(key)
         return self._basedict.__delitem__(key)
 
     def __iter__(self):
@@ -299,9 +316,9 @@ class TrackingDict(MutableMapping):
                     indexpath = path + "/" + str(k)
                     raise IndexError(f"The content of {indexpath} was not accessed")
         for k in self._basedict:
-            curval = self.__getitem__(k)
-            if isinstance(curval, TrackingDict):
+            if self._is_tracked(k):
                 indexpath = path + "/" + str(k)
+                curval = self._trackingobjs[k]
                 curval._verify_complete_retrieval(indexpath)
 
     def verify_complete_retrieval(self):
@@ -329,16 +346,20 @@ class TrackingList(MutableSequence):
             The :class:`list`-like object for which read access should be tracked.
         """
         self._baselist = list_like
-        self._trackinglists = [None] * len(list_like)
+        self._trackingobjs = [None] * len(list_like)
         self._accessed = [False] * len(list_like)
 
     def __getitem__(self, key):
         retval = self._baselist.__getitem__(key)
         self._accessed[key] = True
         if isinstance(retval, MutableSequence):
-            if key not in self._trackinglists:
-                self._trackinglists[key] = TrackingList(retval)
-            retval = self._trackinglists[key]
+            if key not in self._trackingobjs:
+                self._trackingobjs[key] = TrackingList(retval)
+            retval = self._trackingobjs[key]
+        elif isinstance(retval, MutableMapping):
+            if key not in self._trackingobjs:
+                self._trackingobjs[key] = TrackingDict(retval)
+            retval = self._trackingobjs[key]
         return retval
 
     def __setitem__(self, key, value):
@@ -366,13 +387,13 @@ class TrackingList(MutableSequence):
         return retval
 
     def _verify_complete_retrieval(self, path=""):
-        if len(self._accessed) > 0:
+        if any(self._accessed):
             for k in range(len(self._baselist)):
                 if not self._accessed[k]:
                     indexpath = path + "/" + str(k)
                     raise IndexError(f"The content of {indexpath} was not accessed")
         for k, curval in enumerate(self._baselist):
-            if isinstance(curval, TrackingList):
+            if isinstance(curval, (TrackingList, TrackingDict)):
                 indexpath = path + "/" + str(k)
                 curval._verify_complete_retrieval(indexpath)
 

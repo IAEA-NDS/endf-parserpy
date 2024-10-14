@@ -63,12 +63,21 @@ def test_parsefile_exclude_option_with_mf_mt():
 
 
 def test_preserve_value_strings_option():
-    for flag in (True, False):
-        parser = EndfParser(preserve_value_strings=flag)
-        endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
-        result1 = parser.parsefile(endf_file)
-        result2 = parser.parse(parser.write(result1))
-        compare_objects(result1, result2)
+    include = [(1, 451)]
+    endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    parser = EndfParser(preserve_value_strings=True)
+    endf_dict = parser.parsefile(endf_file, include=include)
+    endf_cont = parser.write(endf_dict)
+    endf_cont[1] = ".1234567895" + endf_cont[1][11:]
+    # manually edit AWR
+    parser1 = EndfParser(preserve_value_strings=True)
+    endf_dict1 = parser1.parse(endf_cont, include=include)
+    endf_cont1 = parser1.write(endf_dict1)
+    assert all(x == y for x, y in zip(endf_cont, endf_cont1))
+    parser2 = EndfParser(preserve_value_strings=False)
+    rec_endf_dict1 = parser1.parse(endf_cont, include=include)
+    rec_endf_dict2 = parser2.parse(endf_cont, include=include)
+    compare_objects(rec_endf_dict1, rec_endf_dict2)
 
 
 def test_write_include_linenum_false_option():

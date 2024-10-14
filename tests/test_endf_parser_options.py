@@ -127,12 +127,8 @@ def _test_ignore_send_records_false_option(ctrl_start, ctrl_len):
         if ctrl == 0 and i > 0:
             endf_lines_mod.pop(i)
             break
-    failed = False
-    try:
+    with pytest.raises(UnexpectedControlRecordError):
         parser.parse(endf_lines_mod)
-    except UnexpectedControlRecordError:
-        failed = True
-    assert failed
 
 
 def _test_ignore_send_records_true_option(ctrl_start, ctrl_len):

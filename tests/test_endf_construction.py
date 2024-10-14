@@ -83,20 +83,14 @@ def mf3_section():
 
 def test_creation_of_mf3_in_dict_mode(mf3_section):
     parser = EndfParser()
-    try:
-        parser.write(mf3_section)
-    except Exception:
-        pytest.fail("Failed to generate a MF3 section from scratch")
+    parser.write(mf3_section)
 
 
 def test_creation_of_mf3_in_list_mode(mf3_section):
     parser = EndfParser(array_type="list")
     sec = deepcopy(mf3_section)
     array_dict_to_list(sec[3][1])
-    try:
-        parser.write(sec)
-    except Exception:
-        pytest.fail("Failed to generate a MF3 section from scratch")
+    parser.write(sec)
 
 
 def test_creation_of_mf3_in_list_and_dict_mode_equivalent(mf3_section):
@@ -134,20 +128,14 @@ def test_linenum_wraparound(mf3_section):
 
 def test_creation_of_mf1_mt451_in_dict_mode(mf1_mt451_section):
     parser = EndfParser()
-    try:
-        parser.write(mf1_mt451_section)
-    except Exception:
-        pytest.fail("Failed to generate a MF1/MT451 section from scratch")
+    parser.write(mf1_mt451_section)
 
 
 def test_creation_of_mf1_mt451_in_list_mode(mf1_mt451_section):
     parser = EndfParser(array_type="list")
     sec = deepcopy(mf1_mt451_section)
     array_dict_to_list(sec[1][451])
-    try:
-        parser.write(sec)
-    except Exception:
-        pytest.fail("Failed to generate a MF1/MT451 section from scratch")
+    parser.write(sec)
 
 
 def test_creation_of_mf1_mt451_in_list_and_dict_mode_equivalent(mf1_mt451_section):
@@ -166,11 +154,8 @@ def test_creation_of_mf3_without_strict_datatypes(mf3_section):
     mf3_section["3/1/LR"] = 0.0
     parser.write(mf3_section)
     mf3_section["3/1/LR"] = 0.5
-    try:
+    with pytest.raises(InvalidIntegerError):
         parser.write(mf3_section)
-        raise Exception("InvalidIntegerError was not raised")
-    except InvalidIntegerError:
-        pass
 
 
 def test_creation_of_mf3_with_strict_datatypes(mf3_section):
@@ -178,11 +163,8 @@ def test_creation_of_mf3_with_strict_datatypes(mf3_section):
     mf3_section["3/1/LR"] = 0
     parser.write(mf3_section)
     mf3_section["3/1/LR"] = 0.0
-    try:
+    with pytest.raises(InvalidIntegerError):
         parser.write(mf3_section)
-        raise Exception("InvalidIntegerError was not raised")
-    except InvalidIntegerError:
-        pass
 
 
 def test_creation_of_mf1_mt451_with_check_arrays(mf1_mt451_section):
@@ -192,11 +174,8 @@ def test_creation_of_mf1_mt451_with_check_arrays(mf1_mt451_section):
     d["1/451/DESCRIPTION/50"] = "should not be here according to NWD"
     d["1/451/IgnoredVar1"] = 23
     d["1/451/IgnoredVar2"] = {1: "a", 2: "b"}
-    try:
+    with pytest.raises(IndexError):
         parser.write(d)
-        raise Exception("IndexError was not raised")
-    except IndexError:
-        pass
 
 
 def test_creation_of_mf1_mt451_without_check_arrays(mf1_mt451_section):
@@ -223,10 +202,8 @@ def test_creation_of_mf1_mt451_fails_if_variable_missing(mf1_mt451_section):
     parser = EndfParser(check_arrays=False)
     d = mf1_mt451_section
     del d["1/451/LRP"]
-    try:
+    with pytest.raises(VariableNotFoundError):
         parser.write(d)
-    except VariableNotFoundError:
-        pass
 
 
 def test_creation_of_mf1_mt451_fails_if_counter_larger_than_array_in_dict_mode(
@@ -288,11 +265,8 @@ def test_blank_lines_cause_failure_if_not_ignored(mf1_mt451_section):
     parser = EndfParser(ignore_missing_tpid=True, ignore_blank_lines=False)
     lines = parser.write(mf1_mt451_section)
     lines.insert(3, "  ")
-    try:
+    with pytest.raises(BlankLineError):
         parser.parse(lines)
-        raise TypeError("test failed")
-    except BlankLineError:
-        pass
 
 
 def test_missing_send_record_causes_failure_if_not_ignored(mf1_mt451_section):
@@ -302,15 +276,12 @@ def test_missing_send_record_causes_failure_if_not_ignored(mf1_mt451_section):
     for i in range(0, 3):
         lines = lines_list[i]
         del lines[-(i + 1)]
-        try:
-            parser.parse(lines)
-            raise TypeError(f"test failed on subcase {i}")
-        except UnexpectedEndOfInputError:
-            if i != 0:
-                raise TypeError(f"test failed for the wrong reason in subcase {i}")
-        except UnexpectedControlRecordError:
-            if i not in (1, 2):
-                raise TypeError(f"test failed for the wrong reason in subcase {i}")
+        if i == 0:
+            with pytest.raises(UnexpectedEndOfInputError):
+                parser.parse(lines)
+        if i in (1, 2):
+            with pytest.raises(UnexpectedControlRecordError):
+                parser.parse(lines)
 
 
 def test_missing_send_record_option_does_not_impact_result(mf1_mt451_section):

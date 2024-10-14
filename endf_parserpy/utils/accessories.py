@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2024/10/13
+# Last modified:   2024/10/14
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
@@ -284,10 +284,7 @@ class EndfPath(Sequence):
                     is_next_el_int = isinstance(pathels[i + 1], int)
                     new_cont = [] if is_next_el_int and not dict_mode else {}
                     if is_el_int:
-                        try:
-                            cur = list_setdefault(cur, el, new_cont)
-                        except:
-                            breakpoint()
+                        cur = list_setdefault(cur, el, new_cont)
                     else:
                         cur = cur.setdefault(el, new_cont)
                 else:

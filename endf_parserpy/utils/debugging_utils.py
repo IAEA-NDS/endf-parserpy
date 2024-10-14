@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2024/10/13
+# Last modified:   2024/10/14
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -12,6 +12,7 @@
 from collections.abc import MutableMapping, MutableSequence
 from endf_parserpy.utils.math_utils import math_allclose
 from endf_parserpy.utils.accessories import EndfDict
+from .math_utils import EndfFloat
 
 
 def smart_is_equal(x, y, atol=1e-8, rtol=1e-6):
@@ -122,6 +123,11 @@ def _compare_objects(
         else:
             diff_log.append(msg)
             print(msg)
+
+    if isinstance(obj1, EndfFloat):
+        obj1 = float(obj1)
+    if isinstance(obj2, EndfFloat):
+        obj2 = float(obj2)
 
     if type(obj1) != type(obj2):
         treat_diff(

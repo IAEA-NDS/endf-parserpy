@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2024/04/25
+# Last modified:   2024/10/14
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -12,7 +12,50 @@
 from endf_parserpy.interpreter.custom_exceptions import InvalidIntegerError
 
 
+class EndfFloat:
+    """float that keeps track of string representation.
+
+    Instances of this class behave exactly like `float` variables.
+    Additionally, each instance stores a string that should
+    be the source string from which the float value was obtained.
+    """
+
+    def __init__(self, value, orig_str):
+        """Creation of EndfFloat instance.
+
+        Parameters
+        ----------
+        value : object
+            Any object that can be converted to a float via ``float(value)``.
+        orig_str:
+            A string representation that corresponds to the float
+            number given as ``value`` argument.
+        """
+        self._value = float(value)
+        self._orig_str = orig_str
+
+    def get_original_string(self):
+        """Return the string representation of the float value."""
+        return self._orig_str
+
+    def __eq__(self, other):
+        return self._value == float(other)
+
+    def __lt__(self, other):
+        return self._value < float(other)
+
+    def __float__(self):
+        return self._value
+
+    def __int__(self):
+        return int(self._value)
+
+
 def math_isclose(x, y, rtol=1e-5, atol=1e-8):
+    if isinstance(x, EndfFloat):
+        x = float(x)
+    if isinstance(y, EndfFloat):
+        y = float(x)
     return abs(x - y) <= (atol + rtol * abs(y))
 
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/26
+# Last modified:   2024/10/15
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -80,18 +80,45 @@ for i=1 to NIS:
                 (spingroup[k])
                     [MAT,2,151/ AJ, PJ, KBK, KPS, 6*NCH, NCH /
                     {PPI[l] , L[l] , SCH[l] , BND [l] , APE[l] , APT[l]}{l=1 to NCH} ]LIST
+
                     if NRS > 0 [lookahead=1]:
                         NX := (1+NCH + (5-NCH) % 6) * NRS / 6
                         num_zeros := (5-NCH) % 6
                         [MAT,2,151/ 0.0, 0.0, 0, NRS, 6*NX, NX /
                             { ER[n], {GAM[m,n]}{m=1 to NCH},
                               {0.0}{p=1 to num_zeros} }{n=1 to NRS} ]LIST
-                    endif
+
                     # no resonances in the spin group
-                    if NRS==0 and NX==1 [lookahead=1]:
+                    elif NRS==0 and NX==1 [lookahead=1]:
                         [MAT,2,151/ 0.0, 0.0, 0, NRS, 6*NX, NX /
                             {0.0}{m=1 to 6}]LIST
                     endif
+
+                    if KBK > 0:
+                        for n=1 to KBK:
+                            [MAT,2,151/ 0.0, 0.0, LCH, LBK, 0, 0 ]CONT
+                            if LBK == 1:
+                                [MAT,2,151/ 0.0, 0.0, LCH, LBK, 0, 0 ]CONT
+                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / RBR]TAB1 (real_part[n])
+                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / RBI]TAB1 (imag_part[n])
+                            elif LBK == 2:
+                                [MAT,2,151/ ED, EU, 0, 0, 5, 0/ R0, R1, R2, S0, S1 ]LIST
+                            elif LBK == 3:
+                                [MAT,2,151/ ED, EU, 0, 0, 3, 0/ R0, S0, GA ]LIST
+                            endif
+                        endfor
+                    endif
+                    if KPS > 0:
+                        for n=1 to NCH:
+                            [MAT,2,151/ 0.0, 0.0, 0, 0, LPS, 1/
+                                0.0, 0.0, 0.0, 0.0, 0.0, 0.0]LIST
+                            if LPS == 1:
+                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / PSR ]TAB1 (real_part[n])
+                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / PSI ]TAB1 (imag_part[n])
+                            endif
+                        endfor
+                    endif
+
                 (/spingroup[k])
                 endfor
             endif

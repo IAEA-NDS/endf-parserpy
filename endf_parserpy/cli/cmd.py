@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/02/05
-# Last modified:   2024/10/06
+# Last modified:   2024/10/16
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -25,6 +25,7 @@ ACTIONS = (
     "update_directory",
     "insert_text",
     "explain",
+    "match",
 )
 
 

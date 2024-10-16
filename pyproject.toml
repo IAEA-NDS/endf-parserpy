@@ -46,6 +46,9 @@ enable = true
 source = "endf_parserpy/__init__.py"
 pattern = "__version__ *= *\"(.*)\""
 
+[tool.poetry.scripts]
+endf-cli = "endf_parserpy.cli.cmd:cli_interface"
+
 [tool.poetry.build]
 script = "build.py"
 # The following line is essential, as otherwise

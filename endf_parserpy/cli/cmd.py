@@ -33,7 +33,7 @@ SUBMODULE_NAMES = tuple("endf_parserpy.cli.actions." + a for a in ACTIONS)
 SUBMODULES = tuple(importlib.import_module(s) for s in SUBMODULE_NAMES)
 
 
-if __name__ == "__main__":
+def cli_interface():
 
     parser = argparse.ArgumentParser(
         prog="endf-cli", description="Command-line interface to ENDF files"
@@ -60,3 +60,7 @@ if __name__ == "__main__":
 
     # should not arrive here
     sys.exit(1)
+
+
+if __name__ == "__main__":
+    cli_interface()

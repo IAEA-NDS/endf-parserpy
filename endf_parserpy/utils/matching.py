@@ -38,9 +38,7 @@ def endf_path_generator(endf_path, trail_dict, lead_path=EndfPath()):
         for k in curdict:
             trail_path = k + endf_path[first_star_pos + 1 :]
             new_lead_path = lead_path + new_lead_path
-            subgen = endf_path_generator(trail_path, curdict, new_lead_path)
-            for curpath in subgen:
-                yield curpath
+            yield from endf_path_generator(trail_path, curdict, new_lead_path)
     else:
         curpath = lead_path + endf_path
         yield lead_path + endf_path
@@ -145,9 +143,7 @@ def _eval_prefixed_logical_expr(endf_path, expr, endf_dict, opts):
 def eval_prefixed_logical_expr_tree(node, endf_dict, opts):
     wild_prefix = EndfPath(node.children[0].children)
     expr = node.children[1]
-    prefix_gen = endf_path_generator(wild_prefix, endf_dict)
-    for prefix in prefix_gen:
-        yield from _eval_prefixed_logical_expr(prefix, expr, endf_dict, opts)
+    yield from endf_path_generator(wild_prefix, endf_dict)
 
 
 def eval_tree(node, endf_dict, opts):

@@ -71,11 +71,13 @@ logical_expr_grammar = """
     ?expr : NUMBER
           | endfpath
 
+    NUMBER : ("+" | "-")? NON_NEG_NUMBER
+
     endfpath : "/" PATH_ELEMENT ("/"+ PATH_ELEMENT)* "/"*
     PATH_ELEMENT : LETTER (LETTER | NUMBER)* | NUMBER | "*"
 
     %import common.LETTER
-    %import common.NUMBER
+    %import common.NUMBER -> NON_NEG_NUMBER
     %import common.WS_INLINE
 
     %ignore WS_INLINE

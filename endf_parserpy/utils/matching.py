@@ -1,5 +1,6 @@
 from lark import Lark, Tree, Token
 from endf_parserpy import EndfPath, EndfDict
+from endf_parserpy.utils.math_utils import EndfFloat
 from itertools import product
 from collections.abc import MutableMapping
 
@@ -87,18 +88,28 @@ logical_expr_grammar = """
 expr_parser = Lark(logical_expr_grammar, parser="lalr")
 
 
+def make_robust_relation(func):
+    def wrapper(x):
+        cx = tuple(float(a) if isinstance(a, EndfFloat) else a for a in x)
+        if not all(isinstance(v, (int, float)) for v in cx):
+            return False
+        return func(cx)
+
+    return wrapper
+
+
 node_fun_map = {
     # logical operators
     "logical_or": lambda x: x[0] or x[1],
     "logical_and": lambda x: x[0] and x[1],
     "logical_not": lambda x: not x[0],
     # relations
-    "eq": lambda x: x[0] == x[1],
-    "lt": lambda x: x[0] < x[1],
-    "gt": lambda x: x[0] > x[1],
-    "le": lambda x: x[0] <= x[1],
-    "ge": lambda x: x[0] >= x[1],
-    "neq": lambda x: x[0] != x[1],
+    "eq": make_robust_relation(lambda x: x[0] == x[1]),
+    "lt": make_robust_relation(lambda x: x[0] < x[1]),
+    "gt": make_robust_relation(lambda x: x[0] > x[1]),
+    "le": make_robust_relation(lambda x: x[0] <= x[1]),
+    "ge": make_robust_relation(lambda x: x[0] >= x[1]),
+    "neq": make_robust_relation(lambda x: x[0] != x[1]),
     # evaluation of expr
     "NUMBER": lambda x, _: float(x[0]),
 }

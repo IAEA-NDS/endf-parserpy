@@ -29,6 +29,14 @@ classifiers = [
 # attribute defined in endf_parserpy/__init__.py
 version = "0.0.0"
 
+packages = [
+    { include = "endf_parserpy" }
+]
+
+include = [
+    { path = "endf_parserpy/compiler/cpp_templates", format = ["sdist", "wheel"] }
+]
+
 [tool.poetry.dependencies]
 python = ">=3.8.0,<4.0.0"
 lark = ">=1.0.0"

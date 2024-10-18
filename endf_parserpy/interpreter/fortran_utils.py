@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/10/14
+# Last modified:   2024/10/18
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -44,7 +44,7 @@ def fortstr2float(valstr, read_opts=None):
                 valstr = valstr[:i] + "E" + valstr[i:]
     try:
         if preserve_value_strings:
-            return EndfFloat(valstr, orig_valstr)
+            return EndfFloat(float(valstr), orig_valstr)
         else:
             return float(valstr)
     except ValueError as valerr:

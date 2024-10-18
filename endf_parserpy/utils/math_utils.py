@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2024/10/14
+# Last modified:   2024/10/18
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -11,8 +11,11 @@
 
 from endf_parserpy.interpreter.custom_exceptions import InvalidIntegerError
 
+# This class must be in sync with the
+# C++ EndfFloat class in endf_parserpy.cpp_parsers.endf_float
 
-class EndfFloat:
+
+class _EndfFloat:
     """float that keeps track of string representation.
 
     Instances of this class behave exactly like `float` variables.
@@ -31,6 +34,8 @@ class EndfFloat:
             A string representation that corresponds to the float
             number given as ``value`` argument.
         """
+        if not isinstance(value, float):
+            raise TypeError("`value` arg must have `float` type")
         self._value = float(value)
         self._orig_str = orig_str
 
@@ -49,6 +54,12 @@ class EndfFloat:
 
     def __int__(self):
         return int(self._value)
+
+
+try:
+    from endf_parserpy.cpp_parsers.endf_float import EndfFloat
+except ImportError:
+    EndfFloat = _EndfFloat
 
 
 def math_isclose(x, y, rtol=1e-5, atol=1e-8):

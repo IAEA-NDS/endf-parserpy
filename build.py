@@ -57,15 +57,28 @@ def build(setup_kwargs):
     _prepare_cpp_parsers_subpackage(overwrite=True)
     # ext_modules = intree_extensions(glob("endf_parserpy/cpp_parsers/*.cpp"))
     subpackage_prefix = "endf_parserpy.cpp_parsers."
-    cpp_files = glob("endf_parserpy/cpp_parsers/*.cpp")
-    ext_modules = [
+    ext_modules = []
+    # include the endf_float module for compilation
+    ext_modules.append(
         Pybind11Extension(
-            subpackage_prefix + os.path.splitext(os.path.basename(cpp_file))[0],
-            [cpp_file],
+            subpackage_prefix + "endf_float",
+            [
+                os.path.join("endf_parserpy", "cpp_parsers", f)
+                for f in ("endf_float_binding.cpp",)
+            ],
             extra_compile_args=["-std=c++11"],
         )
-        for cpp_file in cpp_files
-    ]
+    )
+    # include the ENDF format parsers for compilation
+    # cpp_files = glob("endf_parserpy/cpp_parsers/*.cpp")
+    # ext_modules = [
+    #     Pybind11Extension(
+    #         subpackage_prefix + os.path.splitext(os.path.basename(cpp_file))[0],
+    #         [cpp_file],
+    #         extra_compile_args=["-std=c++11"],
+    #     )
+    #     for cpp_file in cpp_files
+    # ]
 
     my_build_ext = pybind11_build_ext if compile_env_var == "yes" else OptionalBuildExt
     setup_kwargs.update(

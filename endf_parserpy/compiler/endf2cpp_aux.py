@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/06/01
+# Last modified:   2024/10/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -13,6 +13,7 @@ from lark.lexer import Token
 from .expr_utils.equation_utils import get_variables_in_expr
 from .expr_utils.custom_nodes import VariableToken
 from . import cpp_primitives as cpp
+from .cpp_types.cpp_dtype_aux import map_dtype
 from .cpp_types.cpp_varops_query import did_read_var
 from .cpp_types.cpp_varaux import check_variable, get_cpp_varname
 from .lookahead_management import in_lookahead
@@ -90,7 +91,8 @@ def get_mt_number(linevar):
 
 
 def get_int_field(idx, parse_opts):
-    code = f"cpp_read_field<int>(cpp_line.c_str(), {idx}, {parse_opts})"
+    cpp_dtype = map_dtype(int)
+    code = f"cpp_read_field<{cpp_dtype}>(cpp_line.c_str(), {idx}, {parse_opts})"
     return code
 
 
@@ -100,18 +102,20 @@ def get_custom_int_field(start_pos, length):
 
 
 def get_int_vec(numel, parse_opts):
-    code = cpp.statement("cpp_read_vec<int>(cont, {numel}, {parse_opts})")
+    cpp_dtype = map_dtype(int)
+    code = cpp.statement(f"cpp_read_vec<{cpp_dtype}>(cont, {numel}, {parse_opts})")
     return code
 
 
 def get_float_vec(nume, parse_opts):
-    code = cpp.statement(f"cpp_read_vec<double>(cont, {numel}, {parse_opts})")
+    cpp_dtype = map_dtype(float)
+    code = cpp.statement(f"cpp_read_vec<{cpp_dtype}>(cont, {numel}, {parse_opts})")
     return code
 
 
 def get_numeric_field(fieldpos, dtype, parse_opts):
-    dtypestr = {float: "double", int: "int"}[dtype]
-    code = f"cpp_read_field<{dtypestr}>(cpp_line.c_str(), {fieldpos}, {parse_opts})"
+    cpp_dtype = map_dtype(dtype)
+    code = f"cpp_read_field<{cpp_dtype}>(cpp_line.c_str(), {fieldpos}, {parse_opts})"
     return code
 
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/07/23
+# Last modified:   2024/10/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,6 +11,7 @@
 
 
 from . import cpp_primitives as cpp
+from .cpp_types.cpp_dtype_aux import map_dtype
 
 
 def prepare_line(linevar, mat, mf, mt, linenum, write_opts):
@@ -38,9 +39,9 @@ def prepare_send_la(linevar, mat, mf, write_opts, lookahead):
 
 
 def set_numeric_field(linevar, fieldpos, dtype, value, write_opts):
-    dtypestr = {float: "double", int: "int"}[dtype]
+    cpp_dtype = map_dtype(dtype)
     code = cpp.statement(
-        f"cpp_write_field<{dtypestr}>({linevar}, {fieldpos}, {value}, {write_opts})"
+        f"cpp_write_field<{cpp_dtype}>({linevar}, {fieldpos}, {value}, {write_opts})"
     )
     return code
 

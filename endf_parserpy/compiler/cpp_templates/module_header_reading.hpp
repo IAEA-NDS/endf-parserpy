@@ -229,9 +229,18 @@ int endfstr2int(const char* str, ParsingOptions &parse_opts) {
 
 template<typename T>
 T cpp_read_field(const char *str, const char fieldnum, ParsingOptions &parse_opts) {
-  static_assert(std::is_same<T, DOUBLE_TYPE>::value || std::is_same<T, int>::value, "T must be int or double");
-  if constexpr (std::is_same<T, DOUBLE_TYPE>::value) {
+  static_assert(
+      std::is_same<T, EndfFloatCpp>::value
+      || std::is_same<T, int>::value
+      || std::is_same<T, double>::value
+      , "T must be int or double"
+  );
+  if constexpr (std::is_same<T, double>::value) {
     return endfstr2float(str+fieldnum*11, parse_opts);
+  } if constexpr (std::is_same<T, EndfFloatCpp>::value) {
+      double float_value = endfstr2float(str+fieldnum*11, parse_opts);
+      std::string orig_str(str+fieldnum*11, 11);
+      return EndfFloatCpp(float_value, orig_str);
   } else {
     return endfstr2int(str+fieldnum*11, parse_opts);
   }

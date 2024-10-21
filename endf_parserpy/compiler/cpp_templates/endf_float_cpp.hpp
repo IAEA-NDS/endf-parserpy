@@ -106,7 +106,19 @@ namespace PYBIND11_NAMESPACE { namespace detail {
         }
 
         static handle cast(EndfFloatCpp& src, return_value_policy, handle) {
-            return py::float_(static_cast<double>(src)).release();
+            static py::object PyEndfFloat = (
+                py::module::import("endf_parserpy.utils.math_utils").attr("EndfFloat")
+            );
+            double float_value = static_cast<double>(src);
+            std::string orig_str = src.get_original_string();
+            if (orig_str.empty()) {
+                return py::float_(static_cast<double>(src)).release();
+            } else {
+                py::object endf_float = PyEndfFloat(
+                   py::float_(float_value), py::str(orig_str)
+                );
+                return endf_float.release();
+            }
         }
     };
 

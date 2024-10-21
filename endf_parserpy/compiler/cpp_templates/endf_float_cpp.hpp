@@ -87,11 +87,20 @@ namespace PYBIND11_NAMESPACE { namespace detail {
         PYBIND11_TYPE_CASTER(EndfFloatCpp, const_name("EndfFloatCpp"));
 
         bool load(handle src, bool) {
+            static py::object PyEndfFloat = (
+                py::module::import("endf_parserpy.utils.math_utils").attr("EndfFloat")
+            );
             if (py::isinstance<py::float_>(src)) {
                 py::float_ tmp = py::cast<py::float_>(src);
                 double float_value = tmp.cast<double>();
                 value = EndfFloatCpp(float_value);
                 return !(float_value == -1 && PyErr_Occurred());
+            } else if (py::isinstance(src, PyEndfFloat)) {
+				auto float_method = src.attr("__float__");
+				double float_value = float_method().cast<double>();
+				std::string orig_str = src.attr("get_original_string")().cast<std::string>();
+				value = EndfFloatCpp(float_value, orig_str);
+                return true;
             }
             return false;
         }

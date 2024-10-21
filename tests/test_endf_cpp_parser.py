@@ -37,17 +37,27 @@ def cpp_parse_opts(
     return parse_opts
 
 
-def test_python_and_cpp_parser_equivalent(endf_file, myEndfParser, cpp_parse_opts):
+def test_python_and_cpp_parser_equivalent(
+    endf_file, myEndfParser, cpp_parse_opts, mf_sel
+):
     endf_dict1 = myEndfParser.parsefile(endf_file)
-    endf_dict2 = parse_endf_file(str(endf_file), parse_opts=cpp_parse_opts)
+    endf_dict2 = parse_endf_file(
+        str(endf_file), parse_opts=cpp_parse_opts, include=mf_sel
+    )
     compare_objects(endf_dict1, endf_dict2, atol=1e-10, rtol=1e-10)
 
 
-def test_endf_cpp_read_write_read_roundtrip(endf_file, tmp_path, cpp_parse_opts):
-    endf_dict1 = parse_endf_file(str(endf_file), parse_opts=cpp_parse_opts)
+def test_endf_cpp_read_write_read_roundtrip(
+    endf_file, tmp_path, cpp_parse_opts, mf_sel
+):
+    endf_dict1 = parse_endf_file(
+        str(endf_file), parse_opts=cpp_parse_opts, include=mf_sel
+    )
     outfile = tmp_path / os.path.basename(endf_file)
     write_endf_file(str(outfile), endf_dict1)
-    endf_dict2 = parse_endf_file(str(endf_file), parse_opts=cpp_parse_opts)
+    endf_dict2 = parse_endf_file(
+        str(endf_file), parse_opts=cpp_parse_opts, include=mf_sel
+    )
     compare_objects(endf_dict1, endf_dict2, atol=1e-10, rtol=1e-10)
 
 

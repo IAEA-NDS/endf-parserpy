@@ -8,6 +8,10 @@
 #include "module_header.hpp"
 #endif
 
+#ifndef DOUBLE_TYPE
+#define DOUBLE_TYPE double
+#endif
+
 
 struct ParsingOptions {
   bool ignore_number_mismatch;
@@ -225,8 +229,8 @@ int endfstr2int(const char* str, ParsingOptions &parse_opts) {
 
 template<typename T>
 T cpp_read_field(const char *str, const char fieldnum, ParsingOptions &parse_opts) {
-  static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, "T must be int or double");
-  if (std::is_same<T, double>::value) {
+  static_assert(std::is_same<T, DOUBLE_TYPE>::value || std::is_same<T, int>::value, "T must be int or double");
+  if constexpr (std::is_same<T, DOUBLE_TYPE>::value) {
     return endfstr2float(str+fieldnum*11, parse_opts);
   } else {
     return endfstr2int(str+fieldnum*11, parse_opts);
@@ -253,7 +257,10 @@ is_zero_check(const T value) {
 
 
 template<typename U, typename V>
-typename std::enable_if<!std::is_scalar<U>::value || !std::is_scalar<V>::value, void>::type
+typename std::enable_if<
+  (!std::is_scalar<U>::value && !std::is_same<U, DOUBLE_TYPE>::value)
+  || (!std::is_scalar<V>::value && !std::is_same<V, DOUBLE_TYPE>::value), void
+>::type
 cpp_validate_field(
   U expected_value,
   V actual_value,
@@ -273,7 +280,10 @@ cpp_validate_field(
 
 
 template<typename U, typename V>
-typename std::enable_if<std::is_scalar<U>::value && std::is_scalar<V>::value, void>::type
+typename std::enable_if<
+  (std::is_scalar<U>::value || std::is_same<U, DOUBLE_TYPE>::value)
+   && (std::is_scalar<V>::value || std::is_same<V, DOUBLE_TYPE>::value), void
+>::type
 cpp_validate_field(
   U expected_value,
   V actual_value,
@@ -285,7 +295,7 @@ cpp_validate_field(
   std::string &line,
   ParsingOptions &parse_opts
 ) {
-  if (expected_value == actual_value) return;
+  if (static_cast<double>(expected_value) == static_cast<double>(actual_value)) return;
 
   // inconsistency detected
   if (! contains_variable) {
@@ -361,8 +371,8 @@ std::string cpp_read_line(
 std::string cpp_read_send(std::istream& cont, int mat, int mf, ParsingOptions &parse_opts) {
   std::string line = cpp_read_line(cont, mat, mf, 0, parse_opts);
   int mtnum = cpp_read_mt_number(line.c_str());
-  if (cpp_read_field<double>(line.c_str(), 0, parse_opts) != 0.0 ||
-    cpp_read_field<double>(line.c_str(), 1, parse_opts) != 0.0 ||
+  if (cpp_read_field<DOUBLE_TYPE>(line.c_str(), 0, parse_opts) != 0.0 ||
+    cpp_read_field<DOUBLE_TYPE>(line.c_str(), 1, parse_opts) != 0.0 ||
     cpp_read_field<int>(line.c_str(), 2, parse_opts) != 0 ||
     cpp_read_field<int>(line.c_str(), 3, parse_opts) != 0 ||
     cpp_read_field<int>(line.c_str(), 4, parse_opts) != 0 ||
@@ -393,8 +403,8 @@ bool cpp_is_fend_record(std::string line, int mat, ParsingOptions &parse_opts) {
   }
   int mf = cpp_read_mf_number(line.c_str());
   int mt = cpp_read_mt_number(line.c_str());
-  double c1 = cpp_read_field<double>(line.c_str(), 0, parse_opts);
-  double c2 = cpp_read_field<double>(line.c_str(), 1, parse_opts);
+  double c1 = cpp_read_field<DOUBLE_TYPE>(line.c_str(), 0, parse_opts);
+  double c2 = cpp_read_field<DOUBLE_TYPE>(line.c_str(), 1, parse_opts);
   int n1 = cpp_read_field<int>(line.c_str(), 2, parse_opts);
   int n2 = cpp_read_field<int>(line.c_str(), 3, parse_opts);
   int l1 = cpp_read_field<int>(line.c_str(), 4, parse_opts);
@@ -514,7 +524,7 @@ Tab1Body read_tab1_body_debug(
     tab_body.NBT.push_back(interp[j++]);
     tab_body.INT.push_back(interp[j++]);
   }
-  std::vector<double> data = cpp_read_vec_debug<double>(cont, tmpline, 2*np, mat, mf, mt, parse_opts);
+  std::vector<DOUBLE_TYPE> data = cpp_read_vec_debug<DOUBLE_TYPE>(cont, tmpline, 2*np, mat, mf, mt, parse_opts);
   oss << tmpline;
   j = 0;
   for (int i=0; i < np; i++) {
@@ -537,7 +547,7 @@ Tab1Body read_tab1_body(
     tab_body.NBT.push_back(interp[j++]);
     tab_body.INT.push_back(interp[j++]);
   }
-  std::vector<double> data = cpp_read_vec<double>(cont, 2*np, mat, mf, mt, parse_opts);
+  std::vector<DOUBLE_TYPE> data = cpp_read_vec<DOUBLE_TYPE>(cont, 2*np, mat, mf, mt, parse_opts);
   j = 0;
   for (int i=0; i < np; i++) {
     tab_body.X.push_back(data[j++]);

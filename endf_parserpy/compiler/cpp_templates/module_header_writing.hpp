@@ -8,6 +8,10 @@
 #include "module_header.hpp"
 #endif
 
+#ifndef DOUBLE_TYPE
+#define DOUBLE_TYPE double
+#endif
+
 
 struct WritingOptions {
   bool abuse_signpos;
@@ -265,9 +269,9 @@ std::string int2endfstr(int value) {
 
 template<typename T>
 void cpp_write_field(std::string& line, const char fieldnum, T value, WritingOptions &write_opts) {
-  static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, "T must be int or double");
+  static_assert(std::is_same<T, DOUBLE_TYPE>::value || std::is_same<T, int>::value, "T must be int or double");
   std::string fieldstr;
-  if (std::is_same<T, double>::value) {
+  if constexpr (std::is_same<T, DOUBLE_TYPE>::value) {
     fieldstr = float2endfstr(value, write_opts);
   } else {
     fieldstr = int2endfstr(value);
@@ -343,12 +347,12 @@ std::string cpp_prepare_send(int mat, int mf, WritingOptions &write_opts) {
   cpp_write_mat_number(line, mat);
   cpp_write_mf_number(line, mf);
   cpp_write_mt_number(line, 0);
-  cpp_write_field(line, 0, 0.0, write_opts);
-  cpp_write_field(line, 1, 0.0, write_opts);
-  cpp_write_field(line, 2, 0, write_opts);
-  cpp_write_field(line, 3, 0, write_opts);
-  cpp_write_field(line, 4, 0, write_opts);
-  cpp_write_field(line, 5, 0, write_opts);
+  cpp_write_field<DOUBLE_TYPE>(line, 0, 0.0, write_opts);
+  cpp_write_field<DOUBLE_TYPE>(line, 1, 0.0, write_opts);
+  cpp_write_field<DOUBLE_TYPE>(line, 2, 0, write_opts);
+  cpp_write_field<DOUBLE_TYPE>(line, 3, 0, write_opts);
+  cpp_write_field<DOUBLE_TYPE>(line, 4, 0, write_opts);
+  cpp_write_field<DOUBLE_TYPE>(line, 5, 0, write_opts);
   if (write_opts.include_linenum) {
     if (mf == 0) {
       // for writing FEND/MEND/TEND record

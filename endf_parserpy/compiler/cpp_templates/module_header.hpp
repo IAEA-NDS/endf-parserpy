@@ -16,14 +16,26 @@
 #include <algorithm>  // for std::sort
 #include <cstddef>
 
+// When Python merges the varios
+// C++ files, there is no need
+// to include it here
+#ifndef PYTHON_COMPILE
+#include "endf_float_cpp.hpp"
+#endif
+
 namespace py = pybind11;
+
+
+#ifndef DOUBLE_TYPE
+#define DOUBLE_TYPE double
+#endif
 
 
 struct Tab1Body {
   std::vector<int> INT;
   std::vector<int> NBT;
-  std::vector<double> X;
-  std::vector<double> Y;
+  std::vector<DOUBLE_TYPE> X;
+  std::vector<DOUBLE_TYPE> Y;
 };
 
 

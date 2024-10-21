@@ -54,3 +54,45 @@ def test_missing_tpid_option_false_with_missing_tpid():
     )
     with pytest.raises(Exception):
         endf_dict = parser.parsefile(endf_file)
+
+
+# TODO from here
+
+from endf_parserpy import EndfDict, EndfParser
+
+
+@pytest.fixture(scope="function")
+def mf3_section():
+    d = EndfDict()
+    d["3/1"] = {}
+    dd = d["3/1"]
+    dd["MAT"] = 2625
+    dd["MF"] = 3
+    dd["MT"] = 1
+    dd["ZA"] = 26054.0
+    dd["AWR"] = 53.47
+    dd["QM"] = 0.0
+    dd["QI"] = 0.0
+    dd["LR"] = 0
+    dd["xstable/E"] = [0.0, 5.0, 10.0, 15.0, 20.0]
+    dd["xstable/xs"] = [14.0, 19.0, 22.0, 31.0, 12.0]
+    dd["xstable/NBT"] = [len(dd["xstable/E"])]
+    dd["xstable/INT"] = [2]
+    return d.unwrap()
+
+
+def test_endf_parser_endf_float_is_working(mf3_section):
+    pyparser = EndfParser(ignore_missing_tpid=True)
+    parser = EndfParserCpp(ignore_missing_tpid=True)
+    # mf3_section[3][1]['ZA'] = EndfFloat(0.1234567895, ".12345695  ")
+    # mf3_section[3][1]['xstable']['E'][0] = EndfFloat(4.57, "4.57       ")
+    cont = parser.write(mf3_section)
+    print("#### ATTEMPTING PARSING ####")
+    dict2 = parser.parse(cont)
+    # new_mf3sec = parser.parse(cont)
+    # parser.parse(cont)
+    # endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    # endf_dict = parser.parsefile(endf_file, include=[1])
+    # endf_dict[1][451]['AWR'] = EndfFloat(100, "  100.     ")
+    # cont_out = parser.write(endf_dict)
+    # endf_dict2 = parser.parse(cont_out)

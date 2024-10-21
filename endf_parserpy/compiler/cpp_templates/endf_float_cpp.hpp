@@ -87,23 +87,17 @@ namespace PYBIND11_NAMESPACE { namespace detail {
         PYBIND11_TYPE_CASTER(EndfFloatCpp, const_name("EndfFloatCpp"));
 
         bool load(handle src, bool) {
-            // Extract PyObject from handle
-            PyObject *source = src.ptr();
-            // Try converting into a Python float value
-            PyObject *tmp = PyNumber_Float(source);
-            if (!tmp)
-                return false;
-            // Now try to convert into a C++ double
-            double float_value = PyFloat_AsDouble(tmp);
-            // Instantiate EndfFloatCpp class
-            value = EndfFloatCpp(float_value);
-            Py_DECREF(tmp);
-            // Ensure return code was OK (to avoid out-of-range errors etc) */
-            return !(float_value == -1 && PyErr_Occurred());
+            if (py::isinstance<py::float_>(src)) {
+                py::float_ tmp = py::cast<py::float_>(src);
+                double float_value = tmp.cast<double>();
+                value = EndfFloatCpp(float_value);
+                return !(float_value == -1 && PyErr_Occurred());
+            }
+            return false;
         }
 
-        static handle cast(EndfFloatCpp src, return_value_policy, handle) {
-            return PyFloat_FromDouble(static_cast<double>(src));
+        static handle cast(EndfFloatCpp& src, return_value_policy, handle) {
+            return py::float_(static_cast<double>(src)).release();
         }
     };
 

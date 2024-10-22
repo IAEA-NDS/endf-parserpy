@@ -21,6 +21,7 @@ struct ParsingOptions {
   bool ignore_blank_lines;
   bool ignore_send_records;
   bool ignore_missing_tpid;
+  bool preserve_value_strings;
   bool validate_control_records;
 };
 
@@ -34,6 +35,7 @@ ParsingOptions default_parsing_options() {
     false,  // ignore_blank_lines
     false,  // ignore_send_records
     false,  // ignore_missing_tpid
+    false,  // preserve_value_strings
     false  // validate_control_records
   };
 }
@@ -66,6 +68,8 @@ namespace pybind11 { namespace detail {
           value.ignore_send_records = d["ignore_send_records"].cast<bool>();
         else if (key_str == "ignore_missing_tpid")
           value.ignore_missing_tpid = d["ignore_missing_tpid"].cast<bool>();
+        else if (key_str == "preserve_value_strings")
+          value.preserve_value_strings = d["preserve_value_strings"].cast<bool>();
         else if (key_str == "validate_control_records")
           value.validate_control_records = d["validate_control_records"].cast<bool>();
         else
@@ -103,6 +107,10 @@ namespace pybind11 { namespace detail {
         value.ignore_missing_tpid = default_opts.ignore_missing_tpid;
       }
 
+      if (! d.contains("preserve_value_strings")) {
+        value.preserve_value_strings = default_opts.preserve_value_strings;
+      }
+
       if (! d.contains("validate_control_records")) {
         value.validate_control_records = default_opts.validate_control_records;
       }
@@ -120,6 +128,7 @@ namespace pybind11 { namespace detail {
       d["ignore_blank_lines"] = src.ignore_blank_lines;
       d["ignore_send_records"] = src.ignore_send_records;
       d["ignore_missing_tpid"] = src.ignore_missing_tpid;
+      d["preserve_value_strings"] = src.preserve_value_strings;
       d["validate_control_records"] = src.validate_control_records;
       return d.release();
     }
@@ -226,21 +235,32 @@ int endfstr2int(const char* str, ParsingOptions &parse_opts) {
   return 0;
 }
 
+// case for EndfFloatCpp
+EndfFloatCpp cpp_read_field_EndfFloatCpp(
+  const char *str, const char fieldnum, ParsingOptions &parse_opts
+) {
+  double float_value = endfstr2float(str+fieldnum*11, parse_opts);
+  if (parse_opts.preserve_value_strings) {
+    std::string orig_str(str+fieldnum*11, 11);
+    return EndfFloatCpp(float_value, orig_str);
+  } else {
+    return EndfFloatCpp(float_value);
+  }
+}
+
 
 template<typename T>
 T cpp_read_field(const char *str, const char fieldnum, ParsingOptions &parse_opts) {
   static_assert(
-      std::is_same<T, EndfFloatCpp>::value
-      || std::is_same<T, int>::value
-      || std::is_same<T, double>::value
-      , "T must be int or double"
+    std::is_same<T, EndfFloatCpp>::value
+    || std::is_same<T, int>::value
+    || std::is_same<T, double>::value
+    , "T must be int or double"
   );
-  if constexpr (std::is_same<T, double>::value) {
+  if (std::is_same<T, double>::value) {
     return endfstr2float(str+fieldnum*11, parse_opts);
-  } if constexpr (std::is_same<T, EndfFloatCpp>::value) {
-      double float_value = endfstr2float(str+fieldnum*11, parse_opts);
-      std::string orig_str(str+fieldnum*11, 11);
-      return EndfFloatCpp(float_value, orig_str);
+  } if (std::is_same<T, EndfFloatCpp>::value) {
+    return cpp_read_field_EndfFloatCpp(str, fieldnum, parse_opts);
   } else {
     return endfstr2int(str+fieldnum*11, parse_opts);
   }

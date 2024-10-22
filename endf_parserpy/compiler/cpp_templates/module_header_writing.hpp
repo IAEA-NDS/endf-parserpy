@@ -18,6 +18,7 @@ struct WritingOptions {
   bool keep_E;
   bool prefer_noexp;
   bool skip_intzero;
+  bool preserve_value_strings;
   bool include_linenum;
 };
 
@@ -28,6 +29,7 @@ WritingOptions default_writing_options() {
     false,  // keep_E
     false,  // prefer_noexp
     false,  // skip_intzero
+    false,  // preserve_value_strings
     true    // include_linenum
   };
 }
@@ -56,6 +58,8 @@ namespace pybind11 { namespace detail {
           value.skip_intzero = d["skip_intzero"].cast<bool>();
         else if (key_str == "include_linenum")
           value.include_linenum = d["include_linenum"].cast<bool>();
+        else if (key_str == "preserve_value_strings")
+          value.preserve_value_strings = d["preserve_value_strings"].cast<bool>();
         else
           throw std::runtime_error("unknown option `" + key_str + "` provided");
       }
@@ -75,6 +79,9 @@ namespace pybind11 { namespace detail {
       if (! d.contains("skip_intzero")) {
         value.skip_intzero = default_opts.skip_intzero;
       }
+      if (! d.contains("preserve_value_strings")) {
+        value.preserve_value_strings = default_opts.preserve_value_strings;
+      }
       if (! d.contains("include_linenum")) {
         value.include_linenum = default_opts.include_linenum;
       }
@@ -88,6 +95,7 @@ namespace pybind11 { namespace detail {
       d["keep_E"] = src.keep_E;
       d["prefer_noexp"] = src.prefer_noexp;
       d["skip_intzero"] = src.skip_intzero;
+      d["preserve_value_strings"] = src.preserve_value_strings;
       d["include_linenum"] = src.include_linenum;
       return d.release();
     }
@@ -267,34 +275,74 @@ std::string int2endfstr(int value) {
 }
 
 
-template<typename T>
-void cpp_write_field(std::string& line, const char fieldnum, T value, WritingOptions &write_opts) {
-  static_assert(
-    std::is_same<T, double>::value
-    || std::is_same<T, int>::value
-    || std::is_same<T, EndfFloatCpp>::value
-    , "T must be int or double"
-  );
-  std::string fieldstr;
-  if constexpr (std::is_same<T, double>::value) {
-    fieldstr = float2endfstr(value, write_opts);
-  } else if constexpr (std::is_same<T, EndfFloatCpp>::value) {
-    std::string orig_str = value.get_original_string();
-    if (orig_str.empty()) {
-      fieldstr = float2endfstr(value, write_opts);
-    } else {
-      fieldstr = orig_str;
-    }
-  } else {
-    fieldstr = int2endfstr(value);
-  }
-  if (fieldstr.size() != 11) {
+void field_size_check(const std::string& field) {
+  if (field.size() != 11) {
     throw std::runtime_error(
-      std::string("wrong size") + std::to_string(fieldstr.size())
-      + std::string("  ") + std::string(fieldstr)
+      std::string("wrong size")
+      + std::to_string(field.size())
+      + std::string("  ") + field
     );
   }
+}
+
+
+// value is float case
+void cpp_write_field_double(
+  std::string& line, const char fieldnum, const double& value,
+  WritingOptions& write_opts
+) {
+  std::string fieldstr = float2endfstr(value, write_opts);
+  field_size_check(fieldstr);
   line.replace(fieldnum*11, 11, fieldstr);
+}
+
+
+// value is EndfFloatCpp case
+void cpp_write_field_EndfFloatCpp(
+  std::string& line, const char fieldnum, const EndfFloatCpp& value,
+  WritingOptions& write_opts
+) {
+  std::string fieldstr;
+  std::string orig_str = value.get_original_string();
+  if (orig_str.empty() || !write_opts.preserve_value_strings) {
+    fieldstr = float2endfstr(value, write_opts);
+  } else {
+    fieldstr = orig_str;
+  }
+  field_size_check(fieldstr);
+  line.replace(fieldnum*11, 11, fieldstr);
+}
+
+
+// value is int case
+void cpp_write_field_int(
+  std::string& line, const char fieldnum, const int& value,
+  WritingOptions& write_opts
+) {
+  std::string fieldstr = int2endfstr(value);
+  line.replace(fieldnum*11, 11, fieldstr);
+}
+
+
+// templated cpp_write_field
+template<typename T>
+ void cpp_write_field(
+  std::string& line, const char fieldnum, const T& value,
+  WritingOptions& write_opts
+) {
+  static_assert(
+    std::is_same<T, double>::value
+    || std::is_same<T, EndfFloatCpp>::value
+    || std::is_same<T, int>::value
+    , "T must be int, double or EndfFloatCpp"
+  );
+  if (std::is_same<T, double>::value) {
+    return cpp_write_field_double(line, fieldnum, value, write_opts);
+  } else if (std::is_same<T, EndfFloatCpp>::value) {
+    return cpp_write_field_EndfFloatCpp(line, fieldnum, value, write_opts);
+  } else {
+    return cpp_write_field_int(line, fieldnum, value, write_opts);
+  }
 }
 
 

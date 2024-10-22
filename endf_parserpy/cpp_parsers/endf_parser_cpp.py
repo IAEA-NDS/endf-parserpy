@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2024/09/07
+# Last modified:   2024/10/22
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -51,6 +51,7 @@ class EndfParserCpp:
         validate_control_records=False,
         abuse_signpos=False,
         keep_E=False,
+        preserve_value_strings=False,
         include_linenum=True,
         skip_intzero=False,
         prefer_noexp=False,
@@ -107,6 +108,14 @@ class EndfParserCpp:
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
             compatibility with programming languages different from Fortran
             while the omission enhances numerical precision. *(writing)*
+        preserve_value_strings : bool
+            If ``True``, also the string representations of float numbers will
+            be recorded during the parsing process (via the
+            :class:`~endf_parserpy.interpreter.fortran_utils.EndfFloat` class).
+            These string representations when available will be used verbatim
+            for outputting ENDF-6 formatted data, overruling any of the other
+            options provided for controling the output format of floats.
+            *(parsing, writing)*
         include_linenum : bool
             Controls whether the 5-digit line number should be
             included at the end of each line. *(writing)*
@@ -134,6 +143,7 @@ class EndfParserCpp:
             "ignore_blank_lines": ignore_blank_lines,
             "ignore_send_records": ignore_send_records,
             "ignore_missing_tpid": ignore_missing_tpid,
+            "preserve_value_strings": preserve_value_strings,
             "validate_control_records": validate_control_records,
         }
         self.write_opts = {
@@ -142,6 +152,7 @@ class EndfParserCpp:
             "include_linenum": include_linenum,
             "skip_intzero": skip_intzero,
             "prefer_noexp": prefer_noexp,
+            "preserve_value_strings": preserve_value_strings,
         }
         subpackage = "endf_parserpy.cpp_parsers"
         endf_format = endf_format.replace("-", "_")

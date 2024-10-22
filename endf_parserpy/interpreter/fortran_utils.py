@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/10/14
+# Last modified:   2024/10/22
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -129,8 +129,7 @@ def float2expformstr(val, write_opts=None):
 
 def float2fortstr(val, write_opts=None):
     width = write_opts.get("width", 11)
-    preserve_value_strings = write_opts.get("preserve_value_strings", False)
-    if preserve_value_strings and isinstance(val, EndfFloat):
+    if isinstance(val, EndfFloat):
         orig_str = val.get_original_string()
         if width != len(orig_str):
             raise InvalidFloatError(

@@ -57,7 +57,7 @@ namespace pybind11 { namespace detail {
         if (key_str == "ignore_number_mismatch")
           value.ignore_number_mismatch = d["ignore_number_mismatch"].cast<bool>();
         else if (key_str == "ignore_zero_mismatch")
-          value.ignore_zero_mismatch = true;
+          value.ignore_zero_mismatch = d["ignore_zero_mismatch"].cast<bool>();
         else if (key_str == "ignore_varspec_mismatch")
           value.ignore_varspec_mismatch = d["ignore_varspec_mismatch"].cast<bool>();
         else if (key_str == "accept_spaces")

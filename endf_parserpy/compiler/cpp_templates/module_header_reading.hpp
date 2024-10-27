@@ -1,9 +1,9 @@
 #ifndef MODULE_HEADER_READING_HPP
 #define MODULE_HEADER_READING_HPP
 
-// When Python merges the varios
+// When Python merges the various
 // C++ files, there is no need
-// to include it here
+// to include them here
 #ifndef PYTHON_COMPILE
 #include "module_header.hpp"
 #endif
@@ -23,6 +23,7 @@ struct ParsingOptions {
   bool ignore_missing_tpid;
   bool preserve_value_strings;
   bool validate_control_records;
+  std::string array_type;
 };
 
 
@@ -36,7 +37,8 @@ ParsingOptions default_parsing_options() {
     false,  // ignore_send_records
     false,  // ignore_missing_tpid
     false,  // preserve_value_strings
-    false  // validate_control_records
+    false,  // validate_control_records
+    "dict"  // array_type
   };
 }
 
@@ -72,6 +74,8 @@ namespace pybind11 { namespace detail {
           value.preserve_value_strings = d["preserve_value_strings"].cast<bool>();
         else if (key_str == "validate_control_records")
           value.validate_control_records = d["validate_control_records"].cast<bool>();
+        else if (key_str == "array_type")
+          value.array_type = d["array_type"].cast<std::string>();
         else
           throw std::runtime_error("unknown option `" + key_str + "` provided");
       }
@@ -115,6 +119,10 @@ namespace pybind11 { namespace detail {
         value.validate_control_records = default_opts.validate_control_records;
       }
 
+      if (! d.contains("array_type")) {
+        value.array_type = default_opts.array_type;
+      }
+
       return true;
     }
 
@@ -130,6 +138,7 @@ namespace pybind11 { namespace detail {
       d["ignore_missing_tpid"] = src.ignore_missing_tpid;
       d["preserve_value_strings"] = src.preserve_value_strings;
       d["validate_control_records"] = src.validate_control_records;
+      d["array_type"] = src.array_type;
       return d.release();
     }
 

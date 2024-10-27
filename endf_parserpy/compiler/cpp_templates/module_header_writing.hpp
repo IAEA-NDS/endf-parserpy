@@ -1,7 +1,7 @@
 #ifndef MODULE_HEADER_WRITING_HPP
 #define MODULE_HEADER_WRITING_HPP
 
-// When Python merges the varios
+// When Python merges the various
 // C++ files, there is no need
 // to include it here
 #ifndef PYTHON_COMPILE
@@ -20,6 +20,7 @@ struct WritingOptions {
   bool skip_intzero;
   bool preserve_value_strings;
   bool include_linenum;
+  std::string array_type;
 };
 
 
@@ -30,7 +31,8 @@ WritingOptions default_writing_options() {
     false,  // prefer_noexp
     false,  // skip_intzero
     false,  // preserve_value_strings
-    true    // include_linenum
+    true,   // include_linenum
+    "dict"  // array_type
   };
 }
 
@@ -60,6 +62,8 @@ namespace pybind11 { namespace detail {
           value.include_linenum = d["include_linenum"].cast<bool>();
         else if (key_str == "preserve_value_strings")
           value.preserve_value_strings = d["preserve_value_strings"].cast<bool>();
+        else if (key_str == "array_type")
+          value.array_type = d["array_type"].cast<std::string>();
         else
           throw std::runtime_error("unknown option `" + key_str + "` provided");
       }
@@ -85,6 +89,9 @@ namespace pybind11 { namespace detail {
       if (! d.contains("include_linenum")) {
         value.include_linenum = default_opts.include_linenum;
       }
+      if (! d.contains("array_type")) {
+        value.array_type = default_opts.array_type;
+      }
       return true;
     }
 
@@ -97,6 +104,7 @@ namespace pybind11 { namespace detail {
       d["skip_intzero"] = src.skip_intzero;
       d["preserve_value_strings"] = src.preserve_value_strings;
       d["include_linenum"] = src.include_linenum;
+      d["array_type"] = src.array_type;
       return d.release();
     }
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2024/05/26
+# Last modified:   2024/10/27
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -25,41 +25,47 @@ from .variable_management import expand_abbreviation
 
 
 def get_node_value_using_endf_dict(
-    node, dictvar, dtype, vardict, defaults=None, idx=None
+    node, index_shifter_store, dtype, vardict, defaults=None, idx=None
 ):
     defaults = {} if defaults is None else defaults
     if not isinstance(node, VariableToken):
         return node2str(node)
-    if dtype not in defaults:
-        varname = f'{dictvar}["{node}"]'
-    else:
-        defval = defaults[dtype]
-        varname = f'{dictvar}.attr("get")("{node}", {defval})'
+
+    varname = str(node)
     idxstrs = []
     for i, idxtok in enumerate(node.indices):
-        # we retrieve the index values from the
-        # variables in the cpp code and not the dictionary
-        # as they have already been read before
         curidxstr = get_idxstr(node, i, vardict)
         idxstrs.append(curidxstr)
-    idxstrs = [f"[py::cast({idxstr})]" for idxstr in idxstrs]
-    extvarname = varname + "".join(idxstrs)
+
+    idcsarg = "std::vector<int>({" + ", ".join(idxstrs) + "})"
+    defval = "py::none()" if dtype not in defaults else f"py::cast({defaults[dtype]})"
+    retobj = f'{index_shifter_store}.get_value("{varname}", {idcsarg}, {defval})'
+
+    # if the accessed object is a container
+    # the idx specification allows to get a specific
+    # element of this container rather than the entire container.
     if idx is not None:
-        extvarname += f"[py::cast({idx})]"
+        retobj += f"[py::cast({idx})]"
     if dtype is None:
-        return extvarname
+        return retobj
     else:
         dtypestr = map_dtype(dtype)
-        return f"py::cast<{dtypestr}>({extvarname})"
+        return f"py::cast<{dtypestr}>({retobj})"
 
 
 def get_expr_value_using_endf_dict(
-    node, dictvar, dtype, vardict, defaults=None, idx=None
+    node, index_shifter_store, dtype, vardict, defaults=None, idx=None
 ):
     node = convert_to_exprtree(node)
     node = transform_nodes(node, expand_abbreviation, vardict)
     valcode = transform_nodes(
-        node, get_node_value_using_endf_dict, dictvar, dtype, vardict, defaults, idx=idx
+        node,
+        get_node_value_using_endf_dict,
+        index_shifter_store,
+        dtype,
+        vardict,
+        defaults,
+        idx=idx,
     )
     return valcode
 

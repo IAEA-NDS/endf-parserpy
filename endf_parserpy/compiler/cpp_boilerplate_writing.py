@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/10/18
+# Last modified:   2024/10/27
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -36,6 +36,7 @@ def writefun_header(fun_name):
           int cpp_np_val;
           Tab1Body tab1_body;
           Tab2Body tab2_body;
+          bool list_mode = write_opts.array_type != "dict";
         """,
         -8,
     )

@@ -422,10 +422,10 @@ std::string cpp_prepare_send(int mat, int mf, WritingOptions &write_opts) {
   cpp_write_mt_number(line, 0);
   cpp_write_field<DOUBLE_TYPE>(line, 0, 0.0, write_opts);
   cpp_write_field<DOUBLE_TYPE>(line, 1, 0.0, write_opts);
-  cpp_write_field<DOUBLE_TYPE>(line, 2, 0, write_opts);
-  cpp_write_field<DOUBLE_TYPE>(line, 3, 0, write_opts);
-  cpp_write_field<DOUBLE_TYPE>(line, 4, 0, write_opts);
-  cpp_write_field<DOUBLE_TYPE>(line, 5, 0, write_opts);
+  cpp_write_field<int>(line, 2, 0, write_opts);
+  cpp_write_field<int>(line, 3, 0, write_opts);
+  cpp_write_field<int>(line, 4, 0, write_opts);
+  cpp_write_field<int>(line, 5, 0, write_opts);
   if (write_opts.include_linenum) {
     if (mf == 0) {
       // for writing FEND/MEND/TEND record

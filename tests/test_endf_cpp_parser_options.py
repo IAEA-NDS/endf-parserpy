@@ -1,6 +1,6 @@
 from pathlib import Path
 import pytest
-from endf_parserpy import EndfParserCpp, EndfDict
+from endf_parserpy import EndfParserCpp, EndfParser, EndfDict
 from endf_parserpy.utils.debugging_utils import compare_objects
 from endf_parserpy.utils.user_tools import list_parsed_sections
 from endf_parserpy.utils.math_utils import EndfFloat
@@ -100,3 +100,16 @@ def test_preserve_value_strings_option_true(mf3_section):
     compare_objects(mf3_section, endf_dict, rtol=1e-20, atol=1e-20)
     assert type(endf_dict[3][1]["ZA"]) == EndfFloat
     assert type(endf_dict[3][1]["xstable"]["E"][0]) == EndfFloat
+
+
+def test_list_mode_writing(mf3_section):
+    parser_py_dict = EndfParser(array_type="dict")
+    parser_py = EndfParser(array_type="list")
+    parser_cpp = EndfParserCpp(array_type="list")
+    endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    endf_dict = parser_py.parsefile(endf_file)
+    output_py = parser_py.write(endf_dict)
+    output_cpp = parser_cpp.write(endf_dict)
+    endf_dict1 = parser_py_dict.parse(output_py)
+    endf_dict2 = parser_py_dict.parse(output_cpp)
+    compare_objects(endf_dict1, endf_dict2)

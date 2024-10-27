@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/10/21
+# Last modified:   2024/10/27
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -28,6 +28,10 @@ def _module_header():
     code = ""
     with importlib.resources.open_text(
         "endf_parserpy.compiler.cpp_templates", "endf_float_cpp.hpp"
+    ) as f:
+        code += f.read()
+    with importlib.resources.open_text(
+        "endf_parserpy.compiler.cpp_templates", "index_shifter.hpp"
     ) as f:
         code += f.read()
     with importlib.resources.open_text(

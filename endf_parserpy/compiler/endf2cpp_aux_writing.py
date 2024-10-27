@@ -91,7 +91,7 @@ def open_section(
     code += cpp.statement(f"py::dict {parent_dict} = {current_dict}")
     code += cpp.statement(
         f"{current_dict} = "
-        f'cpp_index_shifter_store.setdefault("{secname}", {idcsarg}, py::dict())'
+        f'cpp_index_shifter_store.get_value("{secname}", {idcsarg}, py::dict())'
     )
     return code
 

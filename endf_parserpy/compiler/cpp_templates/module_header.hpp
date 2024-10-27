@@ -16,11 +16,12 @@
 #include <algorithm>  // for std::sort
 #include <cstddef>
 
-// When Python merges the varios
+// When Python merges the various
 // C++ files, there is no need
-// to include it here
+// to include them here
 #ifndef PYTHON_COMPILE
 #include "endf_float_cpp.hpp"
+#include "index_shifter.hpp"
 #endif
 
 namespace py = pybind11;

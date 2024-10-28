@@ -12,12 +12,14 @@ def myEndfParser(
     ignore_number_mismatch,
     ignore_varspec_mismatch,
     accept_spaces,
+    array_type,
 ):
     return EndfParser(
         ignore_zero_mismatch=ignore_zero_mismatch,
         ignore_number_mismatch=ignore_number_mismatch,
         ignore_varspec_mismatch=ignore_varspec_mismatch,
         accept_spaces=accept_spaces,
+        array_type=array_type,
     )
 
 
@@ -27,14 +29,24 @@ def cpp_parse_opts(
     ignore_number_mismatch,
     ignore_varspec_mismatch,
     accept_spaces,
+    array_type,
 ):
     parse_opts = {
         "ignore_zero_mismatch": ignore_zero_mismatch,
         "ignore_number_mismatch": ignore_number_mismatch,
         "ignore_varspec_mismatch": ignore_varspec_mismatch,
         "accept_spaces": accept_spaces,
+        "array_type": array_type,
     }
     return parse_opts
+
+
+@pytest.fixture(scope="module")
+def cpp_write_opts(array_type):
+    write_opts = {
+        "array_type": array_type,
+    }
+    return write_opts
 
 
 def test_python_and_cpp_parser_equivalent(
@@ -48,13 +60,13 @@ def test_python_and_cpp_parser_equivalent(
 
 
 def test_endf_cpp_read_write_read_roundtrip(
-    endf_file, tmp_path, cpp_parse_opts, mf_sel
+    endf_file, tmp_path, cpp_parse_opts, cpp_write_opts, mf_sel
 ):
     endf_dict1 = parse_endf_file(
         str(endf_file), parse_opts=cpp_parse_opts, include=mf_sel
     )
     outfile = tmp_path / os.path.basename(endf_file)
-    write_endf_file(str(outfile), endf_dict1)
+    write_endf_file(str(outfile), endf_dict1, write_opts=cpp_write_opts)
     endf_dict2 = parse_endf_file(
         str(endf_file), parse_opts=cpp_parse_opts, include=mf_sel
     )

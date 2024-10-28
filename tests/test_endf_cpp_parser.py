@@ -52,7 +52,7 @@ def cpp_write_opts(array_type):
 def test_python_and_cpp_parser_equivalent(
     endf_file, myEndfParser, cpp_parse_opts, mf_sel
 ):
-    endf_dict1 = myEndfParser.parsefile(endf_file)
+    endf_dict1 = myEndfParser.parsefile(endf_file, include=mf_sel)
     endf_dict2 = parse_endf_file(
         str(endf_file), parse_opts=cpp_parse_opts, include=mf_sel
     )

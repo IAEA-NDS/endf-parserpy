@@ -224,53 +224,9 @@ class Assign:
 
     @classmethod
     def store_var_in_endf_dict2(cls, vartok, vardict):
-        assert len(vartok.indices) == 2
-        # counter variables are not stored in the endf dictionary
-        if has_loopvartype(vartok, vardict):
-            return ""
-
         src_varname = Query.get_cpp_varname(vartok, vardict)
-        src_extvarname = Query.assemble_extvarname(src_varname, ["cpp_i1", "cpp_i2"])
-        if len(vartok.indices) == 0:
-            assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')
-            code = cpp.pureif(Query.did_read_var(vartok, vardict), assigncode)
-            return code
-
-        code = ""
-        for curlev in range(len(vartok.indices), 0, -1):
-            newcode = ""
-            olddict = f"cpp_curdict{curlev-1}"
-            curdict = f"cpp_curdict{curlev}"
-            if curlev < len(vartok.indices):
-                newcode += cpp.statement(
-                    f"py::object {curdict} = py_append_container({olddict}, cpp_i{curlev}, list_mode)"
-                )
-            else:
-                newcode = cpp.statement(
-                    f"py_append_container({olddict}, cpp_i{curlev}, list_mode, py::cast({src_extvarname}))"
-                )
-            newcode = newcode + code
-            if curlev == 2:
-                curstart = f"{src_varname}.get_col_start_index(cpp_i1)"
-                curstop = f"{src_varname}.get_col_last_index(cpp_i1)"
-            elif curlev == 1:
-                curstart = f"{src_varname}.get_row_start_index()"
-                curstop = f"{src_varname}.get_row_last_index()"
-
-            newcode = cpp.forloop(
-                f"int cpp_i{curlev} = {curstart}",
-                f"cpp_i{curlev} <= {curstop}",
-                f"cpp_i{curlev}++",
-                newcode,
-            )
-            code = newcode
-
         assigncode = cpp.statement(
-            f'cpp_current_dict["{vartok}"] = py_create_container(list_mode)', cpp.INDENT
+            f'cpp_current_dict["{vartok}"] = {src_varname}.to_pyobj(list_mode)'
         )
-        assigncode += cpp.statement(
-            f'py::object cpp_curdict0 = cpp_current_dict["{vartok}"]', cpp.INDENT
-        )
-        assigncode += cpp.indent_code(newcode, cpp.INDENT)
         code = cpp.pureif(Query.did_read_var(vartok, vardict), assigncode)
         return code

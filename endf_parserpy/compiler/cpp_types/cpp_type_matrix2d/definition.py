@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/20
-# Last modified:   2024/05/01
+# Last modified:   2024/10/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -56,19 +56,19 @@ class Matrix2d {
       return data.at((i-row_start)*num_cols + (j-col_start));
     }
 
-    int get_row_start_index() {
+    int get_row_start_index() const {
       return row_start;
     }
 
-    int get_row_last_index() {
+    int get_row_last_index() const {
       return row_start + num_rows - 1;
     }
 
-    int get_col_start_index() {
+    int get_col_start_index() const {
       return col_start;
     }
 
-    int get_col_start_index(int i) {
+    int get_col_start_index(int i) const {
       if (! triagonal || lower) {
         return col_start;
       } else {
@@ -76,7 +76,7 @@ class Matrix2d {
       }
     }
 
-    int get_col_last_index() {
+    int get_col_last_index() const {
       return col_start + num_cols - 1;
     }
 
@@ -85,6 +85,38 @@ class Matrix2d {
         return col_start + num_cols - 1;
       } else {
         return col_start + (i - row_start);
+      }
+    }
+
+    py::object to_pyobj(bool list_mode) {
+      if (list_mode) {
+        py::list ret;
+        int rsidx = get_row_start_index();
+        int rfidx = get_row_last_index();
+        for (int i=rsidx; i <= rfidx; ++i) {
+          py::list row_list;
+          int csidx = get_col_start_index(i);
+          int cfidx = get_col_last_index(i);
+          for (int j=csidx; j <= cfidx; ++j) {
+            row_list.append(Matrix2d::operator()(i, j));
+          }
+          ret.append(row_list);
+        }
+        return ret;
+      } else {
+        py::dict ret;
+        int rsidx = get_row_start_index();
+        int rfidx = get_row_last_index();
+        for (int i=rsidx; i <= rfidx; ++i) {
+          py::dict row_dict;
+          int csidx = get_col_start_index(i);
+          int cfidx = get_col_last_index(i);
+          for (int j=csidx; j <= cfidx; ++j) {
+            row_dict[py::cast(j)] = Matrix2d::operator()(i, j);
+          }
+          ret[py::cast(i)] = row_dict;
+        }
+        return ret;
       }
     }
 };

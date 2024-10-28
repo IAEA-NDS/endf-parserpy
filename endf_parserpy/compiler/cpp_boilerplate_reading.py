@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/10/18
+# Last modified:   2024/10/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -54,6 +54,7 @@ def parsefun_header(fun_name):
           double cpp_float_val;
           int cpp_nr_val;
           int cpp_np_val;
+          bool list_mode = parse_opts.array_type != "dict";
         """,
         -8,
     )

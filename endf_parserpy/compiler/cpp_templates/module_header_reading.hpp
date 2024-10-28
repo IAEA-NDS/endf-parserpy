@@ -146,6 +146,32 @@ namespace pybind11 { namespace detail {
 }}
 
 
+py::object py_create_container(bool list_mode) {
+    if (list_mode) {
+        return py::list();
+    } else {
+        return py::dict();
+    }
+}
+
+
+py::object py_append_container(py::object pyobj, int key, bool list_mode, py::object elem=py::none()) {
+    if (list_mode) {
+        if (elem.is_none()) {
+            elem = py::list();
+        }
+        py::list list = pyobj;
+        list.append(elem);
+        return elem;
+    } else {
+        if (elem.is_none()) {
+            elem = py::dict();
+        }
+        return pyobj.attr("setdefault")(py::cast(key), elem);
+    }
+}
+
+
 template<typename U, typename V, typename W>
 void throw_mismatch_error(
   U quantity, V expected_value, W actual_value,

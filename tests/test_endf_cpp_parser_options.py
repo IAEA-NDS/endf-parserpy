@@ -113,3 +113,13 @@ def test_list_mode_writing(mf3_section):
     endf_dict1 = parser_py_dict.parse(output_py)
     endf_dict2 = parser_py_dict.parse(output_cpp)
     compare_objects(endf_dict1, endf_dict2)
+
+
+def test_list_mode_reading():
+    parser_py_dict = EndfParser(array_type="dict")
+    parser_py = EndfParser(array_type="list")
+    parser_cpp = EndfParserCpp(array_type="list")
+    endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    endf_dict1 = parser_py.parsefile(endf_file)
+    endf_dict2 = parser_cpp.parsefile(endf_file)
+    compare_objects(endf_dict1, endf_dict2)

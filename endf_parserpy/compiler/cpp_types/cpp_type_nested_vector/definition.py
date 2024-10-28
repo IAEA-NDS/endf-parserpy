@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/25
-# Last modified:   2024/05/01
+# Last modified:   2024/10/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -40,7 +40,7 @@ class NestedVector : public std::vector<T> {
       this->startIndex = start;
     }
 
-    int get_start_index() {
+    int get_start_index() const {
       return this->startIndex;
     }
 
@@ -48,7 +48,7 @@ class NestedVector : public std::vector<T> {
       this->lastIndex = lastIndex;
     }
 
-    int get_last_index() {
+    int get_last_index() const {
       return this->lastIndex;
     }
 
@@ -92,5 +92,52 @@ class NestedVector : public std::vector<T> {
     bool contains(int index) {
       return (this->startIndex <= index && index <= this->lastIndex);
     }
+
+    py::object to_pyobj(bool list_mode) {
+      if (list_mode) {
+        py::list ret;
+        to_pylist(ret, (*this));
+        return ret;
+      } else {
+        py::dict ret;
+        to_pydict(ret, (*this));
+        return ret;
+      }
+    }
+
+    template <typename U>
+    void to_pylist(py::list cur, const NestedVector<NestedVector<U>>& curvec) {
+      for (const auto& elem : curvec) {
+        py::list sublist;
+        to_pylist(sublist, elem);
+        cur.append(sublist);
+      }
+    }
+
+    template <typename U>
+    void to_pylist(py::list cur, const NestedVector<U>& curvec) {
+      for (const auto& elem : curvec) {
+          cur.append(py::cast(elem));
+      }
+    }
+
+    template <typename U>
+    void to_pydict(py::dict cur, const NestedVector<NestedVector<U>>& curvec) {
+      int cnt = curvec.get_start_index();
+      for (const auto& elem : curvec) {
+        py::dict subdict;
+        to_pydict(subdict, elem);
+        cur[py::cast(cnt++)] = subdict;
+      }
+    }
+
+    template <typename U>
+    void to_pydict(py::dict cur, const NestedVector<U>& curvec) {
+      int cnt = curvec.get_start_index();
+      for (const auto& elem : curvec) {
+        cur[py::cast(cnt++)] = py::cast(elem);
+      }
+    }
+
 };
 """

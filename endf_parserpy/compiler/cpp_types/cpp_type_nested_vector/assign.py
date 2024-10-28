@@ -89,38 +89,8 @@ class Assign:
 
     def store_var_in_endf_dict2(vartok, vardict):
         src_varname = Query.get_cpp_varname(vartok, vardict)
-        code = ""
-        for curlev in range(len(vartok.indices), 0, -1):
-            newcode = ""
-            oldvar = f"cpp_curvar{curlev-1}"
-            curvar = f"cpp_curvar{curlev}"
-            olddict = f"cpp_curdict{curlev-1}"
-            newcode += cpp.statement(f"auto& {curvar} = {oldvar}[cpp_i{curlev}]")
-            if curlev < len(vartok.indices):
-                curdict = f"cpp_curdict{curlev}"
-                newcode += cpp.statement(
-                    f"py::object {curdict} = py_append_container({olddict}, cpp_i{curlev}, list_mode)"
-                )
-            else:
-                newcode += cpp.statement(
-                    f"py_append_container({olddict}, cpp_i{curlev}, list_mode, py::cast({curvar}))"
-                )
-            newcode = newcode + code
-            newcode = cpp.forloop(
-                f"int cpp_i{curlev} = cpp_curvar{curlev-1}.get_start_index()",
-                f"cpp_i{curlev} <= cpp_curvar{curlev-1}.get_last_index()",
-                f"cpp_i{curlev}++",
-                newcode,
-            )
-            code = newcode
-
-        assigncode = cpp.statement(f"auto& cpp_curvar0 = {src_varname}")
-        assigncode += cpp.statement(
-            f'cpp_current_dict["{vartok}"] = py_create_container(list_mode)'
+        assigncode = cpp.statement(
+            f'cpp_current_dict["{vartok}"] = {src_varname}.to_pyobj(list_mode)'
         )
-        assigncode += cpp.statement(
-            f'py::object cpp_curdict0 = cpp_current_dict["{vartok}"]'
-        )
-        assigncode += newcode
         code = cpp.pureif(Query.did_read_var(vartok, vardict), assigncode)
         return code

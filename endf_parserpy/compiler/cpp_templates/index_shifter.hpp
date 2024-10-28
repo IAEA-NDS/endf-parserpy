@@ -82,7 +82,8 @@ public:
     IndexShifter()
         : start_index(0), accessed(false), list_mode(false) {}
 
-    IndexShifter(bool list_mode) : list_mode(list_mode) {}
+    IndexShifter(bool list_mode)
+        : start_index(0), accessed(false), list_mode(list_mode) {}
 
     IndexShifter(const IndexShifter &other)
         : start_index(other.start_index), accessed(other.accessed),

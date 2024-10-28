@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/10/20
+# Last modified:   2024/10/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -14,7 +14,7 @@ from .expr_utils.equation_utils import get_variables_in_expr
 from .expr_utils.custom_nodes import VariableToken
 from . import cpp_primitives as cpp
 from .cpp_types.cpp_dtype_aux import map_dtype
-from .cpp_types.cpp_varops_query import did_read_var
+from .cpp_types.cpp_varops_query import did_read_var, get_idxstr
 from .cpp_types.cpp_varaux import check_variable, get_cpp_varname
 from .lookahead_management import in_lookahead
 from .mode_management import (
@@ -167,21 +167,19 @@ def open_section(
     check_variable(vartok, vardict)
     secname = vartok
     indices = vartok.indices
+
+    idxstrs = []
+    for i, idxtok in enumerate(indices):
+        curidxstr = get_idxstr(vartok, i, vardict)
+        idxstrs.append(curidxstr)
+    idcsarg = "std::vector<int>({" + ", ".join(idxstrs) + "})"
+
     code = ""
     code += cpp.statement(f"py::dict {parent_dict} = {current_dict}")
-    code += cpp.pureif(
-        cpp.logical_not(f'{parent_dict}.contains("{secname}")'),
-        cpp.statement(f'{parent_dict}["{secname}"] = py::dict()'),
+    code += cpp.statement(
+        f"{current_dict} = "
+        f'cpp_index_shifter_store.setdefault("{secname}", {idcsarg}, py::dict())'
     )
-    code += cpp.statement(f'py::dict {current_dict} = {parent_dict}["{secname}"]')
-    for idx in indices:
-        cpp_idxstr = get_cpp_varname(idx, vardict)
-        idxstr = f"py::cast({cpp_idxstr})"
-        code += cpp.pureif(
-            cpp.logical_not(f"{current_dict}.contains({idxstr})"),
-            cpp.statement(f"{current_dict}[{idxstr}] = py::dict()"),
-        )
-        code += cpp.statement(f"{current_dict} = {current_dict}[{idxstr}]")
     return code
 
 

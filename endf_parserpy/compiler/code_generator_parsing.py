@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/26
+# Last modified:   2024/10/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -140,8 +140,15 @@ def _prepare_section_func_wrapper(sectok, vardict):
         # initialization
         code = cpp.statement("py::dict cpp_parent_dict")
         code += cpp.statement("py::dict cpp_current_dict")
+        code += cpp.statement(
+            "IndexShifterStore cpp_index_shifter_store(cpp_current_dict, list_mode)"
+        )
         return code
-    return aux.open_section(sectok, vardict)
+    code = aux.open_section(sectok, vardict)
+    code += cpp.statement(
+        "IndexShifterStore cpp_index_shifter_store(cpp_current_dict, list_mode)"
+    )
+    return code
 
 
 def _finalize_section_func_wrapper(sectok, vardict):

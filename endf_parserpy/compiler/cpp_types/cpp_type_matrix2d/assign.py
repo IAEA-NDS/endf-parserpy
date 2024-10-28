@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/10
+# Last modified:   2024/10/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -239,16 +239,15 @@ class Assign:
         code = ""
         for curlev in range(len(vartok.indices), 0, -1):
             newcode = ""
+            olddict = f"cpp_curdict{curlev-1}"
+            curdict = f"cpp_curdict{curlev}"
             if curlev < len(vartok.indices):
                 newcode += cpp.statement(
-                    f"cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})] = py::dict()"
-                )
-                newcode += cpp.statement(
-                    f"py::dict cpp_curdict{curlev} = cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})]"
+                    f"py::object {curdict} = py_append_container({olddict}, cpp_i{curlev}, list_mode)"
                 )
             else:
                 newcode = cpp.statement(
-                    f"cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})] = {src_extvarname}"
+                    f"py_append_container({olddict}, cpp_i{curlev}, list_mode, py::cast({src_extvarname}))"
                 )
             newcode = newcode + code
             if curlev == 2:
@@ -267,10 +266,10 @@ class Assign:
             code = newcode
 
         assigncode = cpp.statement(
-            f'cpp_current_dict["{vartok}"] = py::dict()', cpp.INDENT
+            f'cpp_current_dict["{vartok}"] = py_create_container(list_mode)', cpp.INDENT
         )
         assigncode += cpp.statement(
-            f'py::dict cpp_curdict0 = cpp_current_dict["{vartok}"]', cpp.INDENT
+            f'py::object cpp_curdict0 = cpp_current_dict["{vartok}"]', cpp.INDENT
         )
         assigncode += cpp.indent_code(newcode, cpp.INDENT)
         code = cpp.pureif(Query.did_read_var(vartok, vardict), assigncode)

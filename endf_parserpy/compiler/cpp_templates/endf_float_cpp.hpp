@@ -105,7 +105,7 @@ namespace PYBIND11_NAMESPACE { namespace detail {
             return false;
         }
 
-        static handle cast(EndfFloatCpp& src, return_value_policy, handle) {
+        static handle cast(const EndfFloatCpp& src, return_value_policy, handle) {
             static py::object PyEndfFloat = (
                 py::module::import("endf_parserpy.utils.math_utils").attr("EndfFloat")
             );

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/10
+# Last modified:   2024/10/28
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -93,14 +93,16 @@ class Assign:
         for curlev in range(len(vartok.indices), 0, -1):
             newcode = ""
             if curlev < len(vartok.indices):
+                oldvar = f"cpp_curvar{curlev-1}"
+                curvar = f"cpp_curvar{curlev}"
+                olddict = f"cpp_curdict{curlev-1}"
+                curdict = f"cpp_curdict{curlev}"
+                newcode += cpp.statement(f"auto& {curvar} = {oldvar}[cpp_i{curlev}]")
                 newcode += cpp.statement(
-                    f"auto& cpp_curvar{curlev} = cpp_curvar{curlev-1}[cpp_i{curlev}]"
+                    f"{olddict}[py::cast(cpp_i{curlev})] = py::dict()"
                 )
                 newcode += cpp.statement(
-                    f"cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})] = py::dict()"
-                )
-                newcode += cpp.statement(
-                    f"py::dict cpp_curdict{curlev} = cpp_curdict{curlev-1}[py::cast(cpp_i{curlev})]"
+                    f"py::dict {curdict} = {olddict}[py::cast(cpp_i{curlev})]"
                 )
             else:
                 newcode = cpp.statement(

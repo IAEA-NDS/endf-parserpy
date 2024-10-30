@@ -2,7 +2,7 @@ from lark import Lark, Tree, Token
 from endf_parserpy import EndfPath, EndfDict
 from endf_parserpy.utils.math_utils import EndfFloat
 from itertools import product
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, MutableSequence
 
 
 def print_assignment(endf_path, endf_dict, prefix=""):
@@ -31,12 +31,19 @@ def endf_path_generator(endf_path, trail_dict, lead_path=EndfPath()):
         except (KeyError, ValueError, TypeError):
             return
 
-        if not isinstance(curdict, MutableMapping):
+        if not isinstance(curdict, (MutableMapping, MutableSequence)):
             return
 
         results = []
         new_lead_paths = []
-        for k in curdict:
+        # construct appropriate iterator
+        # for either dict-like or list-like datatypes
+        if isinstance(curdict, MutableMapping):
+            it = curdict.keys()
+        else:
+            it = range(len(curdict))
+
+        for k in it:
             trail_path = k + endf_path[first_star_pos + 1 :]
             new_lead_path = lead_path + new_lead_path
             yield from endf_path_generator(trail_path, curdict, new_lead_path)

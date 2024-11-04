@@ -163,7 +163,9 @@ def _eval_prefixed_logical_expr(endf_path, expr, endf_dict, opts):
 def eval_prefixed_logical_expr_tree(node, endf_dict, opts):
     wild_prefix = EndfPath(node.children[0].children)
     expr = node.children[1]
-    yield from endf_path_generator(wild_prefix, endf_dict)
+    path_gen = endf_path_generator(wild_prefix, endf_dict)
+    for p in path_gen:
+        yield from _eval_prefixed_logical_expr(p, expr, endf_dict, opts)
 
 
 def eval_tree(node, endf_dict, opts):

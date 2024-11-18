@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/10/13
+# Last modified:   2024/11/18
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -346,7 +346,7 @@ def eval_expr(
         return (v, 0, None)
     elif name == "minusexpr":
         v = eval_expr(
-            expr.children[0],
+            expr.children[1],
             datadic,
             loop_vars,
             parse_opts,

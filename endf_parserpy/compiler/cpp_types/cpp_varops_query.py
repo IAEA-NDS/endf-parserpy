@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2024/05/08
+# Last modified:   2024/11/18
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -13,7 +13,11 @@ from lark.lexer import Token
 from lark.tree import Tree
 from endf_parserpy.compiler.expr_utils.custom_nodes import VariableToken
 from endf_parserpy.compiler.expr_utils.node_trafos import node2str
-from endf_parserpy.compiler.expr_utils.node_checks import is_number, is_expr
+from endf_parserpy.compiler.expr_utils.node_checks import (
+    is_number,
+    is_expr,
+    is_minusexpr,
+)
 from endf_parserpy.compiler.expr_utils.equation_utils import get_variables_in_expr
 from endf_parserpy.compiler.node_checks import is_if_condition
 from endf_parserpy.compiler.expr_utils.exceptions import VariableMissingError
@@ -91,6 +95,11 @@ def get_idxstr(vartok, i, vardict, vartypes=None):
 def logical_expr2cppstr(node, vardict):
     if isinstance(node, VariableToken):
         return get_cpp_extvarname(node, vardict)
+    elif is_minusexpr(node):
+        # we assume that convert_to_expr_tree has been applied
+        # and hence the "-" sign removed from the children of the minusexpr node
+        child = node.children[0]
+        return "-(" + logical_expr2cppstr(child, vardict) + ")"
     elif is_if_condition(node):
         # special treatment: if variables missing/not read,
         # logical condition should evaluate to false

@@ -33,6 +33,8 @@ ENDF_RECIPE_MF2_MT153 = """
 #            In versions of NJOY prior to NJOY-2016.35, IINEL and IABSO were
 #            defined in a different way and stored in a single lumped field
 #
+# var INTUNR: Interpolation law in the unresolved resonance range
+#
 # var NBIN: Number of the total cross-section bins for the probability tables
 #
 # var TEMZ: temperature in Kelvin

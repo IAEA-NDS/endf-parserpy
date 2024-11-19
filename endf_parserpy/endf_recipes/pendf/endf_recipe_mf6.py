@@ -110,7 +110,7 @@ ENDF_RECIPE_MF6 = """
 #           distribution function, fi :
 #
 #              LAW=0  LIP non negative unknown distribution;
-#              LAW=0  LIP< 0 special case for thermal coherent elastic scattering
+#              LAW=0  LIP=-NBRAGG special case for thermal coherent elastic scattering
 #              LAW=1  continuum energy-angle distribution;
 #              LAW=1  LIP=-1 special case for thermal inelastic scattering
 #              LAW=1  LIP=-2 special case for thermal incoherent elastic scattering
@@ -132,6 +132,8 @@ ENDF_RECIPE_MF6 = """
 for i=1 to NK:
     (subsection[i])
         if LAW == 0 and NBRAGG > 0 [lookahead=1]:
+
+            # special case for thermal coherent elastic scattering (NJOY/THERMR)
             [MAT, 6, MT/ ZAP, AWP, -NBRAGG, LAW, NR, NP/ Eint / yi]TAB1 (yields)
         else:
 
@@ -217,14 +219,15 @@ for i=1 to NK:
                     endfor
                 endfor
 
-            # Special case for thermal inelastic scattering
+            # Special case for thermal inelastic scattering (NJOY/THERMR)
             elif LAW == 1 and LIP == -1:
                 [MAT, 6, MT/ TEMP, 0.0, 3, 1, NR, NE / E]TAB2 (E_interpol)
                 for j=1 to NE:
                     [MAT, 6, MT/ 0.0, E[j], 0, 0, NEP[j]*(NU+2), NU+2/
                                  {Ep[j,k], PDF[j,k], {u[j,k,m]}{m=1 to NU}}{k=1 to NEP[j]} ] LIST
                 endfor
-            # Special case for thermal incoherent inelastic scattering
+
+            # Special case for thermal incoherent elastic scattering (NJOY/THERMR)
             elif LAW == 1 and LIP == -2:
                 [MAT, 6, MT/ TEMP, 0.0, 3, 1, NR, NE / E]TAB2 (E_interpol)
                 for j=1 to NE:

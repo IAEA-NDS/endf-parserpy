@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2024/10/14
+# Last modified:   2024/11/20
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -38,11 +38,41 @@ class EndfFloat:
         """Return the string representation of the float value."""
         return self._orig_str
 
+    # relation variants
+
     def __eq__(self, other):
         return self._value == float(other)
 
+    def __ne__(self, other):
+        return self._value != float(other)
+
     def __lt__(self, other):
         return self._value < float(other)
+
+    def __le__(self, other):
+        return self._value <= float(other)
+
+    def __gt__(self, other):
+        return self._value > float(other)
+
+    def __ge__(self, other):
+        return self._value >= float(other)
+
+    # reverse relation variants
+
+    def __rlt__(self, other):
+        return float(other) < self._value
+
+    def __rle__(self, other):
+        return float(other) <= self._value
+
+    def __rgt__(self, other):
+        return float(other) > self._value
+
+    def __rge__(self, other):
+        return float(other) >= self._value
+
+    # conversion to Python's numeric primitives
 
     def __float__(self):
         return self._value

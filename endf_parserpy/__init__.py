@@ -16,6 +16,7 @@ from .utils.user_tools import (
     sanitize_fieldname_types,
 )
 from .utils.endf6_plumbing import update_directory
+from .utils.math_utils import EndfFloat
 
 
 __version__ = "0.11.0"
@@ -28,6 +29,7 @@ __all__ = (
     "EndfDict",
     "EndfPath",
     "EndfVariable",
+    "EndfFloat",
     "compare_objects",
     "list_parsed_sections",
     "list_unparsed_sections",

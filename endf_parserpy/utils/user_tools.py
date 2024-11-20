@@ -3,11 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/09/08
+# Last modified:   2024/11/20
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
+
+
+from collections.abc import MutableMapping, MutableSequence
 
 
 def locate(dic, varname, as_string=False):
@@ -145,9 +148,18 @@ def show_content(endf_dic, maxlevel=0, prefix="/"):
     if isinstance(endf_dic, (int, float, str)):
         print(endf_dic)
         return
-    maxlen = max(len(prefix + str(s)) for s in endf_dic.keys())
-    for k, v in endf_dic.items():
-        if isinstance(v, dict):
+    elif isinstance(endf_dic, MutableMapping):
+        keys = endf_dic.keys()
+        values = endf_dic.values()
+    elif isinstance(endf_dic, MutableSequence):
+        keys = range(len(endf_dic))
+        values = endf_dic
+    else:
+        raise NotImplementedError("Problem in code logic, contact developer")
+
+    maxlen = max(len(prefix + str(s)) for s in keys)
+    for k, v in zip(keys, values):
+        if isinstance(v, (MutableSequence, MutableMapping)):
             if maxlevel > 0:
                 show_content(v, maxlevel - 1, prefix=prefix + str(k) + "/")
             else:

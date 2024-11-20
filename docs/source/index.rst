@@ -21,6 +21,8 @@
    guide/format_extensions
    guide/working_with_legacy_formats
    guide/high_level_functionality
+   guide/perfect_precision
+   guide/arrays_as_list
    guide/accelerated_parsing_and_writing
 
 .. toctree::

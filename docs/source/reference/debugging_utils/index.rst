@@ -18,4 +18,5 @@ The following facilities are provided by the debugging_utils module:
 
    compare_objects
    tracking_dict_class
+   tracking_list_class
 

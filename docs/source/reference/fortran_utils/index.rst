@@ -10,8 +10,3 @@ Fortran-formatted numbers to Python :class:`float` and :class:`int`
 variables. It also provides functions for converting these Python
 variables to string representations.
 
-
-.. autoclass:: EndfFloat
-   :members: get_original_string
-   :undoc-members:
-   :show-inheritance:

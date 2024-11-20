@@ -14,4 +14,5 @@ classes and functions included in them.
    debugging_utils/index
    endf6_plumbing/index
    user_tools/index
+   math_utils/index
    fortran_utils/index

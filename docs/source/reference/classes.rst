@@ -12,5 +12,6 @@ implemented in the ``endf_parserpy`` package:
 - :class:`endf_parserpy.EndfDict`
 - :class:`endf_parserpy.EndfPath`
 - :class:`endf_parserpy.EndfVariable`
+- :class:`endf_parserpy.EndfFloat`
 - :class:`endf_parserpy.utils.debugging_utils.TrackingDict`
-- :class:`endf_parserpy.interpreter.fortran_utils.EndfFloat`
+- :class:`endf_parserpy.utils.debugging_utils.TrackingList`

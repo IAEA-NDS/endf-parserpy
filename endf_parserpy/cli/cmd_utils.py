@@ -103,6 +103,8 @@ def get_endf_parser(args, args_override=None, allow_cpp=True):
 
 def determine_include(endfpath):
     endfpath = EndfPath(endfpath)
+    if len(endfpath) == 0:
+        include = tuple()
     if len(endfpath) == 1:
         include = (int(endfpath[0]),)
     else:

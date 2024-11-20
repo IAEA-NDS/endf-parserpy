@@ -38,6 +38,9 @@ class EndfFloat:
         """Return the string representation of the float value."""
         return self._orig_str
 
+    def __repr__(self):
+        return f"EndfFloat({self._value}, {repr(self._orig_str)})"
+
     # relation variants
 
     def __eq__(self, other):

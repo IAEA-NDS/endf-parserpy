@@ -12,6 +12,7 @@
    :caption: Tutorials & Guides
    :hidden:
 
+   guide/command_line_interface
    guide/reading_writing_endf
    guide/endf_format_validation
    guide/comparing_endf_files

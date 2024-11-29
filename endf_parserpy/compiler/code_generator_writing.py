@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/10/27
+# Last modified:   2024/11/29
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -513,7 +513,9 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
         code += cpp.line(
             f"void {p}_file(std::string& filename, py::dict endf_dict{args_str}) {{"
         )
-        code += cpp.statement("std::ofstream outfile(filename)", cpp.INDENT)
+        code += cpp.statement(
+            "std::ofstream outfile(filename, std::ios::binary)", cpp.INDENT
+        )
         code += cpp.indent_code(
             cpp.pureif(
                 cpp.logical_not("outfile.is_open()"),

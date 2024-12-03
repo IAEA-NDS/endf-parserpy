@@ -1,5 +1,8 @@
 import pytest
-from endf_parserpy.utils.math_utils import EndfFloat
+from endf_parserpy.utils.math_utils import (
+    EndfFloat,
+    math_isclose,
+)
 
 
 @pytest.mark.parametrize(
@@ -34,3 +37,16 @@ from endf_parserpy.utils.math_utils import EndfFloat
 )
 def test_relations(obj1, obj2, relation, expval):
     assert relation(obj1, obj2) == expval
+
+
+@pytest.mark.parametrize(
+    "obj1, obj2, expval",
+    [
+        (EndfFloat(7, "7"), 7 + 1e-12, True),
+        (7 + 1e-12, EndfFloat(7, "7"), True),
+        (EndfFloat(7, "7"), 7 + 1e-1, False),
+        (7 + 1e-1, EndfFloat(7, "7"), False),
+    ],
+)
+def test_math_isclose(obj1, obj2, expval):
+    assert math_isclose(obj1, obj2) == expval

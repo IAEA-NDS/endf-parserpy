@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2024/11/20
+# Last modified:   2024/12/03
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -88,7 +88,7 @@ def math_isclose(x, y, rtol=1e-5, atol=1e-8):
     if isinstance(x, EndfFloat):
         x = float(x)
     if isinstance(y, EndfFloat):
-        y = float(x)
+        y = float(y)
     return abs(x - y) <= (atol + rtol * abs(y))
 
 

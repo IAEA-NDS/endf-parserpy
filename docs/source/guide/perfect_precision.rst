@@ -138,3 +138,9 @@ However, the storage as an :class:`~endf_parserpy.EndfFloat` object
 with the string representation explicitly stated ensures that
 it is written as ``26056`` right-aligned in the appropriate
 11-character slot field.
+
+.. note::
+
+   During the creation of an :class:`~endf_parserpy.EndfFloat` object,
+   no checking is performed whether the provided string qualifies as
+   a syntactic valid number.

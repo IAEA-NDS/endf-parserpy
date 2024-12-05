@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2024/11/20
+# Last modified:   2024/12/05
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -41,7 +41,7 @@ ENDF_PARSER_ARGS = (
     ("print_cache_info", bool, True, False, False, True),
     ("endf_format", str, None, None, True, True),
     ("loglevel", int, None, None, False, True),
-    ("preserve_value_strings", bool, True, False, False, False),
+    ("preserve_value_strings", bool, True, False, True, True),
     ("array_type", str, None, None, True, True),
 )
 

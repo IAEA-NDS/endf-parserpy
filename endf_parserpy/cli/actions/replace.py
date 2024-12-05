@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2024/10/06
+# Last modified:   2024/12/05
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -62,7 +62,7 @@ def perform_action(args):
         # it's about a subtle replacement inside an MF/MT
         # section and not just swapping out the entire MF/MT section
         override_args["preserve_value_strings"] = True
-        parser = get_endf_parser(args, override_args, allow_cpp=False)
+        parser = get_endf_parser(args, override_args)
 
     destfiles = []
     for fp in args["destfile"]:

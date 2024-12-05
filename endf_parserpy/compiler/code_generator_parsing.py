@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/11/29
+# Last modified:   2024/12/05
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -330,6 +330,7 @@ def generate_master_parsefun(name, recipefuns):
         sec_prep_code += cpp.statement("after_fend = false")
         sec_prep_code += cpp.statement("section_encountered = true")
         sec_prep_code += cpp.statement("cont.seekg(curpos)")
+        sec_prep_code += cpp.pureif("mt != 0", cpp.statement("is_firstline = false"))
 
         if isinstance(mfdic, str):
             varname = _mf_mt_dict_varname(mf, None)

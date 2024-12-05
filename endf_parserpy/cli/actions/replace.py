@@ -54,8 +54,11 @@ def perform_action(args):
     sourcefile = args["sourcefile"]
     izm = args["ignore_zero_mismatch"]
     izm = False if izm is None else izm
-    override_args = {"ignore_zero_mismatch": izm}
-
+    override_args = {
+        "ignore_zero_mismatch": izm,
+        "ignore_send_records": True,
+        "ignore_missing_tpid": True,
+    }
     if len(endfpath) <= 2:
         parser = get_endf_parser(args, override_args)
     else:

@@ -159,6 +159,7 @@ the input and output file:
     at path /3: only obj1 contains {2}
     False
 
+.. _including_mfmt_sec:
 
 Including an MF/MT section from another file
 --------------------------------------------

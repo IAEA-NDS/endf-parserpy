@@ -105,7 +105,7 @@ def determine_include(endfpath):
     endfpath = EndfPath(endfpath)
     if len(endfpath) == 0:
         include = tuple()
-    if len(endfpath) == 1:
+    elif len(endfpath) == 1:
         include = (int(endfpath[0]),)
     else:
         include = ((int(endfpath[0]), int(endfpath[1])),)

@@ -1,3 +1,6 @@
+.. _endf6_file_plumbing_sec:
+
+
 ENDF-6 File Plumbing
 ====================
 

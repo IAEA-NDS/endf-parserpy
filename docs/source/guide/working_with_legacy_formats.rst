@@ -1,3 +1,5 @@
+.. _working_with_legacy_formats_sec:
+
 Working with Legacy Formats
 ===========================
 

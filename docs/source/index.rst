@@ -19,6 +19,7 @@
    guide/format_translation
    guide/endf_plumbing
    guide/creation_endf_scratch
+   guide/pendf_and_format_flavors
    guide/format_extensions
    guide/working_with_legacy_formats
    guide/high_level_functionality

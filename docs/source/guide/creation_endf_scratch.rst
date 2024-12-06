@@ -474,7 +474,7 @@ and ``MT1=1``:
    endf_dict['33/1/subsection[1]/MT1'] = 1
 
 The complete covariance matrix can be composed of summing up several
-covariance matrix, perhaps containg contributions associated
+covariance matrices, perhaps containg contributions associated
 with different sources of uncertainty. Each of these contributions
 is stored in its own sub-subsection. There are two types of sub-subsections
 referred to as NI-type and NC-type. The variables ``NC`` and ``NI``
@@ -582,11 +582,11 @@ this task:
 .. code:: python
 
     NE = endf_dict['33/1/subsection[1]/ni_subsection[1]/NE']
-	endf_dict['33/1/subsection[1]/ni_subsection[1]/F'] = {}
-	F = endf_dict['33/1/subsection[1]/ni_subsection[1]/F']
-	for k in range(1, NE):
-		for kp in range(k, NE):
-			F[k, kp] = float(covmat[k-1, kp-1])
+    endf_dict['33/1/subsection[1]/ni_subsection[1]/F'] = {}
+    F = endf_dict['33/1/subsection[1]/ni_subsection[1]/F']
+    for k in range(1, NE):
+        for kp in range(k, NE):
+            F[k, kp] = float(covmat[k-1, kp-1])
 
 The variable ``covmat`` was set up at the very beginning
 of this section.

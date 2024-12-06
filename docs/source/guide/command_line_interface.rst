@@ -231,7 +231,7 @@ on Linux and MacOS:
 The text provided via standard input is inserted
 after the line indicated via the ``-l`` argument.
 Supply the ``-n`` switch if you want to suppress the
-creation o a backup file.
+creation of a backup file.
 
 
 Explaining symbol names
@@ -240,7 +240,7 @@ Explaining symbol names
 An experimental (and very incomplete feature) is the
 display of explanations of symbol names, which can be
 found in an ENDF file. For instance, assume that
-you have displayed the content of the MF1/MT1 section
+you have displayed the content of the MF3/MT1 section
 via ``endf-cli show 3/1 file.endf`` and are interested
 in the meaning of the ``QM`` variable. You can run
 

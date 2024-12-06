@@ -41,6 +41,8 @@ pip install endf-parserpy
 
 The documentation is available online
 [@readthedocs](https://endf-parserpy.readthedocs.io).
+Consider the ``README.md`` in the ``docs/`` subdirectory
+for instructions on how to generate the help files locally.
 
 
 ## Simple example

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2024/12/03
+# Last modified:   2024/12/06
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -15,9 +15,17 @@ from endf_parserpy.interpreter.custom_exceptions import InvalidIntegerError
 class EndfFloat:
     """float that keeps track of string representation.
 
-    Instances of this class behave exactly like `float` variables.
+    Instances of this class represent :class:`float` numbers.
     Additionally, each instance stores a string that should
     be the source string from which the float value was obtained.
+
+    Numeric comparisons between :class:`EndfFloat` instances and
+    data types convertible to float numbers via the
+    :func:`float()` function are possible. However, using
+    :class:`EndfFloat` instances directly in arithmetic expressions
+    is not possible. They must be explicitly converted to an integer
+    or float number before via :func:`float` or :func:`int` function,
+    respectively.
     """
 
     def __init__(self, value, orig_str):

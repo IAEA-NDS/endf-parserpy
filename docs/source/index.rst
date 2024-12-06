@@ -114,15 +114,19 @@ Resources
 - :doc:`overview/endf_navigation`
 - Guides
 
+  - :doc:`guide/command_line_interface`
   - :doc:`guide/reading_writing_endf`
   - :doc:`guide/endf_format_validation`
   - :doc:`guide/comparing_endf_files`
   - :doc:`guide/format_translation`
   - :doc:`guide/endf_plumbing`
   - :doc:`guide/creation_endf_scratch`
+  - :doc:`guide/pendf_and_format_flavors`
   - :doc:`guide/format_extensions`
   - :doc:`guide/working_with_legacy_formats`
   - :doc:`guide/high_level_functionality`
+  - :doc:`guide/perfect_precision`
+  - :doc:`guide/arrays_as_list`
   - :doc:`guide/accelerated_parsing_and_writing`
 
 - Reference

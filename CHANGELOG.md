@@ -5,11 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.12.0]
 
 ### Added
 
-- Parameter `preserve_value_strings` to `EndfParser` class constructor.
+- `EndfFloat` class for storing float numbers with associated original string
+- Support of PENDF files produced by NJOY
+- Argument `preserve_value_strings` to `EndfParser` and `EndfParserCpp` class
+- `matching` module for matching ENDF files according to logical expressions
+- Argument `array_type` to `EndfParser` and `EndfParserCpp` to support representing ENDF arrays as Python `list`
 
 ### Removed
 
@@ -17,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- SEND record treatment in cpp parser for sections read verbatim
+- `EndfParserCpp` on Windows 11 by using binary mode for reading/writing
+- Output of integers instead of float numbers in SEND records
 - Avoid check of MAT/MF/MT consistency if `ignore_send_records` option is active
 - Add forgotten newline character while joining list of strings in `EndfParserCpp.parse` method.
 - Do not remove last line when writing verbatim MF/MT section with `EndfParser`
@@ -24,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Options for reading and writing are now passed as dictionaries (`read_opts` and `write_opts`) to functions.
-- Redesigned command-line interface
+- Redesigned and extended command-line interface
 
 ## [0.11.0]
 

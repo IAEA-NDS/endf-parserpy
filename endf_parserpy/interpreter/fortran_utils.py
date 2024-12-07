@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/10/22
+# Last modified:   2024/12/07
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -26,6 +26,30 @@ def read_fort_int(valstr):
 
 
 def fortstr2float(valstr, read_opts=None):
+    """Convert a Fortran number string to float.
+
+    Convert a number string to a :class:`float`.
+    Fortran number strings with the ``e`` character
+    omitted are supported.
+
+    Parameters
+    ----------
+    valstr : str
+        String that should be converted to :class:`float`.
+    read_opts : Optional[dict]
+        Dictionary with field/value pairs to influence
+        conversion process. Supported options are
+        ``accept_spaces`` and ``preserve_value_strings``.
+        Consider the equally named options of the
+        :class:`~endf_parserpy.EndfParser` class for
+        an explanation of their meaning.
+
+    Returns
+    -------
+        float
+            :class:`float` that corresponds to string
+            representation of number.
+    """
     orig_valstr = valstr
     if read_opts is None:
         read_opts = {}
@@ -128,6 +152,33 @@ def float2expformstr(val, write_opts=None):
 
 
 def float2fortstr(val, write_opts=None):
+    """Convert a float value to string.
+
+    This function converts a :class:`float` value
+    to a string representation. Various options
+    are supported to influence the conversion
+    process.
+
+    Parameters
+    ----------
+
+    val : float
+        The float variable/number whose string
+        representation is desired.
+    write_opts : dict
+        Python dictionary with field/value
+        pairs to influence conversion process.
+        Supported field names are ``prefer_noexp``,
+        ``width``, ``abuse_signpos``, ``keep_E``,
+        and ``skip_intzero``. Consider the equally
+        named arguments of the :class:`~endf_parserpy.EndfParser`
+        constructor for an explanation of these options.
+
+    Returns
+    -------
+    str
+        String representation of the :class:`float` number
+    """
     width = write_opts.get("width", 11)
     if isinstance(val, EndfFloat):
         orig_str = val.get_original_string()
@@ -158,6 +209,29 @@ def float2fortstr(val, write_opts=None):
 
 
 def read_fort_floats(line, n=6, read_opts=None):
+    """Read several floats from a string.
+
+    The string representations of each number
+    are assumed to be stored one-after-another
+    in text fields of a fixed size.
+
+    Parameters
+    ----------
+    line : str
+        String containing numbers to read
+    n : int
+        Number of float numbers to read
+    read_opts : Optional[dict]
+        The field ``width`` specifies the number
+        of character-slots assigned to each float.
+        For the other available options, see the
+        help of :func:`fortstr2float`.
+
+    Returns
+    -------
+    list[float]
+        A list with the extracted :class:`float` numbers
+    """
     width = read_opts.get("width", 11)
     assert isinstance(line, str)
     vals = []
@@ -167,6 +241,24 @@ def read_fort_floats(line, n=6, read_opts=None):
 
 
 def write_fort_floats(vals, write_opts=None):
+    """Write several floats to a string.
+
+    Floats are written as text fields of fixed width
+    one-after-another.
+
+    Parameters
+    ----------
+    vals : list[float]
+    write_opts : Optional[dict]
+        Dictionary with options to influence number formatting,
+        see help of :func:`float2fortstr` for available options.
+
+    Returns
+    -------
+    str
+        String with numbers written one-after-another
+        in text fields of fixed width.
+    """
     line = ""
     for i, v in enumerate(vals):
         line += float2fortstr(v, write_opts=write_opts)

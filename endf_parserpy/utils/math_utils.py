@@ -93,6 +93,27 @@ class EndfFloat:
 
 
 def math_isclose(x, y, rtol=1e-5, atol=1e-8):
+    """Checks whether two numbers are close.
+
+    Numbers represented as :class:`EndfFloat`
+    are also supported.
+
+    Parameters
+    ----------
+    x : Union[float, EndfFloat]
+        First number
+    y : Union[float, EndfFloat]
+        Second number
+    rtol : float
+        Relative tolerance for comparison
+    atol : float
+        Absolute tolerance for comparison
+
+    Returns
+    -------
+    bool
+        ``True`` if numbers are close, ``False`` otherwise.
+    """
     if isinstance(x, EndfFloat):
         x = float(x)
     if isinstance(y, EndfFloat):
@@ -101,6 +122,30 @@ def math_isclose(x, y, rtol=1e-5, atol=1e-8):
 
 
 def math_op(x, y, op, **kwargs):
+    """Performs a binary operation.
+
+    Parameters
+    ----------
+    x : Union[float, Iterable[float]]
+        First number or iterable of numbers
+    y : Union[float, Iterable[float]]
+        Second number or iterable of numbers
+    op : Callable[[float, float, \*\*kwargs], Any]
+        Function (e.g. ``lambda`` function) that
+        takes two floats and, optionally, keyword arguments.
+    kwargs : Optional[dict[str, int]]
+        Keyword arguments also passed to function
+        provided as ``op`` argument.
+
+    Returns
+    -------
+    Union[Any, Iterable[Any]]
+        If either of the input arguments
+        ``x`` or ``y`` is an iterable, returns an iterable
+        with results of the the element-wise application of the function.
+        If both ``x`` and ``y`` are scalar/non-iterable,
+        the result of the function.
+    """
     if hasattr(x, "__iter__") and hasattr(y, "__iter__"):
         if len(x) != len(y):
             raise ValueError(
@@ -117,6 +162,17 @@ def math_op(x, y, op, **kwargs):
 
 
 def math_neg(x):
+    """Negate values(s)
+
+    Parameters
+    ----------
+    x : Union[float, Iterable[float]]
+
+    Returns
+    -------
+    float
+        Negated number or iterable of negated numbers.
+    """
     if hasattr(x, "__iter__"):
         return type(x)(-z for z in x)
     else:
@@ -124,10 +180,43 @@ def math_neg(x):
 
 
 def math_mul(x, y):
+    """Multiply value(s)
+
+    Parameters
+    ----------
+    x : Union[float, Iterable[float]]
+        First number or iterable of numbers
+    y : Union[float, Iterable[float]]
+        Second number or iterable of numbers
+
+    Returns
+    -------
+    Union[float, Iterable[float]]
+        Multiplication result
+    """
     return math_op(x, y, lambda a, b: a * b)
 
 
 def math_div(x, y, cast_int=False):
+    """Divide value(s) by other value(s)
+
+    Parameters
+    ----------
+    x : Union[float, Iterable[float]]
+        First number or iterable of numbers
+    y : Union[float, Iterable[float]]
+        Second number or iterable of numbers
+    cast_int : bool
+        If both ``x`` and ``y`` are :class:`int`,
+        and result does not correspond to integer,
+        an exception is raised if ``cast_int=True``,
+        otherwise the result returned as a :class:`float`.
+
+    Returns
+    -------
+    Union[float, Iterable[float]]
+        Result of division
+    """
     res = math_op(x, y, lambda a, b: a / b)
     if isinstance(x, int) and isinstance(y, int):
         if int(res) != res:
@@ -142,6 +231,25 @@ def math_div(x, y, cast_int=False):
 
 
 def math_mod(x, y, cast_int=False):
+    """Modulo of values
+
+    Parameters
+    ----------
+    x : Union[float, Iterable[float]]
+        First number or iterable of numbers
+    y : Union[float, Iterable[float]]
+        Second number or iterable of numbers
+    cast_int : bool
+        If both ``x`` and ``y`` are :class:`int`,
+        and result does not correspond to integer,
+        an exception is raised if ``cast_int=True``,
+        otherwise the result returned as a :class:`float`.
+
+    Returns
+    -------
+    Union[float, Iterable[float]]
+        Result of modulo operation
+    """
     res = math_op(x, y, lambda a, b: a % b)
     if isinstance(x, int) and isinstance(y, int) and cast_int:
         if int(res) != res:
@@ -191,6 +299,25 @@ def math_sub(x, y):
 
 
 def math_allclose(x, y, rtol=1e-5, atol=1e-8):
+    """Check whether all values close.
+
+    Parameters
+    ----------
+    x : Union[float, Iterable[float]]
+        First number or iterable of numbers
+    y : Union[float, Iterable[float]]
+        Second number or iterable of numbers
+    rtol : float
+        Relative tolerance for comparison
+    atol : float
+        Absolute tolerance for comparison
+
+    Returns
+    -------
+    bool
+        ``True`` if value(s) in ``x`` close to
+        value(s) in ``y``, ``False`` otherwise
+    """
     compres = math_op(x, y, math_isclose, rtol=rtol, atol=atol)
     if hasattr(compres, "__iter__"):
         return all(compres)

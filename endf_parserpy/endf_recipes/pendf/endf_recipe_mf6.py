@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel & Daniel L. Aldama
 # Email:           g.schnabel@iaea.org, dlopezaldama@gmail.com
 # Creation date:   2022/05/30
-# Last modified:   2024/11/18
+# Last modified:   2024/12/07
 # License:         MIT
-# Copyright (c) 2022 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ##############################################################
 

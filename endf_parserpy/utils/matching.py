@@ -1,3 +1,14 @@
+############################################################
+#
+# Author(s):       Georg Schnabel
+# Email:           g.schnabel@iaea.org
+# Creation date:   2024/12/07
+# Last modified:   2024/12/07
+# License:         MIT
+# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+#
+############################################################
+
 from lark import Lark, Tree, Token
 from endf_parserpy import EndfPath, EndfDict
 from endf_parserpy.utils.math_utils import EndfFloat

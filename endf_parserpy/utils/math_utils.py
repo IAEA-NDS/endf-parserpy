@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2024/12/06
+# Last modified:   2024/12/07
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -155,12 +155,44 @@ def math_mod(x, y, cast_int=False):
 
 
 def math_add(x, y):
+    """Add values
+
+    Parameters
+    ----------
+    x : Union[float, Iterable[float]]
+        First number or iterable of numbers
+    y : Union[float, Iterable[float]]
+        Second number or iterable of numbers
+
+    Returns
+    -------
+    Union[float, Iterable[float]]
+        Result of addition
+    """
     return math_op(x, y, lambda a, b: a + b)
 
 
 def math_sub(x, y):
+    """Subtract values
+
+    Parameters
+    ----------
+    x : Union[float, Iterable[float]]
+        First number or iterable of numbers
+    y : Union[float, Iterable[float]]
+        Second number or iterable of numbers
+
+    Returns
+    -------
+    Union[float, Iterable[float]]
+        Result of subtraction
+    """
     return math_op(x, y, lambda a, b: a - b)
 
 
 def math_allclose(x, y, rtol=1e-5, atol=1e-8):
-    return math_op(x, y, math_isclose, rtol=rtol, atol=atol)
+    compres = math_op(x, y, math_isclose, rtol=rtol, atol=atol)
+    if hasattr(compres, "__iter__"):
+        return all(compres)
+    else:
+        return compres

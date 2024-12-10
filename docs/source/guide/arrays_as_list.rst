@@ -63,3 +63,9 @@ If you are using the ``array_type="list"`` option, be aware of the following:
   the first element of ``HSUB`` above (being part of an MF1/MT451 section)
   is given by ``1/451/HSUB/0`` if using ``array_type="list"`` whereas it
   would be ``1/451/HSUB/1`` if using ``array_type="dict"``.
+- If you make use of the :ref:`EndfDict <endf_dict_class>` class,
+  especially if you want to manipulate ENDF data through it, ensure
+  to initialize it with the ``array_type="list"`` argument, e.g.,
+  ``endf_dict = EndfDict(orig_endf_dict, array_type="list")``.
+  If you forget this extra argument, intuitive assignments, such as
+  ``endf_dict['1/451/MOD/3'] = 4`` won't work and will yield an error message.

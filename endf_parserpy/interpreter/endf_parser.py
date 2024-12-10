@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/10/13
+# Last modified:   2024/12/10
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -196,9 +196,10 @@ class EndfParser:
             be recorded during the parsing process (via the
             :class:`~endf_parserpy.interpreter.fortran_utils.EndfFloat` class).
             These string representations when available will be used verbatim
-            for outputting ENDF-6 formatted data, overruling any of the other
+            for outputting ENDF-6 formatted data (irrespective of the
+            ``preserve_value_strings`` option), overruling any of the other
             options provided for controling the output format of floats.
-            *(parsing, writing)*
+            *(parsing)*
         include_linenum : bool
             Controls whether the 5-digit line number should be
             included at the end of each line. *(writing)*

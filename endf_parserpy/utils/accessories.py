@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2024/10/14
+# Last modified:   2024/12/10
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
@@ -264,7 +264,7 @@ class EndfPath(Sequence):
         >>> p.set(testdict, 12)
         >>> print(testdict)
         """
-        if isinstance(value, EndfDict):
+        if isinstance(value, EndfObject):
             value = value.unwrap()
         cur = dict_like
         in_leading = True

@@ -120,7 +120,7 @@ Finally, if one wants to modify a number in an ENDF file and control the
 string formatting oneself, one can create an :class:`~endf_parserpy.EndfFloat` object
 and assign it to the appropriate place in a nested ENDF dictionary.
 For example, the following code snippet demonstrates this for the
-assignment of a number to the ``AWR`` variable:
+assignment of a number to the ``ZA`` variable:
 
 .. code:: Python
 
@@ -128,12 +128,12 @@ assignment of a number to the ``AWR`` variable:
    A = 56  # mass and charge number
    Z = 26  # for iron-56
    ZA = 1000.0*Z + A
-   endf_dict[1][451]['AWR'] = EndfFloat(ZA, "26056".rjust(11))
+   endf_dict[1][451]['ZA'] = EndfFloat(ZA, "26056".rjust(11))
    parser.writefile('output.endf', endf_dict)
 
 
 Using default options during the :class:`~endf_parserpy.EndfParser` object initialization,
-the ``AWR`` variable would be written as ``2.605600+4``.
+the ``ZA`` variable would be written as ``2.605600+4``.
 However, the storage as an :class:`~endf_parserpy.EndfFloat` object
 with the string representation explicitly stated ensures that
 it is written as ``26056`` right-aligned in the appropriate

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/12/10
+# Last modified:   2025/02/05
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -999,6 +999,8 @@ class EndfParser:
         list[str]
             List of lines with the ENDF-6 formatted data.
         """
+        if isinstance(endf_dic, EndfDict):
+            endf_dic = endf_dic.unwrap()
         self.zero_as_blank = zero_as_blank
         array_type = self.parse_opts["array_type"]
         self.parse_opts["internal_array_type"] = (

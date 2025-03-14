@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2024/12/07
+# Last modified:   2025/03/14
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -130,7 +130,7 @@ def math_op(x, y, op, **kwargs):
         First number or iterable of numbers
     y : Union[float, Iterable[float]]
         Second number or iterable of numbers
-    op : Callable[[float, float, \*\*kwargs], Any]
+    op : Callable[[float, float, \\*\\*kwargs], Any]
         Function (e.g. ``lambda`` function) that
         takes two floats and, optionally, keyword arguments.
     kwargs : Optional[dict[str, int]]

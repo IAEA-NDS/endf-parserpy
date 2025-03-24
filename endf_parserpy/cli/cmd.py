@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/02/05
-# Last modified:   2024/10/16
+# Last modified:   2025/03/24
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -19,6 +19,7 @@ from endf_parserpy.utils.user_tools import show_content
 
 ACTIONS = (
     "compare",
+    "convert",
     "validate",
     "replace",
     "show",

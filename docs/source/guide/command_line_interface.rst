@@ -234,6 +234,33 @@ Supply the ``-n`` switch if you want to suppress the
 creation of a backup file.
 
 
+Converting between ENDF and JSON
+--------------------------------
+
+:ref:`Converting between the ENDF and JSON format <guide_format_translation>`
+can be accomplished with the ``convert`` subcommand.
+To convert an ENDF file to JSON, run
+
+.. code-block:: bash
+
+   endf-cli convert --to json <source-endf-file> <target-json-file>
+
+For the opposite direction to convert a JSON file to ENDF, use the command
+
+.. code-block:: bash
+
+   endf-cli convert --to endf <source-json-file> <target-endf-file>
+
+
+These commands will fail if the target file already exists.
+You may want to consider the additional argument ``--array_type=list``,
+which will produce a more compact JSON representation. The precise
+meaning of this option is explained in :ref:`this section <arrays_as_list_sec>`.
+Please note that if you've converted an ENDF file to JSON using this option,
+you'll need to use the same option to convert the resulting file back
+to the ENDF format. Otherwise, the conversion process will fail.
+
+
 Explaining symbol names
 -----------------------
 

@@ -1,3 +1,5 @@
+.. _guide_format_translation:
+
 Translating ENDF-6 to JSON
 ==========================
 
@@ -57,7 +59,7 @@ this conversion:
 
 .. code:: Python
 
-    from endf_parserpy.user_tools import sanitize_fieldname_types
+    from endf_parserpy.utils.user_tools import sanitize_fieldname_types
     with open('input.json', 'r') as f:
         endf_dict = json.load(f)
 

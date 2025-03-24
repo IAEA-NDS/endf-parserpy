@@ -33,6 +33,9 @@ def add_subparser(subparsers):
         "destfile", type=str, help="new file with the desired format"
     )
     parser_convert.add_argument(
+        "--indent", type=int, nargs="?", help="Indent used for JSON output formatting"
+    )
+    parser_convert.add_argument(
         "--to", type=str, choices=formats, help="Destination file format"
     )
 
@@ -43,6 +46,9 @@ def perform_action(args):
     sourcefile = Path(args["sourcefile"])
     destfile = Path(args["destfile"])
     dest_format = args["to"]
+    json_dump_kwargs = {
+        "indent": args["indent"],
+    }
     if not sourcefile.is_file():
         print(f"File {sourcefile} does not exist")
         sys.exit(1)
@@ -52,15 +58,15 @@ def perform_action(args):
     if dest_format == "endf":
         retcode = _convert_to_endf(parser, sourcefile, destfile)
     elif dest_format == "json":
-        retcode = _convert_to_json(parser, sourcefile, destfile)
+        retcode = _convert_to_json(parser, sourcefile, destfile, json_dump_kwargs)
     sys.exit(retcode)
 
 
-def _convert_to_json(parser, sourcefile, destfile):
+def _convert_to_json(parser, sourcefile, destfile, json_dump_kwargs):
     destfile = Path(destfile)
     endf_dict = parser.parsefile(sourcefile)
     with open(destfile, "w") as f:
-        json.dump(endf_dict, f)
+        json.dump(endf_dict, f, **json_dump_kwargs)
     return 0
 
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2024/10/27
+# Last modified:   2025/05/10
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -20,8 +20,12 @@ from .endf2cpp_aux_writing import write_section_verbatim
 from .cpp_types import cpp_varaux
 from .cpp_types.cpp_varops_query import get_idxstr
 from .cpp_types.cpp_dtype_aux import map_dtype
+from .cpp_types.cpp_varaux import get_cpp_varname
 from . import cpp_primitives as cpp
-from .variable_management import expand_abbreviation
+from .variable_management import (
+    expand_abbreviation,
+    get_var_types,
+)
 
 
 def get_node_value_using_endf_dict(
@@ -30,6 +34,13 @@ def get_node_value_using_endf_dict(
     defaults = {} if defaults is None else defaults
     if not isinstance(node, VariableToken):
         return node2str(node)
+
+    # if variable is of loopvartype, we do not read it
+    # from the Python dictionary but directly from the cpp variable
+    vartypes = get_var_types(node, vardict)
+    if vartypes is not None and any(v[0] == "loopvartype" for v in vartypes):
+        assert len(vartypes) == 1
+        return get_cpp_varname(node, vardict, dtype=vartypes[0][0])
 
     varname = str(node)
     idxstrs = []

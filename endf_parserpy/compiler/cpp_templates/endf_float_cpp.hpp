@@ -90,12 +90,24 @@ namespace PYBIND11_NAMESPACE { namespace detail {
             static py::object PyEndfFloat = (
                 py::module::import("endf_parserpy.utils.math_utils").attr("EndfFloat")
             );
+            // case 1: cast Python float to EndfFloatCpp
             if (py::isinstance<py::float_>(src)) {
                 py::float_ tmp = py::cast<py::float_>(src);
                 double float_value = tmp.cast<double>();
                 value = EndfFloatCpp(float_value);
                 return !(float_value == -1 && PyErr_Occurred());
-            } else if (py::isinstance(src, PyEndfFloat)) {
+            }
+
+            // case 2: cast Python int to EndfFloatCpp
+            else if (py::isinstance<py::int_>(src)) {
+                py::int_ tmp = py::cast<py::int_>(src);
+                double int_value = tmp.cast<double>() ;
+                value = EndfFloatCpp(int_value);
+                return true;
+            }
+
+            // case 3: cast Python float to EndfFloatCpp
+            else if (py::isinstance(src, PyEndfFloat)) {
 				auto float_method = src.attr("__float__");
 				double float_value = float_method().cast<double>();
 				std::string orig_str = src.attr("get_original_string")().cast<std::string>();

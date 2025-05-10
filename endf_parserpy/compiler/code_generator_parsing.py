@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/12/05
+# Last modified:   2025/05/10
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -372,7 +372,9 @@ def generate_master_parsefun(name, recipefuns):
     curcond = aux.is_blank_line()
     curstat = cpp.pureif(
         cpp.logical_not("parse_opts.ignore_blank_lines"),
-        cpp.throw_runtime_error("Blank line detected"),
+        cpp.throw_runtime_error(
+            "Blank line detected: Correct file or use `ignore_blank_lines` option"
+        ),
     )
     conditions.append(curcond)
     statements.append(curstat)

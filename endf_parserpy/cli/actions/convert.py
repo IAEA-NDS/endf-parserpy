@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/03/24
-# Last modified:   2025/03/24
+# Last modified:   2025/05/10
 # License:         MIT
 # Copyright (c) 2025 International Atomic Energy Agency (IAEA)
 #
@@ -36,7 +36,7 @@ def add_subparser(subparsers):
         "--indent", type=int, nargs="?", help="Indent used for JSON output formatting"
     )
     parser_convert.add_argument(
-        "--to", type=str, choices=formats, help="Destination file format"
+        "--to", type=str, choices=formats, required=True, help="Destination file format"
     )
 
 

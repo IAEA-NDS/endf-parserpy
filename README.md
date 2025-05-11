@@ -13,6 +13,7 @@ perform various actions on ENDF-6 files, such as:
 - Merge data from various ENDF-6 files into a single one
 - Compare ENDF-6 files with meaningful reporting on differences
 - Construct ENDF-6 files from scratch
+- Many of these actions can be performed via the command line
 
 
 The support for the [ENDF-6 format]((https://doi.org/10.2172/1425114))

@@ -8,7 +8,7 @@ jobs:
   test_package:
     uses: ./.github/workflows/test_package.yml
 
-  build_wheels:
+  build_wheels_cpython:
     needs: test_package
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -46,7 +46,53 @@ jobs:
       - name: Build wheels
         env:
           INSTALL_ENDF_PARSERPY_CPP: yes
-          CIBW_SKIP: "cp36-* pp36-* cp37-* pp37-*"
+          CIBW_SKIP: "pp*"
+        run: poetry run python -m cibuildwheel --output-dir wheelhouse
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
+
+  build_wheels_pypy:
+    needs: test_package
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 500
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Setup Python 3.8 explicitly (necessary for Py3.8 MacOS-14 case)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Install build deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "poetry>=1.2,<1.8"
+
+      - name: Install build dependencies using poetry
+        env:
+          INSTALL_ENDF_PARSERPY_CPP: no
+        run: |
+          poetry install --with dev
+          poetry run python -m pip install pip --upgrade
+          poetry run python -m pip install cibuildwheel==2.23.3
+
+      - name: Build wheels
+        env:
+          INSTALL_ENDF_PARSERPY_CPP: yes
+          CIBW_SKIP: "cp*"
         run: poetry run python -m cibuildwheel --output-dir wheelhouse
 
       - uses: actions/upload-artifact@v4
@@ -86,7 +132,7 @@ jobs:
           path: dist/*.tar.gz
 
   upload_all:
-    needs: [build_wheels, make_sdist]
+    needs: [build_wheels_cpython, build_wheels_pypy, make_sdist]
     environment: pypi
     permissions:
       id-token: write

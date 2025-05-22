@@ -22,7 +22,7 @@ ENDF_RECIPE_MF3 = """
 # var NG:      Number of energy groups
 # var SIG[i]:  Averaged cross section of i-th group in barns (SIG(i), i=1 to NG)
 
-[MAT, 3, MT/ ZA, 0.0, 0, 0, NG, 0 /
+[MAT, 3, MT/ ZA, 0.0?, 0, 0, NG, 0 /
   {SIG[i]}{i=1 to NG}] LIST
 SEND
 """

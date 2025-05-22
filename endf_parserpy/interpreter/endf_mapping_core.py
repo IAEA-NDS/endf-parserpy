@@ -148,7 +148,9 @@ def map_recorddic_to_datadic(
             msg = create_variable_wrong_value_error_msg(
                 record_dic[sourcekey], expr_vv[0], sourcekey
             )
-            if value_mismatch_occurred:
+            if value_mismatch_occurred and not ignore_all_mismatches:
+                # `ignore_all_mismatches` active means we are in lookahead
+                # and number mismatches are expected to occur.
                 if ignore_zero_mismatch and expr_vv[0] == 0:
                     logger.warning(msg)
                     log_offending_line(record_dic, "warning", logger)
@@ -158,7 +160,7 @@ def map_recorddic_to_datadic(
                 elif ignore_varspec_mismatch and contains_inconsistent_varspec:
                     logger.warning(msg)
                     log_offending_line(record_dic, "warning", logger)
-                elif not ignore_all_mismatches:
+                else:
                     log_offending_line(record_dic, "error", logger)
                     raise NumberMismatchError(msg)
         # The else branch covers the case when there is still a dangling variable

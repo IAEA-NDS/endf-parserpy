@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/02/05
+# Last modified:   2025/05/22
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -38,11 +38,11 @@ from .meta_control_utils import (
     evaluate_if_clause,
     open_section,
     close_section,
-    should_proceed,
     initialize_working_vars,
     introduce_abbreviation,
     remove_working_vars,
 )
+from .lookahead_management import should_proceed
 from .endf_utils import (
     read_cont,
     write_cont,

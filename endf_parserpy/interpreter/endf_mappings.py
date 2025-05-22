@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/10/13
+# Last modified:   2025/05/22
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,7 +11,8 @@
 
 from lark.lexer import Token
 from endf_parserpy.utils.tree_utils import is_tree, get_name, get_child, get_child_value
-from .meta_control_utils import cycle_for_loop, should_proceed
+from .meta_control_utils import cycle_for_loop
+from .lookahead_management import should_proceed
 from .meta_control_utils import open_section, close_section
 from .custom_exceptions import (
     VariableNotFoundError,

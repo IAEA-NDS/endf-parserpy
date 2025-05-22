@@ -13,7 +13,7 @@ from collections.abc import Mapping
 import logging
 import re
 from .logging_utils import setup_logger, write_info, RingBuffer
-from appdirs import user_cache_dir
+from platformdirs import user_cache_dir
 from os.path import exists as file_exists
 from endf_parserpy.utils.tree_utils import (
     is_tree,

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/27
+# Last modified:   2025/05/22
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -76,6 +76,7 @@ from .node_checks import (
     is_for_loop,
     is_if_clause,
     is_abbreviation,
+    is_stop,
 )
 from .node_aux import (
     simplify_expr_node,
@@ -315,6 +316,8 @@ def generate_code_from_parsetree(node, vardict):
         return generate_code_for_if_clause(node, vardict)
     elif is_section(node):
         return generate_code_for_section(node, vardict)
+    elif is_stop(node):
+        return generate_code_for_stop(node, vardict)
 
     code = ""
     if isinstance(node, Tree):
@@ -851,3 +854,17 @@ def _generate_code_for_loop(
     # add code propagated upward from downstream nodes
     code = node.precode + code
     return code
+
+
+def generate_code_for_stop(node, vardict):
+    stop_msg_outer_node = get_child(node, "escaped_stop_message")
+    stop_msg_node = get_child(stop_msg_outer_node, "STOP_MESSAGE")
+    stop_message = str(stop_msg_node)
+    if '"' in stop_message:
+        raise ValueError(
+            'String in `stop` message must not contain double-quotes (`"`). '
+            f"The invalid message: {stop_message}"
+        )
+    return cpp.throw_runtime_error(
+        f"Encountered STOP instruction in recipe: {stop_message}"
+    )

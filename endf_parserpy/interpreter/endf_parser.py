@@ -460,11 +460,6 @@ class EndfParser:
                 parse_opts=self.parse_opts,
                 logger=self.logger,
             )
-            # this line adds MAT, MF, MT to the dictionary.
-            # this line is introduced here to deal with the tape head (mf=0, mt=0)
-            # which does not contain a head record as first item, which is the
-            # only other place that adds this information.
-            self.datadic.update(get_ctrl(text_dic))
         else:
             self.logbuffer.save_reduced_record_log(tree)
             text_dic = map_text_dic(
@@ -514,7 +509,6 @@ class EndfParser:
                 parse_opts=self.parse_opts,
                 logger=self.logger,
             )
-            self.datadic.update(get_ctrl(cont_dic))
         else:
             self.logbuffer.save_reduced_record_log(tree)
             head_dic = map_head_dic(
@@ -939,7 +933,7 @@ class EndfParser:
         for mf in mfmt_dic:
             write_info(self.logger, f"Parsing section MF{mf}")
             for mt in mfmt_dic[mf]:
-                curmat = read_ctrl(mfmt_dic[mf][mt][0], read_opts=self.read_opts)
+                cur_ctrl = read_ctrl(mfmt_dic[mf][mt][0], read_opts=self.read_opts)
                 write_info(self.logger, f"Parsing subsection MF/MT {mf}/{mt}")
                 curlines = mfmt_dic[mf][mt]
                 cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
@@ -950,10 +944,12 @@ class EndfParser:
                 if cur_parsefun is not None and not should_skip:
                     try:
                         curlines += write_send(
-                            curmat, with_ctrl=True, write_opts=self.write_opts
+                            cur_ctrl, with_ctrl=True, write_opts=self.write_opts
                         )
                         curlines = "".join(curlines)
-                        mfmt_dic[mf][mt] = cur_parsefun(curlines)
+                        cur_dict = cur_parsefun(curlines)
+                        cur_dict.update(cur_ctrl)
+                        mfmt_dic[mf][mt] = cur_dict
                     except Exception as exc:
                         raise type(exc)(
                             f"parsing function for MF={mf}/MT={mt} failed "
@@ -964,7 +960,7 @@ class EndfParser:
                     # we add the SEND line so that parsing fails
                     # if the MT section cannot be completely parsed
                     curlines += write_send(
-                        curmat, with_ctrl=True, write_opts=self.write_opts
+                        cur_ctrl, with_ctrl=True, write_opts=self.write_opts
                     )
                     self.reset_parser_state(rwmode="read", lines=curlines)
                     self.current_path = EndfPath((mf, mt))
@@ -972,7 +968,9 @@ class EndfParser:
                         initialize_working_vars(self.datadic)
                         self.run_instruction(cur_tree)
                         remove_working_vars(self.datadic)
-                        mfmt_dic[mf][mt] = self.datadic
+                        cur_dict = self.datadic
+                        cur_dict.update(cur_ctrl)
+                        mfmt_dic[mf][mt] = cur_dict
                         if self.parse_opts["array_type"] == "list":
                             array_dict_to_list(mfmt_dic[mf][mt])
                     except ParserException as exc:

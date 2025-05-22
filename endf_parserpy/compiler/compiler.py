@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/23
-# Last modified:   2024/04/28
+# Last modified:   2025/05/22
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -53,7 +53,9 @@ def create_project_files(
     cpp_module_file = os.path.join(project_path, f"{module_name}.cpp")
     cmake_file = os.path.join(project_path, "CMakeLists.txt")
 
-    create_cpp_parser_module(cpp_module_file, module_name, overwrite=overwrite_files)
+    create_cpp_parser_module(
+        cpp_module_file, module_name, recipes, overwrite=overwrite_files
+    )
     create_cmake_file(project_path, module_name, overwrite=overwrite_files)
 
 

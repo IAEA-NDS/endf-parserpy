@@ -20,6 +20,10 @@ from .endf_mapping_utils import (
 from .logging_utils import write_info
 
 
+def in_lookahead(loop_vars):
+    return "__lookahead" in loop_vars
+
+
 def should_proceed(datadic, loop_vars, action_type):
     if "__lookahead" in loop_vars:
         if loop_vars["__lookahead"] == 0:

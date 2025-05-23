@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2024/10/06
+# Last modified:   2025/05/23
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -19,6 +19,16 @@ import sys
 
 COMMAND_NAME = "validate"
 
+STRICT_DEFAULT_ARGS = {
+    "ignore_number_mismatch": False,
+    "ignore_zero_mismatch": False,
+    "ignore_varspec_mismatch": False,
+    "accept_spaces": False,
+    "ignore_blank_lines": False,
+    "ignore_send_records": False,
+    "ignore_missing_tpid": False,
+}
+
 
 def add_subparser(subparsers):
     parser_validate = subparsers.add_parser(COMMAND_NAME)
@@ -28,7 +38,11 @@ def add_subparser(subparsers):
 
 def perform_action(args):
     assert args["subcommand"] == COMMAND_NAME
-    parser = get_endf_parser(args)
+    override_args = {
+        k: STRICT_DEFAULT_ARGS[k] if args[k] is None else args[k]
+        for k in STRICT_DEFAULT_ARGS
+    }
+    parser = get_endf_parser(args, override_args)
     files = []
     for fp in args["files"]:
         files.extend(glob(fp))

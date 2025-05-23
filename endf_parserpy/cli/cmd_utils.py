@@ -3,14 +3,15 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2024/12/05
+# Last modified:   2025/05/23
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 import os
 import platform
+from copy import copy
 import argparse
 from .. import (
     EndfParser,
@@ -30,19 +31,20 @@ ENDF_PARSER_ARGS = (
     #   4th element: default value if argument not provided
     #   5th element: supported by cpp parser
     #   6th element: exposed on command line
-    ("ignore_number_mismatch", bool, True, None, True, True),
-    ("ignore_zero_mismatch", bool, True, None, True, True),
-    ("fuzzy_matching", bool, True, None, True, True),
-    ("ignore_varspec_mismatch", bool, True, None, True, True),
-    ("accept_spaces", bool, True, None, True, True),
-    ("ignore_blank_lines", bool, True, None, True, True),
-    ("ignore_send_records", bool, True, None, True, True),
-    ("ignore_missing_tpid", bool, True, None, True, True),
-    ("print_cache_info", bool, True, False, False, True),
-    ("endf_format", str, None, None, True, True),
-    ("loglevel", int, None, None, False, True),
-    ("preserve_value_strings", bool, True, False, True, True),
-    ("array_type", str, None, None, True, True),
+    #   7th element: consider variable for choosing between cpp and Python parser
+    ("ignore_number_mismatch", bool, True, None, True, True, True),
+    ("ignore_zero_mismatch", bool, True, None, True, True, True),
+    ("fuzzy_matching", bool, True, None, False, True, True),
+    ("ignore_varspec_mismatch", bool, True, None, True, True, True),
+    ("accept_spaces", bool, True, None, True, True, True),
+    ("ignore_blank_lines", bool, True, None, True, True, True),
+    ("ignore_send_records", bool, True, None, True, True, True),
+    ("ignore_missing_tpid", bool, True, None, True, True, True),
+    ("print_cache_info", bool, True, False, False, True, False),
+    ("endf_format", str, None, None, True, True, True),
+    ("loglevel", int, None, None, False, True, True),
+    ("preserve_value_strings", bool, True, False, True, True, True),
+    ("array_type", str, None, None, True, True, True),
 )
 
 
@@ -55,7 +57,7 @@ def add_common_cmd_parser_args(parser):
         help="force the use of Python ENDF parser, even if faster C++ ENDF parser is available",
     )
     for arg_info in ENDF_PARSER_ARGS:
-        arg_str, arg_type, arg_const, arg_def, cpp_sup, expose = arg_info
+        arg_str, arg_type, arg_const, arg_def, cpp_sup, expose, imp = arg_info
         if not expose:
             continue
         kwargs = {
@@ -91,11 +93,22 @@ def get_endf_parser(args, args_override=None, allow_cpp=True):
     no_cpp = parser_args["no_cpp"] or (not allow_cpp)
     py_parser_args = _map_cmd_args_to_endf_parser_args(parser_args, False)
     cpp_parser_args = _map_cmd_args_to_endf_parser_args(parser_args, True)
-    if not no_cpp:
-        try:
-            parser = EndfParserCpp(**cpp_parser_args)
-        except Exception:
-            parser = EndfParser(**py_parser_args)
+    rel_py_parser_args = copy(py_parser_args)
+    rel_cpp_parser_args = copy(cpp_parser_args)
+    for cur_arg, *_, imp in ENDF_PARSER_ARGS:
+        if not imp and cur_arg in rel_py_parser_args:
+            rel_py_parser_args.pop(cur_arg)
+        if not imp and cur_arg in rel_cpp_parser_args:
+            rel_cpp_parser_args.pop(cur_arg)
+    can_use_cpp = (
+        not no_cpp
+        and set(rel_py_parser_args) == set(rel_cpp_parser_args)
+        and all(
+            rel_cpp_parser_args[k] == rel_py_parser_args[k] for k in rel_py_parser_args
+        )
+    )
+    if can_use_cpp:
+        parser = EndfParserCpp(**cpp_parser_args)
     else:
         parser = EndfParser(**py_parser_args)
     return parser

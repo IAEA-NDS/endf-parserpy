@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/22
+# Last modified:   2025/05/23
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -106,7 +106,7 @@ class EndfParser:
         ignore_number_mismatch=False,
         ignore_zero_mismatch=True,
         ignore_varspec_mismatch=True,
-        fuzzy_matching=True,
+        fuzzy_matching=False,
         abuse_signpos=False,
         skip_intzero=False,
         prefer_noexp=False,

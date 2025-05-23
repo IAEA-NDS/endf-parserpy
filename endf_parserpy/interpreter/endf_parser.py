@@ -966,11 +966,10 @@ class EndfParser:
                     self.current_path = EndfPath((mf, mt))
                     try:
                         initialize_working_vars(self.datadic)
+                        self.datadic.update(cur_ctrl)
                         self.run_instruction(cur_tree)
                         remove_working_vars(self.datadic)
-                        cur_dict = self.datadic
-                        cur_dict.update(cur_ctrl)
-                        mfmt_dic[mf][mt] = cur_dict
+                        mfmt_dic[mf][mt] = self.datadic
                         if self.parse_opts["array_type"] == "list":
                             array_dict_to_list(mfmt_dic[mf][mt])
                     except ParserException as exc:

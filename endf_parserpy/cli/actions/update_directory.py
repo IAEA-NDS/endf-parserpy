@@ -3,12 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2024/10/06
+# Last modified:   2025/05/26
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+import sys
 from ..cmd_utils import (
     add_common_cmd_parser_args,
     get_endf_parser,
@@ -37,6 +38,7 @@ def perform_action(args):
     parser = get_endf_parser(args)
     create_backup = not args["no_backup"]
     _update_mf1mt451_directory(parser, args["file"], create_backup)
+    sys.exit(0)
 
 
 def _update_mf1mt451_directory(parser, file, create_backup):

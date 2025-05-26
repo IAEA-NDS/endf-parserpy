@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2024/10/06
+# Last modified:   2025/05/26
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -42,6 +42,7 @@ def perform_action(args):
     parser = get_endf_parser(args)
     create_backup = not args["no_backup"]
     _insert_mf1mt451_description(parser, args["line"], args["file"], create_backup)
+    sys.exit(0)
 
 
 def _insert_mf1mt451_description(parser, line_no, file, create_backup):

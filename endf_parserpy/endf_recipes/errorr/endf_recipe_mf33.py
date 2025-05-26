@@ -46,7 +46,7 @@ for k=1 to NK:
     (subsection[k])
         [MAT, 33, MT/ 0.0, 0.0, MAT1, MT1, 0, NG] CONT
         for i=1 to NG-1:
-           if IG1[i] != IG[i] or IG[i] != NG [lookahead=1]:
+           if IG[i] != NG [lookahead=1]:
               [MAT, 33, MT/ 0.0, 0.0, NG1[i], IG1[i], NG1[i], IG[i] /
                   {{COV[II,J]}{J=IG1[i] to IG1[i]+NG1[i]-1}}{II=IG[i] to IG[i]}] LIST
            endif

@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/22
+# Last modified:   2025/05/27
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -95,7 +95,9 @@ def open_section(
 
     idcsstr_list = []
     if indexquants is not None:
-        idcs = [get_indexvalue(q, loop_vars) for q in indexquants]
+        idcs = [
+            get_indexvalue(q, datadic, loop_vars, parse_opts, True) for q in indexquants
+        ]
         if in_list_mode:
             idcs = shift_indices(varname, idcs, curdatadic)
         for i, idx in enumerate(idcs):

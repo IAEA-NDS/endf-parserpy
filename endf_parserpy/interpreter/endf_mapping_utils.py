@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/12/07
+# Last modified:   2025/05/27
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -29,6 +29,7 @@ from .custom_exceptions import (
     VariableInDenominatorError,
     LoopVariableError,
     VariableNotFoundError,
+    IndexVariableNotFoundError,
     UnavailableIndexError,
     InvalidIntegerError,
     SeveralUnboundVariablesError,
@@ -41,24 +42,19 @@ from .helpers import (
 import re
 
 
-def get_indexvalue(token, loop_vars):
-    tokname = get_name(token)
-    tokval = get_value(token)
-    if tokname == "INDEXVAR":
-        return loop_vars[tokval]
-    elif tokname == "INDEXNUM":
-        try:
-            idx = int(tokval)
-        except ValueError as valerr:
-            raise InvalidIntegerError(
-                f"Numbers in index specifications must be integer "
-                "but here we got {tokval}."
-            )
-        return idx
-    else:
-        raise TypeError(
-            f"The token of type {tokname} is not allowed as index specification."
+def get_indexvalue(expr, datadic, loop_vars, parse_opts, look_up):
+    try:
+        val = eval_expr_without_unknown_var(
+            expr, datadic, loop_vars, parse_opts, look_up
         )
+    except VariableNotFoundError as exc:
+        raise exc.to_index_error() from exc
+    if int(val) != val:
+        raise InvalidIntegerError(
+            f"Numbers in index specifications must be integer "
+            f"but here we got {val}."
+        )
+    return val
 
 
 def substitute_abbreviation(val, datadic, loop_vars, parse_opts, look_up):
@@ -96,7 +92,7 @@ def _get_array_value_in_list_mode(varname, array_cont, idcs):
 def get_array_value(varname, idxquants, datadic, loop_vars, parse_opts):
     in_list_mode = parse_opts["internal_array_type"] == "list"
     array_obj = datadic[varname]
-    idcs = [get_indexvalue(q, loop_vars) for q in idxquants]
+    idcs = [get_indexvalue(q, datadic, loop_vars, parse_opts, True) for q in idxquants]
     if in_list_mode:
         idcs = shift_indices(varname, idcs, datadic)
         return _get_array_value_in_list_mode(varname, array_obj, idcs)
@@ -104,17 +100,21 @@ def get_array_value(varname, idxquants, datadic, loop_vars, parse_opts):
         return _get_array_value_in_dict_mode(varname, array_obj, idcs)
 
 
-def _set_array_value_in_dict_mode(varname, idxquants, value, datadic, loop_vars):
+def _set_array_value_in_dict_mode(
+    varname, idxquants, value, datadic, loop_vars, parse_opts
+):
     curdic = datadic.setdefault(varname, {})
     for idxquant in idxquants[:-1]:
-        idx = get_indexvalue(idxquant, loop_vars)
+        idx = get_indexvalue(idxquant, datadic, loop_vars, parse_opts, True)
         curdic = curdic.setdefault(idx, {})
-    idx = get_indexvalue(idxquants[-1], loop_vars)
+    idx = get_indexvalue(idxquants[-1], datadic, loop_vars, parse_opts, True)
     curdic[idx] = value
 
 
-def _set_array_value_in_list_mode(varname, idxquants, value, datadic, loop_vars):
-    idcs = [get_indexvalue(q, loop_vars) for q in idxquants]
+def _set_array_value_in_list_mode(
+    varname, idxquants, value, datadic, loop_vars, parse_opts
+):
+    idcs = [get_indexvalue(q, datadic, loop_vars, parse_opts, True) for q in idxquants]
     idcs = shift_indices(varname, idcs, datadic)
     curlist = datadic.setdefault(varname, [])
     for idx in idcs[:-1]:
@@ -125,9 +125,13 @@ def _set_array_value_in_list_mode(varname, idxquants, value, datadic, loop_vars)
 def set_array_value(varname, idxquants, value, datadic, loop_vars, parse_opts):
     in_list_mode = parse_opts["internal_array_type"] == "list"
     if not in_list_mode:
-        _set_array_value_in_dict_mode(varname, idxquants, value, datadic, loop_vars)
+        _set_array_value_in_dict_mode(
+            varname, idxquants, value, datadic, loop_vars, parse_opts
+        )
     else:
-        _set_array_value_in_list_mode(varname, idxquants, value, datadic, loop_vars)
+        _set_array_value_in_list_mode(
+            varname, idxquants, value, datadic, loop_vars, parse_opts
+        )
 
 
 def varname_or_extvarname_check(expr):
@@ -139,7 +143,7 @@ def varname_or_extvarname_check(expr):
         )
 
 
-def generate_varname_str(expr, loop_vars):
+def generate_varname_str(expr, datadic, loop_vars, parse_opts, look_up):
     varname_or_extvarname_check(expr)
     node_name = get_name(expr)
     if node_name == "VARNAME":
@@ -151,7 +155,7 @@ def generate_varname_str(expr, loop_vars):
         if child_name == "VARNAME":
             retstr += get_value(child)
         elif child_name == "indexquant":
-            idxval = get_indexvalue(child, loop_vars)
+            idxval = get_indexvalue(child, datadic, loop_vars, parse_opts, look_up)
             retstr += str(idxval)
         else:
             retstr += get_value(child)
@@ -186,6 +190,8 @@ def get_varval(expr, datadic, loop_vars, parse_opts, look_up=True, eval_abbrev=T
             return datadic[varname]
     else:
         val = get_array_value(varname, idxquants, datadic, loop_vars, parse_opts)
+        # TODO: Can this if block be removed? Does it make sense to subsitute a name
+        #       if is associated with an array name (hence has indices). Probably not.
         if eval_abbrev:
             return substitute_abbreviation(
                 val, orig_datadic, loop_vars, parse_opts, look_up
@@ -230,21 +236,22 @@ def get_varname(expr):
     elif is_token(expr):
         if get_name(expr) == "VARNAME":
             return get_value(expr)
-
     return None
 
 
 def get_indexquants(expr):
     if not is_tree(expr):
         return None
+    node_type = get_name(expr)
+    if node_type in ("section_head", "list_name", "table_name"):
+        expr = get_child(expr, "extvarname")
+        node_type = get_name(expr)
+    assert node_type == "extvarname"
     idxquants = []
     for ch in expr.children:
-        if is_tree(ch):
-            varname = get_indexquants(ch)
-            if varname is not None:
-                idxquants.extend(varname)
-        elif get_name(ch) in ("INDEXVAR", "INDEXNUM"):
-            idxquants.append(ch)
+        if is_tree(ch) and get_name(ch) == "indexquant":
+            child_expr = get_child(ch, "expr")
+            idxquants.append(child_expr)
     return idxquants if len(idxquants) > 0 else None
 
 
@@ -325,6 +332,8 @@ def eval_expr(
                     )
                 else:
                     return (val, 0, None)
+            except IndexVariableNotFoundError as exc:
+                raise
             except VariableNotFoundError as exc:
                 if not accept_missing:
                     raise exc

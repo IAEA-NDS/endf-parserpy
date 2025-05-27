@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/13
-# Last modified:   2024/12/07
+# Last modified:   2025/05/27
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -70,6 +70,13 @@ class VariableNotFoundError(ParserException):
     def __init__(self, message, varname=""):
         super().__init__(message)
         self.varname = varname
+
+    def to_index_error(self):
+        return IndexVariableNotFoundError(*self.args, varname=self.varname)
+
+
+class IndexVariableNotFoundError(VariableNotFoundError):
+    pass
 
 
 class UnavailableIndexError(ParserException):

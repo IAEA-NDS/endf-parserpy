@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/12/07
+# Last modified:   2025/05/27
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -142,7 +142,7 @@ extvarname : VARNAME ("[" indexquant ("," indexquant)* "]")?
 VARNAME : LETTER (LETTER | DIGIT | "_")*
 INDEXVAR : VARNAME
 INDEXNUM : NUMBER
-indexquant : INDEXVAR | INDEXNUM
+indexquant : expr
 
 // special number symbol indicating that
 // a specific number is expected but it may be different in practice

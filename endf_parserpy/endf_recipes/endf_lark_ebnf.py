@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/27
+# Last modified:   2025/05/28
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -140,8 +140,6 @@ bracketexpr : "(" expr ")"
 // allowed variable names (including indices)
 extvarname : VARNAME ("[" indexquant ("," indexquant)* "]")?
 VARNAME : LETTER (LETTER | DIGIT | "_")*
-INDEXVAR : VARNAME
-INDEXNUM : NUMBER
 indexquant : expr
 
 // special number symbol indicating that

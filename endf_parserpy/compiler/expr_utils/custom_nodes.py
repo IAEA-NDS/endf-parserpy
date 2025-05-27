@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/07
-# Last modified:   2025/05/27
+# Last modified:   2025/05/28
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -34,7 +34,7 @@ class VariableToken(Token):
             inst.inconsistent = inconsistent
             return inst
 
-        if isinstance(node, Token) and node.type in ("INDEXVAR", "VARNAME"):
+        if isinstance(node, Token) and node.type in ("VARNAME",):
             inst = super().__new__(cls, "VARIABLE", node.value)
             inst.extvarname = str(node)
             inst.indices = tuple()

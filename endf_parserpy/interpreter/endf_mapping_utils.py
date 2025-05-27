@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/27
+# Last modified:   2025/05/28
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -268,7 +268,6 @@ def get_all_extvarnames(expr):
             elif child_name == "indexquant":
                 assert len(ch.children) == 1
                 indexquant_child = ch.children[0]
-                assert get_name(indexquant_child) in ("INDEXVAR", "INDEXNUM")
                 indices.append(get_value(indexquant_child))
             assert varname is not None
             return [(varname, tuple(indices))]

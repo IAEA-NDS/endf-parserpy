@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2025/05/22
+# Last modified:   2025/05/28
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -25,7 +25,7 @@ def _simplify_token(token):
         return DesiredNumberToken(token.value.rstrip("?"))
     # hack: VARIABLE is not part of the grammar but is introduced
     #       as a token type in VariableToken, therefore added
-    elif token.type in ("VARNAME", "INDEXVAR", "INDEXNUM", "NUMBER", "VARIABLE"):
+    elif token.type in ("VARNAME", "NUMBER", "VARIABLE"):
         return token
     return None
 

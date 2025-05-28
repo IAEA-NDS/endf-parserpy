@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2025/05/27
+# Last modified:   2025/05/28
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -89,7 +89,7 @@ def get_cpp_objstr(tok, vardict, vartypes=None):
 def get_idxstr(vartok, i, vardict, vartypes=None):
     vartypes = {} if vartypes is None else vartypes
     idxtok = vartok.indices[i]
-    cpp_idxstr = transform_nodes(idxtok, expr2str_shiftidx, vardict)
+    cpp_idxstr = transform_nodes(idxtok, expr2str_shiftidx, vardict, vartypes=vartypes)
     return cpp_idxstr
 
 

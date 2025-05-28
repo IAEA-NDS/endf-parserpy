@@ -1,9 +1,8 @@
 import pytest
 from endf_parserpy import EndfParser
-from endf_parserpy.interpreter.custom_exceptions import NumberMismatchError
 
 
-def create_mf1_mt1_test_section(inconsistent=False):
+def create_mf1_test_section(mt, inconsistent=False):
     ctrl_record = "1234 1  1"
     head_record = (
         (
@@ -48,15 +47,25 @@ def create_mf1_mt1_test_section(inconsistent=False):
 
 @pytest.fixture(scope="function")
 def mf1_mt1_test_section():
-    return create_mf1_mt1_test_section(inconsistent=False)
+    return create_mf1_test_section(mt=1, inconsistent=False)
 
 
 @pytest.fixture(scope="function")
 def inconsistent_mf1_mt1_test_section():
-    return create_mf1_mt1_test_section(inconsistent=True)
+    return create_mf1_test_section(mt=1, inconsistent=True)
 
 
-def mf1_mt1_test_section_assertions(endf_dict):
+@pytest.fixture(scope="function")
+def mf1_mt2_test_section():
+    return create_mf1_test_section(mt=2, inconsistent=False)
+
+
+@pytest.fixture(scope="function")
+def mf1_mt3_test_section():
+    return create_mf1_test_section(mt=3, inconsistent=False)
+
+
+def mf1_test_section_assertions(endf_dict):
     assert endf_dict[1][1]["A"][1] == 9
     assert endf_dict[1][1]["A"][2] == 2
     assert endf_dict[1][1]["B"][1] == 2
@@ -65,17 +74,19 @@ def mf1_mt1_test_section_assertions(endf_dict):
     assert endf_dict[1][1]["C"][2] == 6
 
 
-def test_nested_indices(mf1_mt1_test_section):
+def test_nested_indices_in_record_fields(mf1_mt1_test_section, endf_parser):
+    endf_dict = endf_parser.parse(mf1_mt1_test_section)
+    mf1_test_section_assertions(endf_dict)
+
+
+def test_nested_indices_in_if_head(mf1_mt2_test_section, endf_parser):
     parser = EndfParser(
         endf_format="test", ignore_send_records=True, ignore_missing_tpid=True
     )
-    endf_dict = parser.parse(mf1_mt1_test_section)
-    mf1_mt1_test_section_assertions(endf_dict)
+    endf_dict = parser.parse(mf1_mt2_test_section)
+    mf1_test_section_assertions(endf_dict)
 
 
-def test_nested_indices_with_inconsistent_assignment(inconsistent_mf1_mt1_test_section):
-    parser = EndfParser(
-        endf_format="test", ignore_send_records=True, ignore_missing_tpid=True
-    )
-    with pytest.raises(NumberMismatchError):
-        endf_dict = parser.parse(inconsistent_mf1_mt1_test_section)
+def test_nested_indices_in_for_head(mf1_mt3_test_section, endf_parser):
+    endf_dict = endf_parser.parse(mf1_mt3_test_section)
+    mf1_test_section_assertions(endf_dict)

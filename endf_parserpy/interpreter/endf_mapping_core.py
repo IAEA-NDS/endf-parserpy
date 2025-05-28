@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2025/05/27
+# Last modified:   2025/05/28
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -290,7 +290,13 @@ def map_text_record_helper(
             if textlength_node is not None:
                 textlength = int(get_value(textlength_node))
             if extvarname_node is not None:
-                curstr = get_varval(extvarname_node, datadic, loop_vars, parse_opts)
+                curstr = get_varval(
+                    extvarname_node,
+                    datadic,
+                    loop_vars,
+                    parse_opts,
+                    raise_if_missing=True,
+                )
                 if textlength is not None and len(curstr) != textlength:
                     varnamestr = generate_varname_str(
                         extvarname_node, datadic, loop_vars, parse_opts, True

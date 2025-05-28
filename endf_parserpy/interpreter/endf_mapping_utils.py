@@ -65,11 +65,13 @@ def substitute_abbreviation(val, datadic, loop_vars, parse_opts, look_up):
     return val
 
 
-def _get_array_value_in_dict_mode(varname, array_cont, idcs):
+def _get_array_value_in_dict_mode(varname, array_cont, idcs, raise_if_missing):
     curdic = array_cont
     for idx in idcs:
         if idx in curdic:
             curdic = curdic[idx]
+        elif not raise_if_missing:
+            return None
         else:
             raise UnavailableIndexError(
                 f"index {idx} does not exist in array {varname}"
@@ -77,11 +79,13 @@ def _get_array_value_in_dict_mode(varname, array_cont, idcs):
     return curdic
 
 
-def _get_array_value_in_list_mode(varname, array_cont, idcs):
+def _get_array_value_in_list_mode(varname, array_cont, idcs, raise_if_missing):
     curlst = array_cont
     for idx in idcs:
         if idx >= 0 and idx < len(curlst):
             curlst = curlst[idx]
+        elif not raise_if_missing:
+            return None
         else:
             raise UnavailableIndexError(
                 f"index {idx} does not exist in array {varname}"
@@ -89,15 +93,17 @@ def _get_array_value_in_list_mode(varname, array_cont, idcs):
     return curlst
 
 
-def get_array_value(varname, idxquants, datadic, loop_vars, parse_opts):
+def get_array_value(
+    varname, idxquants, datadic, loop_vars, parse_opts, raise_if_missing
+):
     in_list_mode = parse_opts["internal_array_type"] == "list"
     array_obj = datadic[varname]
     idcs = [get_indexvalue(q, datadic, loop_vars, parse_opts, True) for q in idxquants]
     if in_list_mode:
         idcs = shift_indices(varname, idcs, datadic)
-        return _get_array_value_in_list_mode(varname, array_obj, idcs)
+        return _get_array_value_in_list_mode(varname, array_obj, idcs, raise_if_missing)
     else:
-        return _get_array_value_in_dict_mode(varname, array_obj, idcs)
+        return _get_array_value_in_dict_mode(varname, array_obj, idcs, raise_if_missing)
 
 
 def _set_array_value_in_dict_mode(
@@ -162,7 +168,15 @@ def generate_varname_str(expr, datadic, loop_vars, parse_opts, look_up):
     return retstr
 
 
-def get_varval(expr, datadic, loop_vars, parse_opts, look_up=True, eval_abbrev=True):
+def get_varval(
+    expr,
+    datadic,
+    loop_vars,
+    parse_opts,
+    look_up=True,
+    eval_abbrev=True,
+    raise_if_missing=False,
+):
     varname_or_extvarname_check(expr)
     varname = get_varname(expr)
     idxquants = get_indexquants(expr)
@@ -180,7 +194,9 @@ def get_varval(expr, datadic, loop_vars, parse_opts, look_up=True, eval_abbrev=T
     while varname not in datadic and "__up" in datadic and look_up:
         datadic = datadic["__up"]
     if varname not in datadic:
-        raise VariableNotFoundError(f"variable {varname} not found", varname)
+        if raise_if_missing:
+            raise VariableNotFoundError(f"variable {varname} not found", varname)
+        return None
     if idxquants is None:
         if eval_abbrev:
             return substitute_abbreviation(
@@ -189,7 +205,11 @@ def get_varval(expr, datadic, loop_vars, parse_opts, look_up=True, eval_abbrev=T
         else:
             return datadic[varname]
     else:
-        val = get_array_value(varname, idxquants, datadic, loop_vars, parse_opts)
+        val = get_array_value(
+            varname, idxquants, datadic, loop_vars, parse_opts, raise_if_missing
+        )
+        if val is None:
+            return val
         # TODO: Can this if block be removed? Does it make sense to subsitute a name
         #       if is associated with an array name (hence has indices). Probably not.
         if eval_abbrev:
@@ -317,30 +337,24 @@ def eval_expr(
         else:
             # if datadic and variable exists in datadic
             # we substitute the variable name by its value
-            try:
-                val = get_varval(expr, datadic, loop_vars, parse_opts, look_up, False)
-                if is_tree(val) and get_name(val) == "expr":
-                    return eval_expr(
-                        val,
-                        datadic,
-                        loop_vars,
-                        parse_opts,
-                        look_up,
-                        cast_int,
-                        accept_missing,
-                    )
-                else:
-                    return (val, 0, None)
-            except IndexVariableNotFoundError as exc:
-                raise
-            except VariableNotFoundError as exc:
-                if not accept_missing:
-                    raise exc
+            val = get_varval(
+                expr, datadic, loop_vars, parse_opts, look_up, False, not accept_missing
+            )
+            if val is None:
                 return (0, 1, expr)
-            except UnavailableIndexError as exc:
-                if not accept_missing:
-                    raise exc
-                return (0, 1, expr)
+            elif is_tree(val) and get_name(val) == "expr":
+                return eval_expr(
+                    val,
+                    datadic,
+                    loop_vars,
+                    parse_opts,
+                    look_up,
+                    cast_int,
+                    accept_missing,
+                )
+            else:
+                return (val, 0, None)
+
     elif name == "NUMBER" or name == "DESIRED_NUMBER":
         vstr = expr.value
         # a desired number is suffixed by a question mark

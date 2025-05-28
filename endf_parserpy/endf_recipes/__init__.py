@@ -3,6 +3,7 @@ from .endf6 import endf_recipe_dictionary as endf6_recipes
 from .jendl import endf_recipe_dictionary as jendl_recipes
 from .pendf import endf_recipe_dictionary as pendf_recipes
 from .errorr import endf_recipe_dictionary as errorr_recipes
+from .test import endf_recipe_dictionary as test_recipes
 
 
 _FORMAT_DICT = {
@@ -11,6 +12,7 @@ _FORMAT_DICT = {
     "jendl": jendl_recipes,
     "pendf": pendf_recipes,
     "errorr": errorr_recipes,
+    "test": test_recipes,
 }
 
 

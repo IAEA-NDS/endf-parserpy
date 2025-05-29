@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/25
+# Last modified:   2025/05/29
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -147,6 +147,15 @@ def pureif(condition, code, escape=False):
 def forloop(start, stop, inc, body):
     code = line(f"for ({start}; {stop}; {inc}) {{")
     code += indent_code(body, INDENT)
+    code += close_block()
+    return code
+
+
+def trycatch(try_block, exception, catch_block):
+    code = line("try {")
+    code += indent_code(try_block, INDENT)
+    code += line(f"}} catch ({exception}) {{")
+    code += indent_code(catch_block, INDENT)
     code += close_block()
     return code
 

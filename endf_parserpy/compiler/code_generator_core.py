@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2025/05/22
+# Last modified:   2025/05/29
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -441,7 +441,11 @@ def generate_code_for_if_statement(node, vardict):
                 cpp.concat(
                     [
                         vardef_code,
-                        la_body_code,
+                        cpp.trycatch(
+                            la_body_code,
+                            "const std::out_of_range& e",
+                            cpp.comment("// accept failure in lookahead"),
+                        ),
                         cpp.pureif(
                             condition=logical_expr_str,
                             code=cpp.statement("cpp_found_match = true"),

@@ -3,16 +3,17 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/22
+# Last modified:   2025/05/29
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from lark.lexer import Token
 from endf_parserpy.utils.tree_utils import is_tree, get_name, get_child, get_child_value
+from .logging_utils import write_info
 from .meta_control_utils import cycle_for_loop
-from .lookahead_management import should_proceed
+from .lookahead_management import should_proceed, in_lookahead
 from .meta_control_utils import open_section, close_section
 from .custom_exceptions import (
     VariableNotFoundError,
@@ -399,6 +400,8 @@ def map_list_dic(
             return list_dic
         else:
             return datadic
+
+    write_info(logger, f"Entering list body (lookahead={in_lookahead(loop_vars)})")
 
     # enter subsection if demanded
     list_name_node = get_child(list_line_node, "list_name", nofail=True)

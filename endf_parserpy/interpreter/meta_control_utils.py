@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/27
+# Last modified:   2025/05/29
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -32,6 +32,7 @@ from .custom_exceptions import (
     LoopVariableError,
     AbbreviationNameCollisionError,
     VariableNotFoundError,
+    UnavailableIndexError,
     UnexpectedControlRecordError,
     MissingSectionError,
 )
@@ -209,11 +210,10 @@ def eval_if_condition(
         right_val = eval_expr_without_unknown_var(
             right_expr, datadic, loop_vars, parse_opts
         )
-    except VariableNotFoundError as exc:
+    except (VariableNotFoundError, UnavailableIndexError):
         if missing_as_false:
             return False
-        else:
-            raise exc
+        raise
     write_info(
         logger, f"Left side evaluates to {left_val} and right side to {right_val}"
     )

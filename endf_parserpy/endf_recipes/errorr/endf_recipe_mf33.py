@@ -1,6 +1,6 @@
 ###################################################################
 #
-# Author(s):       Daniel L. Aldama
+# Author(s):       Daniel L. Aldama, Georg Schnabel
 # Email:           dlopezaldama@gmail.com
 # Creation date:   2025/05/21
 # Last modified:   2025/05/29
@@ -32,8 +32,8 @@ ENDF_RECIPE_MF33 = """
 #                             for which covariances will be given explicitly
 # var subsection/*/IG1[i]:    Initial energy group index for reaction MT1 of MAT1
 # var subsection/*/IG[i]:     Energy group index of reaction MT of MAT
-# var subsection/*/COV[II,J]: Covariance data for the energy group II of (MAT,MT) and
-#                             the energy group J of (MAT1,MT1)
+# var subsection/*/COV[i,j]:  Covariance between the energy group IG[i] of (MAT,MT) and
+#                             the energy group IG1[j] of (MAT1,MT1)
 
 # The entry MAT1=0 is a flag to indicate that MAT1=MAT.
 # The last row of the covariance matrix is always given explicitly, even if
@@ -45,15 +45,15 @@ ENDF_RECIPE_MF33 = """
 for k=1 to NK:
     (subsection[k])
         [MAT, 33, MT/ 0.0, 0.0, MAT1, MT1, 0, NG] CONT
-        for i=1 to NG-1:
-           if IG[i] != NG [lookahead=1]:
+        for i=1 to NG:
+           # The NG1[i] != 0 condition is a hack because we know
+           # that a potential subsequent CONT and SEND record
+           # have a zero at the position associated with NG1, and
+           # NG1 must be non-zero for a valid LIST record.
+           if IG[i] <= NG and NG1[i] != 0 [lookahead=1]:
               [MAT, 33, MT/ 0.0, 0.0, NG1[i], IG1[i], NG1[i], IG[i] /
-                  {COV[IG[i],J]}{J=IG1[i] to IG1[i]+NG1[i]-1}] LIST
+                  {COV[i,j]}{j=1 to NG1[i]}] LIST
            endif
-        endfor
-        for i=NG to NG:
-           [MAT, 33, MT/ 0.0, 0.0, NG1[i], IG1[i], NG1[i], IG[i] /
-               {COV[IG[i],J]}{J=IG1[i] to IG1[i]+NG1[i]-1}] LIST
         endfor
     (/subsection[k])
 endfor

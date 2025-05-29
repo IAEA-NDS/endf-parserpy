@@ -3,7 +3,7 @@
 # Author(s):       Daniel L. Aldama
 # Email:           dlopezaldama@gmail.com
 # Creation date:   2025/05/21
-# Last modified:   2025/05/22
+# Last modified:   2025/05/29
 # License:         MIT
 # Copyright (c) 2025 International Atomic Energy Agency (IAEA)
 #
@@ -48,12 +48,12 @@ for k=1 to NK:
         for i=1 to NG-1:
            if IG[i] != NG [lookahead=1]:
               [MAT, 33, MT/ 0.0, 0.0, NG1[i], IG1[i], NG1[i], IG[i] /
-                  {{COV[II,J]}{J=IG1[i] to IG1[i]+NG1[i]-1}}{II=IG[i] to IG[i]}] LIST
+                  {COV[IG[i],J]}{J=IG1[i] to IG1[i]+NG1[i]-1}] LIST
            endif
         endfor
         for i=NG to NG:
            [MAT, 33, MT/ 0.0, 0.0, NG1[i], IG1[i], NG1[i], IG[i] /
-               {{COV[II,J]}{J=IG1[i] to IG1[i]+NG1[i]-1}}{II=IG[i] to IG[i]}] LIST
+               {COV[IG[i],J]}{J=IG1[i] to IG1[i]+NG1[i]-1}] LIST
         endfor
     (/subsection[k])
 endfor

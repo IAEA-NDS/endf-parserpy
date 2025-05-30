@@ -51,7 +51,7 @@ for k=1 to NK:
            # have a zero at the position associated with NG1, and
            # NG1 must be non-zero for a valid LIST record.
            if IG[i] <= NG and NG1[i] != 0 [lookahead=1]:
-              [MAT, 33, MT/ 0.0, 0.0, NG1[i], IG1[i], NG1[i], IG[i] /
+              [MAT, 33, MT/ 0.0, 0.0, NW1[i], IG1[i], NG1[i], IG[i] /
                   {COV[i,j]}{j=1 to NG1[i]}] LIST
            endif
         endfor

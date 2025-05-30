@@ -13,11 +13,12 @@ perform various actions on ENDF-6 files, such as:
 - Merge data from various ENDF-6 files into a single one
 - Compare ENDF-6 files with meaningful reporting on differences
 - Construct ENDF-6 files from scratch
-- Many of these actions can be performed via the command line
 
 
+Many of these actions can be performed via the command line.
 The support for the [ENDF-6 format]((https://doi.org/10.2172/1425114))
-is comprehensive.
+is comprehensive and some special NJOY2016 output formats
+are also supported.
 The package has been tested on the various sublibraries
 of the major nuclear data libraries, such as
 [ENDF/B](https://www.nndc.bnl.gov/endf/),
@@ -34,7 +35,7 @@ This package is available on the
 and can be installed using ``pip``:
 
 ```sh
-pip install endf-parserpy
+python -m pip install endf-parserpy --upgrade
 ```
 
 

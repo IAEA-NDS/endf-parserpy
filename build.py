@@ -65,6 +65,13 @@ class OptionalBuildExt(pybind11_build_ext):
 
 
 def build(setup_kwargs):
+    # parse all ready-made endf recipes and put result files
+    # in package cache directory so that they don't need to
+    # be parsed again during package invocation by user
+    from endf_parserpy.endf_recipes import _populate_recipe_cache
+
+    _populate_recipe_cache(clear_dir=True)
+
     # perform option C++ module compilation
     compile_env_var = os.environ.get("INSTALL_ENDF_PARSERPY_CPP", "optional")
     if compile_env_var == "no":

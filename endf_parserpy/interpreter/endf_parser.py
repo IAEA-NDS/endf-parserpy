@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/23
+# Last modified:   2025/05/31
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -258,20 +258,9 @@ class EndfParser:
         """
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
-        if cache_dir is None:
-            cache_dir = user_cache_dir("endf_parserpy", "gschnabel")
-            if print_cache_info:
-                print(
-                    f"Compiled ENDF recipes are cached in {cache_dir}\n"
-                    + "Specify `cache_dir=False` to disable the creation "
-                    + "and use of a cache directory.\n"
-                    + "Alternatively, pass a path as `cache_dir` argument.\n"
-                    + "To suppress this message, specify `print_cache_info=False`."
-                )
-
         if recipes is None:
             recipes = get_recipe_dict(endf_format)
-        self.tree_dic = get_recipe_parsetree_dic(recipes, cache_dir)
+        self.tree_dic = get_recipe_parsetree_dic(recipes, cache_dir, print_cache_info)
         self.parsing_funs = parsing_funs if parsing_funs is not None else {}
 
         # endf record treatment

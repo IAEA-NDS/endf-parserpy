@@ -32,7 +32,8 @@ packages = [
 ]
 
 include = [
-    { path = "endf_parserpy/compiler/cpp_templates", format = ["sdist", "wheel"] }
+    { path = "endf_parserpy/compiler/cpp_templates", format = ["sdist", "wheel"] },
+    { path = "endf_parserpy/recipe_cache", format= ["sdist", "wheel"] }
 ]
 
 [tool.poetry.dependencies]

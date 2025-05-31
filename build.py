@@ -7,6 +7,7 @@ from pybind11.setup_helpers import (
     build_ext as pybind11_build_ext,
 )
 import logging
+import platform
 
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,31 @@ console_handler.setFormatter(formatter)
 
 # add the handler to the logger
 logger.addHandler(console_handler)
+
+
+def determine_optimization_flags():
+    optim_env_var = os.environ.get("INSTALL_ENDF_PARSERPY_CPP_OPTIM", None)
+    if optim_env_var is None:
+        return []
+    try:
+        optim_level = int(optim_env_var)
+    except ValueError:
+        optim_level = None
+
+    if optim_level is None or optim_level not in (0, 1, 2, 3):
+        raise ValueError(
+            "Optimization level provided in environment variable "
+            "`INSTALL_ENDF_PARSERPY_CPP_OPTIM` must be 0, 1, 2 or 3"
+        )
+
+    if platform.system() in ("Darwin", "Linux"):  # macOS and Linux (gcc/clang)
+        return [f"-O{optim_level}"]
+    elif platform.system() == "Windows":  # Windows (MSVC)
+        if optim_level == 3:
+            optim_level = "x"
+        return [f"/O{optim_level}"]
+    else:
+        return []  # use compiler default on unknown platform
 
 
 class OptionalBuildExt(pybind11_build_ext):
@@ -46,6 +72,8 @@ def build(setup_kwargs):
             "Skipping generation of C++ ENDF-6 read/write module as per environment variable."
         )
         return
+
+    optim_flags = determine_optimization_flags()
     # import function to generate C++ code
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
     from endf_parserpy.compiler.compiler import _prepare_cpp_parsers_subpackage
@@ -62,7 +90,7 @@ def build(setup_kwargs):
         Pybind11Extension(
             subpackage_prefix + os.path.splitext(os.path.basename(cpp_file))[0],
             [cpp_file],
-            extra_compile_args=["-std=c++11"],
+            extra_compile_args=["-std=c++11"] + optim_flags,
         )
         for cpp_file in cpp_files
     ]

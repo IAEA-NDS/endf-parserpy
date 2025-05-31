@@ -77,12 +77,28 @@ Install endf-parserpy
 
    python -m pip install endf-parserpy --upgrade
 
+
+.. note::
+   For accelerated parsing and writing, use the
+   :class:`~endf_parserpy.EndfParserCpp` class instead of
+   the :class:`~endf_parserpy.EndfParser` class, which boosts speed
+   by over 50 times:
+
+   .. code:: python
+
+      from endf_parserpy import EndfParserCpp
+      parser = EndfParserCpp()
+
+   See the :ref:`section on accelerated parsing
+   <accelerated_parsing_and_writing_sec>` for more details.
+
+
 .. note::
 
-   The package contains C++ source files for
-   :ref:`accelerated parsing <accelerated_parsing_and_writing_sec>`.
+   :ref:`Accelerated parsing <accelerated_parsing_and_writing_sec>`
+   depends on compiled C++ code.
    If a suitable binary wheel isn't available for your platform,
-   an attempt will be made to compile the source files during
+   an attempt will be made to compile the C++ source files during
    installation, which may take up to ten minutes. If you don't
    need this acceleration, you can disable the compilation attempt by
    setting the environment variable ``INSTALL_ENDF_PARSERPY_CPP``

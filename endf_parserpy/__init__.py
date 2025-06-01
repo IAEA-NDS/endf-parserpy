@@ -1,3 +1,5 @@
+from .endf_parser_base import EndfParserBase
+from .endf_parser_factory import EndfParserFactory
 from .interpreter import (
     EndfParserPy,
     EndfParser,  # deprecated alias
@@ -27,8 +29,9 @@ __version__ = "0.13.1"
 
 
 __all__ = (
-    "EndfParser",
-    "BasicEndfParser",
+    "EndfParserBase",
+    "EndfParserFactory",
+    "EndfParserPy",
     "EndfParserCpp",
     "EndfDict",
     "EndfPath",
@@ -38,4 +41,7 @@ __all__ = (
     "list_parsed_sections",
     "list_unparsed_sections",
     "sanitize_fieldname_types",
+    # deprecated aliases
+    "EndfParser",
+    "BasicEndfParser",
 )

@@ -36,7 +36,7 @@ jobs:
       - name: Install package and dependencies
         env:
           INSTALL_ENDF_PARSERPY_CPP: ${{ github.event_name == 'push' && 'no' || 'yes' }}
-        run: poetry install --with dev
+        run: poetry install --with dev -v
 
       - name: Run all tests
         if: github.event_name != 'push'

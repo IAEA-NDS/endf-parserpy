@@ -1,4 +1,8 @@
-from .interpreter import EndfParser, BasicEndfParser
+from .interpreter import (
+    EndfParserPy,
+    EndfParser,  # deprecated alias
+    BasicEndfParser,  # deprecated alias
+)
 from .cpp_parsers import EndfParserCpp
 from .utils import (
     debugging_utils,

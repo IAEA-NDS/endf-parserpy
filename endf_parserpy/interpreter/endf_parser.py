@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/31
+# Last modified:   2025/06/01
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -11,6 +11,7 @@
 
 from collections.abc import Mapping
 import logging
+import warnings
 import re
 from .logging_utils import setup_logger, write_info, RingBuffer
 from platformdirs import user_cache_dir
@@ -87,9 +88,10 @@ from .endf_recipe_utils import (
 from endf_parserpy.endf_recipes import get_recipe_dict
 from endf_parserpy.utils.debugging_utils import TrackingDict
 from .helpers import array_dict_to_list
+from ..endf_parser_base import EndfParserBase
 
 
-class EndfParser:
+class EndfParserPy(EndfParserBase):
     """Class for parsing and writing ENDF-6 formatted data.
 
     This class provides functions for
@@ -1232,10 +1234,24 @@ class EndfParser:
 # DEPRECATED NAME
 
 
-class BasicEndfParser(EndfParser):
+warnings.simplefilter("always", DeprecationWarning)
+
+
+class BasicEndfParser(EndfParserPy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        logging.warning(
-            "DEPRECATION NOTICE: The name of the class is now `EndfParser`. "
-            + "The alias `BasicEndfParser` will be abandoned soon."
+        warnings.warn(
+            "The name of the Python parser class is now `EndfParserPy`. "
+            "The alias `BasicEndfParser` will be abandoned soon.",
+            DeprecationWarning,
+        )
+
+
+class EndfParser(EndfParserPy):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        warnings.warn(
+            "The name of the Python parser class is now `EndfParserPy`. "
+            "The alias `BasicEndfParser` will be abandoned soon.",
+            DeprecationWarning,
         )

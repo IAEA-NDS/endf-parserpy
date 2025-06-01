@@ -49,7 +49,7 @@ def _populate_recipe_cache(clear_dir=False):
     if clear_dir:
         if os.path.exists(recipe_cache_dir):
             shutil.rmtree(recipe_cache_dir)
-        os.makedirs(recipe_cache_dir, exist_ok=True)
+    os.makedirs(recipe_cache_dir, exist_ok=True)
     # it does not hurt to create an __init__ file to be sure
     # that the cache directory is created/copied during package installation
     initfile_path = os.path.join(recipe_cache_dir, "__init__.py")
@@ -59,5 +59,5 @@ def _populate_recipe_cache(clear_dir=False):
     # instantiate parser for each endf flavor to create compiled recipe files
     endf_flavors = list_endf_flavors()
     for flavor in endf_flavors:
-        print("Compiling ENDF recipe flavor {flavor}")
+        print(f"Compiling ENDF recipe flavor {flavor}")
         EndfParser(endf_format=flavor, cache_dir=recipe_cache_dir)

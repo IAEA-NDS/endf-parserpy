@@ -11,15 +11,15 @@
 
 import typing
 from typing import Optional, Union
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from abc import ABC, abstractmethod
 
 
 StringInput = Union[str, List[str]]
 
 MfNumberType = MtNumberType = int
-MfMtTupleType = tuple[MfNumberType, MtNumberType]
-MfMtTuplesType = tuple[Union[MfNumberType, MfMtTupleType]]
+MfMtTupleType = Tuple[MfNumberType, MtNumberType]
+MfMtTuplesType = Tuple[Union[MfNumberType, MfMtTupleType]]
 
 EndfValueType = Union[dict, list, int, float, str]
 ParsedEndfSectionType = Dict[str, EndfValueType]

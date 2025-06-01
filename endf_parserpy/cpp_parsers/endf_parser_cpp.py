@@ -3,18 +3,19 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2024/12/10
+# Last modified:   2025/06/01
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 import importlib
 import os
 from endf_parserpy.utils.accessories import EndfDict
+from ..endf_parser_base import EndfParserBase
 
 
-class EndfParserCpp:
+class EndfParserCpp(EndfParserBase):
     """Class for parsing and writing ENDF-6 formatted data.
 
     This class provides functions for (1) parsing ENDF-6 formatted

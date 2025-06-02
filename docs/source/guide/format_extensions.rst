@@ -120,13 +120,13 @@ We could have achieved the same by copy-pasting the
 complete recipe specification into a text editor and
 insert the format extension manually at the correct location.
 
-To make :class:`~endf_parserpy.EndfParser` aware
+To make :class:`~endf_parserpy.EndfParserPy` aware
 of the format extension, we need to pass the ``recipes`` argument
 with the updated ENDF recipe dictionary to its constructor:
 
 .. code:: python
 
-   parser = EndfParser(recipes=new_recipe_dictionary)
+   parser = EndfParserPy(recipes=new_recipe_dictionary)
 
 
 For the sake of illustration, let's create an

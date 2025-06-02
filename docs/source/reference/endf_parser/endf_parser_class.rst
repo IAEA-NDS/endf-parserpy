@@ -2,10 +2,10 @@
 
 .. _endf_parser_class:
 
-EndfParser
-----------
+EndfParserPy
+------------
 
-.. autoclass:: EndfParser
+.. autoclass:: EndfParserPy
    :members: parse, write, parsefile, writefile, explain
    :undoc-members:
    :show-inheritance:

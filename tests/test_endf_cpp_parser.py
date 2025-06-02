@@ -1,6 +1,6 @@
 import pytest
 import os
-from endf_parserpy.interpreter.endf_parser import EndfParser
+from endf_parserpy.interpreter.endf_parser import EndfParserPy
 from endf_parserpy.cpp_parsers.endf_parser_cpp import EndfParserCpp
 from endf_parserpy.utils.debugging_utils import compare_objects
 from endf_parserpy.cpp_parsers.endf6_ext import parse_endf_file, write_endf_file
@@ -8,14 +8,14 @@ from endf_parserpy.utils.accessories import EndfDict
 
 
 @pytest.fixture(scope="module")
-def myEndfParser(
+def myEndfParserPy(
     ignore_zero_mismatch,
     ignore_number_mismatch,
     ignore_varspec_mismatch,
     accept_spaces,
     array_type,
 ):
-    return EndfParser(
+    return EndfParserPy(
         ignore_zero_mismatch=ignore_zero_mismatch,
         ignore_number_mismatch=ignore_number_mismatch,
         ignore_varspec_mismatch=ignore_varspec_mismatch,
@@ -68,9 +68,9 @@ def cpp_write_opts(array_type):
 
 
 def test_python_and_cpp_parser_equivalent(
-    endf_file, myEndfParser, cpp_parse_opts, mf_sel
+    endf_file, myEndfParserPy, cpp_parse_opts, mf_sel
 ):
-    endf_dict1 = myEndfParser.parsefile(endf_file, include=mf_sel)
+    endf_dict1 = myEndfParserPy.parsefile(endf_file, include=mf_sel)
     endf_dict2 = parse_endf_file(
         str(endf_file), parse_opts=cpp_parse_opts, include=mf_sel
     )
@@ -78,11 +78,11 @@ def test_python_and_cpp_parser_equivalent(
 
 
 def test_python_and_cpp_parser_write_equivalent(
-    endf_file, myEndfParser, myEndfParserCpp, mf_sel
+    endf_file, myEndfParserPy, myEndfParserCpp, mf_sel
 ):
     endf_dict = myEndfParserCpp.parsefile(endf_file, mf_sel)
-    endf_out1 = myEndfParser.write(endf_dict)
-    endf_out2 = myEndfParser.write(endf_dict)
+    endf_out1 = myEndfParserPy.write(endf_dict)
+    endf_out2 = myEndfParserPy.write(endf_dict)
     assert endf_out1 == endf_out2
 
 
@@ -100,18 +100,18 @@ def test_endf_cpp_read_write_read_roundtrip(
     compare_objects(endf_dict1, endf_dict2, atol=1e-10, rtol=1e-10)
 
 
-def test_cpp_parser_exclude_argument(endf_file, myEndfParser, cpp_parse_opts):
+def test_cpp_parser_exclude_argument(endf_file, myEndfParserPy, cpp_parse_opts):
     exclude = [0, 6, (3, 2)]
-    endf_dict1 = myEndfParser.parsefile(endf_file, exclude=exclude)
+    endf_dict1 = myEndfParserPy.parsefile(endf_file, exclude=exclude)
     endf_dict2 = parse_endf_file(
         str(endf_file), exclude=exclude, parse_opts=cpp_parse_opts
     )
     compare_objects(endf_dict1, endf_dict2, atol=1e-10, rtol=1e-10)
 
 
-def test_cpp_parser_include_argument(endf_file, myEndfParser, cpp_parse_opts):
+def test_cpp_parser_include_argument(endf_file, myEndfParserPy, cpp_parse_opts):
     include = [0, 6, (3, 2)]
-    endf_dict1 = myEndfParser.parsefile(endf_file, include=include)
+    endf_dict1 = myEndfParserPy.parsefile(endf_file, include=include)
     endf_dict2 = parse_endf_file(
         str(endf_file), include=include, parse_opts=cpp_parse_opts
     )
@@ -119,11 +119,11 @@ def test_cpp_parser_include_argument(endf_file, myEndfParser, cpp_parse_opts):
 
 
 def test_cpp_parser_include_exclude_argument_mixed(
-    endf_file, myEndfParser, cpp_parse_opts
+    endf_file, myEndfParserPy, cpp_parse_opts
 ):
     include = (0, 6, (3, 2))
     exclude = (4,)
-    endf_dict1 = myEndfParser.parsefile(endf_file, exclude=exclude, include=include)
+    endf_dict1 = myEndfParserPy.parsefile(endf_file, exclude=exclude, include=include)
     endf_dict2 = parse_endf_file(
         str(endf_file), exclude=exclude, include=include, parse_opts=cpp_parse_opts
     )
@@ -134,7 +134,7 @@ def test_linenum_wraparound():
     linenum_width = 5
     linenum_max = 10**linenum_width - 1
     numels = linenum_max * 3
-    parser = EndfParser()
+    parser = EndfParserPy()
     endf_dict = EndfDict()
     endf_dict["3/1"] = {}
     dd = endf_dict["3/1"]

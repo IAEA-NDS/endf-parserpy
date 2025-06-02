@@ -1,6 +1,6 @@
 from pathlib import Path
 import pytest
-from endf_parserpy import EndfParserCpp, EndfParser, EndfDict
+from endf_parserpy import EndfParserCpp, EndfParserPy, EndfDict
 from endf_parserpy.utils.debugging_utils import compare_objects
 from endf_parserpy.utils.user_tools import list_parsed_sections
 from endf_parserpy.utils.math_utils import EndfFloat
@@ -103,8 +103,8 @@ def test_preserve_value_strings_option_true(mf3_section):
 
 
 def test_list_mode_writing(mf3_section):
-    parser_py_dict = EndfParser(array_type="dict")
-    parser_py = EndfParser(array_type="list")
+    parser_py_dict = EndfParserPy(array_type="dict")
+    parser_py = EndfParserPy(array_type="list")
     parser_cpp = EndfParserCpp(array_type="list")
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     endf_dict = parser_py.parsefile(endf_file)
@@ -116,8 +116,8 @@ def test_list_mode_writing(mf3_section):
 
 
 def test_list_mode_reading():
-    parser_py_dict = EndfParser(array_type="dict")
-    parser_py = EndfParser(array_type="list")
+    parser_py_dict = EndfParserPy(array_type="dict")
+    parser_py = EndfParserPy(array_type="list")
     parser_cpp = EndfParserCpp(array_type="list")
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     endf_dict1 = parser_py.parsefile(endf_file)

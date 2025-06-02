@@ -4,7 +4,7 @@ Accelerated Parsing and Writing
 ===============================
 
 The parsing and writing functionality of the
-:class:`~endf_parserpy.EndfParser` class is implemented
+:class:`~endf_parserpy.EndfParserPy` class is implemented
 in pure Python, which guarantees smooth functioning
 on a wide variety of platforms as long as a Python interpreter
 is available. However, the disadvantage is slow execution
@@ -29,7 +29,7 @@ from accelerated parsing and writing of ENDF-6 files by using
 the :class:`~endf_parserpy.EndfParserCpp` class.
 
 The interface of the :class:`~endf_parserpy.EndfParserCpp` class
-closely mirrors the one of the :class:`~endf_parserpy.EndfParser` class,
+closely mirrors the one of the :class:`~endf_parserpy.EndfParserPy` class,
 providing most of the same initialization options. The following
 code snippet demonstrates the reading and writing of an ENDF-6 file:
 
@@ -42,7 +42,7 @@ code snippet demonstrates the reading and writing of an ENDF-6 file:
    parser.writefile('output.endf', endf_dict)
 
 As can be seen, the same functions as for the
-:class:`~endf_parserpy.EndfParser` class are available
+:class:`~endf_parserpy.EndfParserPy` class are available
 and hence the :class:`~endf_parserpy.EndfParserCpp` class can
 be used as a drop-in replacement. Be aware that the
 logging output is less verbose in case of an error and

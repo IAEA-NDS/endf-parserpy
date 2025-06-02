@@ -107,10 +107,10 @@ cross section (MF3/MT1):
 
 .. code:: python
 
-   from endf_parserpy import EndfParser
+   from endf_parserpy import EndfParserPy
    from endf_parserpy import EndfVariable
 
-   parser = EndfParser()
+   parser = EndfParserPy()
    endf_dict = parser.parsefile('input.endf')
 
    xvar = EndfVariable('3/1/xstable/E', endf_dict)

@@ -30,19 +30,19 @@ Keeping track of float strings while reading
 
 To keep track of string representations of float numbers while
 reading an ENDF file, we need to initialize the
-:class:`~endf_parserpy.EndfParser` class with the
+:class:`~endf_parserpy.EndfParserPy` class with the
 ``preserve_value_strings=True`` option:
 
 .. code:: Python
 
-   from endf_parserpy import EndfParser
-   parser = EndfParser(preserve_value_strings=True)
+   from endf_parserpy import EndfParserPy
+   parser = EndfParserPy(preserve_value_strings=True)
 
 
 Using this option, all :class:`float` numbers will be stored
 as :class:`~endf_parserpy.EndfFloat` objects
-in the dictionary obtained by the :func:`~endf_parserpy.EndfParser.parsefile`
-or :func:`~endf_parserpy.EndfParser.parse` method, e.g.
+in the dictionary obtained by the :func:`~endf_parserpy.EndfParserPy.parsefile`
+or :func:`~endf_parserpy.EndfParserPy.parse` method, e.g.
 
 .. code:: Python
 
@@ -88,11 +88,11 @@ Perfect precision control for writing
 
 Writing an ENDF file is **not** influenced by the
 ``preserve_value_strings`` parameter of the
-:class:`~endf_parserpy.EndfParser` constructor but only depends
+:class:`~endf_parserpy.EndfParserPy` constructor but only depends
 on whether a :class:`float` is represented as an
 :class:`~endf_parserpy.EndfFloat` object or not.
 For instance, when writing ENDF formatted data via the
-:func:`~endf_parserpy.EndfParser.writefile` method,
+:func:`~endf_parserpy.EndfParserPy.writefile` method,
 
 .. code:: Python
 
@@ -110,8 +110,8 @@ ENDF File:
 
 .. code:: Python
 
-   from endf_parserpy import EndfParser
-   parser = EndfParser(preserve_value_strings=True)
+   from endf_parserpy import EndfParserPy
+   parser = EndfParserPy(preserve_value_strings=True)
    endf_dict = parser.parsefile('input.endf')
    parser.writefile('output.endf', endf_dict)
 
@@ -132,7 +132,7 @@ assignment of a number to the ``ZA`` variable:
    parser.writefile('output.endf', endf_dict)
 
 
-Using default options during the :class:`~endf_parserpy.EndfParser` object initialization,
+Using default options during the :class:`~endf_parserpy.EndfParserPy` object initialization,
 the ``ZA`` variable would be written as ``2.605600+4``.
 However, the storage as an :class:`~endf_parserpy.EndfFloat` object
 with the string representation explicitly stated ensures that

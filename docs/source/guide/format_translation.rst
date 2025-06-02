@@ -30,9 +30,9 @@ can be accomplished by a couple of lines of Python code:
 
 .. code:: Python
 
-   from endf_parserpy import EndfParser
+   from endf_parserpy import EndfParserPy
    import json
-   parser = EndfParser()
+   parser = EndfParserPy()
    endf_dict = parser.parsefile('input.endf')
    with open('output.json', 'w') as f:
        json.dump(endf_dict, f, indent=2)
@@ -71,6 +71,6 @@ read the data from the JSON file into a dictionary
 ``endf_dict``.
 Afterwards, the invocation of :func:`~endf_parserpy.sanitize_fieldname_types`
 converts keys of type :class:`str` that contain integer values back to
-type :class:`int`. Finally, the :func:`~endf_parserpy.EndfParser.writefile`
-method of the :class:`~endf_parserpy.EndfParser` object is called to write
+type :class:`int`. Finally, the :func:`~endf_parserpy.EndfParserPy.writefile`
+method of the :class:`~endf_parserpy.EndfParserPy` object is called to write
 the data stored in the  dictionary ``endf_dict`` to an ENDF-6 file.

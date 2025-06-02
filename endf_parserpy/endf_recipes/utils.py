@@ -15,11 +15,11 @@ def _populate_recipe_cache(clear_dir=False):
     a cache directory in ``recipe_cache``. This measure is
     undertaken as parsing can take a little bit and by caching
     the result, it does not need to be done everytime the
-    ``EndfParser`` class is instantiated by the user.
+    ``EndfParserPy`` class is instantiated by the user.
     """
     import shutil
     import os
-    from endf_parserpy.interpreter.endf_parser import EndfParser
+    from endf_parserpy.interpreter.endf_parser import EndfParserPy
     from .catalogue import list_endf_flavors
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -38,4 +38,4 @@ def _populate_recipe_cache(clear_dir=False):
     endf_flavors = list_endf_flavors()
     for flavor in endf_flavors:
         print(f"Compiling ENDF recipe flavor {flavor}")
-        EndfParser(endf_format=flavor, cache_dir=recipe_cache_dir)
+        EndfParserPy(endf_format=flavor, cache_dir=recipe_cache_dir)

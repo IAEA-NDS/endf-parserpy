@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2025/06/01
+# Last modified:   2025/06/02
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -26,17 +26,17 @@ class EndfParserCpp(EndfParserBase):
     methods of this class are :func:`parsefile` and :func:`writefile`.
 
     This class closely mirrors the functionality of the
-    :class:`~endf_parserpy.endf_parser.EndfParser` class but relies
+    :class:`~endf_parserpy.endf_parser.EndfParserPy` class but relies
     on compiled functions for parsing and writing. Tests indicated
     that these functions are usually at least 50x faster than the
     corresponding functions in the
-    :class:`~endf_parserpy.endf_parser.EndfParser` class and in some
+    :class:`~endf_parserpy.endf_parser.EndfParserPy` class and in some
     cases several hundred times faster.
 
     Please note that this class may not be usable if the compilation
     of the C++ module codes failed during package installation. Further
     note that most but not all options of the
-    :class:`~endf_parserpy.endf_parser.EndfParser` class
+    :class:`~endf_parserpy.endf_parser.EndfParserPy` class
     are implemented in this class.
     """
 
@@ -185,7 +185,7 @@ class EndfParserCpp(EndfParserBase):
                 + "for parsing and reading ENDF-6 files. "
                 + "Probably the module could not be compiled "
                 + "during package installation. Please use the "
-                + "EndfParser class instead."
+                + "EndfParserPy class instead."
             ) from exc
 
     def _dynamic_import(self, module_name, attribute_name):

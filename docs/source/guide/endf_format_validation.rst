@@ -28,9 +28,9 @@ ENDF-6 file with strict validation settings:
 
 .. code::
 
-   from endf_parserpy import EndfParser
+   from endf_parserpy import EndfParserPy
 
-   parser = EndfParser(
+   parser = EndfParserPy(
        ignore_number_mismatch=False,
        ignore_zero_mismatch=False,
        ignore_varspec_mismatch=False,
@@ -42,12 +42,12 @@ ENDF-6 file with strict validation settings:
 
 For an explanation of the arguments,
 consult the :ref:`detailed documentation <endf_parser_class>` of
-the EndfParser class.
+the EndfParserPy class.
 
-If the :func:`~endf_parserpy.EndfParser.parsefile` method fails,
+If the :func:`~endf_parserpy.EndfParserPy.parsefile` method fails,
 it provides detailed output to facilitate locating
 the issue. Let's look at an example output of
-:func:`~endf_parserpy.EndfParser.parsefile`
+:func:`~endf_parserpy.EndfParserPy.parsefile`
 in the case of a format violation:
 
 

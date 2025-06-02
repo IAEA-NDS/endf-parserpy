@@ -20,13 +20,13 @@ their structure can still be well described by
 specific *ENDF format flavor*.
 Support of PENDF files has therefore been implemented in ``endf-parserpy``.
 The ENDF format flavor can be selected during initialization of the
-:class:`~endf_parserpy.EndfParser` class using the ``endf_format`` argument.
+:class:`~endf_parserpy.EndfParserPy` class using the ``endf_format`` argument.
 To parse PENDF files, use the following initialization:
 
 .. code:: python
 
-   from endf_parserpy import EndfParser
-   parser = EndfParser(endf_format='pendf')
+   from endf_parserpy import EndfParserPy
+   parser = EndfParserPy(endf_format='pendf')
 
 Available ENDF flavors can be queried by
 
@@ -69,8 +69,8 @@ Plotting the total cross sections can be achieved by this code snippet:
 .. code:: python
 
    import matplotlib.pyplot as plt
-   from endf_parserpy import EndfParser
-   parser = EndfParser(endf_format='pendf')
+   from endf_parserpy import EndfParserPy
+   parser = EndfParserPy(endf_format='pendf')
    endf_dict = parser.parsefile('file.pendf')
    energies = endf_dict[3][1]['xstable']['E']
    xsarr = endf_dict[3][1]['xstable']['xs']

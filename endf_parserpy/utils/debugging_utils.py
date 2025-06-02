@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2024/10/14
+# Last modified:   2025/06/02
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -44,8 +44,8 @@ def compare_objects(
     iterable array-like objects. For example, this class can be
     used to confirm or reject the equality of two nested dictionaries
     resulting from the parsing of ENDF-6 files via the
-    :func:`~endf_parserpy.EndfParser.parsefile`
-    method of the :class:`~endf_parserpy.EndfParser` class.
+    :func:`~endf_parserpy.EndfParserPy.parsefile`
+    method of the :class:`~endf_parserpy.EndfParserPy` class.
     The function can print out meaningful information where the
     discrepancies are present in the objects with a nested structure.
 
@@ -242,10 +242,10 @@ class TrackingDict(MutableMapping):
     - If an object is :class:`list`-like, it's elements are tracked.
 
     The first criteria are owed to the mode of operation of the
-    :class:`~endf_parserpy.EndfParser` class.
-    The methods :func:`~endf_parserpy.EndfParser.parsefile` and
-    :func:`~endf_parserpy.EndfParser.writefile` of the
-    :class:`~endf_parserpy.EndfParser` class will temporarily create auxiliary
+    :class:`~endf_parserpy.EndfParserPy` class.
+    The methods :func:`~endf_parserpy.EndfParserPy.parsefile` and
+    :func:`~endf_parserpy.EndfParserPy.writefile` of the
+    :class:`~endf_parserpy.EndfParserPy` class will temporarily create auxiliary
     variables stored under keys starting with two underscores.
     It is not pertinent to track read access to those ephemeral
     objects. The purpose of the

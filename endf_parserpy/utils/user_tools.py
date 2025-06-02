@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/11/20
+# Last modified:   2025/06/02
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -56,7 +56,7 @@ def list_unparsed_sections(dic):
     ----------
     dic : dict
         A ``dict`` in the form as returned by the
-        :meth:`~endf_parserpy.EndfParser.parsefile` method of the :class:`~endf_parserpy.EndfParser` class.
+        :meth:`~endf_parserpy.EndfParserPy.parsefile` method of the :class:`~endf_parserpy.EndfParserPy` class.
 
     Returns
     -------
@@ -80,7 +80,7 @@ def list_parsed_sections(dic):
     ----------
     dic : dict
         A ``dict`` in the form as returned by the
-        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.EndfParser` class.
+        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.EndfParserPy` class.
 
     Returns
     -------
@@ -107,8 +107,8 @@ def sanitize_fieldname_types(dic):
     recursively replaces all keys containing integer numbers
     but being of type :class:`str` to type :class:`int`.
 
-    Noteworthy, this conversion is necessary before using the :meth:`~endf_parserpy.EndfParser.writefile`
-    method of the :class:`~endf_parserpy.EndfParser`
+    Noteworthy, this conversion is necessary before using the :meth:`~endf_parserpy.EndfParserPy.writefile`
+    method of the :class:`~endf_parserpy.EndfParserPy`
     class if the dictionary with ENDF-6 data has been retrieved from a JSON file.
 
     Parameters

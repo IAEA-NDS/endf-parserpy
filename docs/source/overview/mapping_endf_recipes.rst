@@ -46,10 +46,10 @@ Structure of Python dictionaries with ENDF-6 data
 -------------------------------------------------
 
 The structure of a dictionary returned by a call to
-the :func:`~endf_parserpy.EndfParser.parsefile` method
-or expected by :func:`~endf_parserpy.EndfParser.writefile` method
+the :func:`~endf_parserpy.EndfParserPy.parsefile` method
+or expected by :func:`~endf_parserpy.EndfParserPy.writefile` method
 of the
-:class:`~endf_parserpy.EndfParser` class
+:class:`~endf_parserpy.EndfParserPy` class
 contains as first level the integer keys corresponding to
 MF numbers and as second level
 integer keys corresponding to MT numbers, see the :endf6manpage:`32`.

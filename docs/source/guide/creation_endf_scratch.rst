@@ -106,13 +106,13 @@ here for convenient reference:
 
 This recipe does not contain any section blocks, hence all variables
 in this recipe must be available as keys in the root dictionary associated
-with MF=1/MT=451. Let's first instantiate an :ref:`EndfParser <endf_parser_class>`
+with MF=1/MT=451. Let's first instantiate an :ref:`EndfParserPy <endf_parser_class>`
 object:
 
 .. code:: Python
 
-   from endf_parserpy import EndfParser
-   parser = EndfParser(explain_missing_variable=True)
+   from endf_parserpy import EndfParserPy
+   parser = EndfParserPy(explain_missing_variable=True)
 
 Setting ``explain_missing_variable=True`` enables an experimental feature,
 which will display the descripton of an omitted but required variable.
@@ -140,7 +140,7 @@ The code to accomplish the described actions is given by:
 
 Let's see what happens when we attempt to convert the
 data of this very empty dictionary into the ENDF-6 format using
-the :func:`~endf_parserpy.EndfParser.write` method:
+the :func:`~endf_parserpy.EndfParserPy.write` method:
 
 .. code:: Python
 
@@ -186,7 +186,7 @@ all quantities of an MF=1/MT=451 section:
 
 .. code:: Python
 
-    parser = EndfParser(explain_missing_variable=True)
+    parser = EndfParserPy(explain_missing_variable=True)
     endf_dict = EndfDict()
     endf_dict['1/451'] = {}
     p = endf_dict['1/451']
@@ -213,8 +213,8 @@ all quantities of an MF=1/MT=451 section:
 
 
 For understanding the meaning of a variable and its value, we can use the
-:func:`~endf_parserpy.EndfParser.explain` method of the
-:class:`~endf_parserpy.EndfParser` class, e.g.
+:func:`~endf_parserpy.EndfParserPy.explain` method of the
+:class:`~endf_parserpy.EndfParserPy` class, e.g.
 ``parser.explain('1/451/STA')``, or look up its description in the :endf6manpage:`57`.
 These assignments are also a good opportunity to remind ourselves of how
 :ref:`data types <data_types_sec>`
@@ -325,7 +325,7 @@ the :endf6manpage:`43`.
     The parser doesn't check whether the values provided
     are physically meaningful. For instance, negative cross section
     values in ``xs`` or negative incident energies in ``E`` will be written
-    by the :func:`~endf_parserpy.EndfParser.writefile` method to an ENDF-6 file as
+    by the :func:`~endf_parserpy.EndfParserPy.writefile` method to an ENDF-6 file as
     they are, without any warnings.
 
 
@@ -766,7 +766,7 @@ If you have followed along until here, you have a Python dictionary with
 a general description, (dummy) total cross section data, and a
 covariance matrix associated with the total cross section.
 Congratulations! You can produce your awesome ENDF-6 file
-with the :func:`~endf_parserpy.EndfParser.writefile` method:
+with the :func:`~endf_parserpy.EndfParserPy.writefile` method:
 
 .. code:: python
 
@@ -779,12 +779,12 @@ in the following Python script:
 
 .. code:: python
 
-    from endf_parserpy import EndfParser
+    from endf_parserpy import EndfParserPy
     from endf_parserpy import EndfDict
     from endf_parserpy import update_directory
     import numpy as np
 
-    parser = EndfParser()
+    parser = EndfParserPy()
 
     endf_dict = EndfDict()
 

@@ -25,8 +25,8 @@ take into consideration the inherent logical
 structure of these files.
 
 In contrast, the dictionaries with ENDF-6 data
-returned by the :func:`~endf_parserpy.EndfParser.parsefile` method
-of the :class:`~endf_parserpy.EndfParser` class
+returned by the :func:`~endf_parserpy.EndfParserPy.parsefile` method
+of the :class:`~endf_parserpy.EndfParserPy` class
 are a perfect starting point for insightful
 comparisons between two ENDF-6 files.
 It it is straightforward to implement a
@@ -45,9 +45,9 @@ code snippet:
 
 .. code:: Python
 
-   from endf_parserpy import EndfParser
+   from endf_parserpy import EndfParserPy
    from endf_parserpy import compare_objects
-   parser = EndfParser()
+   parser = EndfParserPy()
    endf_dict1 = parser.parsefile('input1.endf')
    endf_dict2 = parser.parsefile('input2.endf')
    compare_objects(endf_dict1, endf_dict2, atol=1e-6, rtol=1e-6, fail_on_diff=False)

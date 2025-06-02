@@ -56,11 +56,11 @@ The following code snippet achieves this:
 
 .. code:: python
 
-   from endf_parserpy import EndfParser
+   from endf_parserpy import EndfParserPy
    from endf_parserpy import EndfDict
    import numpy as np
 
-   parser = EndfParser()
+   parser = EndfParserPy()
    endf_dict = EndfDict(parser.parsefile('input.endf'))
 
    xs = np.array(endf_dict['3/2/xstable/xs'])
@@ -70,14 +70,14 @@ The following code snippet achieves this:
    parser.writefile('output.endf', endf_dict)
 
 
-The :class:`~endf_parserpy.EndfParser` class is imported
+The :class:`~endf_parserpy.EndfParserPy` class is imported
 for reading and writing ENDF-6 files.
 The :class:`~endf_parserpy.EndfDict` class is an
 enhanced :class:`dict` that enables convenient access to
 data via :ref:`EndfPaths <endf_path_class>`.
 
 After instantiating an
-:class:`~endf_parserpy.EndfParser` object,
+:class:`~endf_parserpy.EndfParserPy` object,
 the ENDF-6 file ``input.endf`` is read and the resulting
 :class:`dict` immediately converted to an
 :class:`~endf_parserpy.EndfDict` object.
@@ -114,7 +114,7 @@ file uses an unconventional notation style for real values, e.g.
 switching from floating point notation to decimal notation to
 increase precision.
 To avoid this issue from the start, we can use the ``include``
-argument in the call of the :func:`~endf_parserpy.EndfParser.parsefile`
+argument in the call of the :func:`~endf_parserpy.EndfParserPy.parsefile`
 method to only parse MF3/MT2. The other sections will then be read
 verbatim as string and consequently also written verbatim to the output file.
 The adjusted instruction for reading the ENDF-6 file in the current
@@ -135,9 +135,9 @@ from an ENDF-6 file:
 
 .. code:: python
 
-   from endf_parserpy import EndfParser, EndfDict
+   from endf_parserpy import EndfParserPy, EndfDict
    from endf_parserpy import update_directory
-   parser = EndfParser()
+   parser = EndfParserPy()
    endf_dict = EndfDict(parser.parsefile('input.endf', include=[])
    del endf_dict['3/2']
    update_directory(endf_dict, parser)
@@ -180,7 +180,7 @@ implements the described actions for this case:
 .. code:: python
 
    from copy import deepcopy
-   from endf_parserpy import EndfParser, EndfDict
+   from endf_parserpy import EndfParserPy, EndfDict
    from endf_parserpy import update_directory
    endf_dict1 = parser.parsefile('input1.endf', include=[])
    endf_dict2 = parser.parsefile('input2.endf', include=[])

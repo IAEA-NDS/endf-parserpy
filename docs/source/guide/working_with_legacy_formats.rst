@@ -47,13 +47,13 @@ for this specific MF=3/MT section structure:
 The formal language underlying recipe definitions is described
 in detail in this `ArXiV preprint <https://arxiv.org/abs/2312.08249>`_.
 
-We can now instantiate an :class:`~endf_parserpy.EndfParser` class
+We can now instantiate an :class:`~endf_parserpy.EndfParserPy` class
 making use of the ``recipes`` dictionary:
 
 .. code:: python
 
-   from endf_parserpy import EndfParser
-   parser = EndfParser(
+   from endf_parserpy import EndfParserPy
+   parser = EndfParserPy(
        recipes=recipes,
        ignore_missing_tpid=True,
        ignore_send_records=True
@@ -68,7 +68,7 @@ additional recipe definitions. For example, see `here
 how it is done for the entire `ENDF-6 formats standard
 <https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf>`_.
 
-In the instantiation of the :class:`~endf_parserpy.EndfParser` class,
+In the instantiation of the :class:`~endf_parserpy.EndfParserPy` class,
 we also specified ``ignore_missing_tpid=True`` to tolerate the absence of a TPID
 record, which is not present in the EAF-2007 file. The TPID record
 is a TEXT record in the first line of an ENDF file that can be used for a
@@ -96,7 +96,7 @@ For splitting up the file into chunks, we can use the following code snippet:
 After loading the file content into a list of strings, the dictionary
 ``mat_dict`` is populated with lists of strings associated with the various
 materials. Because of the argument ``ignore_send_records=True`` passed
-to the :class:`~endf_parserpy.EndfParser` class, we can strip away any
+to the :class:`~endf_parserpy.EndfParserPy` class, we can strip away any
 kind of section end record. Technically, these records are filtered out by
 only dealing with records that contain a material number (``MAT``)
 greater than zero.
@@ -132,7 +132,7 @@ explained step-by-step in this tutorial:
 
 .. code:: python
 
-   from endf_parserpy import EndfParser
+   from endf_parserpy import EndfParserPy
 
    recipes = dict()
    recipes[3] = """
@@ -144,7 +144,7 @@ explained step-by-step in this tutorial:
    SEND
    """
 
-   parser = EndfParser(
+   parser = EndfParserPy(
        recipes=recipes,
        ignore_missing_tpid=True,
        ignore_send_records=True

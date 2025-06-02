@@ -32,28 +32,28 @@ somewhat confusing.
 Therefore, an option has been implemented to
 represent all arrays as :class:`list`, which can
 be enabled by passing the ``array_type="list"`` argument
-to the constructor of the :class:`~endf_parserpy.EndfParser`
+to the constructor of the :class:`~endf_parserpy.EndfParserPy`
 class:
 
 .. code:: python
 
-   from endf_parserpy import EndfParser
-   parser = EndfParser(array_type="list")
+   from endf_parserpy import EndfParserPy
+   parser = EndfParserPy(array_type="list")
 
-Using this option, The :func:`~endf_parserpy.EndfParser.parse` and
-:func:`~endf_parserpy.EndfParser.parsefile` methods will
+Using this option, The :func:`~endf_parserpy.EndfParserPy.parse` and
+:func:`~endf_parserpy.EndfParserPy.parsefile` methods will
 return dictionaries in which  *all* arrays are stored as :class:`list`.
-Analogously for writing via the :func:`~endf_parserpy.EndfParser.writefile` and
-:func:`~endf_parserpy.EndfParser.write`
+Analogously for writing via the :func:`~endf_parserpy.EndfParserPy.writefile` and
+:func:`~endf_parserpy.EndfParserPy.write`
 methods, the dictionaries with ENDF data are expected to
 contain *all* arrays as :class:`list`.
 
 If you are using the ``array_type="list"`` option, be aware of the following:
 
 - ENDF data loaded into a dictionary
-  using a parser object initialized with ``EndfParser(array_type="list"``
+  using a parser object initialized with ``EndfParserPy(array_type="list"``
   can't be written to an ENDF file with a parser object initialized with
-  ``EndfParser(array_type="dict")`` and vice-versa. It is recommended to
+  ``EndfParserPy(array_type="dict")`` and vice-versa. It is recommended to
   choose one parser mode and use it consistently throughout a project.
 - :ref:`EndfPath notation <endf_path_class>` and the
   :ref:`EndfDict <endf_dict_class>` class can also be used with

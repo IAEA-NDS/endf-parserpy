@@ -1,13 +1,13 @@
 import pytest
 from pathlib import Path
-from endf_parserpy.interpreter import EndfParser
+from endf_parserpy.interpreter import EndfParserPy
 from endf_parserpy.utils.debugging_utils import compare_objects
 from endf_parserpy.utils.user_tools import list_parsed_sections
 from endf_parserpy.interpreter.custom_exceptions import UnexpectedControlRecordError
 
 
 def test_parsefile_include_single_mf_option():
-    parser = EndfParser()
+    parser = EndfParserPy()
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     result1 = parser.parsefile(endf_file, include=[3])
     result2 = parser.parsefile(endf_file, include=3)
@@ -15,7 +15,7 @@ def test_parsefile_include_single_mf_option():
 
 
 def test_parsefile_exclude_single_mf_option():
-    parser = EndfParser()
+    parser = EndfParserPy()
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     result1 = parser.parsefile(endf_file, exclude=[3])
     result2 = parser.parsefile(endf_file, exclude=3)
@@ -23,7 +23,7 @@ def test_parsefile_exclude_single_mf_option():
 
 
 def test_parsefile_include_option_with_mf_mt():
-    parser = EndfParser()
+    parser = EndfParserPy()
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     result1 = parser.parsefile(endf_file, include=[1, (3, 1), 6])
     result2 = parser.parsefile(endf_file, include=([3, 1], 1, 6))
@@ -34,7 +34,7 @@ def test_parsefile_include_option_with_mf_mt():
 
 
 def test_roundtrip_with_include_mf_mt_option():
-    parser = EndfParser()
+    parser = EndfParserPy()
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     result1 = parser.parsefile(endf_file)
     tmpres = parser.parsefile(endf_file, include=[(3, 1)])
@@ -43,7 +43,7 @@ def test_roundtrip_with_include_mf_mt_option():
 
 
 def test_roundtrip_with_exclude_mf_mt_option():
-    parser = EndfParser()
+    parser = EndfParserPy()
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     result1 = parser.parsefile(endf_file)
     tmpres = parser.parsefile(endf_file, exclude=[(3, 1)])
@@ -52,7 +52,7 @@ def test_roundtrip_with_exclude_mf_mt_option():
 
 
 def test_parsefile_exclude_option_with_mf_mt():
-    parser = EndfParser()
+    parser = EndfParserPy()
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     result1 = parser.parsefile(endf_file, exclude=[1, (3, 1), 6])
     result2 = parser.parsefile(endf_file, exclude=([3, 1], 1, 6))
@@ -65,23 +65,23 @@ def test_parsefile_exclude_option_with_mf_mt():
 def test_preserve_value_strings_option():
     include = [(1, 451)]
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
-    parser = EndfParser(preserve_value_strings=True)
+    parser = EndfParserPy(preserve_value_strings=True)
     endf_dict = parser.parsefile(endf_file, include=include)
     endf_cont = parser.write(endf_dict)
     endf_cont[1] = ".1234567895" + endf_cont[1][11:]
     # manually edit AWR
-    parser1 = EndfParser(preserve_value_strings=True)
+    parser1 = EndfParserPy(preserve_value_strings=True)
     endf_dict1 = parser1.parse(endf_cont, include=include)
     endf_cont1 = parser1.write(endf_dict1)
     assert all(x == y for x, y in zip(endf_cont, endf_cont1))
-    parser2 = EndfParser(preserve_value_strings=False)
+    parser2 = EndfParserPy(preserve_value_strings=False)
     rec_endf_dict1 = parser1.parse(endf_cont, include=include)
     rec_endf_dict2 = parser2.parse(endf_cont, include=include)
     compare_objects(rec_endf_dict1, rec_endf_dict2)
 
 
 def test_write_include_linenum_false_option():
-    parser = EndfParser(include_linenum=False)
+    parser = EndfParserPy(include_linenum=False)
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     endf_dict = parser.parsefile(endf_file, exclude=[3])
     result = parser.write(endf_dict)
@@ -89,7 +89,7 @@ def test_write_include_linenum_false_option():
 
 
 def test_write_include_linenum_true_option():
-    parser = EndfParser(include_linenum=True)
+    parser = EndfParserPy(include_linenum=True)
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     endf_dict = parser.parsefile(endf_file, exclude=[3])
     result = parser.write(endf_dict)
@@ -102,7 +102,7 @@ def test_write_include_linenum_true_option():
 
 
 def test_write_linenum_true_with_verbatim_tapehead():
-    parser = EndfParser(include_linenum=True)
+    parser = EndfParserPy(include_linenum=True)
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     endf_dict = parser.parsefile(endf_file, exclude=[0, 15])
     result = parser.write(endf_dict)
@@ -118,7 +118,7 @@ def _test_ignore_send_records_false_option(ctrl_start, ctrl_len):
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     with open(endf_file, "r") as f:
         endf_lines = f.readlines()
-    parser = EndfParser(ignore_send_records=False)
+    parser = EndfParserPy(ignore_send_records=False)
     # remove SEND
     endf_lines_mod = endf_lines.copy()
     for i in range(len(endf_lines)):
@@ -135,8 +135,8 @@ def _test_ignore_send_records_true_option(ctrl_start, ctrl_len):
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     with open(endf_file, "r") as f:
         endf_lines = f.readlines()
-    parser1 = EndfParser(ignore_send_records=False)
-    parser2 = EndfParser(ignore_send_records=True)
+    parser1 = EndfParserPy(ignore_send_records=False)
+    parser2 = EndfParserPy(ignore_send_records=True)
     # remove SEND
     endf_lines_mod = endf_lines.copy()
     for i in range(len(endf_lines)):
@@ -175,7 +175,7 @@ def test_ignore_send_records_true_option_with_missing_mend_record():
 
 
 def test_missing_tpid_option_true_with_missing_tpid():
-    parser = EndfParser(ignore_missing_tpid=True)
+    parser = EndfParserPy(ignore_missing_tpid=True)
     endf_file = Path(__file__).parent.joinpath(
         "testdata", "malformed_endf", "jeff33_13-Al-27g_mf4_mt2.endf"
     )
@@ -183,7 +183,7 @@ def test_missing_tpid_option_true_with_missing_tpid():
 
 
 def test_missing_tpid_option_false_with_missing_tpid():
-    parser = EndfParser(ignore_missing_tpid=False)
+    parser = EndfParserPy(ignore_missing_tpid=False)
     endf_file = Path(__file__).parent.joinpath(
         "testdata", "malformed_endf", "jeff33_13-Al-27g_mf4_mt2.endf"
     )
@@ -192,11 +192,11 @@ def test_missing_tpid_option_false_with_missing_tpid():
 
 
 def test_array_type_list_option():
-    parser_dict = EndfParser(array_type="dict")
+    parser_dict = EndfParserPy(array_type="dict")
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     endf_dict1 = parser_dict.parsefile(endf_file)
     for array_type in ("list", "list_slow"):
-        parser_list = EndfParser(array_type=array_type)
+        parser_list = EndfParserPy(array_type=array_type)
         endf_dict2a = parser_list.parsefile(endf_file)
         endf6text = parser_list.write(endf_dict2a)
         endf_dict2c = parser_dict.parse(endf6text)
@@ -204,8 +204,8 @@ def test_array_type_list_option():
 
 
 def test_array_type_list_and_list_slow_equivalent():
-    parser1 = EndfParser(array_type="list")
-    parser2 = EndfParser(array_type="list_slow")
+    parser1 = EndfParserPy(array_type="list")
+    parser2 = EndfParserPy(array_type="list_slow")
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     endf_dict1 = parser1.parsefile(endf_file)
     endf_dict2 = parser2.parsefile(endf_file)

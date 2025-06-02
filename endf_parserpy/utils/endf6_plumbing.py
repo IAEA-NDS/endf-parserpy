@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/10/06
+# Last modified:   2025/06/02
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -137,8 +137,8 @@ def update_directory(endf_dic, parser=None, lines=None, read_opts=None):
     ----------
     endf_dic : dict
         Dictionary of appropriate structure with ENDF-6 data.
-    parser : EndfParser
-        An :class:`~endf_parserpy.EndfParser` instance
+    parser : EndfParserBase
+        An :class:`~endf_parserpy.EndfParserBase` instance
     lines: list[str]
         A list of strings with the ENDF-6 formatted data
         corresponding to the data in ``endf_dict``.
@@ -146,7 +146,7 @@ def update_directory(endf_dic, parser=None, lines=None, read_opts=None):
         argument will be ignored.
     read_opts : dict
         A dictionary with reading options provided as ``read_opts`` argument
-        overrides the reading options of the :class:`~endf_parserpy.EndfParser` instance.
+        overrides the reading options of the :class:`~endf_parserpy.EndfParserBase` instance.
     """
     if read_opts is None:
         read_opts = {}

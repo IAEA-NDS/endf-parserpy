@@ -81,7 +81,7 @@ Install endf-parserpy
 .. note::
    For accelerated parsing and writing, use the
    :class:`~endf_parserpy.EndfParserCpp` class instead of
-   the :class:`~endf_parserpy.EndfParser` class, which boosts speed
+   the :class:`~endf_parserpy.EndfParserPy` class, which boosts speed
    by over 50 times:
 
    .. code:: python

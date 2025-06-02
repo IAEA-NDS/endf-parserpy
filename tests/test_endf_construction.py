@@ -1,5 +1,5 @@
 import pytest
-from endf_parserpy.interpreter.endf_parser import EndfParser
+from endf_parserpy.interpreter.endf_parser import EndfParserPy
 from endf_parserpy.interpreter.helpers import array_dict_to_list
 from endf_parserpy.utils.accessories import EndfDict
 from endf_parserpy.interpreter.custom_exceptions import (
@@ -82,20 +82,20 @@ def mf3_section():
 
 
 def test_creation_of_mf3_in_dict_mode(mf3_section):
-    parser = EndfParser()
+    parser = EndfParserPy()
     parser.write(mf3_section)
 
 
 def test_creation_of_mf3_in_list_mode(mf3_section):
-    parser = EndfParser(array_type="list")
+    parser = EndfParserPy(array_type="list")
     sec = deepcopy(mf3_section)
     array_dict_to_list(sec[3][1])
     parser.write(sec)
 
 
 def test_creation_of_mf3_in_list_and_dict_mode_equivalent(mf3_section):
-    parser1 = EndfParser(array_type="dict")
-    parser2 = EndfParser(array_type="list")
+    parser1 = EndfParserPy(array_type="dict")
+    parser2 = EndfParserPy(array_type="list")
     sec1 = mf3_section
     sec2 = deepcopy(mf3_section)
     array_dict_to_list(sec2[3][1])
@@ -105,7 +105,7 @@ def test_creation_of_mf3_in_list_and_dict_mode_equivalent(mf3_section):
 
 
 def test_linenum_wraparound(mf3_section):
-    parser = EndfParser()
+    parser = EndfParserPy()
     endf_dict = deepcopy(mf3_section)
     linenum_width = 5
     linenum_max = 10**linenum_width - 1
@@ -127,20 +127,20 @@ def test_linenum_wraparound(mf3_section):
 
 
 def test_creation_of_mf1_mt451_in_dict_mode(mf1_mt451_section):
-    parser = EndfParser()
+    parser = EndfParserPy()
     parser.write(mf1_mt451_section)
 
 
 def test_creation_of_mf1_mt451_in_list_mode(mf1_mt451_section):
-    parser = EndfParser(array_type="list")
+    parser = EndfParserPy(array_type="list")
     sec = deepcopy(mf1_mt451_section)
     array_dict_to_list(sec[1][451])
     parser.write(sec)
 
 
 def test_creation_of_mf1_mt451_in_list_and_dict_mode_equivalent(mf1_mt451_section):
-    parser1 = EndfParser(array_type="dict")
-    parser2 = EndfParser(array_type="list")
+    parser1 = EndfParserPy(array_type="dict")
+    parser2 = EndfParserPy(array_type="list")
     sec1 = mf1_mt451_section
     sec2 = deepcopy(mf1_mt451_section)
     array_dict_to_list(sec2[1][451])
@@ -150,7 +150,7 @@ def test_creation_of_mf1_mt451_in_list_and_dict_mode_equivalent(mf1_mt451_sectio
 
 
 def test_creation_of_mf3_without_strict_datatypes(mf3_section):
-    parser = EndfParser(strict_datatypes=False)
+    parser = EndfParserPy(strict_datatypes=False)
     mf3_section["3/1/LR"] = 0.0
     parser.write(mf3_section)
     mf3_section["3/1/LR"] = 0.5
@@ -159,7 +159,7 @@ def test_creation_of_mf3_without_strict_datatypes(mf3_section):
 
 
 def test_creation_of_mf3_with_strict_datatypes(mf3_section):
-    parser = EndfParser(strict_datatypes=True)
+    parser = EndfParserPy(strict_datatypes=True)
     mf3_section["3/1/LR"] = 0
     parser.write(mf3_section)
     mf3_section["3/1/LR"] = 0.0
@@ -169,7 +169,7 @@ def test_creation_of_mf3_with_strict_datatypes(mf3_section):
 
 def test_creation_of_mf1_mt451_with_check_arrays(mf1_mt451_section):
     d = mf1_mt451_section
-    parser = EndfParser(check_arrays=True)
+    parser = EndfParserPy(check_arrays=True)
     parser.write(d)
     d["1/451/DESCRIPTION/50"] = "should not be here according to NWD"
     d["1/451/IgnoredVar1"] = 23
@@ -180,7 +180,7 @@ def test_creation_of_mf1_mt451_with_check_arrays(mf1_mt451_section):
 
 def test_creation_of_mf1_mt451_without_check_arrays(mf1_mt451_section):
     d = mf1_mt451_section
-    parser = EndfParser(check_arrays=False)
+    parser = EndfParserPy(check_arrays=False)
     d["1/451/DESCRIPTION/50"] = "should not be here according to NWD"
     d["1/451/IgnoredVar1"] = 23
     d["1/451/IgnoredVar2"] = {1: "a", 2: "b"}
@@ -188,7 +188,7 @@ def test_creation_of_mf1_mt451_without_check_arrays(mf1_mt451_section):
 
 
 def test_creation_of_mf1_mt451_with_dictionary(mf1_mt451_section):
-    parser = EndfParser(check_arrays=False)
+    parser = EndfParserPy(check_arrays=False)
     d = mf1_mt451_section
     d["1/451/NXC"] = 1
     d["1/451/MFx[1]"] = 3
@@ -199,7 +199,7 @@ def test_creation_of_mf1_mt451_with_dictionary(mf1_mt451_section):
 
 
 def test_creation_of_mf1_mt451_fails_if_variable_missing(mf1_mt451_section):
-    parser = EndfParser(check_arrays=False)
+    parser = EndfParserPy(check_arrays=False)
     d = mf1_mt451_section
     del d["1/451/LRP"]
     with pytest.raises(VariableNotFoundError):
@@ -209,7 +209,7 @@ def test_creation_of_mf1_mt451_fails_if_variable_missing(mf1_mt451_section):
 def test_creation_of_mf1_mt451_fails_if_counter_larger_than_array_in_dict_mode(
     mf1_mt451_section,
 ):
-    parser = EndfParser(check_arrays=False)
+    parser = EndfParserPy(check_arrays=False)
     d = mf1_mt451_section
     d["1/451/NWD"] = 5 + len(d["1/451/DESCRIPTION"]) + 1
     with pytest.raises(UnavailableIndexError):
@@ -219,7 +219,7 @@ def test_creation_of_mf1_mt451_fails_if_counter_larger_than_array_in_dict_mode(
 def test_creation_of_mf1_mt451_fails_if_counter_larger_than_array_in_list_mode(
     mf1_mt451_section,
 ):
-    parser = EndfParser(check_arrays=False, array_type="list")
+    parser = EndfParserPy(check_arrays=False, array_type="list")
     d = mf1_mt451_section
     d["1/451/NWD"] = 5 + len(d["1/451/DESCRIPTION"]) + 1
     sec = deepcopy(mf1_mt451_section)
@@ -231,7 +231,7 @@ def test_creation_of_mf1_mt451_fails_if_counter_larger_than_array_in_list_mode(
 def test_creation_of_mf1_mt451_fails_if_counter_smaller_than_array_in_dict_mode(
     mf1_mt451_section,
 ):
-    parser = EndfParser(check_arrays=True, array_type="dict")
+    parser = EndfParserPy(check_arrays=True, array_type="dict")
     d = mf1_mt451_section
     d["1/451/NWD"] = 5 + len(d["1/451/DESCRIPTION"]) - 1
     with pytest.raises(IndexError):
@@ -241,7 +241,7 @@ def test_creation_of_mf1_mt451_fails_if_counter_smaller_than_array_in_dict_mode(
 def test_creation_of_mf1_mt451_fails_if_counter_smaller_than_array_in_list_mode(
     mf1_mt451_section,
 ):
-    parser = EndfParser(check_arrays=True, array_type="list")
+    parser = EndfParserPy(check_arrays=True, array_type="list")
     d = mf1_mt451_section
     d["1/451/NWD"] = 5 + len(d["1/451/DESCRIPTION"]) - 1
     sec = deepcopy(mf1_mt451_section)
@@ -251,8 +251,8 @@ def test_creation_of_mf1_mt451_fails_if_counter_smaller_than_array_in_list_mode(
 
 
 def test_ignore_blank_lines_option_does_not_impact_result(mf1_mt451_section):
-    parser1 = EndfParser(ignore_missing_tpid=True, ignore_blank_lines=False)
-    parser2 = EndfParser(ignore_missing_tpid=True, ignore_blank_lines=True)
+    parser1 = EndfParserPy(ignore_missing_tpid=True, ignore_blank_lines=False)
+    parser2 = EndfParserPy(ignore_missing_tpid=True, ignore_blank_lines=True)
     lines = parser1.write(mf1_mt451_section)
     result1 = parser1.parse(lines)
     lines.insert(0, "  ")
@@ -262,7 +262,7 @@ def test_ignore_blank_lines_option_does_not_impact_result(mf1_mt451_section):
 
 
 def test_blank_lines_cause_failure_if_not_ignored(mf1_mt451_section):
-    parser = EndfParser(ignore_missing_tpid=True, ignore_blank_lines=False)
+    parser = EndfParserPy(ignore_missing_tpid=True, ignore_blank_lines=False)
     lines = parser.write(mf1_mt451_section)
     lines.insert(3, "  ")
     with pytest.raises(BlankLineError):
@@ -270,7 +270,7 @@ def test_blank_lines_cause_failure_if_not_ignored(mf1_mt451_section):
 
 
 def test_missing_send_record_causes_failure_if_not_ignored(mf1_mt451_section):
-    parser = EndfParser(ignore_missing_tpid=True, ignore_send_records=False)
+    parser = EndfParserPy(ignore_missing_tpid=True, ignore_send_records=False)
     lines = parser.write(mf1_mt451_section)
     lines_list = [lines.copy() for i in range(3)]
     for i in range(0, 3):
@@ -285,8 +285,8 @@ def test_missing_send_record_causes_failure_if_not_ignored(mf1_mt451_section):
 
 
 def test_missing_send_record_option_does_not_impact_result(mf1_mt451_section):
-    parser1 = EndfParser(ignore_missing_tpid=True, ignore_send_records=False)
-    parser2 = EndfParser(ignore_missing_tpid=True, ignore_send_records=True)
+    parser1 = EndfParserPy(ignore_missing_tpid=True, ignore_send_records=False)
+    parser2 = EndfParserPy(ignore_missing_tpid=True, ignore_send_records=True)
     lines = parser1.write(mf1_mt451_section)
     result1 = parser1.parse(lines)
     lines_list = [lines.copy() for i in range(3)]
@@ -300,14 +300,14 @@ def test_missing_send_record_option_does_not_impact_result(mf1_mt451_section):
 def test_ignore_missing_tpid_prevents_failure(mf1_mt451_section):
     if 0 in mf1_mt451_section:
         del mf1_mt451_section[0]
-    parser = EndfParser(ignore_missing_tpid=True)
+    parser = EndfParserPy(ignore_missing_tpid=True)
     lines = parser.write(mf1_mt451_section)
     parser.parse(lines)
 
 
 def test_missing_tpid_does_not_impact_result(mf1_mt451_section):
-    parser1 = EndfParser(ignore_missing_tpid=True)
-    parser2 = EndfParser(ignore_missing_tpid=False)
+    parser1 = EndfParserPy(ignore_missing_tpid=True)
+    parser2 = EndfParserPy(ignore_missing_tpid=False)
     lines1 = parser1.write(mf1_mt451_section)
     mf1_mt451_section.setdefault(0, {})[0] = {
         "MAT": 1,

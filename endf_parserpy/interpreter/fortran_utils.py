@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/12/07
+# Last modified:   2025/06/02
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -41,7 +41,7 @@ def fortstr2float(valstr, read_opts=None):
         conversion process. Supported options are
         ``accept_spaces`` and ``preserve_value_strings``.
         Consider the equally named options of the
-        :class:`~endf_parserpy.EndfParser` class for
+        :class:`~endf_parserpy.EndfParserPy` class for
         an explanation of their meaning.
 
     Returns
@@ -171,7 +171,7 @@ def float2fortstr(val, write_opts=None):
         Supported field names are ``prefer_noexp``,
         ``width``, ``abuse_signpos``, ``keep_E``,
         and ``skip_intzero``. Consider the equally
-        named arguments of the :class:`~endf_parserpy.EndfParser`
+        named arguments of the :class:`~endf_parserpy.EndfParserPy`
         constructor for an explanation of these options.
 
     Returns

@@ -14,13 +14,13 @@ along with some considerations to be heeded.
 Reading an ENDF-6 file
 ------------------------
 
-An ENDF-6 file can be read with the :func:`~endf_parserpy.EndfParser.parsefile()`
-method of the :class:`~endf_parserpy.EndfParser` class:
+An ENDF-6 file can be read with the :func:`~endf_parserpy.EndfParserPy.parsefile()`
+method of the :class:`~endf_parserpy.EndfParserPy` class:
 
 .. code:: Python
 
-   from endf_parserpy import EndfParser
-   parser = EndfParser()
+   from endf_parserpy import EndfParserPy
+   parser = EndfParserPy()
    endf_dict = parser.parsefile('input.endf')
 
 
@@ -36,7 +36,7 @@ instantiated by
 
 The parsing process can be influenced by using additional
 arguments in the instantiation of the
-:class:`~endf_parserpy.EndfParser` class.
+:class:`~endf_parserpy.EndfParserPy` class.
 The default choices of these arguments are forgiving so that
 even ENDF-6 files that do not strictly comply with the ENDF-6
 format can be read without failure. For the purpose of
@@ -53,11 +53,11 @@ situation by adopting the following initialization:
 
 .. code:: Python
 
-   parser = EndfParser(accept_spaces=False)
+   parser = EndfParserPy(accept_spaces=False)
 
 
 When only one part of the ENDF-6 file is relevant to the user,
-the :func:`~endf_parserpy.EndfParser.parsefile()` method
+the :func:`~endf_parserpy.EndfParserPy.parsefile()` method
 can be instructed to only parse
 this part for greater speed. For instance, if you are only interested
 in MT sections within MF=3,4,5 sections, you can use:
@@ -104,16 +104,16 @@ Writing an ENDF-6 file
 Writing an ENDF-6 file is as simple as reading one.
 Assume that the dictionary ``endf_dict`` is of appropriate
 structure, e.g., as returned by the
-:func:`~endf_parserpy.EndfParser.parsefile` method.
+:func:`~endf_parserpy.EndfParserPy.parsefile` method.
 The following code snippet demonstrates writing:
 
 .. code:: Python
 
-   from endf_parserpy import EndfParser
-   parser = EndfParser()
+   from endf_parserpy import EndfParserPy
+   parser = EndfParserPy()
    parser.writefile('output.endf', endf_dict)
 
-Also the :func:`~endf_parserpy.EndfParser.writefile`
+Also the :func:`~endf_parserpy.EndfParserPy.writefile`
 method supports the
 ``include`` and ``exclude`` argument. If the
 ``include`` argument is provided, only included
@@ -136,7 +136,7 @@ This can be achieved with the
 .. note::
 
    Don't use the ``include`` and ``exclude`` argument
-   of the :func:`~endf_parserpy.EndfParser.writefile` method
+   of the :func:`~endf_parserpy.EndfParserPy.writefile` method
    if it is important that the ENDF directory in MF1/MT451 is in sync with
    the file. Rather remove the sections manually before the
    invocation of :func:`~endf_parserpy.update_directory`.
@@ -154,7 +154,7 @@ usually be included to indicate the start of the exponent.
 
 If more output precision is required, several options are available
 to tweak the output format, which can be passed as arguments
-to the constructor of the :class:`~endf_parserpy.EndfParser` class.
+to the constructor of the :class:`~endf_parserpy.EndfParserPy` class.
 With ``abuse_signpos=True``, positive numbers
 are allowed to consume the first character slot usually
 reserved for the sign.
@@ -166,11 +166,11 @@ in decimal notation if the integer part is zero, e.g.,
 ``0.1234`` will become ``.12345``, giving in some situations
 one extra digit of precision.
 Therefore, for maximal output precision (and ugly display)
-initialize the :class:`~endf_parserpy.EndfParser` instance like this:
+initialize the :class:`~endf_parserpy.EndfParserPy` instance like this:
 
 .. code::
 
-   parser = EndfParser(abuse_signpose=True, prefer_noexp=True, skip_intzero=True)
+   parser = EndfParserPy(abuse_signpose=True, prefer_noexp=True, skip_intzero=True)
 
 
 If you want to increase compatibility with programming

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/06/01
+# Last modified:   2025/06/02
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -316,10 +316,10 @@ class EndfParserPy(EndfParserBase):
         self.variable_descriptions = EndfDict()
         self.current_path = None
         # set up the logging functionality
-        if not hasattr(EndfParser, "instance_counter"):
-            EndfParser.instance_counter = 0
-        EndfParser.instance_counter += 1
-        self.name = f"EndfParserInstance{EndfParser.instance_counter}"
+        if not hasattr(EndfParserPy, "instance_counter"):
+            EndfParserPy.instance_counter = 0
+        EndfParserPy.instance_counter += 1
+        self.name = f"EndfParserPyInstance{EndfParserPy.instance_counter}"
         self.logger = setup_logger(self.name, loglevel)
 
     def explain(self, varpath, stdout=True):

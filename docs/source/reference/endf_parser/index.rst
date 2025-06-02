@@ -4,7 +4,7 @@ endf_parser
 ===========
 
 The ``endf_parserpy.interpreter.endf_parser`` module implements
-only a single class :class:`EndfParser`, which
+only a single class :class:`EndfParserPy`, which
 is also exposed in the global namespace of the
 ``endf_parserpy`` package.
 

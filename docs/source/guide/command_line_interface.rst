@@ -50,7 +50,7 @@ Basic help on subcommands, such as ``compare``, can also be obtained on the comm
 However, the returned information is mostly useful
 as a reminder of the syntax of the arguments.
 Many parameters are related to the initialization
-of the :class:`~endf_parserpy.EndfParser` class
+of the :class:`~endf_parserpy.EndfParserPy` class
 and their meaning can be understood by consulting
 the associated :ref:`help page <endf_parser_class>`.
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2025/05/23
+# Last modified:   2025/06/02
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -14,7 +14,7 @@ import platform
 from copy import copy
 import argparse
 from .. import (
-    EndfParser,
+    EndfParserPy,
     EndfParserCpp,
     EndfPath,
 )
@@ -64,7 +64,7 @@ def add_common_cmd_parser_args(parser):
             "dest": arg_str,
             "const": arg_const,
             "default": arg_def,
-            "help": "Consult the help of the equally named EndfParser constructor argument",
+            "help": "Consult the help of the equally named EndfParserPy constructor argument",
         }
         if arg_type == bool:
             kwargs["action"] = "store_const"
@@ -110,7 +110,7 @@ def get_endf_parser(args, args_override=None, allow_cpp=True):
     if can_use_cpp:
         parser = EndfParserCpp(**cpp_parser_args)
     else:
-        parser = EndfParser(**py_parser_args)
+        parser = EndfParserPy(**py_parser_args)
     return parser
 
 

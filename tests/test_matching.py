@@ -12,7 +12,7 @@ BINARY_LOGICAL_OPS_PY = {"&": "and", "|": "or"}
 
 @pytest.fixture(scope="module")
 def test_endf_dict():
-    parser = EndfParser()
+    parser = EndfParserPy()
     endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
     endf_dict = parser.parsefile(endf_dict)
     return endf_dict

@@ -1,6 +1,7 @@
 import pytest
 import os
 from endf_parserpy.interpreter.endf_parser import EndfParser
+from endf_parserpy.cpp_parsers.endf_parser_cpp import EndfParserCpp
 from endf_parserpy.utils.debugging_utils import compare_objects
 from endf_parserpy.cpp_parsers.endf6_ext import parse_endf_file, write_endf_file
 from endf_parserpy.utils.accessories import EndfDict
@@ -15,6 +16,23 @@ def myEndfParser(
     array_type,
 ):
     return EndfParser(
+        ignore_zero_mismatch=ignore_zero_mismatch,
+        ignore_number_mismatch=ignore_number_mismatch,
+        ignore_varspec_mismatch=ignore_varspec_mismatch,
+        accept_spaces=accept_spaces,
+        array_type=array_type,
+    )
+
+
+@pytest.fixture(scope="module")
+def myEndfParserCpp(
+    ignore_zero_mismatch,
+    ignore_number_mismatch,
+    ignore_varspec_mismatch,
+    accept_spaces,
+    array_type,
+):
+    return EndfParserCpp(
         ignore_zero_mismatch=ignore_zero_mismatch,
         ignore_number_mismatch=ignore_number_mismatch,
         ignore_varspec_mismatch=ignore_varspec_mismatch,
@@ -57,6 +75,15 @@ def test_python_and_cpp_parser_equivalent(
         str(endf_file), parse_opts=cpp_parse_opts, include=mf_sel
     )
     compare_objects(endf_dict1, endf_dict2, atol=1e-10, rtol=1e-10)
+
+
+def test_python_and_cpp_parser_write_equivalent(
+    endf_file, myEndfParser, myEndfParserCpp, mf_sel
+):
+    endf_dict = myEndfParserCpp.parsefile(endf_file, mf_sel)
+    endf_out1 = myEndfParser.write(endf_dict)
+    endf_out2 = myEndfParser.write(endf_dict)
+    assert endf_out1 == endf_out2
 
 
 def test_endf_cpp_read_write_read_roundtrip(

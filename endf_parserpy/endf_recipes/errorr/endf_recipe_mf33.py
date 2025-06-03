@@ -3,7 +3,7 @@
 # Author(s):       Daniel L. Aldama, Georg Schnabel
 # Email:           dlopezaldama@gmail.com
 # Creation date:   2025/05/21
-# Last modified:   2025/05/29
+# Last modified:   2025/06/03
 # License:         MIT
 # Copyright (c) 2025 International Atomic Energy Agency (IAEA)
 #
@@ -45,16 +45,10 @@ ENDF_RECIPE_MF33 = """
 for k=1 to NK:
     (subsection[k])
         [MAT, 33, MT/ 0.0, 0.0, MAT1, MT1, 0, NG] CONT
-        for i=1 to NG:
-           # The NG1[i] != 0 condition is a hack because we know
-           # that a potential subsequent CONT and SEND record
-           # have a zero at the position associated with NG1, and
-           # NG1 must be non-zero for a valid LIST record.
-           if IG[i] <= NG and NG1[i] != 0 [lookahead=1]:
-              [MAT, 33, MT/ 0.0, 0.0, NW1[i], IG1[i], NG1[i], IG[i] /
-                  {COV[i,j]}{j=1 to NG1[i]}] LIST
-           endif
-        endfor
+        repeat [i=1]:
+          [MAT, 33, MT/ 0.0, 0.0, NW1[i], IG1[i], NG1[i], IG[i] /
+              {COV[i,j]}{j=1 to NG1[i]}] LIST
+        until IG[i] == NG
     (/subsection[k])
 endfor
 SEND

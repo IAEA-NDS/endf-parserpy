@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2025/05/29
+# Last modified:   2025/06/03
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -74,6 +74,7 @@ from .node_checks import (
     is_extvar,
     is_textplaceholder,
     is_for_loop,
+    is_repeat_loop,
     is_if_clause,
     is_abbreviation,
     is_stop,
@@ -312,6 +313,8 @@ def generate_code_from_parsetree(node, vardict):
         register_abbreviation(node, vardict)
     elif is_for_loop(node):
         return generate_code_for_loop(node, vardict)
+    elif is_repeat_loop(node):
+        return generate_code_for_repeat_loop(node, vardict)
     elif is_if_clause(node):
         return generate_code_for_if_clause(node, vardict)
     elif is_section(node):
@@ -852,6 +855,48 @@ def _generate_code_for_loop(
     )
     code += cpp.indent_code(init_readflag(loopvar, val=True))
     body_code = parsefun(for_body, vardict)
+    code += cpp.indent_code(body_code)
+    code += cpp.close_block()
+    unregister_var(loopvar, vardict)
+    # add code propagated upward from downstream nodes
+    code = node.precode + code
+    return code
+
+
+def generate_code_for_repeat_loop(node, vardict):
+    repeat_head = get_child(node, "repeat_head")
+    repeat_body = get_child(node, "repeat_body")
+    repeat_tail = get_child(node, "repeat_tail")
+    until_cond = get_child(repeat_tail, "if_head")
+
+    varassign = get_child(repeat_head, "repeat_varassign")
+    loopvar_node = get_child(varassign, "VARNAME")
+    start_expr_node = get_child(varassign, "expr")
+
+    start_expr_node = transform_nodes(start_expr_node, expand_abbreviation, vardict)
+    start_expr_str = transform_nodes(start_expr_node, expr2str_shiftidx, vardict)
+    loopvar = VariableToken(loopvar_node)
+    if loopvar in vardict:
+        raise TypeError(f"variable {loopvar} already declared")
+
+    register_var(loopvar, "loopvartype", "Scalar", vardict, track_read=False)
+    cpp_loopvar = cpp_varops_query.get_cpp_varname(loopvar, vardict)
+
+    code = cpp.indent_code(
+        rf"""
+    for (int {cpp_loopvar} = {start_expr_str};; {cpp_loopvar}++) {{
+    """,
+        -4,
+    )
+    code += cpp.indent_code(init_readflag(loopvar, val=True))
+    body_code = generate_code_from_parsetree(repeat_body, vardict)
+    # insert conditional break statement
+    logical_expr_str = logical_expr2cppstr(until_cond, vardict)
+    body_code += cpp.pureif(
+        condition=logical_expr_str,
+        code=cpp.statement("break"),
+    )
+
     code += cpp.indent_code(body_code)
     code += cpp.close_block()
     unregister_var(loopvar, vardict)

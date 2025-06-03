@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/06/02
+# Last modified:   2025/06/03
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -36,6 +36,7 @@ from .endf_mappings import (
 from .endf_mapping_utils import eval_expr_without_unknown_var, get_varname
 from .meta_control_utils import (
     cycle_for_loop,
+    cycle_repeat_loop,
     evaluate_if_clause,
     open_section,
     close_section,
@@ -280,6 +281,7 @@ class EndfParserPy(EndfParserBase):
         # program flow
         meta_actions = {}
         meta_actions["for_loop"] = self.process_for_loop
+        meta_actions["repeat_loop"] = self.process_repeat_loop
         meta_actions["if_clause"] = self.process_if_clause
         meta_actions["section"] = self.process_section
         meta_actions["abbreviation"] = self.process_abbreviation
@@ -796,6 +798,19 @@ class EndfParserPy(EndfParserBase):
             for_head = get_child(tree, "for_head")
             self.logbuffer.save_reduced_record_log(for_head)
         return cycle_for_loop(
+            tree,
+            self.run_instruction,
+            self.datadic,
+            self.loop_vars,
+            self.parse_opts,
+            logger=self.logger,
+        )
+
+    def process_repeat_loop(self, tree):
+        if self.rwmode == "write":
+            repeat_head = get_child(tree, "repeat_head")
+            self.logbuffer.save_reduced_record_log(repeat_head)
+        return cycle_repeat_loop(
             tree,
             self.run_instruction,
             self.datadic,

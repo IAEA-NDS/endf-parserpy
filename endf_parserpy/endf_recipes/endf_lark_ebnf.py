@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/28
+# Last modified:   2025/06/03
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -21,7 +21,7 @@ endf_recipe_grammar = r"""
 %ignore " "
 
 endf_recipe : (code_token | NEWLINE)*
-code_token: (endf_line | for_loop | if_clause | section |
+code_token: (endf_line | for_loop | repeat_loop | if_clause | section |
             | abbreviation | comment_block)
 endf_line : (list_line | head_or_cont_line | tab1_line | tab2_line
             | text_line | dir_line | intg_line | send_line | stop_line) NEWLINE
@@ -102,6 +102,13 @@ for_head : "for" VARNAME "=" for_start "to" for_stop ":"
 for_body : (code_token | NEWLINE)*
 for_start :  expr
 for_stop :   expr
+
+// REPEAT .. UNTIL loop
+repeat_loop : repeat_head repeat_body repeat_tail NEWLINE
+repeat_head : "repeat" ( "[" repeat_varassign "]" )? ":"
+repeat_varassign : VARNAME "=" expr
+repeat_body : (code_token | NEWLINE)*
+repeat_tail : "until" if_head
 
 // IF statement
 if_clause : if_statement elif_statement* else_statement? "endif"

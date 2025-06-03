@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/29
+# Last modified:   2025/06/03
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -189,6 +189,65 @@ def cycle_for_loop(
         f"Leave for loop (type {loop_name}) "
         + reconstruct_tree_str(for_head)
         + f" (for_start: {start} and for_stop: {stop})",
+    )
+
+
+def cycle_repeat_loop(
+    tree,
+    tree_handler,
+    datadic,
+    loop_vars,
+    parse_opts,
+    logger=None,
+):
+    assert tree.data == "repeat_loop"
+    repeat_head = get_child(tree, "repeat_head")
+    varassign = get_child(repeat_head, "repeat_varassign")
+    varname = get_child_value(varassign, "VARNAME")
+    start_expr = get_child(varassign, "expr")
+    start = eval_expr_without_unknown_var(start_expr, datadic, loop_vars, parse_opts)
+
+    if float(start) != int(start):
+        raise LoopVariableError("Loop start index must evaluate to an integer")
+
+    start = int(start)
+    repeat_body = get_child(tree, "repeat_body")
+    if varname in loop_vars:
+        raise LoopVariableError(
+            f"The loop variable {varname} is already in use for another loop"
+        )
+    write_info(
+        logger,
+        f"Enter repeat/until loop "
+        + reconstruct_tree_str(repeat_head)
+        + f" (start value of {varname}: {start}",
+    )
+
+    repeat_tail = get_child(tree, "repeat_tail")
+    until_cond = get_child(get_child(repeat_tail, "if_head"), "disjunction")
+
+    loopvar = start
+    while True:
+        loop_vars[varname] = loopvar
+        tree_handler(repeat_body)
+        until_cond_truthval = determine_truthvalue(
+            until_cond,
+            datadic,
+            loop_vars,
+            parse_opts,
+            missing_as_false=False,
+            logger=logger,
+        )
+        if until_cond_truthval:
+            break
+        loopvar += 1
+
+    del loop_vars[varname]
+    write_info(
+        logger,
+        f"Leave repeat/until loop"
+        + reconstruct_tree_str(repeat_head)
+        + f" ({varname} start: {start} and stop: {loopvar})",
     )
 
 

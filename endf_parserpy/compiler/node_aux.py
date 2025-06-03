@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/05/07
+# Last modified:   2025/06/03
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -93,6 +93,8 @@ def get_loop_head(node):
         return get_child(node, "for_head")
     elif node_name == "list_loop":
         return get_child(node, "list_for_head")
+    elif node_name == "repeat_loop":
+        return get_child(node, "repeat_head")
     else:
         NotImplementedError("node not recognized as loop node")
 
@@ -103,22 +105,30 @@ def get_loop_body(node):
         return get_child(node, "for_body")
     elif node_name == "list_loop":
         return get_child(node, "list_body")
+    elif node_name == "repeat_loop":
+        return get_child(node, "repeat_body")
     else:
         NotImplementedError("node not recognized as loop node")
 
 
 def get_loopvar(node):
     node = get_loop_head(node)
+    if get_name(node) == "repeat_head":
+        node = get_child(node, "repeat_varassign")
     return VariableToken(get_child(node, "VARNAME"))
 
 
 def get_loop_start(node):
     node = get_loop_head(node)
+    if get_name(node) == "repeat_head":
+        return get_child(get_child(node, "repeat_varassign"), "expr")
     return get_child(get_child(node, "for_start"), "expr")
 
 
 def get_loop_stop(node):
     node = get_loop_head(node)
+    if get_name(node) == "repeat_head":
+        return None
     return get_child(get_child(node, "for_stop"), "expr")
 
 
@@ -128,5 +138,7 @@ def get_loop_body(node):
         return get_child(node, "list_body")
     elif node_name == "for_loop":
         return get_child(node, "for_body")
+    elif node_name == "repeat_loop":
+        return get_child(node, "repeat_body")
     else:
         raise TypeError("not a loop node")

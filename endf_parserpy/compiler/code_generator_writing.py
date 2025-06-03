@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/11/29
+# Last modified:   2025/06/03
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -401,6 +401,8 @@ def generate_master_writefun(name, recipefuns):
     )
     body += cpp.statement(f"mf = mf_key", 2 * cpp.INDENT)
     body += cpp.statement(f"mt = mt_key", 2 * cpp.INDENT)
+
+    # skip section if it shouldn't be parsed
     body += cpp.indent_code(
         cpp.pureif(
             cpp.logical_not(aux.should_parse_section("mf", "mt", "exclude", "include")),
@@ -408,6 +410,23 @@ def generate_master_writefun(name, recipefuns):
         ),
         2 * cpp.INDENT,
     )
+
+    # inject MF and MT number into Pyton dictionary if missing
+    body += cpp.indent_code(
+        cpp.pureif(
+            cpp.logical_not('mt_dict.contains("MF")'),
+            cpp.statement('mt_dict["MF"] = mf'),
+        ),
+        2 * cpp.INDENT,
+    )
+    body += cpp.indent_code(
+        cpp.pureif(
+            cpp.logical_not('mt_dict.contains("MT")'),
+            cpp.statement('mt_dict["MT"] = mt'),
+        ),
+        2 * cpp.INDENT,
+    )
+
     # add FEND record if required
     body += cpp.indent_code(
         cpp.pureif(

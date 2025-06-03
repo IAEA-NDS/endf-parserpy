@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2025/06/01
+# Last modified:   2025/06/03
 # License:         MIT
 # Copyright (c) 2025 International Atomic Energy Agency (IAEA)
 #
@@ -54,6 +54,7 @@ class EndfParserFactory:
     def create(
         select="fastest",
         warn_slow=True,
+        require_compat=False,
         ignore_number_mismatch=False,
         ignore_zero_mismatch=True,
         ignore_varspec_mismatch=True,
@@ -86,8 +87,27 @@ class EndfParserFactory:
         parser_args = {p: real_params[p] for p in params}
         del parser_args["select"]
         del parser_args["warn_slow"]
+        del parser_args["require_compat"]
 
         epf = EndfParserFactory
+
+        if require_compat:
+            msg_tmpl = (
+                "Arguments compatible with both Python and C++ parser enforced "
+                "(require_compat=True) but the arguments provided are not compatible "
+                "with the {} parser for the following reason: {}"
+            )
+            try:
+                epf.python_compatible_args(parser_args, do_raise=True)
+
+            except ValueError as exc:
+                raise ValueError(msg_tmpl.format("Python", str(exc)))
+
+            try:
+                epf.cpp_compatible_args(parser_args, do_raise=True)
+
+            except ValueError as exc:
+                raise ValueError(msg_tmpl.format("C++", str(exc)))
 
         if select == "python":
             epf.python_compatible_args(parser_args, do_raise=True)

@@ -28,6 +28,8 @@ def pytest_addoption(parser):
     parser.addoption("--ignore_blank_lines", type=str_to_bool, default=False)
     parser.addoption("--ignore_send_records", type=str_to_bool, default=False)
     parser.addoption("--ignore_missing_tpid", type=str_to_bool, default=False)
+    # endf format
+    parser.addoption("--endf_format", type=str, default="endf6-ext")
 
 
 def pytest_generate_tests(metafunc):
@@ -55,6 +57,7 @@ def pytest_generate_tests(metafunc):
         "ignore_blank_lines",
         "ignore_send_records",
         "ignore_missing_tpid",
+        "endf_format",
     )
 
     opts = metafunc.config.option

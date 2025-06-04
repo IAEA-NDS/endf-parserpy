@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2025/06/03
+# Last modified:   2025/06/04
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -407,22 +407,6 @@ def generate_master_writefun(name, recipefuns):
         cpp.pureif(
             cpp.logical_not(aux.should_parse_section("mf", "mt", "exclude", "include")),
             cpp.statement("continue"),
-        ),
-        2 * cpp.INDENT,
-    )
-
-    # inject MF and MT number into Pyton dictionary if missing
-    body += cpp.indent_code(
-        cpp.pureif(
-            cpp.logical_not('mt_dict.contains("MF")'),
-            cpp.statement('mt_dict["MF"] = mf'),
-        ),
-        2 * cpp.INDENT,
-    )
-    body += cpp.indent_code(
-        cpp.pureif(
-            cpp.logical_not('mt_dict.contains("MT")'),
-            cpp.statement('mt_dict["MT"] = mt'),
         ),
         2 * cpp.INDENT,
     )

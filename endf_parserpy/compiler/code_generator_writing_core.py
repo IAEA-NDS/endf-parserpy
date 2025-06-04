@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2025/05/10
+# Last modified:   2025/06/04
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -89,8 +89,22 @@ def get_mat_from_mfmt_section(mfmt_dict):
 def generate_section_writing_code(funname, write_opts):
     code = cpp.ifelse(
         f"py::isinstance<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)])",
-        cpp.statement(
-            f"{funname}_ostream(cont, py::cast<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)]), {write_opts})"
+        cpp.concat(
+            [
+                # inject MF and MT number into Pyton dictionary if missing
+                cpp.pureif(
+                    cpp.logical_not('mt_dict.contains("MF")'),
+                    cpp.statement('mt_dict["MF"] = mf'),
+                ),
+                cpp.pureif(
+                    cpp.logical_not('mt_dict.contains("MT")'),
+                    cpp.statement('mt_dict["MT"] = mt'),
+                ),
+                # call the mf/mt section specific write function
+                cpp.statement(
+                    f"{funname}_ostream(cont, py::cast<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)]), {write_opts})"
+                ),
+            ]
         ),
         write_section_verbatim(
             "cont",

@@ -16,6 +16,9 @@ def myEndfParserPy(
     array_type,
     endf_format,
     prefer_noexp,
+    skip_intzero,
+    abuse_signpos,
+    preserve_value_strings,
 ):
     return EndfParserPy(
         ignore_zero_mismatch=ignore_zero_mismatch,
@@ -25,6 +28,9 @@ def myEndfParserPy(
         array_type=array_type,
         endf_format=endf_format,
         prefer_noexp=prefer_noexp,
+        skip_intzero=skip_intzero,
+        abuse_signpos=abuse_signpos,
+        preserve_value_strings=preserve_value_strings,
     )
 
 
@@ -37,6 +43,9 @@ def myEndfParserCpp(
     array_type,
     endf_format,
     prefer_noexp,
+    skip_intzero,
+    abuse_signpos,
+    preserve_value_strings,
 ):
     return EndfParserCpp(
         ignore_zero_mismatch=ignore_zero_mismatch,
@@ -46,6 +55,9 @@ def myEndfParserCpp(
         array_type=array_type,
         endf_format=endf_format,
         prefer_noexp=prefer_noexp,
+        skip_intzero=skip_intzero,
+        abuse_signpos=abuse_signpos,
+        preserve_value_strings=preserve_value_strings,
     )
 
 
@@ -57,6 +69,9 @@ def cpp_parse_opts(
     accept_spaces,
     array_type,
     prefer_noexp,
+    skip_intzero,
+    abuse_signpos,
+    preserve_value_strings,
 ):
     parse_opts = {
         "ignore_zero_mismatch": ignore_zero_mismatch,
@@ -65,6 +80,9 @@ def cpp_parse_opts(
         "accept_spaces": accept_spaces,
         "array_type": array_type,
         "prefer_noexp": prefer_noexp,
+        "skip_intzero": skip_intzero,
+        "abuse_signpos": abuse_signpos,
+        "preserve_value_strings": preserve_value_strings,
     }
     return parse_opts
 

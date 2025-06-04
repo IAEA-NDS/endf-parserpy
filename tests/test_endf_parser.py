@@ -21,6 +21,7 @@ def myEndfParserPy(
     ignore_blank_lines,
     ignore_send_records,
     ignore_missing_tpid,
+    endf_format,
 ):
     return EndfParserPy(
         ignore_zero_mismatch=ignore_zero_mismatch,
@@ -35,6 +36,7 @@ def myEndfParserPy(
         ignore_blank_lines=ignore_blank_lines,
         ignore_send_records=ignore_send_records,
         ignore_missing_tpid=ignore_missing_tpid,
+        endf_format=endf_format,
     )
 
 

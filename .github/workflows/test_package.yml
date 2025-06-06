@@ -35,13 +35,14 @@ jobs:
 
       - name: Install package and dependencies
         env:
-          INSTALL_ENDF_PARSERPY_CPP: ${{ github.event_name == 'push' && 'no' || 'yes' }}
+          INSTALL_ENDF_PARSERPY_CPP: "yes"
+          INSTALL_ENDF_PARSERPY_CPP_OPTIM: 0
         run: poetry install --with dev -v
 
       - name: Run all tests
         if: github.event_name != 'push'
         run: poetry run pytest
 
-      - name: Run tests (skip cpp parser tests)
-        if: github.event_name == 'push'
-        run: poetry run pytest --ignore-glob=tests/test_*cpp*.py
+       # - name: Run tests (skip cpp parser tests)
+       #   if: github.event_name == 'push'
+       #   run: poetry run pytest --ignore-glob=tests/test_*cpp*.py

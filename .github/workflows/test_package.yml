@@ -40,9 +40,4 @@ jobs:
         run: poetry install --with dev -v
 
       - name: Run all tests
-        if: github.event_name != 'push'
         run: poetry run pytest
-
-       # - name: Run tests (skip cpp parser tests)
-       #   if: github.event_name == 'push'
-       #   run: poetry run pytest --ignore-glob=tests/test_*cpp*.py

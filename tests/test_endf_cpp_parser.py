@@ -45,6 +45,7 @@ def myEndfParserCpp(
     prefer_noexp,
     skip_intzero,
     abuse_signpos,
+    keep_E,
     preserve_value_strings,
 ):
     return EndfParserCpp(
@@ -57,6 +58,7 @@ def myEndfParserCpp(
         prefer_noexp=prefer_noexp,
         skip_intzero=skip_intzero,
         abuse_signpos=abuse_signpos,
+        keep_E=keep_E,
         preserve_value_strings=preserve_value_strings,
     )
 
@@ -71,6 +73,7 @@ def cpp_parse_opts(
     prefer_noexp,
     skip_intzero,
     abuse_signpos,
+    keep_E,
     preserve_value_strings,
 ):
     parse_opts = {
@@ -79,9 +82,6 @@ def cpp_parse_opts(
         "ignore_varspec_mismatch": ignore_varspec_mismatch,
         "accept_spaces": accept_spaces,
         "array_type": array_type,
-        "prefer_noexp": prefer_noexp,
-        "skip_intzero": skip_intzero,
-        "abuse_signpos": abuse_signpos,
         "preserve_value_strings": preserve_value_strings,
     }
     return parse_opts
@@ -91,6 +91,10 @@ def cpp_parse_opts(
 def cpp_write_opts(array_type):
     write_opts = {
         "array_type": array_type,
+        "prefer_noexp": prefer_noexp,
+        "skip_intzero": skip_intzero,
+        "abuse_signpos": abuse_signpos,
+        "keep_E": keep_E,
     }
     return write_opts
 

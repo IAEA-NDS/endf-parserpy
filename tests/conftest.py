@@ -22,6 +22,7 @@ def pytest_addoption(parser):
     # defaults writing options chosen to preserve maximal accuracy
     parser.addoption("--abuse_signpos", type=str_to_bool, default=True)
     parser.addoption("--skip_intzero", type=str_to_bool, default=True)
+    parser.addoption("--keep_E", type=str_to_bool, default=False)
     parser.addoption("--prefer_noexp", type=str_to_bool, default=True)
     # defaults for reading options
     parser.addoption("--accept_spaces", type=str_to_bool, default=True)
@@ -52,6 +53,7 @@ def pytest_generate_tests(metafunc):
         "fuzzy_matching",
         "array_type",
         "abuse_signpos",
+        "keep_E",
         "skip_intzero",
         "prefer_noexp",
         "accept_spaces",

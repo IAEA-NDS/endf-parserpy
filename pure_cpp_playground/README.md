@@ -101,3 +101,11 @@ These classes are automatically embedded in the generated C++ code by the functi
 
 
 To be continued...
+
+### Overall approach to implementing pure C++ parser code generator
+
+For the time being, the functionality to output the ENDF data as Python dictionaries should certainly remain available.
+Nevertheless, for rapid development we may just directly replace the Python functionality in the `feature_pure_cpp` branch
+until we are satisified with the result and pure C++ code generation works.
+Afterwards, we can refactor the code to ensure that C++ code generation with and without Python dependencies can
+live side-by-side in this package.

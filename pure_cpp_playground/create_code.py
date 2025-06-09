@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append("..")
+sys.path.insert(0, "..")
 from endf_parserpy.endf_recipes import get_recipe_dict
 from endf_parserpy.compiler.compiler import create_cpp_parser_module
 

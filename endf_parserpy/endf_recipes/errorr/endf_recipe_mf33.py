@@ -46,7 +46,7 @@ for k=1 to NK:
     (subsection[k])
         [MAT, 33, MT/ 0.0, 0.0, MAT1, MT1, 0, NG] CONT
         repeat [i=1]:
-          [MAT, 33, MT/ 0.0, 0.0, NW1[i], IG1[i], NG1[i], IG[i] /
+          [MAT, 33, MT/ 0.0, 0.0, NG1[i], IG1[i], NG1[i], IG[i] /
               {COV[i,j]}{j=1 to NG1[i]}] LIST
         until IG[i] == NG
     (/subsection[k])

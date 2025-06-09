@@ -68,22 +68,21 @@ variable read from the ENDF file (e.g. scalar, array, matrix). The assignment co
 `cpp_type_scalar`, `cpp_type_nested_vector`, and `cpp_type_matrix2d`. For instance, consider the following
 routine for [cpp_type_matrix2d](https://github.com/IAEA-NDS/endf-parserpy/blob/27b8e79fcdeccf6966c188a9e88f9cb5bd56a7ab/endf_parserpy/compiler/cpp_types/cpp_type_matrix2d/assign.py#L226)
 This routine corresponds to an underlying C++ class, and creates code that calls the
-[to_pyobj() method](https://github.com/IAEA-NDS/endf-parserpy/blob/27b8e79fcdeccf6966c188a9e88f9cb5bd56a7ab/endf_parserpy/compiler/cpp_types/cpp_type_matrix2d/definition.py#L91) of that class.
+[to_pyobj() method](https://github.com/IAEA-NDS/endf-parserpy/blob/27b8e79fcdeccf6966c188a9e88f9cb5bd56a7ab/endf_parserpy/compiler/cpp_types/cpp_type_matrix2d/definition.py#L91) of that class and assigns the result to correct fieldname in the `cpp_current_dict` variable (of type `py::dict`).
 
 
+### Migration to a pure C++ class
 
+So far, the responsibility of the `py::dict` (and `py::list` for TAB1 and TAB2 records) is to act as a
+flexible data container to establish a potentially nested hierarchy of variables read from ENDF files.
+Of central importance is the variable `cpp_current_dict` (of type py::dict), which holds the
+current `py::dict` associated with the current level of nesting (in a hierarchy of nested `py::dict`s).
+For parsing, this variable is initialized in [_prepare_section_func_wrapper](https://github.com/IAEA-NDS/endf-parserpy/blob/27b8e79fcdeccf6966c188a9e88f9cb5bd56a7ab/endf_parserpy/compiler/code_generator_parsing.py#L138)
+which is registered as a function whenever a new section (e.g. MT section, or subsection therein is encoutered while reading an ENDF file),
+see [here](https://github.com/IAEA-NDS/endf-parserpy/blob/27b8e79fcdeccf6966c188a9e88f9cb5bd56a7ab/endf_parserpy/compiler/code_generator_parsing.py#L138). As a reminder, there is also a counterpart, which is the function [_finalize_section_func_wrapper](https://github.com/IAEA-NDS/endf-parserpy/blob/27b8e79fcdeccf6966c188a9e88f9cb5bd56a7ab/endf_parserpy/compiler/code_generator_parsing.py#L138) called whenever the end of a section or subsection is reached. At present, it is precisely at the end of a section where the C++ variables stored in classes like [Matrix2d](https://github.com/IAEA-NDS/endf-parserpy/blob/27b8e79fcdeccf6966c188a9e88f9cb5bd56a7ab/endf_parserpy/compiler/cpp_types/cpp_type_matrix2d/definition.py#L15) and [NestedVector](https://github.com/IAEA-NDS/endf-parserpy/blob/27b8e79fcdeccf6966c188a9e88f9cb5bd56a7ab/endf_parserpy/compiler/cpp_types/cpp_type_nested_vector/definition.py#L15) are copied into Python data structures. For a pure C++ code, these assignments need to be modified.
 
+As a starting point, a [JsonValue](https://github.com/IAEA-NDS/endf-parserpy/blob/9b0ca230438069ce77404483852abee5fceedd2c/pure_cpp_playground/jsonvalue.cpp) class which could potentially be used instead as data type for the `cpp_current_dict` variable (which is at present of type `py::dict`).
+Once we are happy with this class, we can move it as a file to the [cpp_templates](https://github.com/IAEA-NDS/endf-parserpy/tree/9b0ca230438069ce77404483852abee5fceedd2c/endf_parserpy/compiler/cpp_templates) folder in a similar way as it is already done as, e.g., for the [IndexShifter](https://github.com/IAEA-NDS/endf-parserpy/blob/9b0ca230438069ce77404483852abee5fceedd2c/endf_parserpy/compiler/cpp_templates/index_shifter.hpp) class.
+These classes are automatically embedded in the generated C++ code by the function [_module_header](https://github.com/IAEA-NDS/endf-parserpy/blob/9b0ca230438069ce77404483852abee5fceedd2c/endf_parserpy/compiler/cpp_boilerplate.py#L27) responsible to include global definitions (boilerplate code).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+To be continued...

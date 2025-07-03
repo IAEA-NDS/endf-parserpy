@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2025/06/03
+# Last modified:   2025/07/03
 # License:         MIT
 # Copyright (c) 2025 International Atomic Energy Agency (IAEA)
 #
@@ -93,7 +93,7 @@ class EndfParserFactory:
 
         if require_compat:
             msg_tmpl = (
-                "Arguments compatible with both Python and C++ parser enforced "
+                "Argument compatibility with both Python and C++ parser enforced "
                 "(require_compat=True) but the arguments provided are not compatible "
                 "with the {} parser for the following reason: {}"
             )

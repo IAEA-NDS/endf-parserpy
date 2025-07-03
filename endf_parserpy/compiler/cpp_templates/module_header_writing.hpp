@@ -203,7 +203,13 @@ std::string float2endfstr_decimal_helper(
   }
   std::stringstream ss2;
   ss2 << std::fixed << std::setprecision(prec) << value;
-  return ss2.str();
+  // strip insignificant trailing zeros for compatibility with Python output
+  std::string sout = ss2.str();
+  sout.erase(sout.find_last_not_of('0') + 1);
+  if (sout.back() == '.') {
+    sout.pop_back();
+  }
+  return sout;
 }
 
 

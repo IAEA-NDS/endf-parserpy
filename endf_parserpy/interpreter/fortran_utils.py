@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/06/02
+# Last modified:   2025/07/03
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -116,39 +116,38 @@ def float2expformstr(val, write_opts=None):
     width = write_opts.get("width", 11)
     abuse_signpos = write_opts.get("abuse_signpos", False)
     keep_E = write_opts.get("keep_E", False)
-    av = abs(val)
-    if av >= 1e-9 and av < 1e10:
-        nexp = 1
-    elif av >= 1e-99 and av < 1e100:
-        nexp = 2
-    elif av == 0.0:
-        nexp = 1
+
+    # get number of digits in exponent
+    expnumstr = f"{val:.0e}"
+    expnumstr = expnumstr[expnumstr.index("e") + 2 :]
+    exp_len = 1
+    for i, c in enumerate(expnumstr):
+        if c != "0":
+            exp_len = len(expnumstr) - i
+            break
+    # calculate available digits after comma
+    prec = width - exp_len - 4
+    if abuse_signpos and val >= 0:
+        prec += 1
+    if keep_E:
+        prec -= 1
+    # produce the number
+    numstr = f"{{:.{prec}e}}".format(val)
+    # remove the unnecessary zeros in exponent
+    zerostart = zerostop = numstr.index("e") + 2
+    numstr_len = len(numstr)
+    while numstr[zerostop] == "0":
+        zerostop += 1
+        if zerostop == numstr_len:
+            break
+    if zerostop < numstr_len:
+        numstr = numstr[:zerostart] + numstr[zerostop:]
     else:
-        nexp = 3
-    is_pos = val >= 0
-    sign_dec = 0 if abuse_signpos and is_pos else 1
-    expsymb_dec = 1 if keep_E else 0
-    exponent = floor(log10(av)) if av != 0 else 0
-    mantissa = abs(val / 10**exponent)
-    is_expo_pos = exponent >= 0
-    absexponent = abs(exponent)
-    mantissa_len = width - 1 - nexp - sign_dec - expsymb_dec
-    mantissa_str = f"{{:.{mantissa_len-2}f}}".format(mantissa)
-    expsymb_str = "E" if keep_E else ""
-    exposign_str = "+" if is_expo_pos else "-"
-    exponent_str = f"{{:{nexp}d}}".format(absexponent)
-    if is_pos:
-        sign_str = "" if abuse_signpos else " "
-    else:
-        sign_str = "-"
-    res_str = sign_str + mantissa_str + expsymb_str + exposign_str + exponent_str
-    if len(res_str) > width:
-        # special case: we have 9.999999999 in the mantissa, which will
-        #               be rounded to 10.0000000 so we have too many digits.
-        #               Hack: Pass the rounded number again to this function.
-        tmp_str = sign_str + mantissa_str + "e" + exposign_str + exponent_str
-        res_str = float2expformstr(float(tmp_str), write_opts=write_opts)
-    return res_str
+        numstr = numstr[:zerostart] + "0"
+    # remove `e` character if requested
+    if not keep_E:
+        numstr = numstr.replace("e", "")
+    return numstr.rjust(width)
 
 
 def float2fortstr(val, write_opts=None):

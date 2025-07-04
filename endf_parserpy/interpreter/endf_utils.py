@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/12/07
+# Last modified:   2025/07/04
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -295,8 +295,9 @@ def write_list(dic, with_ctrl=True, write_opts=None):
     body_lines = []
     if NPL > 0:
         ext_vals = dic["vals"].copy()
-        if NPL % 6 != 0:
-            ext_vals += [0.0 for i in range(6 - NPL % 6)]
+        # Do not pad with zeros for consistency with cpp parser
+        # if NPL % 6 != 0:
+        #     ext_vals += [0.0 for i in range(6 - NPL % 6)]
         body_lines = write_endf_numbers(ext_vals, write_opts=write_opts)
     if with_ctrl:
         ctrl = write_ctrl(dic)

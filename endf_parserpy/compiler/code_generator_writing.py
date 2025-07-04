@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2025/06/04
+# Last modified:   2025/07/04
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -476,7 +476,7 @@ def generate_master_writefun(name, recipefuns):
     # add FEND, MEND and TEND record at the very end
     body += cpp.statement("cont << cpp_prepare_send(mat, 0, write_opts)")
     body += cpp.statement("cont << cpp_prepare_send(0, 0, write_opts)")
-    body += cpp.statement("cont << cpp_prepare_send(-1, 0, write_opts)")
+    body += cpp.statement("cont << cpp_prepare_send(-1, 0, write_opts, false)")
 
     args = (
         ("std::ostream&", "cont"),

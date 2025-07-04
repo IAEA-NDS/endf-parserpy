@@ -156,27 +156,60 @@ std::string cpp_prepare_line(
 }
 
 
-std::string float2endfstr_helper(
-  double value, int prec, size_t &exp_pos, WritingOptions &write_opts
-) {
-  std::ostringstream oss;
-  oss << std::scientific << std::setprecision(prec) << value;
-  std::string numstr = oss.str();
+void normalize_exponent(std::string& numstr) {
   size_t strsize = numstr.size();
   size_t zerostart = std::string::npos;
-  exp_pos = numstr.find("e");
+  size_t exp_pos = numstr.find("e");
   if (exp_pos == std::string::npos) {
     throw std::runtime_error("`e` character not found");
   }
-  for (int i=exp_pos+1; i < strsize; i++) {
-    if ((numstr[i] >= '1' && numstr[i] <= '9') || i+1 == strsize) {
-      if (zerostart != std::string::npos) {
-        numstr.erase(zerostart, i - zerostart);
-        break;
-      }
-    } else if (zerostart == std::string::npos && numstr[i] == '0') {
-      zerostart = i;
+  size_t expnum_start = exp_pos+2;
+  for (int i=expnum_start; i < strsize; i++) {
+    if (numstr[i] != '0') {
+      numstr.erase(expnum_start, i-expnum_start);
+      return;
+    } else if (i+1 == strsize) {
+      numstr.erase(expnum_start, i-expnum_start);
+      return;
     }
+  }
+}
+
+
+std::string get_scientific_numstr(double value, int precision, bool abuse_signpos) {
+  std::ostringstream oss;
+  oss << std::scientific << std::setprecision(precision) << value;
+  std::string numstr = oss.str();
+  normalize_exponent(numstr);
+  if (! abuse_signpos && value >= 0) {
+    numstr.insert(0, " ");
+  }
+  return numstr;
+}
+
+
+std::string float2endfstr_helper(double value, size_t width, WritingOptions &write_opts)
+{
+  std::string numstr = get_scientific_numstr(value, 6, write_opts.abuse_signpos);
+  // re-calculate precision to match width specification
+  size_t prec = 6 - (numstr.size() - width);
+  numstr = get_scientific_numstr(value, prec, write_opts.abuse_signpos);
+  // in rare cases, we may still be off the desired width due to
+  // situations like 9.9999e-10 vs 1.000e-9
+  if (numstr.size() < width) {
+    std::string old_numstr;
+    do {
+      old_numstr = numstr;
+      numstr = get_scientific_numstr(value, ++prec, write_opts.abuse_signpos);
+    } while (numstr.size() <= width);
+    numstr = old_numstr;
+    if (numstr.size() < width) {
+      numstr.insert(0, " ");
+    }
+  } else if (numstr.size() > width) {
+    do {
+      numstr = get_scientific_numstr(value, --prec, write_opts.abuse_signpos);
+    } while (numstr.size() > width);
   }
   return numstr;
 }
@@ -194,63 +227,63 @@ std::string float2endfstr_decimal_helper(
   if (commapos == std::string::npos) {
     throw std::runtime_error("error occured while converting float to string");
   }
-  if (commapos >= width) {
-    return numstr;
-  }
-  int prec = width - commapos;
-  if (value >= 0) {
+  bool is_intzero_case = (
+    write_opts.skip_intzero && static_cast<int>(value) == 0
+  );
+  int prec = width - commapos - 1;
+  if (value >= 0 && ! write_opts.abuse_signpos) {
     prec--;
+  }
+  if (is_intzero_case) {
+    prec++;
+  }
+  if (prec < 0) {
+    prec = 0;
   }
   std::stringstream ss2;
   ss2 << std::fixed << std::setprecision(prec) << value;
   // strip insignificant trailing zeros for compatibility with Python output
   std::string sout = ss2.str();
-  sout.erase(sout.find_last_not_of('0') + 1);
-  if (sout.back() == '.') {
-    sout.pop_back();
+  commapos = numstr.find('.');
+  if (commapos != std::string::npos) {
+    int last_nonzero_pos = sout.substr(commapos).find_last_not_of('0');
+    sout.erase(commapos + last_nonzero_pos + 1);
+    if (sout.back() == '.') {
+      sout.pop_back();
+    } else if (is_intzero_case) {
+      // strip unnecessary integer zero
+      if (numstr[commapos-1] != '0') {
+        throw std::runtime_error("integer zero matching failed");
+      }
+      sout.erase(commapos-1, 1);
+    }
   }
-  return sout;
+  if (! write_opts.abuse_signpos && value >= 0) {
+    sout.insert(0, " ");
+  }
+  // right-adjust the number
+  std::ostringstream oss3;
+  oss3 << std::right << std::setw(width) << sout;
+  return oss3.str();
 }
 
 
 std::string float2endfstr(double value, WritingOptions &write_opts) {
   std::ostringstream oss;
   std::string numstr;
-  int number_length = 10;
-  int digits_after_comma = 6;
-  bool delete_E = (! write_opts.keep_E);
-  size_t exp_pos;
-  if (! delete_E) {
-    digits_after_comma--;
-  }
-  if (value >= 0 && write_opts.abuse_signpos) {
-    number_length++;
-    digits_after_comma++;
+  int width = 11;
+  int effwidth = width;
+  if (! write_opts.keep_E) {
+      effwidth++;
   }
   numstr = float2endfstr_helper(
-    value, digits_after_comma, exp_pos, write_opts
+    value, effwidth, write_opts
   );
-  int prec_red = numstr.size() - number_length;
-  // account for excess length by char 'e'
-  if (delete_E) {
-    prec_red -= 1;
-  }
-  // account for excess length in numstr to minus sign
-  if (value < 0) {
-    prec_red -= 1;
-  }
-  if (prec_red > 0) {
-    numstr = float2endfstr_helper(
-      value, digits_after_comma - prec_red, exp_pos, write_opts
-    );
-  }
   if (write_opts.prefer_noexp) {
     std::string numstr_noexp = float2endfstr_decimal_helper(
-      value, number_length, write_opts
+      value, width, write_opts
     );
-    int sign_inc = 0;
-    if (value < 0) sign_inc++;
-    if (numstr_noexp.size() <= number_length + sign_inc) {
+    if (numstr_noexp.size() <= width) {
       double recon_value = std::stod(numstr);
       double recon_value_noexp = std::stod(numstr_noexp);
       double recon_value_diff = std::abs(recon_value - value);
@@ -258,27 +291,16 @@ std::string float2endfstr(double value, WritingOptions &write_opts) {
       double recon_value_noexp_diff = std::abs(recon_value_noexp - value);
       double recon_value_noexp_reldiff =  recon_value_noexp_diff / (std::abs(value)+1e-12);
       if (recon_value_reldiff >= recon_value_noexp_reldiff) {
-        if (write_opts.skip_intzero && static_cast<int>(recon_value_noexp) == 0) {
-          numstr_noexp = float2endfstr_decimal_helper(
-            value, number_length+1, write_opts
-          );
-          size_t zeropos = numstr_noexp.find('0');
-          size_t commapos = numstr_noexp.find('.');
-          if (zeropos+1 != commapos) {
-            throw std::runtime_error("integer zero matching failed");
-          }
-          numstr_noexp.erase(zeropos, 1);
-        }
-        numstr = numstr_noexp;
-        delete_E = false;
+          return numstr_noexp;
       }
     }
   }
-  if (delete_E) {
+  // delete exp character if demanded
+  if (! write_opts.keep_E) {
+    size_t exp_pos = numstr.find('e');
     numstr.erase(exp_pos, 1);
   }
-  oss << std::right << std::setw(11) << numstr;
-  return oss.str();
+  return numstr;
 }
 
 
@@ -419,10 +441,13 @@ void write_tab2_body(
 }
 
 
-std::string cpp_prepare_send(int mat, int mf, WritingOptions &write_opts) {
+std::string cpp_prepare_send(
+  int mat, int mf, WritingOptions &write_opts, bool newline=true) {
   int line_width = (write_opts.include_linenum) ? 80 : 75;
   std::string line(line_width, ' ');
-  line += '\n';
+  if (newline) {
+      line += '\n';
+  }
   cpp_write_mat_number(line, mat);
   cpp_write_mf_number(line, mf);
   cpp_write_mt_number(line, 0);

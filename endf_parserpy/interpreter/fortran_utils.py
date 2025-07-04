@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/07/03
+# Last modified:   2025/07/04
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -112,27 +112,7 @@ def float2basicnumstr(val, write_opts=None):
     return numstr
 
 
-def float2expformstr(val, write_opts=None):
-    width = write_opts.get("width", 11)
-    abuse_signpos = write_opts.get("abuse_signpos", False)
-    keep_E = write_opts.get("keep_E", False)
-
-    # get number of digits in exponent
-    expnumstr = f"{val:.0e}"
-    expnumstr = expnumstr[expnumstr.index("e") + 2 :]
-    exp_len = 1
-    for i, c in enumerate(expnumstr):
-        if c != "0":
-            exp_len = len(expnumstr) - i
-            break
-    # calculate available digits after comma
-    prec = width - exp_len - 4
-    if abuse_signpos and val >= 0:
-        prec += 1
-    if keep_E:
-        prec -= 1
-    # produce the number
-    numstr = f"{{:.{prec}e}}".format(val)
+def _fortranify_expformstr(numstr, keep_E=False):
     # remove the unnecessary zeros in exponent
     zerostart = zerostop = numstr.index("e") + 2
     numstr_len = len(numstr)
@@ -147,6 +127,42 @@ def float2expformstr(val, write_opts=None):
     # remove `e` character if requested
     if not keep_E:
         numstr = numstr.replace("e", "")
+    return numstr
+
+
+def float2expformstr(val, write_opts=None):
+    width = write_opts.get("width", 11)
+    abuse_signpos = write_opts.get("abuse_signpos", False)
+    keep_E = write_opts.get("keep_E", False)
+
+    # get number of digits in exponent
+    expnumstr = f"{val:.6e}"
+    expnumstr = expnumstr[expnumstr.index("e") + 2 :]
+    exp_len = 1
+    for i, c in enumerate(expnumstr):
+        if c != "0":
+            exp_len = len(expnumstr) - i
+            break
+    # calculate available digits after comma
+    prec = width - exp_len - 4
+    if abuse_signpos and val >= 0:
+        prec += 1
+    if keep_E:
+        prec -= 1
+    # produce the number
+    numstr = f"{{:.{prec}e}}".format(val)
+    numstr = _fortranify_expformstr(numstr, keep_E)
+    numstr_len = len(numstr)
+    # deal with special case of the sort 9.9999e-9 vs 1.00000-10
+    if abuse_signpos:
+        if numstr_len > width:
+            numstr = f"{{:.{prec-1}e}}".format(val)
+            numstr = _fortranify_expformstr(numstr, keep_E)
+    else:
+        if numstr_len > width or (val > 0 and numstr_len == width):
+            numstr = f"{{:.{prec-1}e}}".format(val)
+            numstr = _fortranify_expformstr(numstr, keep_E)
+
     return numstr.rjust(width)
 
 

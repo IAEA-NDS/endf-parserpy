@@ -18,6 +18,7 @@ def myEndfParserPy(
     prefer_noexp,
     skip_intzero,
     abuse_signpos,
+    keep_E,
     preserve_value_strings,
 ):
     return EndfParserPy(
@@ -30,6 +31,7 @@ def myEndfParserPy(
         prefer_noexp=prefer_noexp,
         skip_intzero=skip_intzero,
         abuse_signpos=abuse_signpos,
+        keep_E=keep_E,
         preserve_value_strings=preserve_value_strings,
     )
 

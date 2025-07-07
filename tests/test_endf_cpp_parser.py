@@ -1,5 +1,7 @@
 import pytest
 import os
+import tempfile
+from pathlib import Path
 from endf_parserpy.interpreter.endf_parser import EndfParserPy
 from endf_parserpy.cpp_parsers.endf_parser_cpp import EndfParserCpp
 from endf_parserpy.utils.debugging_utils import compare_objects
@@ -113,9 +115,25 @@ def test_python_and_cpp_parser_write_equivalent(
     endf_file, myEndfParserPy, myEndfParserCpp, mf_sel
 ):
     endf_dict = myEndfParserCpp.parsefile(endf_file, mf_sel)
-    endf_out1 = myEndfParserPy.write(endf_dict)
-    endf_out2 = myEndfParserPy.write(endf_dict)
-    assert endf_out1 == endf_out2
+    endfout_py = myEndfParserPy.write(endf_dict)
+    endfout_cpp = myEndfParserCpp.write(endf_dict)
+    assert endfout_py == endfout_cpp
+
+
+def test_python_and_cpp_parser_writefile_equivalent(
+    endf_file, myEndfParserPy, myEndfParserCpp, mf_sel
+):
+    endf_dict = myEndfParserCpp.parsefile(endf_file, mf_sel)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        outfile_py = Path(tmpdirname) / "outfile_py.endf"
+        outfile_cpp = Path(tmpdirname) / "outfile_cpp.endf"
+        myEndfParserPy.writefile(outfile_py, endf_dict)
+        myEndfParserCpp.writefile(outfile_cpp, endf_dict)
+        with open(outfile_py, "r") as f:
+            endftext_py = f.read()
+        with open(outfile_cpp, "r") as f:
+            endftext_cpp = f.read()
+    assert endftext_py == endftext_cpp
 
 
 def test_endf_cpp_read_write_read_roundtrip(

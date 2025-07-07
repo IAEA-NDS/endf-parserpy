@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2025/05/10
+# Last modified:   2025/07/07
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -369,7 +369,7 @@ def generate_master_parsefun(name, recipefuns):
     conditions.append(curcond)
 
     # blank line treatment
-    curcond = aux.is_blank_line()
+    curcond = cpp.logical_and([aux.is_blank_line(), "after_tend == false"])
     curstat = cpp.pureif(
         cpp.logical_not("parse_opts.ignore_blank_lines"),
         cpp.throw_runtime_error(

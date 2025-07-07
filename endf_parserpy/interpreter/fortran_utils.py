@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/07/04
+# Last modified:   2025/07/07
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -93,21 +93,22 @@ def float2basicnumstr(val, write_opts=None):
     should_skip_zero = skip_intzero and intpart == 0
     if should_skip_zero:
         effwidth += 1
-    if is_integer:
-        waste_space -= 1
-    floatwidth = effwidth - waste_space - len_intpart
-    if floatwidth > 0 and not is_integer:
+    floatwidth = max(effwidth - waste_space - len_intpart, 0)
+    if not is_integer:
         numstr = f"{{:{effwidth}.{floatwidth}f}}".format(val)
-        if should_skip_zero:
-            dotpos = numstr.index(".")
-            numstr = numstr[: dotpos - 1] + numstr[dotpos:]
+        if "." in numstr:
+            if should_skip_zero:
+                dotpos = numstr.index(".")
+                numstr = numstr[: dotpos - 1] + numstr[dotpos:]
+            numstr = numstr.rstrip("0").rstrip(".")
+            # next line to deal with case -.00 and .00
+            if numstr in ("+", "-", ""):
+                numstr = "0"
     else:
         numstr = "{:d}".format(int(val))
         if val > 0 and not abuse_signpos:
             numstr = " " + numstr
-        if len(numstr) <= width - 2:
-            numstr += "."
-            numstr = numstr.ljust(width, "0")
+
     numstr = numstr.rjust(width)
     return numstr
 
@@ -208,11 +209,6 @@ def float2fortstr(val, write_opts=None):
     if not prefer_noexp:
         return valstr_exp
     valstr_basic = float2basicnumstr(val, write_opts=write_opts)
-    if "." in valstr_basic:
-        valstr_basic = valstr_basic.rstrip("0").rstrip(".")
-        # next line to deal with case -.00 and .00
-        if valstr_basic in ("+", "-", ""):
-            valstr_basic = "0"
     if len(valstr_basic) > width:
         return valstr_exp
     delta1 = abs(fortstr2float(valstr_basic) - val)

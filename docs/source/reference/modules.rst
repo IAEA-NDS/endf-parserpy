@@ -8,6 +8,7 @@ classes and functions included in them.
 .. toctree::
    :maxdepth: 2
 
+   endf_parser_factory/index
    endf_parser/index
    endf_parser_cpp/index
    accessories/index

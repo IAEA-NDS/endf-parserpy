@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/07/07
+# Last modified:   2025/07/08
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -77,25 +77,27 @@ def fortstr2float(valstr, read_opts=None):
 
 def float2basicnumstr(val, write_opts=None):
     width = write_opts.get("width", 11)
-    effwidth = width
     abuse_signpos = write_opts.get("abuse_signpos", False)
     skip_intzero = write_opts.get("skip_intzero", False)
     intpart = int(val)
     len_intpart = len(str(abs(intpart)))
     is_integer = intpart == val
-    if is_integer and intpart == 0:
-        return "0".rjust(effwidth)
-    # -1 due to a minus sign slot
-    # -1 due to the decimal point
-    waste_space = 2
-    if abuse_signpos and val > 0:
-        waste_space -= 1
-    should_skip_zero = skip_intzero and intpart == 0
-    if should_skip_zero:
-        effwidth += 1
-    floatwidth = max(effwidth - waste_space - len_intpart, 0)
-    if not is_integer:
-        numstr = f"{{:{effwidth}.{floatwidth}f}}".format(val)
+
+    if is_integer:
+        if intpart == 0:
+            return "0".rjust(width)
+        numstr = "{:d}".format(int(val))
+
+    else:
+        effwidth = width
+        if val < 0 or not abuse_signpos:
+            effwidth -= 1
+        should_skip_zero = skip_intzero and intpart == 0
+        if should_skip_zero:
+            effwidth += 1
+        # -1 due to the decimal point
+        floatwidth = max(effwidth - 1 - len_intpart, 0)
+        numstr = f"{{:.{floatwidth}f}}".format(val)
         if "." in numstr:
             if should_skip_zero:
                 dotpos = numstr.index(".")
@@ -104,11 +106,9 @@ def float2basicnumstr(val, write_opts=None):
             # next line to deal with case -.00 and .00
             if numstr in ("+", "-", ""):
                 numstr = "0"
-    else:
-        numstr = "{:d}".format(int(val))
-        if val > 0 and not abuse_signpos:
-            numstr = " " + numstr
 
+    if val >= 0 and not abuse_signpos:
+        numstr = " " + numstr
     numstr = numstr.rjust(width)
     return numstr
 

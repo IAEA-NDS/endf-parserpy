@@ -12,6 +12,7 @@
    :caption: Tutorials & Guides
    :hidden:
 
+   guide/python_and_cpp_parser
    guide/command_line_interface
    guide/reading_writing_endf
    guide/endf_format_validation
@@ -132,6 +133,7 @@ Resources
 - :doc:`overview/endf_navigation`
 - Guides
 
+  - :doc:`guide/python_and_cpp_parser`
   - :doc:`guide/command_line_interface`
   - :doc:`guide/reading_writing_endf`
   - :doc:`guide/endf_format_validation`

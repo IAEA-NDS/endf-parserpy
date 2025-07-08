@@ -56,8 +56,8 @@ and write the modified data to a new
 ENDF-6 file:
 
 ```
-from endf_parserpy import EndfParserCpp
-parser = EndfParserCpp()
+from endf_parserpy import EndfParserFactory
+parser = EndfParserFactory.create()
 endf_dict = parser.parsefile('input.endf')
 endf_dict[3][1]['AWR'] = 99.99
 parser.writefile('output.endf', endf_dict)

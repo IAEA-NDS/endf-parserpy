@@ -93,5 +93,5 @@ def test_all_writing_options_equivalence(mf3_section):
         mf3_section[3][1]["xstable"]["xs"] = numbers
         mf3_section[3][1]["xstable"]["E"] = numbers
         endftext_py = parser_py.write(mf3_section)
-        endftext_cpp = parser_py.write(mf3_section)
-        assert endftext_py == endftext_cpp
+        endftext_cpp = parser_cpp.write(mf3_section)
+        assert endftext_py == endftext_cpp, f"{params}"

@@ -8,6 +8,7 @@ to explanations of all the essential classes
 implemented in the ``endf_parserpy`` package:
 
 - :class:`endf_parserpy.EndfParserFactory`
+- :class:`endf_parserpy.EndfParserBase`
 - :class:`endf_parserpy.EndfParserPy`
 - :class:`endf_parserpy.EndfParserCpp`
 - :class:`endf_parserpy.EndfDict`

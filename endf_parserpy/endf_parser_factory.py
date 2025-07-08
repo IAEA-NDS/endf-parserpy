@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2025/07/03
+# Last modified:   2025/07/08
 # License:         MIT
 # Copyright (c) 2025 International Atomic Energy Agency (IAEA)
 #
@@ -132,7 +132,7 @@ class EndfParserFactory:
                         UserWarning,
                     )
                 epf.python_compatible_args(parser_args, do_raise=True)
-                return epf.get_pyton_parser(parser_args)
+                return epf.get_python_parser(parser_args)
 
         raise ValueError(
             "value of `select` argument must be one of `python`, `cpp`, `fastest`"

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2025/06/02
+# Last modified:   2025/07/08
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -26,11 +26,11 @@ class EndfParserCpp(EndfParserBase):
     methods of this class are :func:`parsefile` and :func:`writefile`.
 
     This class closely mirrors the functionality of the
-    :class:`~endf_parserpy.endf_parser.EndfParserPy` class but relies
+    :class:`~endf_parserpy.EndfParserPy` class but relies
     on compiled functions for parsing and writing. Tests indicated
     that these functions are usually at least 50x faster than the
     corresponding functions in the
-    :class:`~endf_parserpy.endf_parser.EndfParserPy` class and in some
+    :class:`~endf_parserpy.EndfParserPy` class and in some
     cases several hundred times faster.
 
     Please note that this class may not be usable if the compilation

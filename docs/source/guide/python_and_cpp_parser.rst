@@ -93,13 +93,18 @@ implemented selection logic for a moment, this function is equivalent to
 
 .. code:: Python
 
+   from endf_parserpy import EndfParserPy
    parser = EndfParserPy(...)
 
-or
+if the Python parser (:class:`~endf_paserpy.EndfParserPy`) is selected or
 
 .. code:: Python
 
+   from endf_parserpy import EndfParserCpp
    parser = EndfParserCpp(...)
 
-depending on the parser type selected, and the selection depends
-on the availability of the C++ parser and the arguments provided.
+if the C++ parser (:class:`~endf_parserpy.EndfParserCpp`) is selected
+As described above, the selection of the parser
+depends on the availability of the C++ parser and whether the arguments
+provided to :class:`~endf_parserpy.EndfParserFactory` are supported by the
+C++ parser.

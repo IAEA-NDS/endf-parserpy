@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0]
+
+### Deprecated
+
+- The `EndfParser` class has been renamed to `EndfParserPy` and the old name should not be used anymore
+
+### Added
+
+- Support of `repat...until` syntax in formal recipe language
+- Support of `stop` instruction to C++ parser generator
+- `EndfParserFactory` class for automatic selection between Python and C++ parser
+- Abstract base class `EndfParserBase` serving as parent class for `EndfParserCpp` and `EndfParserPy`
+- Recipe flavor ``errorr`` to support parsing and writing NJOY ERRORR output files
+- Support of array values as indices in ENDF recipes
+- Possibility to control C++ optimization level via `INSTALL_ENDF_PARSERPY_CPP_OPTIM` environment variable
+- Tests to verify character by character equivalence of Python and C++ parser output
+
+### Fixed
+
+- Python parser now always inject MAT, MF, MT numbers before parsing
+- Inject MF, MT if missing before writing via `EndfParserCpp`
+- Deal gracefully with `UnavailableIndexError` in if-lookahead
+- Ensure character by character equivalence of `EndfParserPy` and `EndfParserCpp` output
+- C++ parser now accepts blank lines after TEND record (irrespective of `ignore_blank_lines` option)
+
+### Changed
+
+- Replaced deprecated dependency `appdirs` by `platformdirs` package
+- Default value of `fuzzy_matching` Python parser argument to `False`
+- Expose `include_linenum` argument in command-line interface
+- Disabled zero padding of list bodies in Python parser (same behavior now as C++ parser)
+
 ## [0.13.1]
 
 ### Fixed

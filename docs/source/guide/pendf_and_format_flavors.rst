@@ -34,10 +34,12 @@ Available ENDF flavors can be queried by
 
    from endf_parserpy.endf_recipes import list_endf_flavors
    list_endf_flavors()
-   # ('endf6-ext', 'endf6', 'jendl', 'pendf')
+   # ('endf6-ext', 'endf6', 'jendl', 'pendf', 'errorr')
 
 The default is ``endf6-ext``, which is a syntactical superset
-of the ``endf6`` and ``jendl`` flavor.
+of the ``endf6`` and ``jendl`` flavor. The ``errorr`` flavor
+can be used to read files produced by the NJOY2016 ERRORR module
+and, as for all other flavors, to modify and create them.
 
 Using the ``pendf`` flavor, PENDF files produced by NJOY2016
 can be parsed and also modified in the same way as explained

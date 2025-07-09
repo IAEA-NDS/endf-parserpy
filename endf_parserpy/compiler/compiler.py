@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/23
-# Last modified:   2025/05/22
+# Last modified:   2025/07/11
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -59,14 +59,18 @@ def create_project_files(
     create_cmake_file(project_path, module_name, overwrite=overwrite_files)
 
 
-def _prepare_cpp_parsers_subpackage(overwrite=False):
+def _prepare_cpp_parsers_subpackage(overwrite=False, only_filenames=False):
     endf_flavors = list_endf_flavors()
     script_dir = os.path.dirname(os.path.abspath(__file__))
     cpp_parsers_dir = os.path.join(script_dir, "../cpp_parsers")
+    filenames = []
     for endf_flavor in endf_flavors:
         print(f"---- compilation of {endf_flavor} ----")
         module_name = endf_flavor.replace("-", "_")
         module_file = f"{module_name}.cpp"
+        filenames.append(module_file)
+        if only_filenames:
+            continue
         cpp_module_path = os.path.join(cpp_parsers_dir, module_file)
         if not overwrite and os.path.exists(cpp_module_path):
             raise FileExistsError(f"The module {cpp_module_path} exists already!")
@@ -74,3 +78,4 @@ def _prepare_cpp_parsers_subpackage(overwrite=False):
         create_cpp_parser_module(
             cpp_module_path, module_name, recipe, overwrite=overwrite
         )
+    return filenames

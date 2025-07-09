@@ -1,11 +1,20 @@
-[tool.poetry]
+[build-system]
+requires = [
+    "setuptools>=64",
+    "pybind11>=2.10.0",
+    "lark>=1.0.0",
+    "platformdirs>=4.3.6",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
 name = "endf-parserpy"
 description = "A Python package for reading, writing, verifying and translating ENDF-6 files"
-authors = ["Georg Schnabel"]
-license = "MIT"
+authors = [{ name = "Georg Schnabel" }]
+dynamic = ["version", "dependencies"]
+license = {text = "MIT"}
 readme = "README.md"
-repository = "https://github.com/iaea-nds/endf-parserpy"
-documentation = "https://endf-parserpy.readthedocs.io/en/latest/"
+requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -15,61 +24,19 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: POSIX :: Linux",
-    "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12"
-]
-# version will be retrieved from __version__
-# attribute defined in endf_parserpy/__init__.py
-version = "0.0.0"
-
-packages = [
-    { include = "endf_parserpy" }
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
-include = [
-    { path = "endf_parserpy/compiler/cpp_templates", format = ["sdist", "wheel"] },
-    { path = "endf_parserpy/recipe_cache", format= ["sdist", "wheel"] }
-]
+[project.urls]
+Repository = "https://github.com/iaea-nds/endf-parserpy"
+Documentation = "https://https//endf-parserpy.readthedocs.io/en/stable/"
+Issues = "https://github.com/iaea-nds/endf-parserpy/issues"
 
-[tool.poetry.dependencies]
-python = ">=3.8.0,<4.0.0"
-lark = ">=1.0.0"
-platformdirs = "^4.3.6"
-
-[tool.poetry.group.dev.dependencies]
-pytest = ">=4.0"
-pre-commit = "2.15.0"
-poetry-dynamic-versioning = ">=1.3.0"
-
-[tool.poetry-dynamic-versioning]
-enable = true
-
-[tool.poetry-dynamic-versioning.from-file]
-source = "endf_parserpy/__init__.py"
-pattern = "__version__ *= *\"(.*)\""
-
-[tool.poetry.scripts]
+[project.scripts]
 endf-cli = "endf_parserpy.cli.cmd:cli_interface"
-
-[tool.poetry.build]
-script = "build.py"
-# The following line is essential, as otherwise
-# the build.py script doesn't seem to be executed
-generate-setup-file = true
-
-[build-system]
-requires = [
-    "setuptools>=58.0.0,<69.0.0",
-    "pybind11>=2.10.0",
-    "poetry-core>=1.2",
-    "poetry-dynamic-versioning>=1.3",
-    "lark>=1.0.0",     # required for C++ compilation during
-    "platformdirs>=4.3.6",  # installation using functionality of endf-parserpy
-]
-# thin wrapper around poetry.core.masonry.api
-build-backend = "poetry_dynamic_versioning.backend"

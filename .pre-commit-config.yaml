@@ -11,14 +11,6 @@ repos:
       entry: python .pre-commit-hooks/update-changelog-version.py
       language: python
 
-  - repo: https://github.com/python-poetry/poetry
-    rev: 1.8.1
-    hooks:
-    - id: poetry-check
-    - id: poetry-lock
-    - id: poetry-export
-    - id: poetry-install
-
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:

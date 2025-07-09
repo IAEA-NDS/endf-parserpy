@@ -25,7 +25,7 @@ from .utils.endf6_plumbing import update_directory
 from .utils.math_utils import EndfFloat
 
 
-__version__ = "0.13.1"
+__version__ = "0.14.0"
 
 
 __all__ = (

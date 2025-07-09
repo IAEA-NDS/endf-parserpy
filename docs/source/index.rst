@@ -12,6 +12,7 @@
    :caption: Tutorials & Guides
    :hidden:
 
+   guide/getting_started
    guide/python_and_cpp_parser
    guide/command_line_interface
    guide/reading_writing_endf

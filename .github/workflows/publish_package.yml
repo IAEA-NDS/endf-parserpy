@@ -9,7 +9,7 @@ jobs:
   #   uses: ./.github/workflows/test_package.yml
 
   build_arm_wheels:
-    needs: [test_package]
+    # needs: [test_package]
     name: Build CPython wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 500
@@ -69,7 +69,7 @@ jobs:
           path: ./wheelhouse/*.whl
 
   build_wheels:
-    needs: [build_arm_wheels]
+    needs: [test_package, build_arm_wheels]
     name: Build CPython wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 500
@@ -161,7 +161,7 @@ jobs:
           path: dist/*.tar.gz
 
   upload_all:
-    needs: [build_arm_wheels, make_sdist]
+    needs: [test_package, build_arm_wheels, build_wheels, make_sdist]
     environment: pypi
     permissions:
       id-token: write

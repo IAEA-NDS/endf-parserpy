@@ -80,42 +80,34 @@ Install endf-parserpy
 
 
 .. note::
-   For accelerated parsing and writing, use the
-   :class:`~endf_parserpy.EndfParserCpp` class instead of
-   the :class:`~endf_parserpy.EndfParserPy` class, which boosts speed
-   by over 50 times:
-
-   .. code:: python
-
-      from endf_parserpy import EndfParserCpp
-      parser = EndfParserCpp()
-
-   See the :ref:`section on accelerated parsing
-   <accelerated_parsing_and_writing_sec>` for more details.
-
-
-.. note::
 
    :ref:`Accelerated parsing <accelerated_parsing_and_writing_sec>`
-   depends on compiled C++ code.
+   relies on compiled C++ code.
    If a suitable binary wheel isn't available for your platform,
    an attempt will be made to compile the C++ source files during
-   installation, which may take up to ten minutes. If you don't
-   need this acceleration, you can disable the compilation attempt by
-   setting the environment variable ``INSTALL_ENDF_PARSERPY_CPP``
-   to ``no`` before executing the ``pip install`` command.
+   installation, which may take up to ten minutes. You may reduce
+   the optimization level to significantly reduce the compilation
+   time at the expense of slower parsing by setting the
+   ``INSTALL_ENDF_PARSERPY_CPP_OPTIM`` environment variable with
+   a value between 0 (no optimization) to 3 (maximal optimization).
+   The value 1 seems to be a good trade-off between compilation time
+   and achievable parsing and writing speed.
    Under Linux and MacOS, the command would be
 
    .. code:: bash
 
-      export INSTALL_ENDF_PARSERPY_CPP=no
+      export INSTALL_ENDF_PARSERPY_CPP_OPTIM=1
 
 
    and under Windows
 
    .. code:: bash
 
-      set INSTALL_ENDF_PARSERPY_CPP=no
+      set INSTALL_ENDF_PARSERPY_CPP_OPTIM=1
+
+   If you want to disable the compilation of the C++ modules,
+   you can set the environment variable ``INSTALL_ENDF_PARSERPY_CPP``
+   to ``no`` before executing the ``pip install`` command.
 
 .. note::
 

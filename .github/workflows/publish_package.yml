@@ -2,14 +2,11 @@ name: Publish Python package
 
 on:
   push:
-    tags:
-      - "v*.*.*"
-jobs:
-  # test_package:
-  #   uses: ./.github/workflows/test_package.yml
+    branches:
+      - test_workflow
 
+jobs:
   build_arm_wheels:
-    # needs: [test_package]
     name: Build CPython wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 500
@@ -24,11 +21,6 @@ jobs:
           - "cp311-*"
           - "cp312-*"
           - "cp313-*"
-          - "cp314-*"
-          - "pp38-*"
-          - "pp39-*"
-          - "pp310-*"
-          - "pp311-*"
 
     steps:
       - uses: actions/checkout@v4
@@ -40,15 +32,11 @@ jobs:
       - name: Install build deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "poetry>=1.2,<2.0"
+          python -m pip install "setuptools>=64" wheel pybind11 cibuildwheel
 
-      - name: Install build dependencies using poetry
-        env:
-          INSTALL_ENDF_PARSERPY_CPP: no
+      - name: Install dependencies from pyproject.toml
         run: |
-          poetry install --with dev
-          poetry run python -m pip install pip --upgrade
-          poetry run python -m pip install cibuildwheel==2.23.3
+          python -m pip install . -vvv
 
       - name: Set up QEMU for cross-building (Linux only)
         run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -57,69 +45,10 @@ jobs:
         env:
           INSTALL_ENDF_PARSERPY_CPP: yes
           CIBW_ARCHS_LINUX: "aarch64 armv7l"
-          CIBW_BUILD: "${{ matrix.cibw_build }}"j
-        run: poetry run python -m cibuildwheel --output-dir wheelhouse
-
-      - name: Show built wheels
-        run: ls -lh wheelhouse/
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cibw-wheels-cpython-${{ matrix.os }}-${{ strategy.job-index }}
-          path: ./wheelhouse/*.whl
-
-  build_wheels:
-    needs: [test_package, build_arm_wheels]
-    name: Build CPython wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 500
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
-        cibw_build:
-          - "cp38-*"
-          - "cp39-*"
-          - "cp310-*"
-          - "cp311-*"
-          - "cp312-*"
-          - "cp313-*"
-          - "cp314-*"
-          - "pp38-*"
-          - "pp39-*"
-          - "pp310-*"
-          - "pp311-*"
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Setup Python 3.8 explicitly (necessary for Py3.8 MacOS-14 case)
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
-
-      - name: Install build deps
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "poetry>=1.2,<1.8"
-
-      - name: Install build dependencies using poetry
-        env:
-          INSTALL_ENDF_PARSERPY_CPP: no
-        run: |
-          poetry install --with dev
-          poetry run python -m pip install pip --upgrade
-          poetry run python -m pip install cibuildwheel==2.23.3
-
-      - name: Build wheels
-        env:
-          INSTALL_ENDF_PARSERPY_CPP: yes
           CIBW_BUILD: "${{ matrix.cibw_build }}"
-        run: poetry run python -m cibuildwheel --output-dir wheelhouse
+          CIBW_BUILD_VERBOSITY: 3
+          CIBW_BEFORE_BUILD: "pip install -vvv pybind11"
+        run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Show built wheels
         run: ls -lh wheelhouse/
@@ -129,52 +58,3 @@ jobs:
           name: cibw-wheels-cpython-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
 
-  make_sdist:
-    name: Make source distribution package
-    needs: test_package
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Install build deps
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "poetry>=1.2,<1.8"
-
-      - name: Set endf-parserpy version based on git tag
-        run: poetry version $(git describe --tags --abbrev=0)
-
-      - name: Build SDist
-        env:
-          INSTALL_ENDF_PARSERPY_CPP: no
-        run: poetry build -f sdist
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cibw-sdist
-          path: dist/*.tar.gz
-
-  upload_all:
-    needs: [test_package, build_arm_wheels, build_wheels, make_sdist]
-    environment: pypi
-    permissions:
-      id-token: write
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: cibw-*
-          path: dist
-          merge-multiple: true
-
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}

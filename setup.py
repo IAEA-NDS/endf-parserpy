@@ -37,7 +37,9 @@ def determine_optimization_flags():
             optim_level = "x"
         return [f"/O{optim_level}"]
     else:
-        return []
+        print(f">>>>> {platform.system()}")
+        return [f"-O{optim_level}"]
+        # return []
 
 
 # Ensure the C++ modules are built correctly
@@ -45,6 +47,19 @@ def run_custom_build_logic():
     module_path = os.path.dirname(__file__)
     sys.path.insert(0, module_path)  # Add the module path if necessary
     from endf_parserpy.endf_recipes.utils import _populate_recipe_cache
+
+    cibuildwheel_hack = False
+    if cibuildwheel_hack:
+        os.environ["INSTALL_ENDF_PARSERPY_CPP"] = "__INSTALL_ENDF_PARSERPY_CPP__"
+        os.environ["INSTALL_ENDF_PARSERPY_CPP_OPTIM"] = (
+            "__INSTALL_ENDF_PARSERPY_CPP_OPTIM__"
+        )
+
+    print(">>>>> Environment Variables:")
+    print(f"INSTALL_ENDF_PARSERPY_CPP: {os.getenv('INSTALL_ENDF_PARSERPY_CPP')}")
+    print(
+        f"INSTALL_ENDF_PARSERPY_CPP_OPTIM: {os.getenv('INSTALL_ENDF_PARSERPY_CPP_OPTIM')}"
+    )
 
     print("DEBUG #1")
 

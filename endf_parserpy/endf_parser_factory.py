@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2025/07/08
+# Last modified:   2025/07/10
 # License:         MIT
 # Copyright (c) 2025 International Atomic Energy Agency (IAEA)
 #
@@ -237,4 +237,4 @@ class EndfParserFactory:
         parser_args.pop("recipes", None)
         parser_args.pop("parsing_funs", None)
         parser_args.pop("loglevel", None)
-        return EndfParserCpp(parser_args)
+        return EndfParserCpp(**parser_args)

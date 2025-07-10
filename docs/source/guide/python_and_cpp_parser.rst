@@ -16,10 +16,10 @@ In other words, the C++ parser returns exactly the same nested Python dictionary
 as the Python parser. Also, when you serialize a Python dictionary to the
 ENDF format, the output of both parsers is exactly the same, character by character.
 
-Therefore, it is recommended to use the C++ parser and only fall back to the
-Python parser if the C++ parser is not available or the user requires specific
-behavior that is only supported by the Python parser.
-To help the user with the selection of the appropriate parser,
+Therefore, it is recommended to use the C++ parser and only fall back on the
+Python parser if the C++ parser is not available or some very specific
+behavior has been requested that is only supported by the Python parser.
+To help with the selection of the appropriate parser,
 the :class:`~endf_parserpy.EndfParserFactory` class can automatically
 select the right parser according to the user-supplied
 initialization arguments. A parser object can be obtained by
@@ -29,8 +29,8 @@ initialization arguments. A parser object can be obtained by
    from endf_parserpy import EndfParserFactory
    parser = EndfParserFactory.create()
 
-Without any initialization arguments, the faster C++ parser will be picked
-if available, otherwise the Python parser. If the method must fall back
+Without any initialization arguments, the faster C++ parser will be selected
+if available, otherwise the Python parser. If the method needs to fall back
 on the Python parser, it will issue a :exc:`UserWarning` informing
 the user that parsing and writing will be slow. This warning message
 can be suppressed by using an additional argument:
@@ -42,8 +42,8 @@ can be suppressed by using an additional argument:
 
 In addition, this function can take any arguments that are supported
 by the :class:`~endf_parserpy.EndfParserPy` or
-the :class:`~endf_parserpy.EndfParserCpp` class and choose the
-appropriate parser according to argument compatibility.
+the :class:`~endf_parserpy.EndfParserCpp` class.
+It will then select the appropriate parser according to argument compatibility.
 For instance, using the ``loglevel`` argument, not supported by
 the C++ parser, will force the selection of the Python parser:
 

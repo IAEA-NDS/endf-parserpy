@@ -137,7 +137,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-cpython-${{ matrix.os }}-${{ strategy.job-index }}
+          name: cibw-wheels-newer-cpython-arm64-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
 
   build_older_py_wheels_for_linux_arm64:
@@ -184,7 +184,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-cpython-${{ matrix.os }}-${{ strategy.job-index }}
+          name: cibw-wheels-older-cpython-arm64-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
 
             # upload_all:

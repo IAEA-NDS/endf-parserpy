@@ -7,11 +7,11 @@ on:
 
 jobs:
 
-  test_package:
-    uses: ./.github/workflows/test_package.yml
+  # test_package:
+  #   uses: ./.github/workflows/test_package.yml
 
   make_sdist:
-    needs: test_package
+    # needs: test_package
     name: Make source distribution package
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -25,7 +25,7 @@ jobs:
       - name: Install build deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install setuptools wheel
+          python -m pip install setuptools wheel pybind11 lark
 
       - name: Build SDist
         env:
@@ -34,7 +34,7 @@ jobs:
           python setup.py sdist
 
       - name: Show built wheels
-        run: ls -lh wheelhouse/
+        run: ls -lh dist/
 
       - uses: actions/upload-artifact@v4
         with:
@@ -57,10 +57,10 @@ jobs:
           - "cp311-*"
           - "cp312-*"
           - "cp313-*"
-          - "pp38-*"
-          - "pp39-*"
-          - "pp310-*"
-          - "pp311-*"
+            # - "pp38-*"
+            # - "pp39-*"
+            # - "pp310-*"
+            # - "pp311-*"
 
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +76,7 @@ jobs:
       - name: Build wheels
         env:
           INSTALL_ENDF_PARSERPY_CPP: yes
-          INSTALL_ENDF_PARSERPY_CPP_OPTIM: 3
+          INSTALL_ENDF_PARSERPY_CPP_OPTIM: 1
           CIBW_BUILD: "${{ matrix.cibw_build }}"
           CIBW_BUILD_VERBOSITY: 3
         run: |

@@ -85,8 +85,13 @@ jobs:
           # sed -i "s/__INSTALL_ENDF_PARSERPY_CPP_OPTIM__/$INSTALL_ENDF_PARSERPY_CPP_OPTIM/" setup.py
           python -m cibuildwheel --output-dir wheelhouse
 
-      - name: Show built wheels
+      - name: Show built wheels on Linux or MacOS
+        if: runner.os == 'Linux' || runner.os == 'macOS'
         run: ls -lh wheelhouse/
+
+      - name: Show built wheels on Windows
+        if: runner.os == 'Windows'
+        run: dir wheelhouse
 
       - uses: actions/upload-artifact@v4
         with:

@@ -80,9 +80,9 @@ jobs:
           CIBW_BUILD: "${{ matrix.cibw_build }}"
           CIBW_BUILD_VERBOSITY: 3
         run: |
-          sed -i "s/cibuildwheel_hack *= *False/cibuildwheel_hack=True/" setup.py
-          sed -i "s/__INSTALL_ENDF_PARSERPY_CPP__/$INSTALL_ENDF_PARSERPY_CPP/" setup.py
-          sed -i "s/__INSTALL_ENDF_PARSERPY_CPP_OPTIM__/$INSTALL_ENDF_PARSERPY_CPP_OPTIM/" setup.py
+          # sed -i "s/cibuildwheel_hack *= *False/cibuildwheel_hack=True/" setup.py
+          # sed -i "s/__INSTALL_ENDF_PARSERPY_CPP__/$INSTALL_ENDF_PARSERPY_CPP/" setup.py
+          # sed -i "s/__INSTALL_ENDF_PARSERPY_CPP_OPTIM__/$INSTALL_ENDF_PARSERPY_CPP_OPTIM/" setup.py
           python -m cibuildwheel --output-dir wheelhouse
 
       - name: Show built wheels

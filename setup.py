@@ -14,22 +14,37 @@ logger.setLevel(logging.INFO)
 
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - >>>> setup.py: %(message)s"
+)
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
-# Ensure the necessary flags for optimization
-def determine_optimization_flags():
-    optim_env_var = os.environ.get("INSTALL_ENDF_PARSERPY_CPP_OPTIM", None)
-    if optim_env_var is None:
+def get_package_version():
+    version_file = os.path.join(
+        os.path.dirname("__file__"), "endf_parserpy", "__init__.py"
+    )
+    with open(version_file, "r") as f:
+        for line in f:
+            if line.startswith("__version__"):
+                version = line.split("=")[-1].strip().strip('"').strip("'")
+                logger.info(f"package version: {version}")
+                return version
+    raise RuntimeError("Unable to find version string")
+
+
+def determine_optimization_flags(optim_level):
+    """Determine compiler optimization flags from environment variable."""
+    if optim_level is None:
         return []
     try:
-        optim_level = int(optim_env_var)
+        optim_level = int(optim_level)
     except ValueError:
         optim_level = None
     if optim_level is None or optim_level not in (0, 1, 2, 3):
         raise ValueError("Optimization level must be 0, 1, 2, or 3.")
+
     if platform.system() in ("Darwin", "Linux"):
         return [f"-O{optim_level}"]
     elif platform.system() == "Windows":
@@ -37,17 +52,35 @@ def determine_optimization_flags():
             optim_level = "x"
         return [f"/O{optim_level}"]
     else:
-        print(f">>>>> {platform.system()}")
-        return [f"-O{optim_level}"]
-        # return []
+        print(
+            f">>>> setup.py: Unrecognized platform {platform.system()} - "
+            "ignore optimization level in envvar INSTALL_ENDF_PARSERPY_CPP_OPTIM"
+        )
+        return []
 
 
-# Ensure the C++ modules are built correctly
-def run_custom_build_logic():
-    module_path = os.path.dirname(__file__)
-    sys.path.insert(0, module_path)  # Add the module path if necessary
+class OptionalBuildExt(pybind11_build_ext):
+    def run(self):
+        try:
+            logger.info("Attempting to compile C++ code for reading/writing ENDF files")
+            super().run()
+        except Exception as exc:
+            logger.warn(
+                f"Failed to compile C++ read/write module code. "
+                "Accelerated parsing will not be available."
+            )
+
+
+def run_custom_build_logic(cpp_compilation, optim_level):
+    """Generate C++ modules from ENDF recipes and register as extension modules."""
+
+    # package functionality is already needed during building the package
+    module_path = os.path.abspath(os.path.dirname(__file__))
+    sys.path.insert(0, module_path)
     from endf_parserpy.endf_recipes.utils import _populate_recipe_cache
+    from endf_parserpy.compiler.compiler import _prepare_cpp_parsers_subpackage
 
+    # these variables values may be substituted before package building
     cibuildwheel_hack = False
     if cibuildwheel_hack:
         os.environ["INSTALL_ENDF_PARSERPY_CPP"] = "__INSTALL_ENDF_PARSERPY_CPP__"
@@ -55,121 +88,68 @@ def run_custom_build_logic():
             "__INSTALL_ENDF_PARSERPY_CPP_OPTIM__"
         )
 
-    print(">>>>> Environment Variables:")
-    print(f"INSTALL_ENDF_PARSERPY_CPP: {os.getenv('INSTALL_ENDF_PARSERPY_CPP')}")
-    print(
+    logger.info("Environment variables related to C++ compilation")
+    logger.info(f"INSTALL_ENDF_PARSERPY_CPP: {os.getenv('INSTALL_ENDF_PARSERPY_CPP')}")
+    logger.info(
         f"INSTALL_ENDF_PARSERPY_CPP_OPTIM: {os.getenv('INSTALL_ENDF_PARSERPY_CPP_OPTIM')}"
     )
 
-    print("DEBUG #1")
-
+    logger.info("Populate ENDF recipe cache directory within package directory")
     _populate_recipe_cache(clear_dir=True)
 
-    print("DEBUG #2")
-
-    compile_env_var = os.environ.get("INSTALL_ENDF_PARSERPY_CPP", "optional")
-    if compile_env_var == "no":
+    if cpp_compilation == "no":
         logger.info("Skipping C++ ENDF-6 read/write module generation.")
         return []
 
-    print("DEBUG #3")
+    optim_flags = determine_optimization_flags(optim_level)
 
-    optim_flags = determine_optimization_flags()
-
-    print("DEBUG #4")
-
-    sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-    from endf_parserpy.compiler.compiler import _prepare_cpp_parsers_subpackage
-
-    print("DEBUG #5")
-
-    logger.info("Generating C++ modules for ENDF-6 files.")
-    _prepare_cpp_parsers_subpackage(overwrite=True)
-
-    print("DEBUG #6")
+    if "egg_info" in sys.argv:
+        logger.info("Retrieve C++ module filenames")
+        cpp_files = _prepare_cpp_parsers_subpackage(overwrite=True, only_filenames=True)
+    else:
+        logger.info("Generating C++ modules for ENDF-6 files.")
+        cpp_files = _prepare_cpp_parsers_subpackage(
+            overwrite=True, only_filenames=False
+        )
 
     subpackage_prefix = "endf_parserpy.cpp_parsers."
-    cpp_files = glob("endf_parserpy/cpp_parsers/*.cpp")
+    cpp_filepaths = [os.path.join("endf_parserpy", "cpp_parsers", f) for f in cpp_files]
     ext_modules = [
         Pybind11Extension(
-            subpackage_prefix + os.path.splitext(os.path.basename(cpp_file))[0],
-            [cpp_file],
+            subpackage_prefix + os.path.splitext(os.path.basename(cpp_fp))[0],
+            [cpp_fp],
             extra_compile_args=["-std=c++11"] + optim_flags,
         )
-        for cpp_file in cpp_files
+        for cpp_fp in cpp_filepaths
     ]
 
-    print("DEBUG #7")
     return ext_modules
 
 
-# class CustomBuildCommand(setuptools.Command):
-#     description = "Custom build step for C++ module and recipe cache population"
-#     user_options = []
-#
-#     def initialize_options(self):
-#         # Initialize build_lib and build_base
-#         # self.build_lib = None
-#         # self.build_base = None
-#         # self.build_temp = None
-#         # self.plat_name = None  # Explicitly initialize plat_name
-#         super().initialize_options()
-#
-#     def finalize_options(self):
-#         # Set default values if they are not provided
-#         # if self.build_lib is None:
-#         #     self.build_lib = os.path.join(self.distribution.get_name(), "build/lib")
-#         # if self.build_base is None:
-#         #     self.build_base = os.path.join(self.distribution.get_name(), "build")
-#         # if self.build_temp is None:
-#         #     self.build_temp = os.path.join(self.build_base, "temp")  # Explicitly set build_temp
-#         # if self.plat_name is None:
-#         #     self.plat_name = (
-#         #         platform.system().lower()
-#         #     )  # Set platform name, e.g., 'linux', 'win32', etc.
-#         super().finalize_options()
-#
-#     def run(self):
-#         # ext_modules = run_custom_build_logic()
-#         # self.distribution.ext_modules = ext_modules
-#         # setuptools.Command.run(self)  # Ensure the base class is called
-#
-#         # Run the custom build logic
-#         try:
-#             ext_modules = run_custom_build_logic()
-#             if not isinstance(ext_modules, list):
-#                 raise ValueError("Expected 'ext_modules' to be a list.")
-#
-#             # Make sure `ext_modules` is properly assigned
-#             self.distribution.ext_modules = ext_modules
-#             print(f"Successfully built extensions: {ext_modules}")
-#
-#         except Exception as e:
-#             print(f"Error during custom build: {e}")
-#             raise
-#
-#         # Explicitly run the build_ext command to handle C++/C extensions
-#         # This is critical if you're working with extensions
-#         build_ext = self.get_finalized_command('build_ext')
-#         build_ext.run()
-#
-#         # Make sure the base class is called to handle standard build steps
-#         setuptools.Command.run(self)
+def main():
+    optim_level = os.environ.get("INSTALL_ENDF_PARSERPY_CPP_OPTIM", None)
+    cpp_compilation = os.environ.get("INSTALL_ENDF_PARSERPY_CPP", "optional")
 
-ext_modules = run_custom_build_logic()
+    ext_modules = run_custom_build_logic(cpp_compilation, optim_level)
+    custom_build_ext = (
+        pybind11_build_ext if cpp_compilation == "yes" else OptionalBuildExt
+    )
+
+    # Update setup.py
+    setuptools.setup(
+        name="endf-parserpy",
+        version=get_package_version(),
+        packages=setuptools.find_packages(),
+        cmdclass={"build_ext": custom_build_ext},
+        ext_modules=ext_modules,
+        zip_safe=False,
+        install_requires=[
+            "pybind11>=2.10.0",
+            "lark>=1.0.0",
+            "platformdirs>=4.3.6",
+        ],
+    )
 
 
-# Update setup.py
-setuptools.setup(
-    name="endf-parserpy",
-    version="0.0.0",
-    packages=setuptools.find_packages(),
-    cmdclass={"build_ext": pybind11_build_ext},
-    ext_modules=ext_modules,
-    zip_safe=False,
-    install_requires=[
-        "pybind11>=2.10.0",
-        "lark>=1.0.0",
-        "platformdirs>=4.3.6",
-    ],
-)
+if __name__ == "__main__":
+    main()

@@ -126,6 +126,7 @@ Resources
 - :doc:`overview/endf_navigation`
 - Guides
 
+  - :doc:`guide/getting_started`
   - :doc:`guide/python_and_cpp_parser`
   - :doc:`guide/command_line_interface`
   - :doc:`guide/reading_writing_endf`

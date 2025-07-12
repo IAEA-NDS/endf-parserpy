@@ -2,7 +2,7 @@ import sys
 import os
 
 sys.path.append("../")
-from endf_parserpy import EndfParser
+from endf_parserpy import EndfParserFactory
 from endf_parserpy.utils.user_tools import (
     locate,
     get_endf_values,
@@ -10,7 +10,7 @@ from endf_parserpy.utils.user_tools import (
     list_parsed_sections,
 )
 
-parser = EndfParser()
+parser = EndfParserFactory.create()
 endf_file = "../tests/testdata/n_2925_29-Cu-63.endf"
 endf_dic = parser.parsefile(endf_file)
 

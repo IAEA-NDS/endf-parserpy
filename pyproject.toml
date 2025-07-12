@@ -35,7 +35,7 @@ classifiers = [
 
 [project.urls]
 Repository = "https://github.com/iaea-nds/endf-parserpy"
-Documentation = "https://https//endf-parserpy.readthedocs.io/en/stable/"
+Documentation = "https//endf-parserpy.readthedocs.io/en/stable/"
 Issues = "https://github.com/iaea-nds/endf-parserpy/issues"
 
 [project.scripts]

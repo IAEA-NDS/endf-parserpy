@@ -144,7 +144,6 @@ def main():
         ext_modules=ext_modules,
         zip_safe=False,
         install_requires=[
-            "pybind11>=2.10.0",
             "lark>=1.0.0",
             "platformdirs>=4.3.6",
         ],

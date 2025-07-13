@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/06/03
+# Last modified:   2025/07/13
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -1257,7 +1257,7 @@ class BasicEndfParser(EndfParserPy):
         super().__init__(*args, **kwargs)
         warnings.warn(
             "The name of the Python parser class is now `EndfParserPy`. "
-            "The alias `BasicEndfParser` will be abandoned soon.",
+            "The alias `BasicEndfParser` should not be used anymore.",
             DeprecationWarning,
         )
 
@@ -1267,6 +1267,6 @@ class EndfParser(EndfParserPy):
         super().__init__(*args, **kwargs)
         warnings.warn(
             "The name of the Python parser class is now `EndfParserPy`. "
-            "The alias `BasicEndfParser` will be abandoned soon.",
+            "The alias `EndfParser` should not be used anymore.",
             DeprecationWarning,
         )

@@ -53,7 +53,7 @@ the C++ parser, will force the selection of the Python parser:
    parser = EndfParserFactory.create(loglevel=30)
    assert type(parser) = EndfParserPy
 
-From the viewpoint of a develoepr, it may be pertinent to have some
+From the viewpoint of a developer, it may be pertinent to have some
 guarantee that initialization arguments are compatible with both
 the Python and the C++ parser to avoid depending on a specific
 parser. Argument compatibility can be enforced by the

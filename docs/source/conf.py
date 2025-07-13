@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join("..", "..")))
 
 project = "endf-parserpy"
-copyright = "2022-2024, International Atomic Energy Agency"
+copyright = "2022-2025, International Atomic Energy Agency"
 author = "Georg Schnabel"
 
 # -- General configuration ---------------------------------------------------

@@ -35,8 +35,24 @@ def get_package_version():
     raise RuntimeError("Unable to find version string")
 
 
+def get_packages():
+    packages = setuptools.find_packages(include=["endf_parserpy*"])
+    dynamic_subpackage = "endf_parserpy.endf_recipes.recipe_cache"
+    if dynamic_subpackage not in packages:
+        packages.append(dynamic_subpackage)
+    return packages
+
+
 def add_project_dir_to_syspath():
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+
+def populate_endf_recipe_cache():
+    add_project_dir_to_syspath()
+    from endf_parserpy.endf_recipes.utils import _populate_recipe_cache
+
+    logger.info("Populate ENDF recipe cache directory within package directory")
+    _populate_recipe_cache(clear_dir=True)
 
 
 def determine_optimization_flags(optim_level):
@@ -66,11 +82,7 @@ def determine_optimization_flags(optim_level):
 
 class CustomBuildPy(_build_py):
     def run(self):
-        add_project_dir_to_syspath()
-        from endf_parserpy.endf_recipes.utils import _populate_recipe_cache
-
-        logger.info("Populate ENDF recipe cache directory within package directory")
-        _populate_recipe_cache(clear_dir=True)
+        populate_endf_recipe_cache()
         super().run()
 
 
@@ -154,13 +166,14 @@ def main():
     setuptools.setup(
         name="endf-parserpy",
         version=get_package_version(),
-        packages=setuptools.find_packages(exclude=["tests*", "docs*", "examples*"]),
+        packages=get_packages(),
         cmdclass={
             "build_py": CustomBuildPy,
             "build_ext": custom_build_ext,
         },
         ext_modules=ext_modules,
         zip_safe=False,
+        include_package_data=True,
         install_requires=[
             "lark>=1.0.0",
             "platformdirs>=4.3.6",

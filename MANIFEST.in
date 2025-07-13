@@ -1,0 +1,1 @@
+recursive-include endf_parserpy/endf_recipes/recipe_cache *.pkl

@@ -82,9 +82,9 @@ def test_all_writing_options_equivalence(mf3_section):
             for i in range(1000):
                 yield i / 100 * (10**pot)
 
-    numbers = tuple(generate_numbers())
-    numbers2 = tuple(1 + n for n in numbers)
-    number = numbers + numbers2
+    numbers1 = tuple(generate_numbers())
+    numbers2 = tuple(1 + n for n in numbers1)
+    numbers = numbers1 + numbers2
     for params in generate_params():
         parser_py = EndfParserPy(**params)
         parser_cpp = EndfParserCpp(**params)

@@ -3,16 +3,19 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/12/07
-# Last modified:   2025/05/31
+# Last modified:   2025/07/22
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from lark import Lark
 from endf_parserpy.endf_recipes.endf_lark_ebnf import endf_recipe_grammar
 from endf_parserpy.utils.tree_utils import is_tree
-import importlib.resources
+from ..compat_wrappers.importlib_resources import (
+    is_resource,
+    open_binary,
+)
 from platformdirs import user_cache_dir
 from hashlib import md5
 import os
@@ -39,8 +42,8 @@ def get_recipe_parsetree(
 
     # try to retrieve compiled recipe from recipe cache
     # populated during package installation (see build.py)
-    if importlib.resources.is_resource(RECIPE_CACHE_PKG, filename):
-        with importlib.resources.open_binary(RECIPE_CACHE_PKG, filename) as f:
+    if is_resource(RECIPE_CACHE_PKG, filename):
+        with open_binary(RECIPE_CACHE_PKG, filename) as f:
             recipe_parsetree = pickle.load(f)
             return recipe_parsetree
 

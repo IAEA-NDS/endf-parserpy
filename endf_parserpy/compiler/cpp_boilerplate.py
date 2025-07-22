@@ -3,13 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2024/10/27
+# Last modified:   2025/07/22
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
-import importlib.resources
+from ..compat_wrappers.importlib_resources import open_text
 from . import cpp_primitives as cpp
 from .cpp_types.cpp_type_information import get_vartype_definitions
 from .cpp_types.cpp_vartype_handling import (
@@ -26,17 +26,11 @@ from .cpp_boilerplate_writing import module_header_writing
 
 def _module_header():
     code = ""
-    with importlib.resources.open_text(
-        "endf_parserpy.compiler.cpp_templates", "endf_float_cpp.hpp"
-    ) as f:
+    with open_text("endf_parserpy.compiler.cpp_templates", "endf_float_cpp.hpp") as f:
         code += f.read()
-    with importlib.resources.open_text(
-        "endf_parserpy.compiler.cpp_templates", "index_shifter.hpp"
-    ) as f:
+    with open_text("endf_parserpy.compiler.cpp_templates", "index_shifter.hpp") as f:
         code += f.read()
-    with importlib.resources.open_text(
-        "endf_parserpy.compiler.cpp_templates", "module_header.hpp"
-    ) as f:
+    with open_text("endf_parserpy.compiler.cpp_templates", "module_header.hpp") as f:
         code += f.read()
     return code
 

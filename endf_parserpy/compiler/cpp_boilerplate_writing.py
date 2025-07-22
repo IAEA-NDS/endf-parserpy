@@ -3,19 +3,19 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2024/10/27
+# Last modified:   2025/07/22
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 
-import importlib.resources
+from ..compat_wrappers.importlib_resources import open_text
 from . import cpp_primitives as cpp
 
 
 def module_header_writing():
-    with importlib.resources.open_text(
+    with open_text(
         "endf_parserpy.compiler.cpp_templates", "module_header_writing.hpp"
     ) as f:
         code = f.read()

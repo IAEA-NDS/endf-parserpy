@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2025/06/03
+# Last modified:   2025/07/23
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -216,6 +216,13 @@ def _generate_code_for_varassign(
         exprstr = transform_nodes(
             expr, expr2str_shiftidx, vardict, rawvars=(cpp_newval_tok,)
         )
+        # to avoid nasty issues due to truncation to integer after
+        # floating-point operations with imperfect precision.
+        # This modification is connected to the modification of
+        # `factorout_division` (in `node_trafos` module)  to call
+        # `convert_int_number_to_float`.
+        if dtype == int:
+            exprstr = f"static_cast<int>(std::round({exprstr}))"
         code += cpp_varops_assign.assign_exprstr_to_var(
             vartok, exprstr, dtype, vardict, node=node
         )

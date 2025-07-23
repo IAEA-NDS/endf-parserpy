@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/08
+# Last modified:   2025/07/23
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -43,6 +43,17 @@ def replace_node(node, old, new):
     return node
 
 
+def convert_int_number_to_float(node):
+    if not isinstance(node, Token):
+        return node
+    if node.type != "NUMBER":
+        return node
+    if not node.value.isdigit():
+        return node
+    floatnumstr = node.value + ".0"
+    return Token("NUMBER", floatnumstr)
+
+
 def eliminate_subtraction(node):
     if isinstance(node, Tree) and node.data == "subtraction":
         term1 = node.children[0]
@@ -67,7 +78,10 @@ def factorout_division(node):
     if node.data != "division":
         return node
     numerator = Token("NUMBER", "1")
-    denominator = node.children[1]
+    orig_denominator = node.children[1]
+    # introduced to avoid integer division behavior
+    # which gives 0 for expressions such as 1/6
+    denominator = transform_nodes(orig_denominator, convert_int_number_to_float)
     factor1 = node.children[0]
     factor2 = Tree("division", [numerator, denominator])
     return Tree("multiplication", [factor1, factor2])

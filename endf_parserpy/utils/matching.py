@@ -93,7 +93,7 @@ logical_expr_grammar = """
     NUMBER : ("+" | "-")? NON_NEG_NUMBER
 
     endfpath : "/" PATH_ELEMENT ("/"+ PATH_ELEMENT)* "/"*
-    PATH_ELEMENT : LETTER (LETTER | NUMBER)* | NUMBER | "*"
+    PATH_ELEMENT : LETTER (LETTER | NUMBER | "_")* | NUMBER | "*"
 
     %import common.LETTER
     %import common.NUMBER -> NON_NEG_NUMBER

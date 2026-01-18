@@ -55,29 +55,25 @@ def populate_endf_recipe_cache():
     _populate_recipe_cache(clear_dir=True)
 
 
-def determine_optimization_flags(optim_level):
+def determine_optimization_flags(optim_flag):
     """Determine compiler optimization flags from environment variable."""
-    if optim_level is None:
+    if optim_flag == "auto":
         return []
-    try:
-        optim_level = int(optim_level)
-    except ValueError:
-        optim_level = None
-    if optim_level is None or optim_level not in (0, 1, 2, 3):
-        raise ValueError("Optimization level must be 0, 1, 2, or 3.")
+
+    if optim_flag is not None:
+        return [str(optim_flag)]
 
     if platform.system() in ("Darwin", "Linux"):
-        return [f"-O{optim_level}"]
-    elif platform.system() == "Windows":
-        if optim_level == 3:
-            optim_level = "x"
-        return [f"/O{optim_level}"]
-    else:
-        print(
-            f">>>> setup.py: Unrecognized platform {platform.system()} - "
-            "ignore optimization level in envvar INSTALL_ENDF_PARSERPY_CPP_OPTIM"
-        )
-        return []
+        return ["-O1"]
+
+    if platform.system() == "Windows":
+        return ["/O2"]
+
+    print(
+        f">>>> setup.py: Unrecognized platform {platform.system()} - "
+        "ignore optimization level in envvar INSTALL_ENDF_PARSERPY_CPP_OPTIM"
+    )
+    return []
 
 
 class CustomBuildPy(_build_py):
@@ -157,10 +153,10 @@ def main():
         f"INSTALL_ENDF_PARSERPY_CPP_OPTIM: {os.getenv('INSTALL_ENDF_PARSERPY_CPP_OPTIM')}"
     )
 
-    optim_level = os.environ.get("INSTALL_ENDF_PARSERPY_CPP_OPTIM", None)
+    optim_flag = os.environ.get("INSTALL_ENDF_PARSERPY_CPP_OPTIM", None)
     cpp_compilation = os.environ.get("INSTALL_ENDF_PARSERPY_CPP", "optional")
 
-    ext_modules = generate_ext_module_list(cpp_compilation, optim_level)
+    ext_modules = generate_ext_module_list(cpp_compilation, optim_flag)
     custom_build_ext = CustomBuildExt if cpp_compilation == "yes" else OptionalBuildExt
 
     setuptools.setup(

@@ -68,7 +68,7 @@ jobs:
       - name: Build wheels
         env:
           INSTALL_ENDF_PARSERPY_CPP: yes
-          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
           CIBW_BUILD_VERBOSITY: 2
         run: |
           python cibuildhack.py

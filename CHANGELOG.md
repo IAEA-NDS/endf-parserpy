@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Adler-Adler formalism in MF2/MT151 ENDF recipe (#43)
+- Comprehensive description in MF2/MT151 and MF32 recipe (#43 and #45)
+
+### Fixed
+
+- Some edge cases in the MF2/MT151 and MF32 recipe (#43)
+- Issue with `endf-cli match` command for variable names with underscore (#49)
+- Issue with `ignore_blank_lines` option of C++ parser (#51)
+
+### Changed
+
+- Consistent names in MF2/MT151 and MF32/MT151 ENDF recipes
+- Default C++ optimization level for faster package installation (#52)
+- GitHub workflow to enable native compilation on ARM architecture
+
 ## [0.14.3]
 
 ### Deprecated

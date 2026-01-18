@@ -405,6 +405,14 @@ int cpp_read_mt_number(const char *str) {
 }
 
 
+bool cpp_is_blank_line(std::string line) {
+  for (int i=0; i < line.size(); i++) {
+    if (line[i] != ' ') return false;
+  }
+  return true;
+}
+
+
 std::string cpp_read_raw_line(std::istream& cont) {
   std::string line;
   std::getline(cont, line);
@@ -417,6 +425,18 @@ std::string cpp_read_line(
 ) {
   std::string line;
   std::getline(cont, line);
+  if (parse_opts.ignore_blank_lines) {
+    cpp_is_blank_line(line);
+    while (cpp_is_blank_line(line) && std::getline(cont, line)) {
+      // skip blank lines
+    }
+  }
+  if (cpp_is_blank_line(line)) {
+    throw std::runtime_error(
+      "Blank line detected: Correct file or use `ignore_blank_lines` option"
+    );
+  }
+
   if (parse_opts.validate_control_records) {
     int curmat = cpp_read_mat_number(line.c_str());
     int curmf = cpp_read_mf_number(line.c_str());
@@ -494,13 +514,6 @@ bool cpp_is_tend_record(std::string line, ParsingOptions &parse_opts) {
   return cond;
 }
 
-
-bool cpp_is_blank_line(std::string line) {
-  for (int i=0; i < line.size(); i++) {
-    if (line[i] != ' ') return false;
-  }
-  return true;
-}
 
 template<typename T>
 std::vector<T> cpp_read_vec(

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2025/07/07
+# Last modified:   2026/01/18
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -302,6 +302,23 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("bool after_tend = false")
     body += cpp.statement("curpos = cont.tellg()")
     body += cpp.line("while (std::getline(cont, cpp_line)) {")
+
+    # blank line treatment
+    body += cpp.indent_code(
+        cpp.pureif(
+            aux.is_blank_line(),
+            cpp.ifelse(
+                cpp.logical_or(["after_tend", "parse_opts.ignore_blank_lines"]),
+                # if branch
+                cpp.statement("continue"),
+                # else branch
+                cpp.throw_runtime_error(
+                    "Blank line detected: Correct file or use `ignore_blank_lines` option"
+                ),
+            ),
+        )
+    )
+
     matval = aux.get_custom_int_field(66, 4)
     mfval = aux.get_custom_int_field(70, 2)
     mtval = aux.get_custom_int_field(72, 3)
@@ -367,17 +384,6 @@ def generate_master_parsefun(name, recipefuns):
     curstat += cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section")
     statements.append(curstat)
     conditions.append(curcond)
-
-    # blank line treatment
-    curcond = cpp.logical_and([aux.is_blank_line(), "after_tend == false"])
-    curstat = cpp.pureif(
-        cpp.logical_not("parse_opts.ignore_blank_lines"),
-        cpp.throw_runtime_error(
-            "Blank line detected: Correct file or use `ignore_blank_lines` option"
-        ),
-    )
-    conditions.append(curcond)
-    statements.append(curstat)
 
     # tend record treatment
     curcond = cpp.logical_and(["after_mend == true", aux.is_tend("parse_opts")])

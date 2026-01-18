@@ -86,29 +86,27 @@ Install endf-parserpy
    relies on compiled C++ code.
    If a suitable binary wheel isn't available for your platform,
    an attempt will be made to compile the C++ source files during
-   installation, which may take up to ten minutes. You may reduce
-   the optimization level to significantly reduce the compilation
-   time at the expense of slower parsing by setting the
-   ``INSTALL_ENDF_PARSERPY_CPP_OPTIM`` environment variable with
-   a value between 0 (no optimization) to 3 (maximal optimization).
-   The value 1 seems to be a good trade-off between compilation time
-   and achievable parsing and writing speed.
-   Under Linux and MacOS, the command would be
+   installation, which can take up to ten minutes.
+   The default optimization level aims to strike a balance between
+   compile time and parsing speed. Power users can alter the
+   optimization flag by setting the ``INSTALL_ENDF_PARSERPY_CPP_OPTIM``
+   environment variable before installation. For instance, under Linux and macOS,
+   where the default compiler is GNU C++, you could disable all optimizations by:
 
    .. code:: bash
 
-      export INSTALL_ENDF_PARSERPY_CPP_OPTIM=1
+      export INSTALL_ENDF_PARSERPY_CPP_OPTIM="-O0"
 
-
-   and under Windows
+   Under Windows (assuming Microsoft Visual C++), you can do:
 
    .. code:: bash
 
-      set INSTALL_ENDF_PARSERPY_CPP_OPTIM=1
+      set INSTALL_ENDF_PARSERPY_CPP_OPTIM="/Od"
 
-   If you want to disable the compilation of the C++ modules,
+   If you want to disable the compilation of the C++ modules entirely,
    you can set the environment variable ``INSTALL_ENDF_PARSERPY_CPP``
    to ``no`` before executing the ``pip install`` command.
+
 
 .. note::
 

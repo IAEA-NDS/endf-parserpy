@@ -29,7 +29,7 @@ jobs:
       - name: Build SDist
         env:
           INSTALL_ENDF_PARSERPY_CPP: no
-        run: python setup.py sdist
+        run: python -m build --sdist
 
       - uses: actions/upload-artifact@v4
         with:
@@ -46,12 +46,12 @@ jobs:
       fail-fast: true
       matrix:
         runner:
-          - ubuntu-latest          # x86_64 Linux
-          - ubuntu-24.04-arm       # ARM64 Linux (native)
-          - windows-latest         # x86_64 Windows
-          - windows-11-arm         # ARM64 Windows (native)
-          - macos-14               # Apple Silicon (ARM64)
-          - macos-13               # Intel macOS
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-15-intel
+          - macos-14
 
     steps:
       - uses: actions/checkout@v4
@@ -63,12 +63,12 @@ jobs:
       - name: Install cibuildwheel
         run: |
           python -m pip install --upgrade pip
-          python -m pip install cibuildwheel==3.0.1
+          python -m pip install cibuildwheel==3.3.1
 
       - name: Build wheels
         env:
           INSTALL_ENDF_PARSERPY_CPP: yes
-          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
           CIBW_BUILD_VERBOSITY: 2
         run: |
           python cibuildhack.py
@@ -102,7 +102,3 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}
-

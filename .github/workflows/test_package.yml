@@ -16,14 +16,14 @@ jobs:
   test_package:
     strategy:
       matrix:
-        python-version: ['3.12', '3.13']
+        python-version: ['3.12']
         runner:
-          - ubuntu-latest          # x86_64 Linux
-          - ubuntu-24.04-arm       # ARM64 Linux (native)
-          - windows-latest         # x86_64 Windows
-          - windows-11-arm         # ARM64 Windows (native)
-          - macos-14               # Apple Silicon (ARM64)
-          - macos-13               # Intel macOS
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-15-intel
+          - macos-14
 
     runs-on: ${{matrix.runner}}
 

@@ -6,13 +6,12 @@ on:
       - "v*.*.*"
 
 jobs:
-
   test_package:
     uses: ./.github/workflows/test_package.yml
 
   make_sdist:
     needs: test_package
-    name: Make source distribution package
+    name: Make source distribution
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -30,41 +29,38 @@ jobs:
       - name: Build SDist
         env:
           INSTALL_ENDF_PARSERPY_CPP: no
-        run: |
-          python setup.py sdist
-
-      - name: Show built wheels
-        run: ls -lh dist/
+        run: python setup.py sdist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cibw-sdist
+          name: sdist
           path: dist/*.tar.gz
 
-  build_regular_py_wheels:
+  build_wheels:
     needs: make_sdist
-    name: Build regular wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build wheels on ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 500
 
     strategy:
+      fail-fast: true
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        cibw_build:
-          - "cp38-*"
-          - "cp39-*"
-          - "cp310-*"
-          - "cp311-*"
-          - "cp312-*"
-          - "cp313-*"
+        runner:
+          - ubuntu-latest          # x86_64 Linux
+          - ubuntu-24.04-arm       # ARM64 Linux (native)
+          - windows-latest         # x86_64 Windows
+          - windows-11-arm         # ARM64 Windows (native)
+          - macos-14               # Apple Silicon (ARM64)
+          - macos-13               # Intel macOS
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install build deps
+      - name: Install cibuildwheel
         run: |
           python -m pip install --upgrade pip
           python -m pip install cibuildwheel==3.0.1
@@ -72,143 +68,41 @@ jobs:
       - name: Build wheels
         env:
           INSTALL_ENDF_PARSERPY_CPP: yes
-          INSTALL_ENDF_PARSERPY_CPP_OPTIM: 1
-          CIBW_BUILD: "${{ matrix.cibw_build }}"
-          CIBW_BUILD_VERBOSITY: 3
+          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+          CIBW_BUILD_VERBOSITY: 2
         run: |
           python cibuildhack.py
           python -m cibuildwheel --output-dir wheelhouse
 
-      - name: Show built wheels on Linux or MacOS
-        if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: ls -lh wheelhouse/
-
-      - name: Show built wheels on Windows
-        if: runner.os == 'Windows'
-        run: dir wheelhouse
+      - name: Show wheels
+        run: |
+          ls -lh wheelhouse || dir wheelhouse
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-cpython-${{ matrix.os }}-${{ strategy.job-index }}
-          path: ./wheelhouse/*.whl
-
-  build_newer_py_wheels_for_linux_arm64:
-    needs: build_regular_py_wheels
-    name: Build newer CPython wheels on ${{ matrix.os }} for linux-arm64
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 500
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        cibw_build:
-          - "cp311-*manylinux*"
-          - "cp312-*manylinux*"
-          - "cp313-*manylinux*"
-          - "cp311-*musllinux*"
-          - "cp312-*musllinux*"
-          - "cp313-*musllinux*"
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v2
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install build deps
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install cibuildwheel==3.0.1
-
-      - name: Build wheels
-        env:
-          INSTALL_ENDF_PARSERPY_CPP: yes
-          INSTALL_ENDF_PARSERPY_CPP_OPTIM: 1
-          CIBW_ARCHS_LINUX: "aarch64"
-          CIBW_BUILD: "${{ matrix.cibw_build }}"
-          CIBW_BUILD_VERBOSITY: 3
-        run: |
-          python cibuildhack.py
-          python -m cibuildwheel --output-dir wheelhouse
-
-      - name: Show built wheels
-        run: ls -lh wheelhouse/
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cibw-wheels-newer-cpython-arm64-${{ matrix.os }}-${{ strategy.job-index }}
-          path: ./wheelhouse/*.whl
-
-  build_older_py_wheels_for_linux_arm64:
-    needs: build_regular_py_wheels
-    name: Build older CPython wheels on ${{ matrix.os }} for linux-arm64
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 500
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        cibw_build:
-          - "cp38-*manylinux*"
-          - "cp39-*manylinux*"
-          - "cp310-*manylinux*"
-          - "cp38-*musllinux*"
-          - "cp39-*musllinux*"
-          - "cp310-*musllinux*"
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v2
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install build deps
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install cibuildwheel==2.20.0
-
-      - name: Build wheels
-        env:
-          INSTALL_ENDF_PARSERPY_CPP: yes
-          INSTALL_ENDF_PARSERPY_CPP_OPTIM: 1
-          CIBW_ARCHS_LINUX: "aarch64"
-          CIBW_BUILD: "${{ matrix.cibw_build }}"
-          CIBW_BUILD_VERBOSITY: 3
-        run: |
-          python cibuildhack.py
-          python -m cibuildwheel --output-dir wheelhouse
-
-      - name: Show built wheels
-        run: ls -lh wheelhouse/
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cibw-wheels-older-cpython-arm64-${{ matrix.os }}-${{ strategy.job-index }}
-          path: ./wheelhouse/*.whl
+          name: wheels-${{ matrix.runner }}
+          path: wheelhouse/*.whl
 
   upload_all:
     needs:
       - test_package
       - make_sdist
-      - build_regular_py_wheels
-      - build_older_py_wheels_for_linux_arm64
-      - build_newer_py_wheels_for_linux_arm64
+      - build_wheels
 
+    runs-on: ubuntu-latest
     environment: pypi
     permissions:
       id-token: write
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: cibw-*
           path: dist
           merge-multiple: true
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_TOKEN }}
+

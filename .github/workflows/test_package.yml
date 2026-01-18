@@ -16,7 +16,7 @@ jobs:
   test_package:
     strategy:
       matrix:
-        python-version: ['3.8', '3.13']
+        python-version: ['3.9', '3.14']
         runner:
           - ubuntu-latest          # x86_64 Linux
           - ubuntu-24.04-arm       # ARM64 Linux (native)
@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.python-version}}
 

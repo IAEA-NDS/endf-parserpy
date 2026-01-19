@@ -143,10 +143,10 @@ def main():
     # these variable values may be substituted before package building
     cibuildwheel_hack = False
     if cibuildwheel_hack:
-        os.environ["INSTALL_ENDF_PARSERPY_CPP"] = "__INSTALL_ENDF_PARSERPY_CPP__"
-        os.environ["INSTALL_ENDF_PARSERPY_CPP_OPTIM"] = (
-            "__INSTALL_ENDF_PARSERPY_CPP_OPTIM__"
-        )
+        osenv = os.environ
+        osenv["INSTALL_ENDF_PARSERPY_CPP"] = "__INSTALL_ENDF_PARSERPY_CPP__"
+        osenv["INSTALL_ENDF_PARSERPY_CPP_OPTIM"] = "__INSTALL_ENDF_PARSERPY_CPP_OPTIM__"
+
     logger.info("Environment variables related to C++ compilation")
     logger.info(f"INSTALL_ENDF_PARSERPY_CPP: {os.getenv('INSTALL_ENDF_PARSERPY_CPP')}")
     logger.info(

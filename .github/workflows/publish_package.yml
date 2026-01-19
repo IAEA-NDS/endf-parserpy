@@ -29,7 +29,10 @@ jobs:
       - name: Build SDist
         env:
           INSTALL_ENDF_PARSERPY_CPP: no
-        run: python -m build --sdist
+        run: python setup.py sdist
+
+      - name: Show built wheels
+        run: ls -lh dist
 
       - uses: actions/upload-artifact@v4
         with:
@@ -69,7 +72,7 @@ jobs:
         env:
           INSTALL_ENDF_PARSERPY_CPP: yes
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
-          CIBW_BUILD_VERBOSITY: 2
+          CIBW_BUILD_VERBOSITY: 3
         run: |
           python cibuildhack.py
           python -m cibuildwheel --output-dir wheelhouse

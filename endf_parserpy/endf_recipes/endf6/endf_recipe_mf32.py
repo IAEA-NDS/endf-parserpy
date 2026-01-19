@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel, Daniel L. Aldama
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/12
-# Last modified:   2026/01/17
+# Last modified:   2026/01/19
 # License:         MIT
 # Copyright (c) 2022 International Atomic Energy Agency (IAEA)
 #
@@ -308,7 +308,7 @@ for i=1 to NIS:
                         (j_group[m])
                             NX := (1+NCH + (5-NCH) % 6) * NRB / 6
                             num_zeros := (5-NCH) % 6
-                            [MAT,32,151/ 0.0, 0.0, NCH, NRB, 6*NX, NX/
+                            [MAT,32,151/ 0.0, 0.0, NCH, NRB, 6*NX, NX?/
                                 { ER[p], {GAM[q,p]}{q=1 to NCH}
                                   {0.0}{r=1 to num_zeros} }{p=1 to NRB} ]LIST
                         (/j_group[m])

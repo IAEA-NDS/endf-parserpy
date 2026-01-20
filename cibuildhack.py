@@ -25,7 +25,7 @@ with fileinput.FileInput(setup_file, inplace=True) as file:
                     "__INSTALL_ENDF_PARSERPY_CPP__", install_endf_parserpy_cpp
                 )
 
-        if "__INSTALL_ENDF_PARSERPY_CPP_OPTIM__" in line:
+        elif "__INSTALL_ENDF_PARSERPY_CPP_OPTIM__" in line:
             if install_endf_parserpy_cpp_optim is None:
                 line = None
             else:
@@ -35,4 +35,5 @@ with fileinput.FileInput(setup_file, inplace=True) as file:
                 )
 
         # Write the modified line back to the file
-        print(line, end="")
+        if line is not None:
+            print(line, end="")

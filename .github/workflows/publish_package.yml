@@ -77,9 +77,13 @@ jobs:
           python cibuildhack.py
           python -m cibuildwheel --output-dir wheelhouse
 
-      - name: Show wheels
-        run: |
-          ls -lh wheelhouse || dir wheelhouse
+      - name: Show built wheels on Linux and macOS
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        run: ls -lh wheelhouse/
+
+      - name: Show built wheels on Windows
+        if: runner.os == 'Windows'
+        run: dir wheelhouse
 
       - uses: actions/upload-artifact@v4
         with:

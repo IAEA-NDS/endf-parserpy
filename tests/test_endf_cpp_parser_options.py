@@ -123,3 +123,17 @@ def test_list_mode_reading():
     endf_dict1 = parser_py.parsefile(endf_file)
     endf_dict2 = parser_cpp.parsefile(endf_file)
     compare_objects(endf_dict1, endf_dict2)
+
+
+def test_invalid_array_type_option_rejected():
+    with pytest.raises(ValueError, match="array_type"):
+        EndfParserCpp(array_type="invalid_option")
+
+
+def test_array_type_list_slow_equivalent_to_list():
+    parser_py = EndfParserPy(array_type="list_slow")
+    parser_cpp = EndfParserCpp(array_type="list_slow")
+    endf_file = Path(__file__).parent.joinpath("testdata", "n_2925_29-Cu-63.endf")
+    endf_dict1 = parser_py.parsefile(endf_file)
+    endf_dict2 = parser_cpp.parsefile(endf_file)
+    compare_objects(endf_dict1, endf_dict2)

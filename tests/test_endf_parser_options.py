@@ -210,3 +210,8 @@ def test_array_type_list_and_list_slow_equivalent():
     endf_dict1 = parser1.parsefile(endf_file)
     endf_dict2 = parser2.parsefile(endf_file)
     compare_objects(endf_dict1, endf_dict2)
+
+
+def test_invalid_array_type_option_rejected():
+    with pytest.raises(ValueError, match="array_type"):
+        EndfParserPy(array_type="invalid_option")

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/05/18
+# Last modified:   2026/07/29
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -89,7 +89,11 @@ from .endf_recipe_utils import (
 from endf_parserpy.endf_recipes import get_recipe_dict
 from endf_parserpy.utils.debugging_utils import TrackingDict
 from .helpers import array_dict_to_list
-from ..endf_parser_base import EndfParserBase, _record_init_kwargs
+from ..endf_parser_base import (
+    EndfParserBase,
+    _record_init_kwargs,
+    _check_array_type,
+)
 
 
 class EndfParserPy(EndfParserBase):
@@ -233,7 +237,10 @@ class EndfParserPy(EndfParserBase):
         array_type : str
             The Python datatype to use for representing arrays read from
             ENDF-6 files. The two options are ``"dict"`` (default) and
-            ``"list"``.  *(parsing)*
+            ``"list"``. The additional option ``"list_slow"`` yields the
+            same result as ``"list"`` via a slower implementation and
+            exists for debugging purposes. Any other value raises a
+            :class:`ValueError`. *(parsing)*
         explain_missing_variable : bool
             If the :func:`write` or :func:`writefile` method
             fail because a variable is missing in the dictionary,
@@ -267,6 +274,7 @@ class EndfParserPy(EndfParserBase):
             which will trigger warnings. Use `logging.ERROR` to suppress
             these warnings (you will need to `import logging`).
         """
+        _check_array_type(array_type)
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         if recipes is None:

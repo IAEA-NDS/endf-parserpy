@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/05/17
+# Last modified:   2026/07/29
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -12,7 +12,11 @@
 import importlib
 import os
 from endf_parserpy.utils.accessories import EndfDict
-from ..endf_parser_base import EndfParserBase, _record_init_kwargs
+from ..endf_parser_base import (
+    EndfParserBase,
+    _record_init_kwargs,
+    _check_array_type,
+)
 
 
 class EndfParserCpp(EndfParserBase):
@@ -134,7 +138,10 @@ class EndfParserCpp(EndfParserBase):
         array_type : str
             The Python datatype to use for representing arrays read from
             ENDF-6 files. The two options are ``"dict"`` (default) and
-            ``"list"``.  *(parsing)*
+            ``"list"``. The value ``"list_slow"`` is also accepted and
+            equivalent to ``"list"``, for compatibility with the
+            :class:`~endf_parserpy.EndfParserPy` class. Any other value
+            raises a :class:`ValueError`. *(parsing)*
         skip_intzero: bool
             For numbers written out in decimal notation, eliminate
             the integer part if zero, e.g. `0.12` becomes `.12` to
@@ -157,6 +164,7 @@ class EndfParserCpp(EndfParserBase):
             structure. Off by default; only the Python parser performs
             this validation unconditionally. *(parsing, C++ only)*
         """
+        _check_array_type(array_type)
         self.read_opts = {
             "ignore_number_mismatch": ignore_number_mismatch,
             "ignore_zero_mismatch": ignore_zero_mismatch,

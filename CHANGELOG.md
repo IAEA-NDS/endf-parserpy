@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- MF5 recipe: energy-dependent Watt spectrum (LF=11). The recipe previously stopped with an error for this representation; the fractional probability p(E) and the energy-dependent parameters a(E) and b(E) are now read into the tables `p_table`, `a_table` and `b_table` of the corresponding `contribution[k]`
+
 ### Fixed
 
 - MF26 recipe (electro-atomic interaction data) failed on any section whose product subsections differ in ZAP, AWI or LAW: the yield TAB1 record that opens each subsection was read outside of the `subsection[i]` block, so all subsections shared one set of variables and the second subsection raised a `NumberMismatchError`. This broke, for instance, the bremsstrahlung section (MT=527) of every file in the ENDF/B-VIII.0 electro-atomic sublibrary. The yield record is now part of its subsection. As a consequence, `ZAP`, `AWI`, `LAW` and `yields` are now found under `subsection[i]` rather than at the top level of an MF26 section, also for sections with a single subsection

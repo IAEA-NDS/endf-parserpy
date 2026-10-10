@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- MF7/MT451 recipe (generalized information file for thermal scattering data) failed for materials composed of several elements with a different number of atoms per molecule or unit cell (e.g. SiO2): the LIST record describing each element carries its own NAS value, but the recipe stored it in a single scalar, so the second element raised a `NumberMismatchError`. NAS is now an array indexed by element, `NAS[i]`; note that this also changes the dictionary layout of single-element materials, where `NAS` used to be a scalar
 
 ## [0.17.0]
 

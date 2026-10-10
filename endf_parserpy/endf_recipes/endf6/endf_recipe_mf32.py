@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel, Daniel L. Aldama
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/12
-# Last modified:   2026/01/17
+# Last modified:   2026/10/10
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -271,26 +271,22 @@ for i=1 to NIS:
             [MAT,32,151/ 0.0, 0.0, 0, LCOMP, 0, ISR]CONT
             #
             # In the ENDF-6 Manual (Chapter 32, Section 32.2.2.4, p. 258),
-            # the sixth field of the LIST record for ISR > 0 is given as
+            # the LIST record for ISR > 0 is given as
             #
-            #   (1 + (NJCH - 1)/6)
+            #   [MAT,32,151/ 0.0, 0.0, 0, 0, JCH, (1+(NJCH-1)/6)/
+            #       DAP(1,1), DAP(1,2), ..., DAP(NJS,NCH)]LIST
             #
-            # This appears to be a typographical error. In this implementation,
-            # the value
-            #
-            #   (1 + (NCH - 1)/6)
-            #
-            # is adopted instead.
-            #
-            # One alternative (and potentially preferable) interpretation is
-            # to specify NCH directly or to provide NJS elsewhere, since the
-            # value in the fifth field (JCH) should be equal to NJS*NCH or
-            # to apply the same format used for LCOMP=2 LRF=7.
-            #
+            # As for LCOMP=2 and LRF=7, the fifth field is interpreted as
+            # the number of values (JCH = NJCH) and the sixth field as the
+            # number of lines they occupy, i.e. 1 + (JCH-1)/6 with Fortran
+            # integer division, which is expressed with the modulo operator
+            # below. Neither NJS nor NCH is available at this point for
+            # LCOMP=1, so the values are stored in the one-dimensional array
+            # DAP in the order given.
             #
             if ISR > 0:
-                [MAT,32,151/ 0.0, 0.0, 0, 0, JCH, (1+(NCH-1)/6) /
-                    {{DAP[m,n]}{n=1 to NCH}}{m=1 to JCH/NCH} ] LIST
+                [MAT,32,151/ 0.0, 0.0, 0, 0, JCH, 1+(JCH-1-(JCH-1)%6)/6 /
+                    {DAP[m]}{m=1 to JCH} ] LIST
             endif
             [MAT,32,151/ AWRI, 0.0, 0, 0, NSRS, 0]CONT
             # Short range component for R-Matrix Limited
@@ -407,8 +403,11 @@ for i=1 to NIS:
         elif LCOMP==2 and LRU==1 and LRF==7 [lookahead=1]:
             # R-Matrix Limited formalism
             [MAT,32,151/ 0.0, 0.0, IFG, LCOMP, NJS, ISR ]CONT
+            # The sixth field of the LIST record for ISR > 0 is the number
+            # of lines occupied by the NJCH values, 1 + (NJCH-1)/6 with
+            # Fortran integer division, expressed with the modulo operator.
             if ISR > 0:
-                [MAT,32,151/ 0.0, 0.0, 0, 0, NJCH, (1+(NJCH-1)/6) /
+                [MAT,32,151/ 0.0, 0.0, 0, 0, NJCH, 1+(NJCH-1-(NJCH-1)%6)/6 /
                     {{DAP[m,n]}{n=1 to NJCH/NJS}}{m=1 to NJS} ] LIST
             endif
             [MAT,32,151/ 0.0, 0.0, NPP, NJSX, 12*NPP, 2*NPP/

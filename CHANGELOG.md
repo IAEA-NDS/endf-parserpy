@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- MF32/MT151 recipe could not read the uncertainties of the scattering radii (ISR>0) in the covariance formats for the R-Matrix Limited formalism (LRU=1, LRF=7). The sixth field of the LIST record holding the DAP values is the number of lines they occupy, 1+(NJCH-1)/6 with Fortran integer division; the recipe used this expression literally, but `EndfParserPy` requires divisions of integers in recipes to be exact, so for LCOMP=2 it failed unless NJCH-1 was a multiple of six (the code generated for `EndfParserCpp` truncates and was not affected). The integer division is now expressed exactly with the modulo operator. For LCOMP=1 the recipe additionally depended on the number of channels NCH, which is not known at this point, so `EndfParserPy` could not read the record and `EndfParserCpp` derived a spurious NCH from the line count, failing for values spanning more than one line; the DAP values are now stored in the order given in the one-dimensional array `DAP[m]`, m=1..JCH, interpreting the record in the same way as for LCOMP=2
 
 ## [0.17.0]
 

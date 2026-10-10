@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - MF5 recipe: energy-dependent Watt spectrum (LF=11). The recipe previously stopped with an error for this representation; the fractional probability p(E) and the energy-dependent parameters a(E) and b(E) are now read into the tables `p_table`, `a_table` and `b_table` of the corresponding `contribution[k]`
+- MF14 recipe: anisotropic photon angular distributions in tabular form (LI=0, LTT=2). The recipe previously stopped with an error for this representation. As for the Legendre representation (LTT=1), the NI isotropic photons are read first; for each anisotropic photon k, the probability distribution p(mu,E) at the incident energy `E[k,l]` is stored in the table `angtable[k,l]`
 
 ### Fixed
 

@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Removed
+
+- Unused module `endf_parserpy/endf_recipes/endf6/endf_recipe_mf31.py`, an incomplete draft of the spontaneous fission formats of MF31 that was not registered for any MF/MT section. MF31 sections are read by the recipe derived from MF33 (`endf_recipe_mf31_mt452_455_456.py`), which also covers the spontaneous fission formats of ENDF-102, Section 31.2, as special cases of the particle-induced fission formats; this is now documented in the recipe and covered by tests
 
 ## [0.17.0]
 

@@ -55,6 +55,16 @@ situation by adopting the following initialization:
 
    parser = EndfParserPy(accept_spaces=False)
 
+Similarly, the argument ``accept_d_exponent`` (default ``True``)
+controls whether numbers with a Fortran double-precision exponent,
+such as ``5.438673D-4``, are accepted. They do not conform to the
+ENDF-6 format but occur in some evaluated data files. When such data
+are written again, the ``D`` character is never emitted: the numbers
+are output in the usual ENDF-6 notation, e.g. ``5.438673-4`` (or
+``5.438673e-4`` with ``keep_E=True``), unless
+``preserve_value_strings=True`` is used, in which case the original
+strings are written verbatim.
+
 
 When only one part of the ENDF-6 file is relevant to the user,
 the :func:`~endf_parserpy.EndfParserPy.parsefile()` method

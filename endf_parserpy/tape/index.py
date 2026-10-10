@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/05/18
+# Last modified:   2026/10/10
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -53,14 +53,16 @@ def _endf_float(field_text):
     """Parse an 11-column ENDF number field; return ``None`` on failure.
 
     ENDF numbers may use an implicit exponent, e.g. ``9.223800+4`` for
-    ``9.223800e+4``. ``None`` is returned rather than raising, so that
-    an unparsable identifier field never aborts an index build.
+    ``9.223800e+4``, and a Fortran double-precision exponent, e.g.
+    ``5.438673D-4``, is accepted as well. ``None`` is returned rather
+    than raising, so that an unparsable identifier field never aborts an
+    index build.
 
     This is a deliberately minimal number parser, kept independent of
     the parsing engine so the index stays recipe- and engine-free; it
     only needs to recover the ZA/AWR identifiers from a HEAD record.
     """
-    text = field_text.strip()
+    text = field_text.strip().replace("D", "e").replace("d", "e")
     if text == "":
         return None
     try:

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/07/29
+# Last modified:   2026/10/10
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -55,6 +55,7 @@ class EndfParserCpp(EndfParserBase):
         ignore_send_records=False,
         ignore_missing_tpid=False,
         accept_nan_inf=True,
+        accept_d_exponent=True,
         validate_control_records=False,
         abuse_signpos=False,
         keep_E=False,
@@ -114,6 +115,17 @@ class EndfParserCpp(EndfParserBase):
             such values raise an error during parsing. The default
             preserves backward compatibility with the pure-Python
             parser, which has always accepted them. *(parsing)*
+        accept_d_exponent: bool
+            If ``True`` (default), accept a Fortran double-precision
+            exponent introduced by ``D`` or ``d`` in float fields, e.g.
+            ``5.438673D-4`` is read as ``5.438673e-4``. Such numbers do
+            not conform to the ENDF-6 format but are found in some
+            evaluated data files. If ``False``, they raise an error
+            during parsing. On writing, the ``D`` character is never
+            emitted (output is formatted according to ``keep_E``),
+            unless the original string representation is preserved and
+            written verbatim (see ``preserve_value_strings``).
+            *(parsing)*
         abuse_signpos: bool
             Permit positive numbers to start in the first character slot
             of an ENDF-6 field, which is usually reserved for the sign,
@@ -174,6 +186,7 @@ class EndfParserCpp(EndfParserBase):
             "ignore_send_records": ignore_send_records,
             "ignore_missing_tpid": ignore_missing_tpid,
             "accept_nan_inf": accept_nan_inf,
+            "accept_d_exponent": accept_d_exponent,
             "preserve_value_strings": preserve_value_strings,
             "validate_control_records": validate_control_records,
             "array_type": array_type,

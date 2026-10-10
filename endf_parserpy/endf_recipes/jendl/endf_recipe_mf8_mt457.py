@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/10
-# Last modified:   2024/04/27
+# Last modified:   2026/10/10
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -66,7 +66,7 @@ if NST==0 [lookahead=1]:
             (discrete)
               (cov)
                 [MAT, 8,457/ 0.0, 0.0, LS, 5, NE, NERP/
-                    {E[m]}{m=1 to NERP}, {{F[m,n]}{n=m to NERP-2}}{m=1 to NERP-2} ] LIST
+                    {E[m]}{m=1 to NERP}, {{F[m,n]}{n=m to NERP-1}}{m=1 to NERP-1} ] LIST
               (/cov)
             (/discrete)
         endif

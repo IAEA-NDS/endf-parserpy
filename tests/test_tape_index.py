@@ -50,6 +50,10 @@ def _make_multi(single, n=2):
         (" 1.5", 1.5),
         ("6.140220-1", 0.614022),
         (" 2.0e3", 2000.0),
+        # Fortran double-precision exponent
+        ("5.438673D-4", 5.438673e-4),
+        (" 1.0000D+11", 1.0e11),
+        ("    2.5d3", 2500.0),
         ("           ", None),
         ("garbage", None),
     ],

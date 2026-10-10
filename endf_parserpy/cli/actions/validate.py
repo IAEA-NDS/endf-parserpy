@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/05/18
+# Last modified:   2026/10/10
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -29,6 +29,7 @@ STRICT_DEFAULT_ARGS = {
     "ignore_send_records": False,
     "ignore_missing_tpid": False,
     "accept_nan_inf": False,
+    "accept_d_exponent": False,
 }
 
 

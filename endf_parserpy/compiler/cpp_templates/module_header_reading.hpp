@@ -22,6 +22,7 @@ struct ParsingOptions {
   bool ignore_send_records;
   bool ignore_missing_tpid;
   bool accept_nan_inf;
+  bool accept_d_exponent;
   bool preserve_value_strings;
   bool validate_control_records;
   std::string array_type;
@@ -38,6 +39,7 @@ inline ParsingOptions default_parsing_options() {
     false,  // ignore_send_records
     false,  // ignore_missing_tpid
     true,   // accept_nan_inf
+    true,   // accept_d_exponent
     false,  // preserve_value_strings
     false,  // validate_control_records
     "dict"  // array_type
@@ -74,6 +76,8 @@ namespace pybind11 { namespace detail {
           value.ignore_missing_tpid = d["ignore_missing_tpid"].cast<bool>();
         else if (key_str == "accept_nan_inf")
           value.accept_nan_inf = d["accept_nan_inf"].cast<bool>();
+        else if (key_str == "accept_d_exponent")
+          value.accept_d_exponent = d["accept_d_exponent"].cast<bool>();
         else if (key_str == "preserve_value_strings")
           value.preserve_value_strings = d["preserve_value_strings"].cast<bool>();
         else if (key_str == "validate_control_records")
@@ -119,6 +123,10 @@ namespace pybind11 { namespace detail {
         value.accept_nan_inf = default_opts.accept_nan_inf;
       }
 
+      if (! d.contains("accept_d_exponent")) {
+        value.accept_d_exponent = default_opts.accept_d_exponent;
+      }
+
       if (! d.contains("preserve_value_strings")) {
         value.preserve_value_strings = default_opts.preserve_value_strings;
       }
@@ -145,6 +153,7 @@ namespace pybind11 { namespace detail {
       d["ignore_send_records"] = src.ignore_send_records;
       d["ignore_missing_tpid"] = src.ignore_missing_tpid;
       d["accept_nan_inf"] = src.accept_nan_inf;
+      d["accept_d_exponent"] = src.accept_d_exponent;
       d["preserve_value_strings"] = src.preserve_value_strings;
       d["validate_control_records"] = src.validate_control_records;
       d["array_type"] = src.array_type;
@@ -265,6 +274,10 @@ inline double endfstr2float(const char* str, ParsingOptions &parse_opts) {
           tbuf[j++] = 'e';
           in_exponent = true;
         } else if (c=='e' || c=='E') {
+          in_exponent = true;
+        } else if ((c=='d' || c=='D') && parse_opts.accept_d_exponent) {
+          // Fortran double-precision exponent, e.g. 5.438673D-4
+          c = 'e';
           in_exponent = true;
         }
       }

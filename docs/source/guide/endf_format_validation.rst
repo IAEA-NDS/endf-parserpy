@@ -40,6 +40,7 @@ ENDF-6 file with strict validation settings:
        ignore_send_records=False,
        ignore_missing_tpid=False,
        accept_nan_inf=False,
+       accept_d_exponent=False,
     )
 
     parser.parsefile('input.endf')

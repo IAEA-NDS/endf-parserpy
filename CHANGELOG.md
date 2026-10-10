@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- MF14 recipe: anisotropic photon angular distributions in tabular form (LI=0, LTT=2). The recipe previously stopped with an error for this representation. As for the Legendre representation (LTT=1), the NI isotropic photons are read first; for each anisotropic photon k, the probability distribution p(mu,E) at the incident energy `E[k,l]` is stored in the table `angtable[k,l]`
 
 ## [0.17.0]
 

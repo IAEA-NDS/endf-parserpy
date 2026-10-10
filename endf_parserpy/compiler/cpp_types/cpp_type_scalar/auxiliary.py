@@ -2,6 +2,8 @@ from ..cpp_varaux import (
     init_local_var_from_global_var,
 )
 import endf_parserpy.compiler.cpp_primitives as cpp
+from endf_parserpy.compiler.lookahead_management import in_lookahead
+from endf_parserpy.compiler.mode_management import get_lookahead_presence_check
 
 
 def readflag_varname(vartok):
@@ -23,7 +25,17 @@ def initialize_aux_read_vars(vartok, save_state=False):
     return code
 
 
-def mark_var_as_read(vartok):
+def mark_var_as_read(vartok, vardict=None):
     varname = str(vartok)
-    code = cpp.statement(f"aux_{varname}_read = true")
+    readflag = "true"
+    # Within a lookahead, a mode may decide whether the variable
+    # is actually available. For writing, a variable absent from
+    # the dictionary must not count as read, so that comparisons
+    # involving it in the if-condition evaluate to false, as in
+    # EndfParserPy.
+    if vardict is not None and in_lookahead(vardict):
+        presence_check = get_lookahead_presence_check(vardict)
+        if presence_check is not None:
+            readflag = presence_check(vartok)
+    code = cpp.statement(f"aux_{varname}_read = {readflag}")
     return code

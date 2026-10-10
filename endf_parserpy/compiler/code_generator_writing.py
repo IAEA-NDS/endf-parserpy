@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/05/13
+# Last modified:   2026/10/10
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -53,6 +53,8 @@ from .mode_management import (
     register_lookahead_tellg_statement,
     register_lookahead_seekg_statement,
     register_generate_expr_validation_func,
+    register_lookahead_presence_check,
+    register_lookahead_catch_clause,
 )
 from .endf2cpp_aux import (
     get_numeric_field,
@@ -122,7 +124,9 @@ def _get_numeric_field_wrapper(node, idx, dtype, vardict):
         # defaults are used in lookahead for if-condition evaluation
         # NOTE: not ideal to use precoded values instead of dealing
         #       with missing variables directly, but the best solution
-        #       I am able to come up with given the existing code structure
+        #       I am able to come up with given the existing code structure.
+        #       A variable whose value is a default is not marked as read,
+        #       see _lookahead_presence_check_wrapper.
         defaults = {int: -99999, float: -99999.9}
         valcode = get_expr_value_using_endf_dict(
             node, "cpp_index_shifter_store", dtype, vardict, defaults
@@ -225,6 +229,15 @@ def _get_counter_field_wrapper(node, idx, vardict):
     return valcode, code
 
 
+def _lookahead_presence_check_wrapper(vartok):
+    # In a lookahead, absent variables are substituted by default values
+    # (see _get_numeric_field_wrapper). Such a variable must not count
+    # as read, so that any comparison involving it in the if-condition
+    # evaluates to false, in line with EndfParserPy, which treats
+    # comparisons with variables missing in the dictionary as false.
+    return f'cpp_index_shifter_store.has_value("{vartok}")'
+
+
 def _prepare_send_func_wrapper(vardict):
     code = prepare_send_la(
         "cpp_draft_line", "mat", "mf", "write_opts", in_lookahead(vardict)
@@ -320,6 +333,15 @@ def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_prepare_section_func(_prepare_section_func_wrapper, vardict)
     register_finalize_section_func(_finalize_section_func_wrapper, vardict)
     register_generate_expr_validation_func(_generate_expr_validation_wrapper, vardict)
+    register_lookahead_presence_check(_lookahead_presence_check_wrapper, vardict)
+    # When writing, the lookahead merely serves to evaluate the if-condition
+    # with the data in the dictionary. If the records of a branch cannot be
+    # evaluated with these data, e.g. because a variable of the branch is
+    # absent and an expression depending on it cannot be handled, this is
+    # no error: the branch simply does not apply. Variables of the
+    # if-condition not available at this point are not marked as read,
+    # see _lookahead_presence_check_wrapper, so the condition is false.
+    register_lookahead_catch_clause("const std::exception& e", vardict)
     register_lookahead_tellg_statement("", vardict)
     register_lookahead_seekg_statement("", vardict)
 

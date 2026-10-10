@@ -166,6 +166,10 @@ public:
         return index_shifter.setdefault(pyobj, indices, defval);
     }
 
+    bool has_value(std::string varname) {
+        return refdict.contains(varname);
+    }
+
     py::object get_value(std::string varname, std::vector<int> indices, py::object defval=py::none()) {
         if (! defval.is_none() & ! refdict.contains(varname)) {
             return defval;

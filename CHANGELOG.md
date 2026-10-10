@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- MF5 recipe: energy-dependent Watt spectrum (LF=11). The recipe previously stopped with an error for this representation; the fractional probability p(E) and the energy-dependent parameters a(E) and b(E) are now read into the tables `p_table`, `a_table` and `b_table` of the corresponding `contribution[k]`
 
 ## [0.17.0]
 

@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2025/05/22
+# Last modified:   2026/10/10
 # License:         MIT
-# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -40,9 +40,9 @@ for k=1 to NK:
 
         # Energy-Dependent Watt Spectrum (LF=11)
         elif LF==11 [lookahead=1]:
-            [MAT, 5, MT/ U, 0.0, 0, LF, NR, NP / E / p ]TAB1
-            # TODO
-            stop("LF=11 case not implemented in ENDF recipe MF5")
+            [MAT, 5, MT/ U, 0.0, 0, LF, NR, NP/ E / p ]TAB1 (p_table)
+            [MAT, 5, MT/ 0.0, 0.0, 0, 0, NR, NE/ E / a ]TAB1 (a_table)
+            [MAT, 5, MT/ 0.0, 0.0, 0, 0, NR, NE/ E / b ]TAB1 (b_table)
 
         # Energy-Dependent Fission Neutron Spectrum (LF=12)
         elif LF==12 [lookahead=1]:

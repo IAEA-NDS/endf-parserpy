@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/05/28
-# Last modified:   2025/05/28
+# Last modified:   2026/10/10
 # License:         MIT
-# Copyright (c) 2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -48,5 +48,25 @@ ENDF_RECIPE_MF1_MT3 = """
 for i=B[A[1]-8] to B[1]:
     [MAT,MF,MT/ 0.0, 0.0, B[A[1]-8], C[B[A[1]-8]+0], 0, 0] CONT
 endfor
+SEND
+"""
+
+
+# This recipe uses a lookahead whose if-condition refers to a variable
+# that is only given in the record of the if-branch. When a dictionary
+# without this variable is written, the comparison must evaluate to false
+# so that the else-branch is selected; e.g. write a dictionary with
+#   Y[1]=1.0, Y[2]=2.0  (else-branch) or
+#   NX=3, X[1]=1.0, X[2]=2.0, X[3]=3.0  (if-branch)
+# The same construct appears in the JENDL recipe for MF8/MT457.
+
+
+ENDF_RECIPE_MF1_MT4 = """
+[MAT,MF,MT/ 0.0, 0.0, 0, 0, 0, 0] HEAD
+if NX != 2 [lookahead=1]:
+    [MAT,MF,MT/ 0.0, 0.0, 0, 0, NX, 0/ {X[k]}{k=1 to NX} ] LIST
+else:
+    [MAT,MF,MT/ 0.0, 0.0, 0, 0, 2, 0/ Y[1], Y[2] ] LIST
+endif
 SEND
 """

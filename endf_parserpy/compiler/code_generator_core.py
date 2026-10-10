@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2025/07/23
+# Last modified:   2026/10/10
 # License:         MIT
-# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -105,6 +105,7 @@ from .mode_management import (
     get_lookahead_tellg_statement,
     get_lookahead_seekg_statement,
     get_generate_expr_validation_func,
+    get_lookahead_catch_clause,
 )
 from hashlib import md5
 
@@ -453,7 +454,7 @@ def generate_code_for_if_statement(node, vardict):
                         vardef_code,
                         cpp.trycatch(
                             la_body_code,
-                            "const std::out_of_range& e",
+                            get_lookahead_catch_clause(vardict),
                             cpp.comment("// accept failure in lookahead"),
                         ),
                         cpp.pureif(

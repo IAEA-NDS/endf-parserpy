@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/06
+# Last modified:   2026/10/10
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -64,7 +64,7 @@ class Assign:
         code = ""
         cpp_varname = Query.get_cpp_varname(vartok, vardict, dtype=dtype)
         code += cpp.statement(f"{cpp_varname} = {exprstr}")
-        code += mark_var_as_read(vartok)
+        code += mark_var_as_read(vartok, vardict)
         return code
 
     @classmethod

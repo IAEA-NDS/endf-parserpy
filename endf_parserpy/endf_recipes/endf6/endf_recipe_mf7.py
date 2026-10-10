@@ -3,9 +3,9 @@
 # Maintainer:      José Ignacio Marquez Damian
 # Email:           marquezj@ess.eu
 # Creation date:   2022/09/13
-# Last modified:   2024/05/29
+# Last modified:   2026/10/19
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -65,8 +65,16 @@ ENDF_RECIPE_MF7_MT451 = """
 # Generalized Information File
 [MAT, 7, 451 / ZA, AWR, NA, 0, 0, 0]HEAD
 for i=1 to NA:
-    [MAT, 7, 451 / 0, 0, NAS, 0, 6*NI[i], NI[i]/
-          {ZAI[i,j], LISI[i,j], AFI[i,j], AWRI[i,j], SFI[i,j], 0}{j=1 to NI[i]} ] LIST
+    # ENDF-102 (Section 7.6.1) writes NAS without a subscript, but one
+    # NAS field is given per element; keep the scalar name in the
+    # single-element case so that existing downstream code is unaffected.
+    if NA == 1:
+        [MAT, 7, 451 / 0, 0, NAS, 0, 6*NI[i], NI[i]/
+              {ZAI[i,j], LISI[i,j], AFI[i,j], AWRI[i,j], SFI[i,j], 0}{j=1 to NI[i]} ] LIST
+    else:
+        [MAT, 7, 451 / 0, 0, NAS[i], 0, 6*NI[i], NI[i]/
+              {ZAI[i,j], LISI[i,j], AFI[i,j], AWRI[i,j], SFI[i,j], 0}{j=1 to NI[i]} ] LIST
+    endif
 endfor
 SEND
 """

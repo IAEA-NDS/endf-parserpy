@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2025/05/28
+# Last modified:   2026/10/12
 # License:         MIT
-# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -110,8 +110,9 @@ def logical_expr2cppstr(node, vardict):
         expr2 = node.children[2]
         assert is_expr(expr1)
         assert is_expr(expr2)
+        # the variables on both sides of the relation must have been read
         vs = get_variables_in_expr(expr1)
-        vs.update(get_variables_in_expr(expr1))
+        vs.update(get_variables_in_expr(expr2))
         # sorting for deterministic code generation
         vs = sorted(vs)
         raw_logical_expr = (
@@ -129,6 +130,9 @@ def logical_expr2cppstr(node, vardict):
         for v in vs:
             indices = [get_idxstr(v, i, vardict) for i in range(len(v.indices))]
             var_checks.append(did_read_var(v, vardict, indices))
+        if len(var_checks) == 0:
+            # comparison of constants, e.g. `0 == 1`
+            return raw_logical_expr
         var_checks_expr = cpp.logical_and(var_checks)
         composite_check = cpp.logical_and([var_checks_expr, raw_logical_expr])
         return composite_check

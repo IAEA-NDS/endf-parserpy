@@ -133,8 +133,9 @@ def logical_expr2cppstr(node, vardict):
         expr2 = node.children[2]
         assert is_expr(expr1)
         assert is_expr(expr2)
+        # the variables on both sides of the relation must have been read
         vs = get_variables_in_expr(expr1)
-        vs.update(get_variables_in_expr(expr1))
+        vs.update(get_variables_in_expr(expr2))
         # sorting for deterministic code generation
         vs = sorted(vs)
         lhs = logical_expr2cppstr(expr1, vardict)
@@ -148,6 +149,9 @@ def logical_expr2cppstr(node, vardict):
         for v in vs:
             indices = [get_idxstr(v, i, vardict) for i in range(len(v.indices))]
             var_checks.append(did_read_var(v, vardict, indices))
+        if len(var_checks) == 0:
+            # comparison of constants, e.g. `0 == 1`
+            return raw_logical_expr
         var_checks_expr = cpp.logical_and(var_checks)
         composite_check = cpp.logical_and([var_checks_expr, raw_logical_expr])
         return composite_check

@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/05/10
+# Last modified:   2026/10/12
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -46,6 +46,12 @@ def contains_variable(node, vartok, skip_nodes=None, filters=None):
     if isinstance(node, Token):
         return node == vartok
     return any(contains_variable(c, vartok, skip_nodes, filters) for c in node.children)
+
+
+def count_variable_occurrences(node, vartok):
+    if isinstance(node, Token):
+        return 1 if node == vartok else 0
+    return sum(count_variable_occurrences(c, vartok) for c in node.children)
 
 
 def get_variables_in_expr(node):
@@ -113,6 +119,13 @@ def solve_equation(lhs, rhs, vartok):
     modulo_on_rhs = transform_nodes(rhs, node_contains_modulo)
     if modulo_on_lhs or modulo_on_rhs:
         raise ModuloEquationError("equation contains modulo operator")
+    # As in the Python parser, an expression is only solved for a
+    # variable that appears once in it (e.g. not N+N), even if the
+    # expression is linear in that variable.
+    if count_variable_occurrences(lhs, vartok) > 1:
+        raise MultipleVariableOccurrenceError(
+            f"variable {vartok} expected to appear exactly once"
+        )
     new_lhs = normalize_exprtree(lhs)
     new_rhs = normalize_exprtree(rhs)
     new_lhs, new_rhs = _move_constants_to_rhs(new_lhs, new_rhs, vartok)

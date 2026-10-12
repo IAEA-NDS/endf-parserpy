@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- The C++ code generator recursed endlessly (`RecursionError`) on a record field containing a sum of numbers, e.g. `(1+1)*N`, because factoring the number 1 out of `1+1` gives `1*(1+1)` again. The same happened for a field in which the unknown variable appears more than once, e.g. `N+N`, while other such fields, e.g. `2*N-N`, were solved by `EndfParserCpp` but are rejected by `EndfParserPy`. The number 1 is no longer factored out, and a field in which the unknown appears more than once is no longer solved for it, as in `EndfParserPy`: the generated code raises an error if no other field provides the value of the variable. No recipe of the package contains such a field; the code generated for them does not change
 
 ## [0.17.0]
 

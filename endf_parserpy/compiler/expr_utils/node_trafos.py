@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2025/07/23
+# Last modified:   2026/10/12
 # License:         MIT
-# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -283,6 +283,10 @@ def factorout_common(node):
         return node.children[0]
 
     factor = get_most_common_factor(node)
+    # factoring out the number 1, e.g. 1+1 == 1*(1+1), does not simplify
+    # the expression and would be repeated endlessly
+    if is_number(factor) and float(factor.value) == 1:
+        return node
     terms1 = []
     terms2 = []
     for child in node.children:

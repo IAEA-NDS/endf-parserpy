@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/10
+# Last modified:   2026/10/13
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -232,6 +232,9 @@ def float2fortstr(val, write_opts=None):
         else:
             repr_str = "-Inf"
         return repr_str.rjust(width)
+    if val == 0:
+        # negative zero is written as zero
+        val = 0.0
     prefer_noexp = write_opts.get("prefer_noexp", False)
     valstr_exp = float2expformstr(val, write_opts=write_opts)
     if not prefer_noexp:

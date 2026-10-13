@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2025/07/22
+# Last modified:   2026/10/13
 # License:         MIT
-# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -31,7 +31,6 @@ def writefun_header(fun_name):
           std::vector<int> cpp_intvec;
           std::vector<double> cpp_floatvec;
           std::string cpp_template;
-          double cpp_float_val;
           int cpp_nr_val;
           int cpp_np_val;
           Tab1Body tab1_body;

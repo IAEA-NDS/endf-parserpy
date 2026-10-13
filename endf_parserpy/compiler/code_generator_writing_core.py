@@ -3,16 +3,17 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2025/06/04
+# Last modified:   2026/10/13
 # License:         MIT
-# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+from lark.tree import Tree
 from .expr_utils.equation_utils import get_variables_in_expr
 from .expr_utils.custom_nodes import VariableToken
 from .expr_utils.tree_walkers import transform_nodes
-from .expr_utils.node_trafos import node2str
+from .expr_utils.node_trafos import node2cppstr, CppFloatValue
 from .expr_utils.conversion import convert_to_exprtree
 from .node_checks import is_extvar
 from . import endf2cpp_aux as aux
@@ -28,12 +29,33 @@ from .variable_management import (
 )
 
 
+def _own_dtype(node, vardict, dtype):
+    # In arithmetic, a variable enters with its own type (as when
+    # reading), e.g. an integer variable in an expression for a float
+    # field remains an integer, so that the arithmetic is exact.
+    vartypes = get_var_types(node, vardict)
+    if vartypes is None:
+        return dtype
+    dtypes = set(v[0] for v in vartypes)
+    if dtypes == {int} or dtypes == {float}:
+        return dtypes.pop()
+    return dtype
+
+
 def get_node_value_using_endf_dict(
-    node, index_shifter_store, dtype, vardict, defaults=None, idx=None
+    node,
+    index_shifter_store,
+    dtype,
+    vardict,
+    defaults=None,
+    idx=None,
+    in_arithmetic=False,
 ):
     defaults = {} if defaults is None else defaults
     if not isinstance(node, VariableToken):
-        return node2str(node)
+        return node2cppstr(node)
+    if in_arithmetic and dtype in (int, float):
+        dtype = _own_dtype(node, vardict, dtype)
 
     # if variable is of loopvartype, we do not read it
     # from the Python dictionary but directly from the cpp variable
@@ -61,7 +83,9 @@ def get_node_value_using_endf_dict(
         return retobj
     else:
         dtypestr = map_dtype(dtype)
-        return f"py::cast<{dtypestr}>({retobj})"
+        valcode = f"py::cast<{dtypestr}>({retobj})"
+        # values of float fields enter arithmetic as doubles, see `cpp_operand`
+        return CppFloatValue(valcode) if dtype == float else valcode
 
 
 def get_expr_value_using_endf_dict(
@@ -77,8 +101,14 @@ def get_expr_value_using_endf_dict(
         vardict,
         defaults,
         idx=idx,
+        in_arithmetic=contains_arithmetic(node),
     )
     return valcode
+
+
+def contains_arithmetic(node):
+    """Whether the (converted) expression tree contains an operation."""
+    return isinstance(node, Tree)
 
 
 def get_mat_from_mfmt_section(mfmt_dict):

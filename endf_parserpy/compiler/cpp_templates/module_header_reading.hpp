@@ -395,10 +395,30 @@ is_zero_check(const T value) {
 }
 
 
+// scalar values in the sense of cpp_validate_field: numbers, values of
+// float fields and exact fractions (results of divisions of integers)
+template<typename T>
+struct is_validation_scalar {
+  static const bool value = std::is_scalar<T>::value
+    || std::is_same<T, DOUBLE_TYPE>::value
+    || std::is_same<T, EndfRational>::value;
+};
+
+
+// equality of an expected and an actual field value; exact if both are
+// integers or fractions, otherwise via double (as in the Python parser)
+template<typename U, typename V>
+inline bool cpp_values_equal(const U& x, const V& y) {
+  return static_cast<double>(x) == static_cast<double>(y);
+}
+inline bool cpp_values_equal(const EndfRational& x, const EndfRational& y) { return x == y; }
+inline bool cpp_values_equal(const EndfRational& x, int y) { return x == y; }
+inline bool cpp_values_equal(int x, const EndfRational& y) { return x == y; }
+
+
 template<typename U, typename V>
 typename std::enable_if<
-  (!std::is_scalar<U>::value && !std::is_same<U, DOUBLE_TYPE>::value)
-  || (!std::is_scalar<V>::value && !std::is_same<V, DOUBLE_TYPE>::value), void
+  !is_validation_scalar<U>::value || !is_validation_scalar<V>::value, void
 >::type
 cpp_validate_field(
   U expected_value,
@@ -420,8 +440,7 @@ cpp_validate_field(
 
 template<typename U, typename V>
 typename std::enable_if<
-  (std::is_scalar<U>::value || std::is_same<U, DOUBLE_TYPE>::value)
-   && (std::is_scalar<V>::value || std::is_same<V, DOUBLE_TYPE>::value), void
+  is_validation_scalar<U>::value && is_validation_scalar<V>::value, void
 >::type
 cpp_validate_field(
   U expected_value,
@@ -434,7 +453,7 @@ cpp_validate_field(
   std::string &line,
   ParsingOptions &parse_opts
 ) {
-  if (static_cast<double>(expected_value) == static_cast<double>(actual_value)) return;
+  if (cpp_values_equal(expected_value, actual_value)) return;
 
   // inconsistency detected
   if (! contains_variable) {

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/05/13
+# Last modified:   2026/10/13
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -23,10 +23,12 @@ from .code_generator_parsing_core import (
 )
 from .code_generator_writing_core import (
     get_expr_value_using_endf_dict,
+    contains_arithmetic,
     get_mat_from_mfmt_section,
     generate_section_writing_code,
 )
 from lark.lexer import Token
+from .expr_utils.conversion import convert_to_exprtree
 from .expr_utils.custom_nodes import VariableToken
 from .expr_utils.tree_walkers import (
     transform_nodes,
@@ -117,6 +119,7 @@ def _get_numeric_field_wrapper(node, idx, dtype, vardict):
         valcode = get_expr_value_using_endf_dict(
             node, "cpp_index_shifter_store", dtype, vardict
         )
+        valcode = _convert_field_value(node, valcode, dtype, lenient=False)
         code += set_numeric_field("cpp_draft_line", idx, dtype, valcode, "write_opts")
     else:
         # defaults are used in lookahead for if-condition evaluation
@@ -127,7 +130,22 @@ def _get_numeric_field_wrapper(node, idx, dtype, vardict):
         valcode = get_expr_value_using_endf_dict(
             node, "cpp_index_shifter_store", dtype, vardict, defaults
         )
+        valcode = _convert_field_value(node, valcode, dtype, lenient=True)
     return valcode, code
+
+
+def _convert_field_value(node, valcode, dtype, lenient):
+    # The value of an expression with arithmetic may be an exact fraction
+    # or a double; it is converted to the type of the field. An integer
+    # field requires an integer, except within a lookahead (lenient).
+    if not contains_arithmetic(convert_to_exprtree(node)):
+        return valcode
+    if dtype == int:
+        func = "cpp_round_to_int" if lenient else "cpp_to_integer"
+        return f"{func}({valcode})"
+    if dtype == float:
+        return f"cpp_to_double({valcode})"
+    return valcode
 
 
 def _get_text_field_wrapper(node, start, length, vardict):

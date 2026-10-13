@@ -98,6 +98,21 @@ The notation ``numel := ...``` introduces a
 name for an expression that can be used
 as an abbreviation in record specifications.
 
+.. note::
+
+   Expressions in recipes are evaluated exactly by both
+   :class:`~endf_parserpy.EndfParserPy` and :class:`~endf_parserpy.EndfParserCpp`.
+   Integers and decimal literals are exact numbers (``0.1`` denotes
+   exactly 1/10), and a division of exact numbers gives an exact
+   fraction, e.g. ``2*(N/4)`` is 3 for ``N=6``. Only where an integer
+   is needed (an integer field, a loop bound, an index) must the value
+   of an expression be an integer. Values of float fields are floats,
+   and arithmetic with a float gives a float. The result of a modulo
+   operation has the sign of the divisor, e.g. ``(5-7)%6`` is 4.
+   A field can be solved for a variable that appears once in its
+   expression, e.g. ``N`` in ``2*N/3``; if the field is an integer
+   field, the solution must be an integer.
+
 We can now include this additional representation
 option into the ENDF-6 recipe dictionary:
 

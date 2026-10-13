@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2025/07/23
+# Last modified:   2026/10/13
 # License:         MIT
-# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -216,13 +216,18 @@ def _generate_code_for_varassign(
         exprstr = transform_nodes(
             expr, expr2str_shiftidx, vardict, rawvars=(cpp_newval_tok,)
         )
-        # to avoid nasty issues due to truncation to integer after
-        # floating-point operations with imperfect precision.
-        # This modification is connected to the modification of
-        # `factorout_division` (in `node_trafos` module)  to call
-        # `convert_int_number_to_float`.
-        if dtype == int:
-            exprstr = f"static_cast<int>(std::round({exprstr}))"
+        # The solution is computed exactly (see `cpp_div`) and converted
+        # to the type of the variable. An integer variable requires an
+        # integral solution, except within a lookahead: there, the records
+        # are only read to decide whether a branch applies, and a field
+        # value may well be inconsistent with the branch (as in the Python
+        # parser, which does not cast to int in a lookahead).
+        if dtype == int and not in_lookahead(vardict):
+            exprstr = f"cpp_to_integer({exprstr})"
+        elif dtype == int:
+            exprstr = f"cpp_round_to_int({exprstr})"
+        elif dtype == float:
+            exprstr = f"cpp_to_double({exprstr})"
         code += cpp_varops_assign.assign_exprstr_to_var(
             vartok, exprstr, dtype, vardict, node=node
         )
@@ -839,13 +844,22 @@ def generate_code_for_list_loop(node, vardict):
     return code
 
 
+def _loop_bound_code(expr_node, vardict):
+    # A loop bound must be an integer; the value of an expression with
+    # arithmetic may be an exact fraction or a double (see `cpp_to_integer`).
+    code = transform_nodes(expr_node, expr2str_shiftidx, vardict)
+    if isinstance(expr_node, Tree):
+        code = f"cpp_to_integer({code})"
+    return code
+
+
 def _generate_code_for_loop(
     node, vardict, parsefun, for_body, loopvar_node, start_expr_node, stop_expr_node
 ):
     start_expr_node = transform_nodes(start_expr_node, expand_abbreviation, vardict)
     stop_expr_node = transform_nodes(stop_expr_node, expand_abbreviation, vardict)
-    start_expr_str = transform_nodes(start_expr_node, expr2str_shiftidx, vardict)
-    stop_expr_str = transform_nodes(stop_expr_node, expr2str_shiftidx, vardict)
+    start_expr_str = _loop_bound_code(start_expr_node, vardict)
+    stop_expr_str = _loop_bound_code(stop_expr_node, vardict)
     loopvar = VariableToken(loopvar_node)
     if loopvar in vardict:
         raise TypeError(f"variable {loopvar} already declared")
@@ -881,7 +895,7 @@ def generate_code_for_repeat_loop(node, vardict):
     start_expr_node = get_child(varassign, "expr")
 
     start_expr_node = transform_nodes(start_expr_node, expand_abbreviation, vardict)
-    start_expr_str = transform_nodes(start_expr_node, expr2str_shiftidx, vardict)
+    start_expr_str = _loop_bound_code(start_expr_node, vardict)
     loopvar = VariableToken(loopvar_node)
     if loopvar in vardict:
         raise TypeError(f"variable {loopvar} already declared")

@@ -3,12 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2025/07/23
+# Last modified:   2026/10/13
 # License:         MIT
-# Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+import re
+from fractions import Fraction
 from lark.tree import Tree
 from lark.lexer import Token
 from .tree_walkers import transform_nodes
@@ -43,17 +45,6 @@ def replace_node(node, old, new):
     return node
 
 
-def convert_int_number_to_float(node):
-    if not isinstance(node, Token):
-        return node
-    if node.type != "NUMBER":
-        return node
-    if not node.value.isdigit():
-        return node
-    floatnumstr = node.value + ".0"
-    return Token("NUMBER", floatnumstr)
-
-
 def eliminate_subtraction(node):
     if isinstance(node, Tree) and node.data == "subtraction":
         term1 = node.children[0]
@@ -78,10 +69,9 @@ def factorout_division(node):
     if node.data != "division":
         return node
     numerator = Token("NUMBER", "1")
-    orig_denominator = node.children[1]
-    # introduced to avoid integer division behavior
-    # which gives 0 for expressions such as 1/6
-    denominator = transform_nodes(orig_denominator, convert_int_number_to_float)
+    # 1/6 is an exact fraction in the generated code (see `cpp_div`),
+    # so integer denominators need no conversion to floats
+    denominator = node.children[1]
     factor1 = node.children[0]
     factor2 = Tree("division", [numerator, denominator])
     return Tree("multiplication", [factor1, factor2])
@@ -345,6 +335,84 @@ def node2str(node):
         raise TypeError(f"unknown node type `{node_name}`")
 
     return "(" + exprstr + ")"
+
+
+class CppFloatValue(str):
+    """C++ code of a value of a float field (of type EndfFloatCpp).
+
+    Such a value enters arithmetic as a double (see `cpp_operand`).
+    """
+
+
+_DECIMAL_LITERAL = re.compile(
+    r"^([0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+)$"
+)
+
+
+def _exact_decimal_literal(code):
+    # recognizes decimal literals, also negated and in parentheses,
+    # e.g. 0.5, (-0.5), -(0.5), and returns their exact value
+    s = code.strip()
+    negative = False
+    while True:
+        if s.startswith("(") and s.endswith(")"):
+            s = s[1:-1].strip()
+        elif s.startswith("-"):
+            negative = not negative
+            s = s[1:].strip()
+        else:
+            break
+    if _DECIMAL_LITERAL.match(s) is None:
+        return None
+    value = Fraction(s)
+    return -value if negative else value
+
+
+def cpp_operand(code):
+    """Convert the C++ code of an operand of an arithmetic operation.
+
+    - A value of a float field becomes a double.
+    - A decimal literal becomes its exact value (choice of the recipe
+      language: decimal literals are exact, e.g. 0.1 is 1/10), i.e. an
+      integer literal or an EndfRational.
+    Other operands are returned unchanged.
+    """
+    if isinstance(code, CppFloatValue):
+        return f"static_cast<double>({code})"
+    value = _exact_decimal_literal(code)
+    if value is None:
+        return code
+    if value.denominator == 1:
+        num = value.numerator
+        return f"({num})" if num < 0 else str(num)
+    return f"EndfRational({value.numerator}, {value.denominator})"
+
+
+_CPP_OPERATORS = {
+    "addition": "+",
+    "subtraction": "-",
+    "multiplication": "*",
+}
+
+
+def node2cppstr(node):
+    # Like node2str but for C++ code: divisions and modulo operations
+    # are mapped to the functions `cpp_div` and `cpp_mod` (see
+    # `cpp_templates/module_header.hpp`), and the operands of arithmetic
+    # operations are converted by `cpp_operand`, so that the arithmetic
+    # gives the same results as in the Python parser.
+    if is_division(node) or is_modulo(node):
+        assert len(node.children) == 2
+        func = "cpp_div" if is_division(node) else "cpp_mod"
+        ops = [cpp_operand(c) for c in node.children]
+        return f"{func}({ops[0]}, {ops[1]})"
+    if isinstance(node, Tree) and node.data in _CPP_OPERATORS:
+        op = _CPP_OPERATORS[node.data]
+        return "(" + op.join(cpp_operand(c) for c in node.children) + ")"
+    if is_minusexpr(node):
+        assert len(node.children) == 1
+        return "(-" + cpp_operand(node.children[0]) + ")"
+    return node2str(node)
 
 
 def node_contains_modulo(tree):

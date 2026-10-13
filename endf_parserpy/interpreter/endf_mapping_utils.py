@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/28
+# Last modified:   2026/10/13
 # License:         MIT
-# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -19,11 +19,7 @@ from endf_parserpy.utils.tree_utils import (
 )
 from endf_parserpy.utils.math_utils import (
     math_add,
-    math_sub,
     math_mul,
-    math_div,
-    math_mod,
-    math_neg,
 )
 from .custom_exceptions import (
     VariableInDenominatorError,
@@ -40,6 +36,146 @@ from .helpers import (
     shift_indices,
 )
 import re
+from fractions import Fraction
+from endf_parserpy.utils.math_utils import EndfFloat, math_op
+
+
+# Arithmetic of ENDF recipe expressions
+#
+# Expressions are evaluated exactly: integers and decimal literals are
+# exact numbers, and a division of exact numbers gives an exact fraction
+# (fractions.Fraction), e.g. 13/6. Only where an integer is needed (an
+# integer field, a loop bound, an index) must the value be an integer.
+# Values of float fields are floats (inexact); arithmetic with a float
+# gives a float. The code generated for EndfParserCpp follows the same
+# rules (see `cpp_templates/endf_rational.hpp`).
+
+
+def _normalize(x):
+    # a fraction that is an integer is represented as int
+    if isinstance(x, Fraction) and x.denominator == 1:
+        return x.numerator
+    return x
+
+
+def _is_exact(x):
+    return isinstance(x, (int, Fraction)) and not isinstance(x, bool)
+
+
+def _arith_number(x):
+    # values of float fields (also EndfFloat) enter arithmetic as floats
+    if isinstance(x, EndfFloat):
+        return float(x)
+    return x
+
+
+def _scalar_div(x, y):
+    x, y = _arith_number(x), _arith_number(y)
+    if _is_exact(x) and _is_exact(y):
+        return _normalize(Fraction(x) / Fraction(y))
+    return x / y
+
+
+def exact_div(x, y):
+    return math_op(x, y, _scalar_div)
+
+
+def exact_mod(x, y):
+    return math_op(x, y, lambda a, b: _normalize(_arith_number(a) % _arith_number(b)))
+
+
+def exact_op(x, y, op):
+    return math_op(
+        x, y, lambda a, b: _normalize(op(_arith_number(a), _arith_number(b)))
+    )
+
+
+def to_plain_number(x):
+    """Convert an exact fraction to int (if integral) or float.
+
+    Used for values leaving the expression evaluation, e.g. for writing
+    a field. A non-integral fraction for an integer field then raises
+    the usual error of the writer.
+    """
+    if isinstance(x, Fraction):
+        x = _normalize(x)
+        return float(x) if isinstance(x, Fraction) else x
+    if isinstance(x, (list, tuple)) and any(isinstance(z, Fraction) for z in x):
+        return type(x)(to_plain_number(z) for z in x)
+    return x
+
+
+def comparable_values(x, y):
+    """Make two values comparable in the sense of the recipe language.
+
+    A fraction compared with a float is converted to a float (Python
+    would otherwise compare the exact value of the float).
+    """
+
+    def conv(a, other):
+        if isinstance(a, Fraction) and not _is_exact(_arith_number(other)):
+            return float(a)
+        return a
+
+    if hasattr(x, "__iter__") or hasattr(y, "__iter__"):
+        return x, y
+    return conv(x, y), conv(y, x)
+
+
+def to_integer_solution(val, cast_int):
+    """Convert the solution of an equation for an integer variable."""
+    val = _normalize(val)
+    if isinstance(val, int):
+        return val
+    if isinstance(val, Fraction):
+        if cast_int:
+            raise InvalidIntegerError(
+                f"the solution {val} of the equation for an integer "
+                + "variable is not an integer"
+            )
+        return float(val)
+    rounded = round(val)
+    if abs(val - rounded) <= max(1e-6, 1e-12 * abs(val)):
+        return int(rounded)
+    if cast_int:
+        raise InvalidIntegerError(
+            f"the solution {val} of the equation for an integer "
+            + "variable is not an integer"
+        )
+    return val
+
+
+def _decimal_literal_value(expr):
+    # exact value of a literal (possibly negated or in brackets),
+    # e.g. 0.1 is 1/10; None if expr is not a literal
+    sign = 1
+    while True:
+        name = get_name(expr, nofail=True)
+        if name in ("NUMBER", "DESIRED_NUMBER"):
+            vstr = expr.value.rstrip("?").strip()
+            return sign * _normalize(Fraction(vstr))
+        if name == "minusexpr":
+            sign = -sign
+            expr = expr.children[1]
+            continue
+        if is_tree(expr):
+            children = [
+                c
+                for c in expr.children
+                if not (is_token(c) and get_name(c) in ("LPAR", "RPAR"))
+            ]
+            if len(children) == 1:
+                expr = children[0]
+                continue
+        return None
+
+
+def _arith_operand(expr, value):
+    # value of an operand of an arithmetic operation, see the notes above
+    literal = _decimal_literal_value(expr)
+    if literal is not None:
+        return (literal, 0, None)
+    return (math_op(value[0], 0, lambda a, b: _arith_number(a)), value[1], value[2])
 
 
 def get_indexvalue(expr, datadic, loop_vars, parse_opts, look_up):
@@ -305,9 +441,13 @@ def varvalue_expr_conversion(vv, val, rwmode, cast_int=True):
         return val
     # vv as returned by eval_expr
     if rwmode == "read":
-        # cast_int true means that we convert the result of a
-        # division of two ints to int if possible
-        return math_div(math_sub(val, vv[0]), vv[1], cast_int)
+        # The solution is computed exactly. Solved from an integer field,
+        # the variable is an integer; cast_int false (within a lookahead)
+        # means that a solution that is not an integer is accepted.
+        res = exact_div(exact_op(val, vv[0], lambda a, b: a - b), vv[1])
+        if isinstance(val, int):
+            return to_integer_solution(res, cast_int)
+        return to_plain_number(res)
     else:
         return math_add(vv[0], math_mul(val, vv[1]))
 
@@ -376,7 +516,8 @@ def eval_expr(
             cast_int,
             accept_missing,
         )
-        return (math_neg(v[0]), -v[1], v[2])
+        v = _arith_operand(expr.children[1], v)
+        return (exact_op(v[0], -1, lambda a, b: a * b), _normalize(-v[1]), v[2])
     elif name in ("addition", "subtraction", "multiplication", "modulo", "division"):
         v1 = eval_expr(
             expr.children[0],
@@ -397,24 +538,29 @@ def eval_expr(
             cast_int,
             accept_missing,
         )
+        v1 = _arith_operand(expr.children[0], v1)
+        v2 = _arith_operand(expr.children[2], v2)
         if name == "multiplication":
             if v1[1] != 0 and v2[1] != 0:
                 raise SeveralUnboundVariablesError(
                     "More than one unassigned variables must not appear "
                     + "in an expression."
                 )
+            mul = lambda a, b: a * b
             if v1[1] == 0:
-                return (math_mul(v1[0], v2[0]), math_mul(v1[0], v2[1]), v2[2])
+                return (exact_op(v1[0], v2[0], mul), exact_op(v1[0], v2[1], mul), v2[2])
             else:
-                return (math_mul(v1[0], v2[0]), math_mul(v1[1], v2[0]), v1[2])
+                return (exact_op(v1[0], v2[0], mul), exact_op(v1[1], v2[0], mul), v1[2])
         elif name == "division":
             if v2[1] != 0:
                 raise VariableInDenominatorError(
                     "A variable name must not appear in the denominator "
                     + "of an expression."
                 )
-            vx = math_div(v1[0], v2[0], cast_int)
-            vy = math_div(v1[1], v2[0], cast_int)
+            # exact fractions instead of the requirement that a division
+            # of integers be exact, see the notes on the arithmetic above
+            vx = exact_div(v1[0], v2[0])
+            vy = exact_div(v1[1], v2[0])
             return (vx, vy, v1[2])
         elif name == "modulo":
             if v1[1] != 0 or v2[1] != 0:
@@ -423,7 +569,7 @@ def eval_expr(
                     + "must be known values. However, unbound variables"
                     + "are present in the expressions corresponding to x or y."
                 )
-            vx = math_mod(v1[0], v2[0], cast_int)
+            vx = exact_mod(v1[0], v2[0])
             return (vx, 0, None)
         elif name == "addition":
             if v1[1] != 0 and v2[1] != 0:
@@ -432,7 +578,8 @@ def eval_expr(
                     + "in an expression."
                 )
             vexpr = v1[2] if v1[1] != 0 else v2[2]
-            return (math_add(v1[0], v2[0]), math_add(v1[1], v2[1]), vexpr)
+            add = lambda a, b: a + b
+            return (exact_op(v1[0], v2[0], add), exact_op(v1[1], v2[1], add), vexpr)
         elif name == "subtraction":
             if v1[1] != 0 and v2[1] != 0:
                 raise SeveralUnboundVariablesError(
@@ -440,7 +587,8 @@ def eval_expr(
                     + "in an expression."
                 )
             vexpr = v1[2] if v1[1] != 0 else v2[2]
-            return (math_sub(v1[0], v2[0]), math_sub(v1[1], v2[1]), vexpr)
+            sub = lambda a, b: a - b
+            return (exact_op(v1[0], v2[0], sub), exact_op(v1[1], v2[1], sub), vexpr)
     elif name == "inconsistent_varspec":
         ch = get_child(expr, "extvarname")
         return eval_expr(

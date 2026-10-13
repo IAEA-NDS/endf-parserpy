@@ -188,28 +188,51 @@ inline std::string get_scientific_numstr(double value, int precision, bool abuse
 }
 
 
+inline bool is_carried_mantissa(const std::string& numstr) {
+  // whether the mantissa is 1 followed by zeros only, e.g. "-1.0000e-9"
+  size_t pos = numstr.find_first_not_of(" -+");
+  if (pos == std::string::npos || numstr[pos] != '1') {
+    return false;
+  }
+  for (size_t i = pos + 1; i < numstr.size() && numstr[i] != 'e'; i++) {
+    if (numstr[i] != '0' && numstr[i] != '.') {
+      return false;
+    }
+  }
+  return true;
+}
+
+
 inline std::string float2endfstr_helper(double value, size_t width, WritingOptions &write_opts)
 {
   std::string numstr = get_scientific_numstr(value, 6, write_opts.abuse_signpos);
   // re-calculate precision to match width specification
-  size_t prec = 6 - (numstr.size() - width);
+  int prec = 6 - (static_cast<int>(numstr.size()) - static_cast<int>(width));
+  if (prec < 0) {
+    prec = 0;
+  }
   numstr = get_scientific_numstr(value, prec, write_opts.abuse_signpos);
-  // in rare cases, we may still be off the desired width due to
-  // situations like 9.9999e-10 vs 1.000e-9
-  if (numstr.size() < width) {
-    std::string old_numstr;
-    do {
-      old_numstr = numstr;
-      numstr = get_scientific_numstr(value, ++prec, write_opts.abuse_signpos);
-    } while (numstr.size() <= width);
-    numstr = old_numstr;
-    if (numstr.size() < width) {
-      numstr.insert(0, " ");
+  while (numstr.size() > width && prec > 0) {
+    numstr = get_scientific_numstr(value, --prec, write_opts.abuse_signpos);
+  }
+  // Use the largest precision for which the number still fits. A carry in
+  // the rounding changes the length of the exponent: 9.99999949e-10 needs
+  // more digits to fill the field than its precision-6 estimate suggests
+  // (1.00000e-9), and 9999999500 fits with more digits (9.9999995+9) than
+  // with fewer (1.000000+10). Without a carry (the mantissa is not 1.000...),
+  // one more digit makes the number one character longer, so that it no
+  // longer fits; the loop is then skipped.
+  while (prec < 20 && is_carried_mantissa(numstr)) {
+    std::string candidate = get_scientific_numstr(
+      value, prec + 1, write_opts.abuse_signpos);
+    if (candidate.size() > width) {
+      break;
     }
-  } else if (numstr.size() > width) {
-    do {
-      numstr = get_scientific_numstr(value, --prec, write_opts.abuse_signpos);
-    } while (numstr.size() > width);
+    numstr = candidate;
+    prec++;
+  }
+  if (numstr.size() < width) {
+    numstr.insert(0, width - numstr.size(), ' ');
   }
   return numstr;
 }

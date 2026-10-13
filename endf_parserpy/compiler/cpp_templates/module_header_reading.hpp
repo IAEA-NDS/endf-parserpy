@@ -572,7 +572,7 @@ inline int cpp_read_mt_number(const char *str) {
 }
 
 
-inline bool cpp_is_blank_line(std::string line) {
+inline bool cpp_is_blank_line(const std::string& line) {
   for (int i=0; i < line.size(); i++) {
     if (line[i] != ' ') return false;
   }

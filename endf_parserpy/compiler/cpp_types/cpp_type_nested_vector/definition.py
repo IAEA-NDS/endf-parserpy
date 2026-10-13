@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/25
-# Last modified:   2024/10/28
+# Last modified:   2026/10/20
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -21,20 +21,9 @@ class NestedVector : public std::vector<T> {
     // default constructor
     NestedVector() : startIndex(0), lastIndex(-1) {}
 
-    // copy constructor
-    NestedVector(const NestedVector<T>& other) :
-      std::vector<T>(other), startIndex(other.startIndex),
-      lastIndex(other.lastIndex) {}
-
-    // assignment constructor
-    NestedVector<T>& operator=(const NestedVector<T>& other) {
-      if (this != &other) {
-        std::vector<T>::operator=(other);
-        startIndex = other.startIndex;
-        lastIndex = other.lastIndex;
-      }
-      return *this;
-    }
+    // copy and move construction/assignment are the implicitly
+    // generated ones (member-wise); the implicit move operations
+    // avoid deep copies when a std::vector of NestedVector grows
 
     void set_start_index(int start) {
       this->startIndex = start;

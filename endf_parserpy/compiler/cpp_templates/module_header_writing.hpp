@@ -425,7 +425,7 @@ template<typename T>
 
 
 inline void write_tab1_body(
-  std::string& line, Tab1Body tab_body, int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
+  std::string& line, const Tab1Body& tab_body, int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
 ) {
   assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
   assert(tab_body.X.size() == tab_body.Y.size() && "X and Y must have same size");
@@ -462,7 +462,7 @@ inline void write_tab1_body(
 
 
 inline void write_tab2_body(
-  std::string& line, Tab2Body tab_body, int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
+  std::string& line, const Tab2Body& tab_body, int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
 ) {
   assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
   int nr = tab_body.INT.size();

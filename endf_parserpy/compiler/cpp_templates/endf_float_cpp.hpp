@@ -27,9 +27,6 @@ public:
     EndfFloatCpp(double value, const std::string& orig_str)
         : _value(value), _orig_str(orig_str) {}
 
-    EndfFloatCpp(const EndfFloatCpp& other)
-        : _value(other._value), _orig_str(other._orig_str) {}
-
     std::string get_original_string() const {
         return _orig_str; }
     bool operator==(const EndfFloatCpp& other) const {

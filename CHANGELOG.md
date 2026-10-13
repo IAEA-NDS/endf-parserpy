@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- Writing negative zero (`-0.0`): `EndfParserCpp` wrote ` -0.00000+0` (a leading space in addition to the minus sign, with one digit less) and, with `prefer_noexp=True`, `-0`, whereas `EndfParserPy` wrote `-0.000000+0` and `0`, respectively. Both writers now write negative zero as zero (` 0.000000+0`, or `0` with `prefer_noexp=True`). With `preserve_value_strings=True`, the original string of a field read from a file is still written verbatim
 
 ## [0.17.0]
 

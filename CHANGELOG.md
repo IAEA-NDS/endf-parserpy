@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EndfParserCpp` converts number fields to floats faster when reading: a decimal number with at most 15 significant digits and a power of ten up to 10^22 in magnitude, i.e. most numbers in ENDF-6 files, is converted with a single correctly rounded multiplication or division, as both operands are exactly representable; all other numbers are still converted with `std::strtod`. The results are identical
 - `EndfParserCpp` reads and writes faster thanks to fewer redundant operations in the C++ helpers: a value of the Python dictionary is looked up once instead of several times when writing, arguments are passed by reference instead of being copied, and the nested containers holding parsed arrays are moved instead of copied. The results are identical
 - `EndfParserCpp` writes faster: numbers are formatted into a character buffer instead of using one to three `std::ostringstream` objects per field. The decimal digits of a float are computed with exact double arithmetic where this provably gives the correctly rounded result, and with `std::snprintf` otherwise. The output is identical
+- `EndfParserCpp` writes faster: the generated writing code retrieves the value of each field from the Python dictionary once instead of twice. The output is identical
 
 ### Removed
 

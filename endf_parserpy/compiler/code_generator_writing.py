@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/13
+# Last modified:   2026/10/20
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -115,6 +115,26 @@ def _mf_mt_dict_varname(mf, mt):
     return f"mf{mf}_mt{mt}_dict"
 
 
+_field_value_counter = [0]
+
+
+def _reset_field_value_counter():
+    _field_value_counter[0] = 0
+
+
+def _bind_field_value(valcode):
+    # The value of a field is needed twice, for writing the field and for
+    # the assignment to the C++ variable(s) in the field. If it is retrieved
+    # from the Python dictionary, it is retrieved once and stored in a local
+    # variable whose name is returned (as the same str subclass as valcode).
+    if "get_value(" not in valcode:
+        return valcode, ""
+    _field_value_counter[0] += 1
+    name = f"cpp_wval_{_field_value_counter[0]}"
+    code = cpp.statement(f"auto {name} = {valcode}")
+    return type(valcode)(name), code
+
+
 def _get_numeric_field_wrapper(node, idx, dtype, vardict):
     code = ""
     if not in_lookahead(vardict):
@@ -122,6 +142,7 @@ def _get_numeric_field_wrapper(node, idx, dtype, vardict):
             node, "cpp_index_shifter_store", dtype, vardict
         )
         valcode = _convert_field_value(node, valcode, dtype, lenient=False)
+        valcode, code = _bind_field_value(valcode)
         code += set_numeric_field("cpp_draft_line", idx, dtype, valcode, "write_opts")
     else:
         # defaults are used in lookahead for if-condition evaluation
@@ -336,6 +357,7 @@ def _generate_expr_validation_wrapper(actual_value, node, vardict):
 
 
 def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=None):
+    _reset_field_value_counter()
     vardict = {}
     register_numeric_field_getter(_get_numeric_field_wrapper, vardict)
     register_text_field_getter(_get_text_field_wrapper, vardict)

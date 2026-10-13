@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/05/13
+# Last modified:   2026/10/13
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -137,6 +137,24 @@ def _fortranify_expformstr(numstr, keep_E=False):
     return numstr
 
 
+def _is_carried_mantissa(numstr):
+    # whether the mantissa is 1 followed by zeros only, e.g. "-1.0000e-9"
+    mantissa = numstr.lstrip(" +-")
+    if mantissa[:1] != "1":
+        return False
+    for c in mantissa[1:]:
+        if c != "0" and c != ".":
+            return c in "eE+-"
+    return True
+
+
+def _fits_width(numstr, val, width, abuse_signpos):
+    # a non-negative number needs a leading space unless abuse_signpos
+    if abuse_signpos:
+        return len(numstr) <= width
+    return not (len(numstr) > width or (val >= 0 and len(numstr) == width))
+
+
 def float2expformstr(val, write_opts=None):
     width = write_opts.get("width", 11)
     abuse_signpos = write_opts.get("abuse_signpos", False)
@@ -159,16 +177,26 @@ def float2expformstr(val, write_opts=None):
     # produce the number
     numstr = f"{{:.{prec}e}}".format(val)
     numstr = _fortranify_expformstr(numstr, keep_E)
-    numstr_len = len(numstr)
+
     # deal with special case of the sort 9.9999e-9 vs 1.00000-10
-    if abuse_signpos:
-        if numstr_len > width:
-            numstr = f"{{:.{prec-1}e}}".format(val)
-            numstr = _fortranify_expformstr(numstr, keep_E)
-    else:
-        if numstr_len > width or (val > 0 and numstr_len == width):
-            numstr = f"{{:.{prec-1}e}}".format(val)
-            numstr = _fortranify_expformstr(numstr, keep_E)
+    if not _fits_width(numstr, val, width, abuse_signpos):
+        prec -= 1
+        numstr = f"{{:.{prec}e}}".format(val)
+        numstr = _fortranify_expformstr(numstr, keep_E)
+    # Use the largest precision for which the number still fits. A carry in
+    # the rounding changes the length of the exponent: 9.99999949e-10 needs
+    # more digits to fill the field than its precision-6 estimate suggests
+    # (1.00000e-9), and 9999999500 fits with more digits (9.9999995+9) than
+    # with fewer (1.000000+10). Without a carry (the mantissa is not
+    # 1.000...), one more digit makes the number one character longer, so
+    # that it no longer fits; the loop is then skipped.
+    while prec < 20 and _is_carried_mantissa(numstr):
+        candidate = f"{{:.{prec+1}e}}".format(val)
+        candidate = _fortranify_expformstr(candidate, keep_E)
+        if not _fits_width(candidate, val, width, abuse_signpos):
+            break
+        numstr = candidate
+        prec += 1
 
     return numstr.rjust(width)
 

@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- Formatting of floats when a carry in the rounding changes the length of the exponent: `EndfParserPy` wrote one significant digit less than fits into the field with `keep_E=True` (e.g. `1.0000e-9` for 9.99999949e-10), `EndfParserCpp` failed with a field of 10 characters ("wrong size10") with `abuse_signpos=True` (e.g. for 9.9999995e-10), and both wrote `1.000000+10` for 9999999500 with `abuse_signpos=True`, where the exact `9.9999995+9` fits. Both writers now use the largest precision for which a number fits into the field, and produce identical output for all combinations of the formatting options (checked for 40000 values). With the default options, the output of neither writer changes
 
 ## [0.17.0]
 

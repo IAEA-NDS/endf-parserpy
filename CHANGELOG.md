@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- `EndfParserCpp` checked only the variables on the left-hand side of a comparison in an if-condition for having been read. `EndfParserPy` treats a comparison involving a variable that has not been read as false, whichever side the variable is on. In the code generated for `EndfParserCpp`, a comparison with an unread variable on the right-hand side used an undefined value, so the wrong branch could be read or written, and a comparison with a constant on the left-hand side, such as `2 != NX`, gave code that did not compile. The variables on both sides are now checked. The recipes of the package contain six comparisons with a variable on the right-hand side; in all of them, the variable has been read when the comparison is evaluated during parsing
 
 ## [0.17.0]
 

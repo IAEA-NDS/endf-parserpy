@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/04/26
+# Last modified:   2026/10/10
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -30,11 +30,18 @@ elif LI == 0 and LTT == 1 [lookahead=1]:
         endfor
     endfor
 
-# Anisotropic distribution with Tabulated Angular Distributions
+# Anisotropic distribution with Tabulated Angular Distributions (14.2.3)
 elif LI == 0 and LTT == 2 [lookahead=1]:
     [MAT, 14, MT/ ZA, AWR, LI, LTT, NK, NI] HEAD
-    # TODO
-    stop("Case LI=0, LTT=2 not implemented in ENDF recipe for MF14")
+    for k=1 to NI:
+        [MAT, 14, MT/ EG[k] , ES[k] , 0, 0, 0, 0] CONT
+    endfor
+    for k=NI+1 to NI+(NK-NI):
+        [MAT, 14, MT/ EG[k] , ES[k] , 0, 0, NR, NE[k]/ E ] TAB2 (E_interpol[k])
+        for l=1 to NE[k]:
+            [MAT, 14, MT/ 0.0, E[k,l] , 0, 0, NR, NP/ mu / p ] TAB1 (angtable[k,l])
+        endfor
+    endfor
 endif
 SEND
 """

@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- `accept_d_exponent` option of `EndfParserPy` and `EndfParserCpp` (default `True`): accept numbers with a Fortran double-precision exponent introduced by `D` or `d`, e.g. `5.438673D-4`. Such numbers do not conform to the ENDF-6 format but occur in evaluated data files, e.g. in the MF1/MT451 section of all files of the ENDF/B-VIII.0 electro-atomic sublibrary, which could therefore not be read. With `False`, these numbers raise an error as before. The numbers are written in the usual ENDF-6 notation unless their original strings are preserved with `preserve_value_strings=True`. The option is also available in `EndfParserFactory.create` and as a flag of `endf-cli`, where `validate` sets it to `False` by default like the other leniency flags. `TapeIndex` accepts such numbers in the ZA and AWR fields of HEAD records
 
 ## [0.17.0]
 

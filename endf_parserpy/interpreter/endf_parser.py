@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/07/29
+# Last modified:   2026/10/10
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -123,6 +123,7 @@ class EndfParserPy(EndfParserBase):
         ignore_send_records=False,
         ignore_missing_tpid=False,
         accept_nan_inf=True,
+        accept_d_exponent=True,
         keep_E=False,
         preserve_value_strings=False,
         include_linenum=True,
@@ -201,6 +202,16 @@ class EndfParserPy(EndfParserBase):
             that overflow to ``±inf``) in float fields. If ``False``,
             such values raise an :class:`InvalidFloatError` during
             parsing. *(parsing)*
+        accept_d_exponent: bool
+            If ``True`` (default), accept a Fortran double-precision
+            exponent introduced by ``D`` or ``d`` in float fields, e.g.
+            ``5.438673D-4`` is read as ``5.438673e-4``. Such numbers do
+            not conform to the ENDF-6 format but are found in some
+            evaluated data files. If ``False``, they raise an
+            :class:`InvalidFloatError` during parsing. Floats are always
+            written without the ``D`` character, unless their original
+            string representation is preserved (see
+            ``preserve_value_strings``). *(parsing)*
         keep_E : bool
             If ``True``, include the `e` character in scientific notation,
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
@@ -328,6 +339,7 @@ class EndfParserPy(EndfParserBase):
             "ignore_send_records": ignore_send_records,
             "ignore_missing_tpid": ignore_missing_tpid,
             "accept_nan_inf": accept_nan_inf,
+            "accept_d_exponent": accept_d_exponent,
             "width": width,
             "preserve_value_strings": preserve_value_strings,
         }

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/05/13
+# Last modified:   2026/10/10
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -30,7 +30,10 @@ def fortstr2float(valstr, read_opts=None):
 
     Convert a number string to a :class:`float`.
     Fortran number strings with the ``e`` character
-    omitted are supported.
+    omitted are supported, and so are (unless
+    disabled via ``accept_d_exponent``) Fortran
+    double-precision exponents introduced by the
+    character ``d`` or ``D`` (e.g. ``5.438673D-4``).
 
     Parameters
     ----------
@@ -39,7 +42,8 @@ def fortstr2float(valstr, read_opts=None):
     read_opts : Optional[dict]
         Dictionary with field/value pairs to influence
         conversion process. Supported options are
-        ``accept_spaces`` and ``preserve_value_strings``.
+        ``accept_spaces``, ``accept_nan_inf``, ``accept_d_exponent``,
+        ``preserve_value_strings`` and ``width``.
         Consider the equally named options of the
         :class:`~endf_parserpy.EndfParserPy` class for
         an explanation of their meaning.
@@ -56,6 +60,7 @@ def fortstr2float(valstr, read_opts=None):
     accept_spaces = read_opts.get("accept_spaces", True)
     preserve_value_strings = read_opts.get("preserve_value_strings", False)
     accept_nan_inf = read_opts.get("accept_nan_inf", True)
+    accept_d_exponent = read_opts.get("accept_d_exponent", True)
     width = read_opts.get("width", None)
     if width is not None:
         valstr = valstr[:width]
@@ -63,6 +68,9 @@ def fortstr2float(valstr, read_opts=None):
         return 0.0
     if accept_spaces:
         valstr = valstr.replace(" ", "")
+    if accept_d_exponent:
+        # Fortran double-precision exponent, e.g. 5.438673D-4
+        valstr = valstr.replace("D", "E").replace("d", "e")
     for i, c in enumerate(valstr):
         if i > 0 and (c == "+" or c == "-"):
             if valstr[i - 1].isdigit():

@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- MF7/MT4 recipe (incoherent inelastic thermal scattering) failed for materials without a principal scattering atom (B(1)=0.0), whose scattering law is completely described by the analytic functions of the non-principal atoms: the recipe always expected the tabulated S(alpha,beta), which is omitted in this case. The TAB2 record and the TAB1/LIST records of S(alpha,beta) are now only read if B(1) is non-zero
 
 ## [0.17.0]
 

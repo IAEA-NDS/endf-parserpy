@@ -3,9 +3,9 @@
 # Maintainer:      José Ignacio Marquez Damian
 # Email:           marquezj@ess.eu
 # Creation date:   2022/09/13
-# Last modified:   2024/05/29
+# Last modified:   2026/10/10
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -39,13 +39,20 @@ ENDF_RECIPE_MF7_MT4 = """
 # Incoherent Inelastic Scattering
 [MAT, 7, 4 / ZA, AWR, 0, LAT, LASYM, 0]HEAD
 [MAT, 7, 4 / 0.0, 0.0, LLN, 0, NI, NS/ {B[n]}{n=1 to NI} ] LIST
-[MAT, 7, 4 / 0.0, 0.0, 0, 0, NR, NB/ beta_int] TAB2 (beta_interp)
-for i=1 to NB:
-    [MAT, 7, 4 / T0, beta[i], LT[i], 0, NR, NP / alpha / S ] TAB1 (S_table[i])
-    for j=1 to LT[i]:
-        [MAT, 7, 4 / T[j] , beta[i], LI[j], 0, NP, 0 / {S[q,i,j]}{q=1 to NP} ] LIST
+# B(1)=0.0 indicates that there is no principal scattering atom and the
+# scattering law is completely described by the analytic functions of
+# the non-principal atoms, in which case the tabulated S(alpha,beta) is
+# omitted (ENDF-102, Section 7.5.1). The effective temperature table of
+# the principal atom (Teff0) is part of the section structure in any case.
+if B[1] != 0.0:
+    [MAT, 7, 4 / 0.0, 0.0, 0, 0, NR, NB/ beta_int] TAB2 (beta_interp)
+    for i=1 to NB:
+        [MAT, 7, 4 / T0, beta[i], LT[i], 0, NR, NP / alpha / S ] TAB1 (S_table[i])
+        for j=1 to LT[i]:
+            [MAT, 7, 4 / T[j] , beta[i], LI[j], 0, NP, 0 / {S[q,i,j]}{q=1 to NP} ] LIST
+        endfor
     endfor
-endfor
+endif
 [MAT, 7, 4 / 0.0, 0.0, 0, 0, NR, NT/ Tint / Teff0 ] TAB1 (teff0_table)
 
 if NI>=7 and B[7]==0:

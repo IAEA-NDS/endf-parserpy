@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- MF2/MT151 recipe could not read the background R-matrix of the R-Matrix Limited format (LRU=1, LRF=7, KBK>0): for the tabulated option (LBK=1) the introductory `[LCH, LBK]` CONT record was read twice, so that the first TAB1 record was mistaken for a CONT record, and the channel index LCH, the option LBK and the LBK-dependent quantities were stored in scalars shared by all channels of a spin group, so background R-matrices for more than one channel raised a `NumberMismatchError`. The data of each channel is now kept in its own `background[n]` section of the spin group (`j_group[k]`). For the same reason the tabulated phase shifts (KPS>0) of each channel are now kept in a `phase_shift[n]` section, replacing the `real_part[n]`/`imag_part[n]` tables and the scalar `LPS` at the spin-group level
 
 ## [0.17.0]
 

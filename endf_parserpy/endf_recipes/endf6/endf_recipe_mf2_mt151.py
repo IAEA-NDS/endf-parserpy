@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel, Daniel L. Aldama
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/01/08
+# Last modified:   2026/10/10
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -163,18 +163,22 @@ for i=1 to NIS:
                             {0.0}{m=1 to 6}]LIST
                     endif
 
+                    # Background R-matrix for KBK channels of the spin group,
+                    # each one introduced by a CONT record with the channel
+                    # index LCH and the background option LBK
                     if KBK > 0:
                         for n=1 to KBK:
+                        (background[n])
                             [MAT,2,151/ 0.0, 0.0, LCH, LBK, 0, 0 ]CONT
                             if LBK == 1:
-                                [MAT,2,151/ 0.0, 0.0, LCH, LBK, 0, 0 ]CONT
-                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / RBR]TAB1 (real_part[n])
-                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / RBI]TAB1 (imag_part[n])
+                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / RBR]TAB1 (real_part)
+                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / RBI]TAB1 (imag_part)
                             elif LBK == 2:
                                 [MAT,2,151/ ED, EU, 0, 0, 5, 0/ R0, R1, R2, S0, S1 ]LIST
                             elif LBK == 3:
                                 [MAT,2,151/ ED, EU, 0, 0, 3, 0/ R0, S0, GA ]LIST
                             endif
+                        (/background[n])
                         endfor
                     endif
                     if KPS > 0:
@@ -203,12 +207,14 @@ for i=1 to NIS:
                         # evaluations using KPS > 0.
                         #
                         for n=1 to NCH:
+                        (phase_shift[n])
                             [MAT,2,151/ 0.0, 0.0, 0, 0, LPS, 1/
                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]LIST
                             if LPS == 1:
-                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / PSR ]TAB1 (real_part[n])
-                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / PSI ]TAB1 (imag_part[n])
+                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / PSR ]TAB1 (real_part)
+                                [MAT,2,151/ 0.0, 0.0, 0, 0, NR, NP/ E / PSI ]TAB1 (imag_part)
                             endif
+                        (/phase_shift[n])
                         endfor
                     endif
 

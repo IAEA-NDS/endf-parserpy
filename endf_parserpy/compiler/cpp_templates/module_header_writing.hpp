@@ -285,6 +285,10 @@ inline std::string float2endfstr(double value, WritingOptions &write_opts) {
     oss << std::right << std::setw(width) << repr;
     return oss.str();
   }
+  // negative zero is written as zero (as by the Python writer)
+  if (value == 0.0) {
+    value = 0.0;
+  }
   int effwidth = width;
   if (! write_opts.keep_E) {
       effwidth++;

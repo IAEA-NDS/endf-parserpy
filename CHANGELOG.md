@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- `EndfParserCpp` evaluated if-conditions with lookahead incorrectly when writing data if a variable in the condition was absent from the dictionary. The generated code substitutes absent variables by placeholder values in the lookahead but still marked them as read, so a comparison such as `JENDL_LIST_NPL != 6` was true and the writer entered a branch whose data did not exist, failing with a `KeyError`. As a consequence, `EndfParserCpp` with the `jendl` flavor and the default `endf6-ext` flavor could not write ENDF-6 conformant MF8/MT457 sections of stable nuclides, e.g. 245 of the 3821 files of the ENDF/B-VIII.0 decay sublibrary. A variable absent from the dictionary is no longer considered read in the lookahead, so comparisons involving it are false, matching the behavior of `EndfParserPy`. In the same vein, an error raised while evaluating the records of a lookahead in write mode, e.g. an expression involving an absent variable that cannot be solved, no longer aborts writing but means that the branch does not apply
 
 ## [0.17.0]
 

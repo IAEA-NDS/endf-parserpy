@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/06/09
+# Last modified:   2026/10/10
 # License:         MIT
-# Copyright (c) 2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -182,3 +182,51 @@ def register_generate_expr_validation_func(func, vardict):
 
 def get_generate_expr_validation_func(vardict):
     return _get_getter("generate_expr_validation_func", vardict)
+
+
+def register_lookahead_presence_check(func, vardict):
+    """Register a function that generates the C++ expression telling
+    whether a variable read in a lookahead is actually available.
+
+    The function receives the variable token and returns a string with
+    a boolean C++ expression. Only the code generator for writing
+    registers such a function; in the absence of a registered function,
+    a variable assigned in a lookahead is always considered read.
+    """
+    _register_getter(func, vardict, "lookahead_presence_check", ("vartok",))
+
+
+def get_lookahead_presence_check(vardict):
+    """Return the registered presence check or None if there is none."""
+    curdict = vardict
+    while True:
+        basic_ops = curdict.get("__basic_ops", {})
+        if "lookahead_presence_check" in basic_ops:
+            return basic_ops["lookahead_presence_check"]
+        if "__up" not in curdict:
+            return None
+        curdict = curdict["__up"]
+
+
+def register_lookahead_catch_clause(clause, vardict):
+    """Register the exception declaration of the catch clause around
+    the evaluation of a lookahead, e.g. ``const std::exception& e``.
+
+    Without a registered clause, only ``std::out_of_range`` exceptions
+    are caught, see :func:`get_lookahead_catch_clause`.
+    """
+    basic_ops = vardict.setdefault("__basic_ops", {})
+    basic_ops["lookahead_catch_clause"] = clause
+
+
+def get_lookahead_catch_clause(vardict):
+    """Return the registered catch clause for lookaheads or the default
+    ``const std::out_of_range& e``."""
+    curdict = vardict
+    while True:
+        basic_ops = curdict.get("__basic_ops", {})
+        if "lookahead_catch_clause" in basic_ops:
+            return basic_ops["lookahead_catch_clause"]
+        if "__up" not in curdict:
+            return "const std::out_of_range& e"
+        curdict = curdict["__up"]

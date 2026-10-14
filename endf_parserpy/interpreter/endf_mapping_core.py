@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2025/05/28
+# Last modified:   2026/10/13
 # License:         MIT
-# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -25,6 +25,7 @@ from .endf_mapping_utils import (
     eval_expr,
     eval_expr_without_unknown_var,
     varvalue_expr_conversion,
+    to_plain_number,
     set_array_value,
     set_varval,
     get_varval,
@@ -128,7 +129,8 @@ def map_recorddic_to_datadic(
             contains_inconsistent_varspec = search_name(curexpr, "inconsistent_varspec")
 
             srcval = record_dic[sourcekey]
-            expval = expr_vv[0]
+            # an exact fraction is compared as a float (if not an integer)
+            expval = to_plain_number(expr_vv[0])
             srcval_has_len = hasattr(srcval, "__len__")
             expval_has_len = hasattr(expval, "__len__")
             if (
@@ -140,10 +142,10 @@ def map_recorddic_to_datadic(
                 raise SizeMismatchError(errmsg)
 
             if not fuzzy_matching:
-                value_mismatch_occurred = record_dic[sourcekey] != expr_vv[0]
+                value_mismatch_occurred = srcval != expval
             else:
                 value_mismatch_occurred = not math_allclose(
-                    record_dic[sourcekey], expr_vv[0], atol=1e-7, rtol=1e-5
+                    srcval, expval, atol=1e-7, rtol=1e-5
                 )
             msg = create_variable_wrong_value_error_msg(
                 record_dic[sourcekey], expr_vv[0], sourcekey
@@ -206,7 +208,7 @@ def map_datadic_to_recorddic(
         val = eval_expr_without_unknown_var(
             curexpr, datadic, loop_vars, parse_opts, look_up=False, cast_int=False
         )
-        record_dic[sourcekey] = val
+        record_dic[sourcekey] = to_plain_number(val)
     return record_dic
 
 

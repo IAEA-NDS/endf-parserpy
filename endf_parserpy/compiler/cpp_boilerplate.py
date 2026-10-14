@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2026/05/13
+# Last modified:   2026/10/13
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -38,6 +38,8 @@ from .cpp_boilerplate_writing import module_header_writing
 
 def _module_header():
     code = ""
+    with open_text("endf_parserpy.compiler.cpp_templates", "endf_rational.hpp") as f:
+        code += f.read()
     with open_text("endf_parserpy.compiler.cpp_templates", "endf_float_cpp.hpp") as f:
         code += f.read()
     with open_text("endf_parserpy.compiler.cpp_templates", "index_shifter.hpp") as f:

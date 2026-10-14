@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes yet.
+### Changed
+
+- Arithmetic in ENDF recipe expressions is now exact in both `EndfParserPy` and `EndfParserCpp`. Integers and decimal literals are exact numbers (a decimal literal such as `0.1` denotes exactly 1/10), and a division of exact numbers gives an exact fraction, e.g. 13/6; only where an integer is needed (an integer field, a loop bound, an index) must the value of an expression be an integer. Values of float fields are floats, and arithmetic with a float gives a float. Previously, `EndfParserPy` required every division of two integers to be exact, so that e.g. `2*(N/4)` could not be evaluated for N=6, and it could not solve a field for an unknown inside a division, e.g. `2*N/3`, even if the solution is an integer. `EndfParserCpp` used the C++ operators, which truncate an integer division (13/6 gave 2), so it read and wrote data that `EndfParserPy` rejects. Both parsers now give the same results; for valid data of the recipes of the package, the results do not change
+
+### Fixed
+
+- `EndfParserCpp`: the result of a modulo operation in a recipe expression had the sign of the dividend instead of the sign of the divisor, e.g. (5-7)%6 gave -2 instead of 4. This affects the number of padding zeros `(5-NCH)%6` in the resonance parameter records of the R-Matrix Limited format (MF2 and MF32, LRF=7) for spin groups with more than five channels, which no ENDF/B-VIII.0 or ENDF/B-VIII.1 evaluation contains
+- The C++ code generator dropped the operator of binary operations (`+`, `-`, `*`, `/`, `%`) in if-conditions, producing code that did not compile; no recipe of the package uses such conditions
+- Arithmetic with the value of a float field in a recipe expression: `EndfParserPy` raised a `TypeError` with `preserve_value_strings=True`, the code generated for `EndfParserCpp` did not compile, and solving a float field for a variable through an expression gave code that did not compile (variable `cpp_float_val` declared twice). No recipe of the package contains such expressions
+- `EndfParserPy` wrote the value of an expression with an inexact division of integers into a float field (e.g. 1.5 for `N/4` with N=6) but rejected the same value when reading
 
 ## [0.17.0]
 

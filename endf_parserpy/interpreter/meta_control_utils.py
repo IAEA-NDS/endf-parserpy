@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/06/03
+# Last modified:   2026/10/13
 # License:         MIT
-# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -19,6 +19,7 @@ from endf_parserpy.utils.tree_utils import (
 )
 from .endf_mapping_utils import (
     eval_expr_without_unknown_var,
+    comparable_values,
     get_indexvalue,
     get_indexquants,
     get_varname,
@@ -276,6 +277,7 @@ def eval_if_condition(
     write_info(
         logger, f"Left side evaluates to {left_val} and right side to {right_val}"
     )
+    left_val, right_val = comparable_values(left_val, right_val)
     if (
         (cmpop == ">" and left_val > right_val)
         or (cmpop == "<" and left_val < right_val)

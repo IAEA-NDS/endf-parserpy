@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/10
+# Last modified:   2026/10/20
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -22,7 +22,7 @@ elif LI == 0 and LTT == 1 [lookahead=1]:
     for k=1 to NI:
         [MAT, 14, MT/ EG[k] , ES[k] , 0, 0, 0, 0] CONT
     endfor
-    for k=NI+1 to NI+(NK-NI):
+    for k=NI+1 to NK:
         [MAT, 14, MT/ EG[k] , ES[k] , 0, 0, NR, NE[k]/ E ] TAB2 (E_interpol[k])
         for l=1 to NE[k]:
             [MAT, 14, MT/ 0.0, E[k,l] , 0, 0, NL[k,l] , 0/
@@ -36,7 +36,7 @@ elif LI == 0 and LTT == 2 [lookahead=1]:
     for k=1 to NI:
         [MAT, 14, MT/ EG[k] , ES[k] , 0, 0, 0, 0] CONT
     endfor
-    for k=NI+1 to NI+(NK-NI):
+    for k=NI+1 to NK:
         [MAT, 14, MT/ EG[k] , ES[k] , 0, 0, NR, NE[k]/ E ] TAB2 (E_interpol[k])
         for l=1 to NE[k]:
             [MAT, 14, MT/ 0.0, E[k,l] , 0, 0, NR, NP/ mu / p ] TAB1 (angtable[k,l])

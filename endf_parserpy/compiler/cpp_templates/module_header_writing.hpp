@@ -324,13 +324,15 @@ inline std::string float2endfstr(double value, WritingOptions &write_opts) {
       value, width, write_opts
     );
     if (numstr_noexp.size() <= width) {
-      double recon_value = std::stod(numstr);
-      double recon_value_noexp = std::stod(numstr_noexp);
+      // std::strtod instead of std::stod, which throws std::out_of_range
+      // for subnormal numbers; the representation that reproduces the
+      // value more closely is used, preferring the one without exponent
+      // in case of a tie (as by the Python writer)
+      double recon_value = std::strtod(numstr.c_str(), nullptr);
+      double recon_value_noexp = std::strtod(numstr_noexp.c_str(), nullptr);
       double recon_value_diff = std::abs(recon_value - value);
-      double recon_value_reldiff = recon_value_diff / (std::abs(value)+1e-12);
       double recon_value_noexp_diff = std::abs(recon_value_noexp - value);
-      double recon_value_noexp_reldiff =  recon_value_noexp_diff / (std::abs(value)+1e-12);
-      if (recon_value_reldiff >= recon_value_noexp_reldiff) {
+      if (recon_value_diff >= recon_value_noexp_diff) {
           return numstr_noexp;
       }
     }

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/10/10
+# Last modified:   2026/10/20
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -57,6 +57,7 @@ class EndfParserCpp(EndfParserBase):
         accept_nan_inf=True,
         accept_d_exponent=True,
         validate_control_records=False,
+        load_file_into_memory=True,
         abuse_signpos=False,
         keep_E=False,
         preserve_value_strings=False,
@@ -175,6 +176,15 @@ class EndfParserCpp(EndfParserBase):
             ENDF-6 section are consistent with the surrounding section
             structure. Off by default; only the Python parser performs
             this validation unconditionally. *(parsing, C++ only)*
+        load_file_into_memory : bool
+            If ``True`` (default), :func:`parsefile` reads the complete
+            file into memory before parsing it, which makes parsing
+            faster, in particular of files with many short sections,
+            but requires additional memory of the size of the file.
+            If ``False``, the file is read piecewise while it is parsed.
+            The result is the same in both cases. Strings passed to
+            :func:`parse` are always parsed in place. The Python parser
+            always reads the complete file. *(parsing, C++ only)*
         """
         _check_array_type(array_type)
         self.read_opts = {
@@ -189,6 +199,7 @@ class EndfParserCpp(EndfParserBase):
             "accept_d_exponent": accept_d_exponent,
             "preserve_value_strings": preserve_value_strings,
             "validate_control_records": validate_control_records,
+            "load_file_into_memory": load_file_into_memory,
             "array_type": array_type,
         }
         self.write_opts = {

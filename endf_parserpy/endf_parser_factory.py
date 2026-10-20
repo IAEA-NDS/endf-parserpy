@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/10/10
+# Last modified:   2026/10/20
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -88,6 +88,7 @@ class EndfParserFactory:
         parsing_funs=None,  # Python only
         loglevel=None,  # Python only
         validate_control_records=False,  # C++ only
+        load_file_into_memory=True,  # C++ only
     ):
         """Create an ENDF parser instance.
 
@@ -194,6 +195,7 @@ class EndfParserFactory:
             },
         )
         parser_args.pop("validate_control_records", None)
+        parser_args.pop("load_file_into_memory", None)
         return EndfParserPy(**parser_args)
 
     @staticmethod

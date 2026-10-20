@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EndfParserCpp` writes faster: numbers are formatted into a character buffer instead of using one to three `std::ostringstream` objects per field. The decimal digits of a float are computed with exact double arithmetic where this provably gives the correctly rounded result, and with `std::snprintf` otherwise. The output is identical
 - `EndfParserCpp` writes faster: the generated writing code retrieves the value of each field from the Python dictionary once instead of twice. The output is identical
 - `EndfParserCpp` reads number fields faster: integer and float fields of the common form (blanks, sign, digits, decimal point, exponent) are converted in a single pass over the 11 characters of the field; all other fields still go through the previous conversion, so values and error messages are unchanged
+- `EndfParserCpp` parses files faster, in particular files with many short sections such as decay data: `parsefile` reads the complete file into memory and parses it from there, so that repositioning in the data (at the start of each section and in lookaheads) only moves a pointer instead of discarding and re-reading the buffer of the file stream. This needs additional memory of the size of the file during parsing; the new option `load_file_into_memory=False` of `EndfParserCpp` restores reading through the file stream. `parse` now parses a string in place instead of copying it into a string stream. The results are identical
 
 ### Removed
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/05/13
+# Last modified:   2026/10/20
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -494,14 +494,22 @@ def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
     for entry in parsefuns:
         outer, inner = _split_wrapper_names(entry)
         code += cpp.line(f"py::dict {outer}(std::string& strcont{args_str}) {{")
-        code += cpp.statement("std::istringstream iss(strcont)", cpp.INDENT)
-        code += cpp.statement(f"return {inner}_istream(iss{args_str2})", cpp.INDENT)
+        code += cpp.statement(
+            "cpp_memory_streambuf cpp_membuf(strcont.data(), strcont.size())",
+            cpp.INDENT,
+        )
+        code += cpp.statement("std::istream cpp_instream(&cpp_membuf)", cpp.INDENT)
+        code += cpp.statement(
+            f"return {inner}_istream(cpp_instream{args_str2})", cpp.INDENT
+        )
         code += cpp.close_block()
         code += cpp.line("")
     return code
 
 
 def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
+    # the parsing options (read below) must be among the arguments
+    assert any(arg[1] == "parse_opts" for arg in extra_args)
     args_str = ", ".join(arg[0] + " " + arg[1] for arg in extra_args)
     args_str = ", " + args_str if args_str != "" else args_str
     args_str2 = ", ".join(arg[1] for arg in extra_args)
@@ -519,7 +527,25 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
                 "throw std::ifstream::failure" + '("failed to open file " + filename)'
             ),
         )
-        code += cpp.statement(f"return {inner}_istream(inpfile{args_str2})", cpp.INDENT)
+        # by default, the whole file is read into memory, which makes
+        # repositioning in the stream (at section starts and in lookaheads)
+        # cheap; with load_file_into_memory=false, the file is read through
+        # the file stream, which needs less memory
+        code += cpp.pureif(
+            cpp.logical_not("parse_opts.load_file_into_memory"),
+            cpp.statement(f"return {inner}_istream(inpfile{args_str2})"),
+        )
+        code += cpp.statement(
+            "std::string cpp_content = cpp_read_stream_content(inpfile)", cpp.INDENT
+        )
+        code += cpp.statement(
+            "cpp_memory_streambuf cpp_membuf(cpp_content.data(), cpp_content.size())",
+            cpp.INDENT,
+        )
+        code += cpp.statement("std::istream cpp_instream(&cpp_membuf)", cpp.INDENT)
+        code += cpp.statement(
+            f"return {inner}_istream(cpp_instream{args_str2})", cpp.INDENT
+        )
         code += cpp.close_block()
         code += cpp.line("")
     return code

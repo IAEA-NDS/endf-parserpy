@@ -25,6 +25,7 @@ struct ParsingOptions {
   bool accept_d_exponent;
   bool preserve_value_strings;
   bool validate_control_records;
+  bool load_file_into_memory;
   std::string array_type;
 };
 
@@ -42,6 +43,7 @@ inline ParsingOptions default_parsing_options() {
     true,   // accept_d_exponent
     false,  // preserve_value_strings
     false,  // validate_control_records
+    true,   // load_file_into_memory
     "dict"  // array_type
   };
 }
@@ -82,6 +84,8 @@ namespace pybind11 { namespace detail {
           value.preserve_value_strings = d["preserve_value_strings"].cast<bool>();
         else if (key_str == "validate_control_records")
           value.validate_control_records = d["validate_control_records"].cast<bool>();
+        else if (key_str == "load_file_into_memory")
+          value.load_file_into_memory = d["load_file_into_memory"].cast<bool>();
         else if (key_str == "array_type")
           value.array_type = d["array_type"].cast<std::string>();
         else
@@ -135,6 +139,10 @@ namespace pybind11 { namespace detail {
         value.validate_control_records = default_opts.validate_control_records;
       }
 
+      if (! d.contains("load_file_into_memory")) {
+        value.load_file_into_memory = default_opts.load_file_into_memory;
+      }
+
       if (! d.contains("array_type")) {
         value.array_type = default_opts.array_type;
       }
@@ -156,6 +164,7 @@ namespace pybind11 { namespace detail {
       d["accept_d_exponent"] = src.accept_d_exponent;
       d["preserve_value_strings"] = src.preserve_value_strings;
       d["validate_control_records"] = src.validate_control_records;
+      d["load_file_into_memory"] = src.load_file_into_memory;
       d["array_type"] = src.array_type;
       return d.release();
     }
@@ -700,6 +709,64 @@ inline bool cpp_is_blank_line(const std::string& line) {
     if (line[i] != ' ') return false;
   }
   return true;
+}
+
+
+// Read-only stream buffer over a block of memory (the content of a file
+// or string). Repositioning (tellg/seekg) only moves the read pointer,
+// whereas a file stream discards its buffered data on every seekg.
+class cpp_memory_streambuf : public std::streambuf {
+public:
+  cpp_memory_streambuf(const char* data, std::size_t size) {
+    // the get area is only read from, never written to
+    char* begin = const_cast<char*>(data);
+    setg(begin, begin, begin + size);
+  }
+
+protected:
+  pos_type seekoff(
+    off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which
+  ) override {
+    if (! (which & std::ios_base::in)) return pos_type(off_type(-1));
+    off_type base;
+    if (dir == std::ios_base::beg) {
+      base = 0;
+    } else if (dir == std::ios_base::cur) {
+      base = gptr() - eback();
+    } else {
+      base = egptr() - eback();
+    }
+    off_type newpos = base + off;
+    if (newpos < 0 || newpos > egptr() - eback()) return pos_type(off_type(-1));
+    setg(eback(), eback() + newpos, egptr());
+    return pos_type(newpos);
+  }
+
+  pos_type seekpos(pos_type pos, std::ios_base::openmode which) override {
+    return seekoff(off_type(pos), std::ios_base::beg, which);
+  }
+};
+
+
+// Read the complete content of an input stream (opened file) into a string;
+// if the stream is not seekable, it is copied through its stream buffer.
+inline std::string cpp_read_stream_content(std::istream& in) {
+  std::string content;
+  std::istream::pos_type start = in.tellg();
+  if (start != std::istream::pos_type(-1) && in.seekg(0, std::ios_base::end)) {
+    std::istream::pos_type end = in.tellg();
+    in.seekg(start);
+    if (end != std::istream::pos_type(-1) && in) {
+      content.resize(static_cast<std::size_t>(end - start));
+      in.read(&content[0], static_cast<std::streamsize>(content.size()));
+      content.resize(static_cast<std::size_t>(in.gcount()));
+      return content;
+    }
+  }
+  in.clear();
+  std::ostringstream oss;
+  oss << in.rdbuf();
+  return oss.str();
 }
 
 

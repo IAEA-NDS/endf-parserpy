@@ -309,7 +309,126 @@ inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
 }
 
 
+// Single-pass conversion of the 11 characters of a float field for the
+// common case: leading spaces, a decimal number of the form
+// [+-]digits[.digits] optionally followed by an exponent introduced by
+// e/E (or d/D if accepted) or directly by its sign, and trailing spaces.
+// If the significand has at most 15 significant digits and the decimal
+// exponent is at most 22 in magnitude, both the significand and the
+// power of ten are exactly representable and a single IEEE multiplication
+// or division gives the correctly rounded result, i.e. the same value as
+// std::strtod. Returns false for any other content of the field, which
+// is then handled by the general code path.
+inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, double &result) {
+  static const double p10[] = {
+    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
+    1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22
+  };
+  const char* p = str;
+  const char* const e = str + 11;
+  while (p < e && *p == ' ') p++;
+  if (p == e) {
+    result = 0.0;   // blank field
+    return true;
+  }
+  bool neg = false;
+  if (*p == '+' || *p == '-') {
+    neg = (*p == '-');
+    p++;
+  }
+  unsigned long long mant = 0;
+  int ndig = 0;          // significant digits accumulated in mant
+  int nfrac = 0;         // digits after the decimal point
+  bool any_digit = false;
+  for (; p < e && *p >= '0' && *p <= '9'; p++) {
+    any_digit = true;
+    if (mant == 0 && *p == '0') continue;   // leading zeros
+    if (++ndig > 15) return false;
+    mant = mant * 10 + static_cast<unsigned>(*p - '0');
+  }
+  if (p < e && *p == '.') {
+    p++;
+    for (; p < e && *p >= '0' && *p <= '9'; p++) {
+      any_digit = true;
+      nfrac++;
+      if (mant == 0 && *p == '0') continue;
+      if (++ndig > 15) return false;
+      mant = mant * 10 + static_cast<unsigned>(*p - '0');
+    }
+  }
+  if (! any_digit) return false;
+  int expo = 0;
+  if (p < e && *p != ' ') {
+    char c = *p;
+    if (c == 'e' || c == 'E' || ((c == 'd' || c == 'D') && accept_d_exponent)) {
+      p++;
+      if (p == e) return false;
+      c = *p;
+    } else if (c != '+' && c != '-') {
+      return false;
+    }
+    bool eneg = false;
+    if (c == '+' || c == '-') {
+      eneg = (c == '-');
+      p++;
+    }
+    if (p == e || ! (*p >= '0' && *p <= '9')) return false;
+    for (; p < e && *p >= '0' && *p <= '9'; p++) {
+      expo = expo * 10 + (*p - '0');
+    }
+    if (eneg) expo = -expo;
+  }
+  for (; p < e; p++) {
+    if (*p != ' ') return false;
+  }
+  int k = expo - nfrac;
+  double v = static_cast<double>(mant);
+  if (mant != 0) {
+    if (k > 22 || k < -22) return false;
+    if (k > 0) v *= p10[k];
+    else if (k < 0) v /= p10[-k];
+  }
+  result = neg ? -v : v;
+  return true;
+}
+
+
+// Single-pass conversion of an integer field for the common case:
+// leading spaces, an optional sign, at most 9 digits, trailing spaces.
+// Returns false for any other content (handled by the general code path).
+inline bool cpp_fast_field_to_int(const char* str, int &result) {
+  const char* p = str;
+  const char* const e = str + 11;
+  while (p < e && *p == ' ') p++;
+  if (p == e) {
+    result = 0;
+    return true;
+  }
+  bool neg = false;
+  if (*p == '+' || *p == '-') {
+    neg = (*p == '-');
+    p++;
+  }
+  const char* d = p;
+  int val = 0;
+  for (; p < e && *p >= '0' && *p <= '9'; p++) {
+    val = val * 10 + (*p - '0');
+  }
+  int ndig = static_cast<int>(p - d);
+  if (ndig == 0 || ndig > 9) return false;
+  for (; p < e; p++) {
+    if (*p != ' ') return false;
+  }
+  result = neg ? -val : val;
+  return true;
+}
+
+
 inline double endfstr2float(const char* str, ParsingOptions &parse_opts) {
+  double fast_value;
+  if (cpp_fast_field_to_double(str, parse_opts.accept_d_exponent, fast_value)) {
+    return fast_value;
+  }
   char tbuf[13];
   int j = 0;
   bool in_number = false;
@@ -390,6 +509,10 @@ inline double endfstr2float(const char* str, ParsingOptions &parse_opts) {
 
 
 inline int endfstr2int(const char* str, ParsingOptions &parse_opts) {
+  int fast_value;
+  if (cpp_fast_field_to_int(str, fast_value)) {
+    return fast_value;
+  }
   // Locate first/last non-space so we can both detect blank fields
   // (ENDF convention: blank == 0) and detect trailing garbage like "0.0".
   int start = 0;

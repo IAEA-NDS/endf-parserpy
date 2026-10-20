@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EndfParserCpp` reads and writes faster thanks to fewer redundant operations in the C++ helpers: a value of the Python dictionary is looked up once instead of several times when writing, arguments are passed by reference instead of being copied, and the nested containers holding parsed arrays are moved instead of copied. The results are identical
 - `EndfParserCpp` writes faster: numbers are formatted into a character buffer instead of using one to three `std::ostringstream` objects per field. The decimal digits of a float are computed with exact double arithmetic where this provably gives the correctly rounded result, and with `std::snprintf` otherwise. The output is identical
 - `EndfParserCpp` writes faster: the generated writing code retrieves the value of each field from the Python dictionary once instead of twice. The output is identical
+- `EndfParserCpp` reads number fields faster: integer and float fields of the common form (blanks, sign, digits, decimal point, exponent) are converted in a single pass over the 11 characters of the field; all other fields still go through the previous conversion, so values and error messages are unchanged
 
 ### Removed
 

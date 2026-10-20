@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Arithmetic in ENDF recipe expressions is now exact in both `EndfParserPy` and `EndfParserCpp`. Integers and decimal literals are exact numbers (a decimal literal such as `0.1` denotes exactly 1/10), and a division of exact numbers gives an exact fraction, e.g. 13/6; only where an integer is needed (an integer field, a loop bound, an index) must the value of an expression be an integer. Values of float fields are floats, and arithmetic with a float gives a float. Previously, `EndfParserPy` required every division of two integers to be exact, so that e.g. `2*(N/4)` could not be evaluated for N=6, and it could not solve a field for an unknown inside a division, e.g. `2*N/3`, even if the solution is an integer. `EndfParserCpp` used the C++ operators, which truncate an integer division (13/6 gave 2), so it read and wrote data that `EndfParserPy` rejects. Both parsers now give the same results; for valid data of the recipes of the package, the results do not change
+- `EndfParserCpp` converts number fields to floats faster when reading: a decimal number with at most 15 significant digits and a power of ten up to 10^22 in magnitude, i.e. most numbers in ENDF-6 files, is converted with a single correctly rounded multiplication or division, as both operands are exactly representable; all other numbers are still converted with `std::strtod`. The results are identical
 
 ### Removed
 

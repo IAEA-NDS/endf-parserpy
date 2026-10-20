@@ -241,6 +241,74 @@ inline void throw_number_mismatch_error(
 }
 
 
+// Fast exact conversion of a plain decimal number of the form
+// [+-]digits[.digits][(e|E)[+-]digits] (as assembled by endfstr2float)
+// to double. If the significand has at most 15 digits and the decimal
+// exponent is at most 22 in magnitude, both the significand and the
+// power of ten are exactly representable and a single IEEE multiplication
+// or division yields the correctly rounded result, i.e. the same value as
+// std::strtod. Returns false for anything else, in which case std::strtod
+// must be used.
+inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
+  static const double p10[] = {
+    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
+    1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22
+  };
+  const char* p = s;
+  bool neg = false;
+  if (*p == '+' || *p == '-') {
+    neg = (*p == '-');
+    p++;
+  }
+  unsigned long long mant = 0;
+  int ndig = 0;          // significant digits accumulated in mant
+  int nfrac = 0;         // digits after the decimal point
+  bool any_digit = false;
+  for (; *p >= '0' && *p <= '9'; p++) {
+    any_digit = true;
+    if (mant == 0 && *p == '0') continue;   // leading zeros
+    if (++ndig > 15) return false;
+    mant = mant * 10 + static_cast<unsigned>(*p - '0');
+  }
+  if (*p == '.') {
+    p++;
+    for (; *p >= '0' && *p <= '9'; p++) {
+      any_digit = true;
+      nfrac++;
+      if (mant == 0 && *p == '0') continue;
+      if (++ndig > 15) return false;
+      mant = mant * 10 + static_cast<unsigned>(*p - '0');
+    }
+  }
+  if (! any_digit) return false;
+  int expo = 0;
+  if (*p == 'e' || *p == 'E') {
+    p++;
+    bool eneg = false;
+    if (*p == '+' || *p == '-') {
+      eneg = (*p == '-');
+      p++;
+    }
+    if (! (*p >= '0' && *p <= '9')) return false;
+    for (; *p >= '0' && *p <= '9'; p++) {
+      if (expo > 1000) return false;
+      expo = expo * 10 + (*p - '0');
+    }
+    if (eneg) expo = -expo;
+  }
+  if (*p != '\0') return false;
+  int k = expo - nfrac;
+  double v = static_cast<double>(mant);
+  if (mant != 0) {
+    if (k > 22 || k < -22) return false;
+    if (k > 0) v *= p10[k];
+    else if (k < 0) v /= p10[-k];
+  }
+  result = neg ? -v : v;
+  return true;
+}
+
+
 inline double endfstr2float(const char* str, ParsingOptions &parse_opts) {
   char tbuf[13];
   int j = 0;
@@ -297,8 +365,13 @@ inline double endfstr2float(const char* str, ParsingOptions &parse_opts) {
   // strtod silently returns the denormal (or 0) on underflow, matching ENDF
   // convention, while still letting us detect malformed input (no chars
   // consumed or trailing garbage) and reject overflow/NaN/inf via isfinite.
+  double v;
+  if (cpp_fast_decimal_to_double(tbuf, v)) {
+    // exact fast path; result is finite and identical to std::strtod
+    return v;
+  }
   char* end = nullptr;
-  double v = std::strtod(tbuf, &end);
+  v = std::strtod(tbuf, &end);
   if (end == tbuf || *end != '\0') {
     std::stringstream errmsg;
     errmsg << "malformed number field: \""

@@ -112,10 +112,31 @@ namespace pybind11 { namespace detail {
 }}
 
 
+// Right-aligned decimal representation of `value` padded with blanks to
+// `width` characters, i.e. the same as `std::setw(width) << value` on an
+// ostream. Writes into buf (at least 12 + width bytes) and returns the
+// number of characters written (more than width if the number is wider).
+inline int cpp_int_to_padded_chars(char* buf, int width, int value) {
+  char tmp[16];
+  int n = 0;
+  unsigned int u = (value < 0) ? 0u - static_cast<unsigned int>(value)
+                               : static_cast<unsigned int>(value);
+  do {
+    tmp[n++] = static_cast<char>('0' + u % 10);
+    u /= 10;
+  } while (u != 0);
+  if (value < 0) tmp[n++] = '-';
+  int pad = (n < width) ? width - n : 0;
+  for (int i = 0; i < pad; i++) buf[i] = ' ';
+  for (int i = 0; i < n; i++) buf[pad + i] = tmp[n - 1 - i];
+  return pad + n;
+}
+
+
 inline void cpp_write_custom_int_field(std::string &str, int start, int length, int value) {
-  std::ostringstream oss;
-  oss << std::right << std::setw(length) << value;
-  str.replace(start, length, oss.str());
+  char buf[32];
+  int n = cpp_int_to_padded_chars(buf, length, value);
+  str.replace(start, length, buf, n);
 }
 
 
@@ -200,6 +221,204 @@ inline bool is_carried_mantissa(const std::string& numstr) {
     }
   }
   return true;
+}
+
+
+// ---------------------------------------------------------------------
+// Fast float formatting. The functions below produce exactly the same
+// characters as get_scientific_numstr() / float2endfstr_helper() /
+// float2endfstr() but avoid iostreams. The decimal digits are computed
+// with exact double arithmetic where this provably yields the correctly
+// rounded result; otherwise (values near a rounding tie, very large or
+// very small magnitudes) std::snprintf is used, which is what the
+// iostream implementation relies on as well.
+// ---------------------------------------------------------------------
+
+// snprintf-based equivalent of get_scientific_numstr(); writes into buf
+// (>= 64 bytes) and returns the length.
+inline int cpp_sci_numstr_snprintf(char* buf, double value, int precision, bool abuse_signpos) {
+  char* p = buf;
+  if (! abuse_signpos && value >= 0) *p++ = ' ';
+  int n = std::snprintf(p, 48, "%.*e", precision, value);
+  char* end = p + n;
+  char* e = static_cast<char*>(std::memchr(p, 'e', n));
+  if (e == nullptr) {
+    throw std::runtime_error("`e` character not found");
+  }
+  // strip leading zeros of the exponent but keep at least one digit
+  char* d = e + 2;
+  char* q = d;
+  while (q + 1 < end && *q == '0') q++;
+  if (q != d) {
+    std::memmove(d, q, end - q);
+    end -= (q - d);
+  }
+  *end = '\0';
+  return static_cast<int>(end - buf);
+}
+
+
+// Determine the correctly rounded nsig-digit decimal representation
+// a = m * 10^(E-nsig+1) of a finite double a > 0. Returns false if this
+// cannot be decided reliably with double arithmetic.
+inline bool cpp_round_decimal_digits(double a, int nsig, unsigned long long &m, int &E) {
+  static const double p10[] = {
+    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
+    1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22
+  };
+  if (nsig < 1 || nsig > 9) return false;
+  if (! (a >= 1e-280 && a <= 1e280)) return false;
+  // estimate of floor(log10(a)), may be one too small; corrected below
+  int bexp;
+  std::frexp(a, &bexp);
+  int e10 = static_cast<int>(std::floor((bexp - 1) * 0.30102999566398120));
+  for (int attempt = 0; attempt < 4; attempt++) {
+    // scaled = a / 10^s is computed with at most two roundings, hence
+    // with a relative error below 3e-16
+    int s = e10 - nsig + 1;
+    double scaled;
+    if (s >= 0) {
+      if (s <= 22) scaled = a / p10[s];
+      else if (s <= 44) scaled = (a / p10[22]) / p10[s - 22];
+      else return false;
+    } else {
+      int t = -s;
+      if (t <= 22) scaled = a * p10[t];
+      else if (t <= 44) scaled = (a * p10[22]) * p10[t - 22];
+      else return false;
+    }
+    const double lo = p10[nsig - 1];
+    const double hi = p10[nsig];
+    if (scaled < lo - 0.25) { e10--; continue; }
+    if (scaled >= hi + 0.25) { e10++; continue; }
+    double fl = std::floor(scaled);
+    double frac = scaled - fl;
+    // too close to a rounding tie to decide safely
+    if (std::fabs(frac - 0.5) < hi * 1e-14) return false;
+    unsigned long long mm = static_cast<unsigned long long>(fl) + (frac > 0.5 ? 1 : 0);
+    unsigned long long ilo = static_cast<unsigned long long>(lo);
+    unsigned long long ihi = static_cast<unsigned long long>(hi);
+    if (mm < ilo) { e10--; continue; }
+    if (mm >= ihi) {
+      if (mm == ihi && fl < hi) {
+        // rounding carries over into the next decade
+        m = ilo;
+        E = e10 + 1;
+        return true;
+      }
+      e10++;
+      continue;
+    }
+    m = mm;
+    E = e10;
+    return true;
+  }
+  return false;
+}
+
+
+// assemble "[ ][-]d.ddd...e<sign><exponent without leading zeros>"
+inline int cpp_compose_sci_numstr(
+  char* buf, bool neg, bool lead_blank, unsigned long long m, int nsig, int E
+) {
+  char* p = buf;
+  if (lead_blank) *p++ = ' ';
+  if (neg) *p++ = '-';
+  char dig[24];
+  for (int i = nsig - 1; i >= 0; i--) {
+    dig[i] = static_cast<char>('0' + m % 10);
+    m /= 10;
+  }
+  *p++ = dig[0];
+  if (nsig > 1) {
+    *p++ = '.';
+    for (int i = 1; i < nsig; i++) *p++ = dig[i];
+  }
+  *p++ = 'e';
+  *p++ = (E < 0) ? '-' : '+';
+  int ae = (E < 0) ? -E : E;
+  int nd = 1;
+  for (int t = ae; t >= 10; t /= 10) nd++;
+  for (int i = nd - 1; i >= 0; i--) {
+    p[i] = static_cast<char>('0' + ae % 10);
+    ae /= 10;
+  }
+  p += nd;
+  *p = '\0';
+  return static_cast<int>(p - buf);
+}
+
+
+// same characters as get_scientific_numstr(value, precision, abuse_signpos)
+inline int cpp_sci_numstr(char* buf, double value, int precision, bool abuse_signpos) {
+  bool lead_blank = (! abuse_signpos && value >= 0);
+  if (precision >= 0 && precision <= 8) {
+    if (value == 0.0) {
+      return cpp_compose_sci_numstr(
+        buf, std::signbit(value), lead_blank, 0, precision + 1, 0
+      );
+    }
+    unsigned long long m;
+    int E;
+    bool neg = value < 0;
+    if (cpp_round_decimal_digits(neg ? -value : value, precision + 1, m, E)) {
+      return cpp_compose_sci_numstr(buf, neg, lead_blank, m, precision + 1, E);
+    }
+  }
+  return cpp_sci_numstr_snprintf(buf, value, precision, abuse_signpos);
+}
+
+
+// same characters as is_carried_mantissa() for the buf content
+inline bool cpp_is_carried_mantissa_chars(const char* buf, int len) {
+  int pos = 0;
+  while (pos < len && (buf[pos] == ' ' || buf[pos] == '-' || buf[pos] == '+')) pos++;
+  if (pos == len || buf[pos] != '1') {
+    return false;
+  }
+  for (int i = pos + 1; i < len && buf[i] != 'e'; i++) {
+    if (buf[i] != '0' && buf[i] != '.') {
+      return false;
+    }
+  }
+  return true;
+}
+
+
+// same characters as float2endfstr_helper(value, width, write_opts)
+inline int cpp_float2endfstr_helper_chars(
+  char* buf, double value, int width, bool abuse_signpos
+) {
+  int len = cpp_sci_numstr(buf, value, 6, abuse_signpos);
+  int prec = 6 - (len - width);
+  if (prec < 0) {
+    prec = 0;
+  }
+  if (prec != 6) {
+    // (for prec == 6 the call would reproduce the current content of buf)
+    len = cpp_sci_numstr(buf, value, prec, abuse_signpos);
+  }
+  while (len > width && prec > 0) {
+    len = cpp_sci_numstr(buf, value, --prec, abuse_signpos);
+  }
+  // largest precision that fits, see float2endfstr_helper()
+  while (prec < 20 && cpp_is_carried_mantissa_chars(buf, len)) {
+    char candidate[64];
+    int candlen = cpp_sci_numstr(candidate, value, prec + 1, abuse_signpos);
+    if (candlen > width) {
+      break;
+    }
+    std::memcpy(buf, candidate, candlen + 1);
+    len = candlen;
+    prec++;
+  }
+  if (len < width) {
+    int pad = width - len;
+    std::memmove(buf + pad, buf, len + 1);
+    std::memset(buf, ' ', pad);
+    len = width;
+  }
+  return len;
 }
 
 
@@ -347,9 +566,34 @@ inline std::string float2endfstr(double value, WritingOptions &write_opts) {
 
 
 inline std::string int2endfstr(int value) {
-  std::ostringstream oss;
-  oss << std::right << std::setw(11) << value;
-  return oss.str();
+  char buf[32];
+  int n = cpp_int_to_padded_chars(buf, 11, value);
+  return std::string(buf, n);
+}
+
+
+// Same characters as float2endfstr(value, write_opts); writes into buf
+// (>= 64 bytes) and returns the length.
+inline int float2endfstr_chars(char* buf, double value, WritingOptions &write_opts) {
+  if (! std::isfinite(value) || write_opts.prefer_noexp) {
+    std::string numstr = float2endfstr(value, write_opts);
+    size_t n = std::min(numstr.size(), static_cast<size_t>(63));
+    std::memcpy(buf, numstr.data(), n);
+    buf[n] = '\0';
+    return static_cast<int>(numstr.size() <= 63 ? n : numstr.size());
+  }
+  // negative zero is written as zero, see float2endfstr()
+  if (value == 0.0) {
+    value = 0.0;
+  }
+  int width = write_opts.keep_E ? 11 : 12;
+  int len = cpp_float2endfstr_helper_chars(buf, value, width, write_opts.abuse_signpos);
+  if (! write_opts.keep_E) {
+    char* e = static_cast<char*>(std::memchr(buf, 'e', len));
+    std::memmove(e, e + 1, (buf + len) - e);
+    len--;
+  }
+  return len;
 }
 
 
@@ -369,9 +613,12 @@ inline void cpp_write_field_double(
   std::string& line, const char fieldnum, const double& value,
   WritingOptions& write_opts
 ) {
-  std::string fieldstr = float2endfstr(value, write_opts);
-  field_size_check(fieldstr);
-  line.replace(fieldnum*11, 11, fieldstr);
+  char buf[64];
+  int n = float2endfstr_chars(buf, value, write_opts);
+  if (n != 11) {
+    field_size_check(float2endfstr(value, write_opts));
+  }
+  line.replace(fieldnum*11, 11, buf, 11);
 }
 
 
@@ -380,13 +627,11 @@ inline void cpp_write_field_EndfFloatCpp(
   std::string& line, const char fieldnum, const EndfFloatCpp& value,
   WritingOptions& write_opts
 ) {
-  std::string fieldstr;
-  std::string orig_str = value.get_original_string();
-  if (orig_str.empty() || !write_opts.preserve_value_strings) {
-    fieldstr = float2endfstr(value, write_opts);
-  } else {
-    fieldstr = orig_str;
+  if (!write_opts.preserve_value_strings || !value.has_original_string()) {
+    cpp_write_field_double(line, fieldnum, static_cast<double>(value), write_opts);
+    return;
   }
+  const std::string& fieldstr = value.original_string_ref();
   field_size_check(fieldstr);
   line.replace(fieldnum*11, 11, fieldstr);
 }
@@ -397,8 +642,9 @@ inline void cpp_write_field_int(
   std::string& line, const char fieldnum, const int& value,
   WritingOptions& write_opts
 ) {
-  std::string fieldstr = int2endfstr(value);
-  line.replace(fieldnum*11, 11, fieldstr);
+  char buf[32];
+  int n = cpp_int_to_padded_chars(buf, 11, value);
+  line.replace(fieldnum*11, 11, buf, n);
 }
 
 

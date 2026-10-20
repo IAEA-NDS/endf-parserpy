@@ -29,6 +29,12 @@ public:
 
     std::string get_original_string() const {
         return _orig_str; }
+
+    bool has_original_string() const {
+        return !_orig_str.empty(); }
+
+    const std::string& original_string_ref() const {
+        return _orig_str; }
     bool operator==(const EndfFloatCpp& other) const {
         return static_cast<double>(_value) == static_cast<double>(other._value);
     }

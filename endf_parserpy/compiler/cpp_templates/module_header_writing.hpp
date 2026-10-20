@@ -627,7 +627,10 @@ inline void cpp_write_field_EndfFloatCpp(
   std::string& line, const char fieldnum, const EndfFloatCpp& value,
   WritingOptions& write_opts
 ) {
-  if (!write_opts.preserve_value_strings || !value.has_original_string()) {
+  // the original string of a value (an EndfFloat in the dictionary) is
+  // written verbatim whenever it is available, irrespective of the
+  // preserve_value_strings option, which only controls parsing
+  if (!value.has_original_string()) {
     cpp_write_field_double(line, fieldnum, static_cast<double>(value), write_opts);
     return;
   }

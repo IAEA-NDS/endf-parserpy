@@ -83,10 +83,12 @@ def test_preserve_value_strings_option_false(mf3_section):
     mf3_section[3][1]["ZA"] = EndfFloat(0.1234567895, ".1234567895")
     mf3_section[3][1]["xstable"]["E"][0] = EndfFloat(0.1234567895, ".1234567895")
     cont = parser.write(mf3_section)
+    # the original strings are written irrespective of the option ...
+    assert cont[0].startswith(".1234567895")
+    assert ".1234567895" in cont[3]
+    # ... which only determines whether they are recorded when parsing
     endf_dict = parser.parse(cont)
-    with pytest.raises(ValueError):
-        compare_objects(mf3_section, endf_dict, rtol=1e-20, atol=1e-20)
-    compare_objects(mf3_section, endf_dict, rtol=1e-6, atol=1e-6)
+    compare_objects(mf3_section, endf_dict, rtol=1e-20, atol=1e-20)
     assert type(endf_dict[3][1]["ZA"]) == float
     assert type(endf_dict[3][1]["xstable"]["E"][0]) == float
 

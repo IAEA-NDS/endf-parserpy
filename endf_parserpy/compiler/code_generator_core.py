@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/13
+# Last modified:   2026/10/20
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -693,11 +693,21 @@ def generate_code_for_tab1(node, vardict):
     )
     inner_code += addcode
 
+    # each member of tab_body is used by exactly one assignment or
+    # validation statement, so its content can be moved instead of copied
     assigncode = cpp.statement(f"Tab1Body tab_body = {tabdata}")
-    assigncode += generate_code_for_varassign(xvar, vardict, "tab_body.X", "floatvec")
-    assigncode += generate_code_for_varassign(yvar, vardict, "tab_body.Y", "floatvec")
-    assigncode += generate_code_for_varassign(INTvar, vardict, "tab_body.INT", "intvec")
-    assigncode += generate_code_for_varassign(NBTvar, vardict, "tab_body.NBT", "intvec")
+    assigncode += generate_code_for_varassign(
+        xvar, vardict, "std::move(tab_body.X)", "floatvec"
+    )
+    assigncode += generate_code_for_varassign(
+        yvar, vardict, "std::move(tab_body.Y)", "floatvec"
+    )
+    assigncode += generate_code_for_varassign(
+        INTvar, vardict, "std::move(tab_body.INT)", "intvec"
+    )
+    assigncode += generate_code_for_varassign(
+        NBTvar, vardict, "std::move(tab_body.NBT)", "intvec"
+    )
     assigncode = cpp.block(assigncode)
 
     if sectok is not None:
@@ -754,9 +764,15 @@ def generate_code_for_tab2(node, vardict):
     tabdata, addcode = get_tab2_body_getter(vardict)(nr_vartok, vardict)
     inner_code += addcode
 
+    # each member of tab_body is used by exactly one assignment or
+    # validation statement, so its content can be moved instead of copied
     assigncode = cpp.statement(f"Tab2Body tab_body = {tabdata}")
-    assigncode += generate_code_for_varassign(INTvar, vardict, "tab_body.INT", "intvec")
-    assigncode += generate_code_for_varassign(NBTvar, vardict, "tab_body.NBT", "intvec")
+    assigncode += generate_code_for_varassign(
+        INTvar, vardict, "std::move(tab_body.INT)", "intvec"
+    )
+    assigncode += generate_code_for_varassign(
+        NBTvar, vardict, "std::move(tab_body.NBT)", "intvec"
+    )
     assigncode = cpp.block(assigncode)
 
     if sectok is not None:

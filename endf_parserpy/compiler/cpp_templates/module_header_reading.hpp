@@ -872,6 +872,39 @@ inline bool cpp_is_tend_record(std::string line, ParsingOptions &parse_opts) {
 }
 
 
+// Number of elements to reserve for a vector whose size is given by a
+// count in the data; capped so that a corrupt count does not lead to a
+// huge allocation before the reading fails.
+inline std::size_t cpp_reserve_size(int numel) {
+  const int max_reserve = 1 << 20;
+  return static_cast<std::size_t>(numel < max_reserve ? numel : max_reserve);
+}
+
+
+// Read n pairs of values, i.e. 2*n values, alternately into a and b.
+// The lines are consumed exactly as by cpp_read_vec with 2*n elements.
+template<typename T>
+inline void cpp_read_pairs(
+  std::istream& cont, const int n, std::vector<T>& a, std::vector<T>& b,
+  int mat, int mf, int mt, ParsingOptions &parse_opts
+) {
+  const int numel = 2*n;
+  if (numel <= 0) return;
+  a.reserve(cpp_reserve_size(n));
+  b.reserve(cpp_reserve_size(n));
+  int j = 0;
+  std::string line = cpp_read_line(cont, mat, mf, mt, parse_opts);
+  for (int i=0; i < numel; i += 2) {
+    a.push_back(cpp_read_field<T>(line.c_str(), j++, parse_opts));
+    b.push_back(cpp_read_field<T>(line.c_str(), j++, parse_opts));
+    if (j > 5 && i+2 < numel) {
+      line = cpp_read_line(cont, mat, mf, mt, parse_opts);
+      j = 0;
+    }
+  }
+}
+
+
 template<typename T>
 inline std::vector<T> cpp_read_vec(
   std::istream& cont, const int numel, int mat, int mf, int mt, ParsingOptions &parse_opts
@@ -881,6 +914,7 @@ inline std::vector<T> cpp_read_vec(
   // with NP=0 (an empty interpolation table) which TENDL emits for some
   // metastable evaluations. Consuming a line here would eat the SEND record.
   if (numel <= 0) return res;
+  res.reserve(cpp_reserve_size(numel));
   int j = 0;
   std::string line = cpp_read_line(cont, mat, mf, mt, parse_opts);
   for (int i=0; i < numel; i++) {
@@ -942,12 +976,7 @@ inline Tab2Body read_tab2_body(
   std::istream& cont, int nr, int mat, int mf, int mt, ParsingOptions &parse_opts
 ) {
   Tab2Body tab_body;
-  std::vector<int> interp = cpp_read_vec<int>(cont, 2*nr, mat, mf, mt, parse_opts);
-  int j = 0;
-  for (int i=0; i < nr; i++) {
-    tab_body.NBT.push_back(interp[j++]);
-    tab_body.INT.push_back(interp[j++]);
-  }
+  cpp_read_pairs<int>(cont, nr, tab_body.NBT, tab_body.INT, mat, mf, mt, parse_opts);
   return tab_body;
 }
 
@@ -983,18 +1012,8 @@ inline Tab1Body read_tab1_body(
   int mat, int mf, int mt, ParsingOptions &parse_opts
 ) {
   Tab1Body tab_body;
-  std::vector<int> interp = cpp_read_vec<int>(cont, 2*nr, mat, mf, mt, parse_opts);
-  int j = 0;
-  for (int i=0; i < nr; i++) {
-    tab_body.NBT.push_back(interp[j++]);
-    tab_body.INT.push_back(interp[j++]);
-  }
-  std::vector<DOUBLE_TYPE> data = cpp_read_vec<DOUBLE_TYPE>(cont, 2*np, mat, mf, mt, parse_opts);
-  j = 0;
-  for (int i=0; i < np; i++) {
-    tab_body.X.push_back(data[j++]);
-    tab_body.Y.push_back(data[j++]);
-  }
+  cpp_read_pairs<int>(cont, nr, tab_body.NBT, tab_body.INT, mat, mf, mt, parse_opts);
+  cpp_read_pairs<DOUBLE_TYPE>(cont, np, tab_body.X, tab_body.Y, mat, mf, mt, parse_opts);
   return tab_body;
 }
 

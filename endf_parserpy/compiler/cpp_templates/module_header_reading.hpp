@@ -712,6 +712,43 @@ inline bool cpp_is_blank_line(const std::string& line) {
 }
 
 
+// Pauses Python's cyclic garbage collector while a parse function builds
+// its result. The result consists of a large number of container objects
+// (and, with preserve_value_strings, EndfFloat objects), whose creation
+// triggers repeated collections that traverse all objects created so far.
+// The previous state of the collector is restored when the guard goes out
+// of scope, also if an exception is thrown.
+class cpp_gc_pause {
+public:
+  cpp_gc_pause() : gc_module(py::module::import("gc")), was_enabled(false) {
+    was_enabled = gc_module.attr("isenabled")().cast<bool>();
+    if (was_enabled) {
+      gc_module.attr("disable")();
+    }
+  }
+
+  ~cpp_gc_pause() {
+    if (! was_enabled) return;
+    // keep a pending Python error, if any, and never throw here
+    PyObject *type, *value, *traceback;
+    PyErr_Fetch(&type, &value, &traceback);
+    PyObject* res = PyObject_CallMethod(gc_module.ptr(), "enable", nullptr);
+    if (res == nullptr) {
+      PyErr_Clear();
+    } else {
+      Py_DECREF(res);
+    }
+    PyErr_Restore(type, value, traceback);
+  }
+
+private:
+  py::object gc_module;
+  bool was_enabled;
+  cpp_gc_pause(const cpp_gc_pause&);
+  cpp_gc_pause& operator=(const cpp_gc_pause&);
+};
+
+
 // Read-only stream buffer over a block of memory (the content of a file
 // or string). Repositioning (tellg/seekg) only moves the read pointer,
 // whereas a file stream discards its buffered data on every seekg.

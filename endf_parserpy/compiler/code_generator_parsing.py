@@ -494,6 +494,7 @@ def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
     for entry in parsefuns:
         outer, inner = _split_wrapper_names(entry)
         code += cpp.line(f"py::dict {outer}(std::string& strcont{args_str}) {{")
+        code += cpp.statement("cpp_gc_pause cpp_gc_guard", cpp.INDENT)
         code += cpp.statement(
             "cpp_memory_streambuf cpp_membuf(strcont.data(), strcont.size())",
             cpp.INDENT,
@@ -518,6 +519,7 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
     for entry in parsefuns:
         outer, inner = _split_wrapper_names(entry)
         code += cpp.line(f"py::dict {outer}_file(std::string& filename{args_str}) {{")
+        code += cpp.statement("cpp_gc_pause cpp_gc_guard", cpp.INDENT)
         code += cpp.statement(
             "std::ifstream inpfile(filename, std::ios::binary)", cpp.INDENT
         )

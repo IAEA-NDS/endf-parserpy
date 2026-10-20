@@ -82,6 +82,92 @@ private:
 };
 
 
+// Fast creation of and access to instances of the Python class EndfFloat
+// (endf_parserpy.utils.math_utils), used by the type caster below.
+// EndfFloat.__init__(value, orig_str) only assigns the instance attributes
+// _value = float(value) and _orig_str = orig_str, and __float__ and
+// get_original_string return them. The fast path creates the instance with
+// tp_new (object.__new__) and assigns the two attributes in the same order,
+// without executing the Python code of __init__; it reads the attributes
+// directly for instances of exactly this class. On first use, the fast
+// creation is checked against a regular instantiation (same attributes in
+// the same order); if they differ, e.g. after a change of the Python
+// class, the regular (slow) path is used.
+
+inline PyObject* cpp_interned_pystr(const char* s) {
+    PyObject* res = PyUnicode_InternFromString(s);
+    if (res == nullptr) throw py::error_already_set();
+    return res;
+}
+
+struct CppEndfFloatPy {
+    py::object cls;
+    PyObject* key_value;     // "_value", never released
+    PyObject* key_orig_str;  // "_orig_str", never released
+    PyObject* empty_args;    // (), never released
+    bool fast_ok;
+
+    static CppEndfFloatPy& get() {
+        // allocated once and intentionally never destroyed, so that no
+        // Python object is released after the interpreter has finalized
+        static CppEndfFloatPy* inst = new CppEndfFloatPy();
+        return *inst;
+    }
+
+    py::object create_fast(double value, const std::string& orig_str) {
+        PyTypeObject* tp = reinterpret_cast<PyTypeObject*>(cls.ptr());
+        py::object obj = py::reinterpret_steal<py::object>(tp->tp_new(tp, empty_args, nullptr));
+        if (! obj) throw py::error_already_set();
+        py::float_ pyval(value);
+        py::str pystr(orig_str);
+        if (PyObject_SetAttr(obj.ptr(), key_value, pyval.ptr()) != 0) throw py::error_already_set();
+        if (PyObject_SetAttr(obj.ptr(), key_orig_str, pystr.ptr()) != 0) throw py::error_already_set();
+        return obj;
+    }
+
+    py::object create(double value, const std::string& orig_str) {
+        if (fast_ok) return create_fast(value, orig_str);
+        return cls(py::float_(value), py::str(orig_str));
+    }
+
+    // value and original string of an instance of exactly the class
+    // EndfFloat whose attributes have the expected types
+    bool read_fast(PyObject* obj, double& value, std::string& orig_str) {
+        if (! fast_ok || Py_TYPE(obj) != reinterpret_cast<PyTypeObject*>(cls.ptr())) return false;
+        py::object v = py::reinterpret_steal<py::object>(PyObject_GetAttr(obj, key_value));
+        if (! v) { PyErr_Clear(); return false; }
+        py::object s = py::reinterpret_steal<py::object>(PyObject_GetAttr(obj, key_orig_str));
+        if (! s) { PyErr_Clear(); return false; }
+        if (! PyFloat_CheckExact(v.ptr()) || ! PyUnicode_CheckExact(s.ptr())) return false;
+        Py_ssize_t len;
+        const char* data = PyUnicode_AsUTF8AndSize(s.ptr(), &len);
+        if (data == nullptr) { PyErr_Clear(); return false; }
+        value = PyFloat_AS_DOUBLE(v.ptr());
+        orig_str.assign(data, static_cast<std::size_t>(len));
+        return true;
+    }
+
+private:
+    CppEndfFloatPy() : fast_ok(false) {
+        cls = py::module::import("endf_parserpy.utils.math_utils").attr("EndfFloat");
+        key_value = cpp_interned_pystr("_value");
+        key_orig_str = cpp_interned_pystr("_orig_str");
+        empty_args = PyTuple_New(0);
+        if (empty_args == nullptr) throw py::error_already_set();
+        // compare the fast creation with a regular instantiation
+        try {
+            py::object ref = cls(py::float_(1.5), py::str(" 1.500000+0"));
+            py::object test = create_fast(1.5, " 1.500000+0");
+            py::object items = py::module::import("builtins").attr("list");
+            fast_ok = items(ref.attr("__dict__").attr("items")()).equal(
+                items(test.attr("__dict__").attr("items")()));
+        } catch (py::error_already_set&) {
+            fast_ok = false;
+        }
+    }
+};
+
+
 namespace PYBIND11_NAMESPACE { namespace detail {
 
     // Establish conversion between Python float and EndfFloatCpp
@@ -90,9 +176,8 @@ namespace PYBIND11_NAMESPACE { namespace detail {
         PYBIND11_TYPE_CASTER(EndfFloatCpp, const_name("EndfFloatCpp"));
 
         bool load(handle src, bool) {
-            static py::object PyEndfFloat = (
-                py::module::import("endf_parserpy.utils.math_utils").attr("EndfFloat")
-            );
+            CppEndfFloatPy& endf_float_py = CppEndfFloatPy::get();
+            const py::object& PyEndfFloat = endf_float_py.cls;
             // case 1: cast Python float to EndfFloatCpp
             if (py::isinstance<py::float_>(src)) {
                 py::float_ tmp = py::cast<py::float_>(src);
@@ -111,6 +196,12 @@ namespace PYBIND11_NAMESPACE { namespace detail {
 
             // case 3: cast Python float to EndfFloatCpp
             else if (py::isinstance(src, PyEndfFloat)) {
+                double fast_value;
+                std::string fast_str;
+                if (endf_float_py.read_fast(src.ptr(), fast_value, fast_str)) {
+                    value = EndfFloatCpp(fast_value, fast_str);
+                    return true;
+                }
 				auto float_method = src.attr("__float__");
 				double float_value = float_method().cast<double>();
 				std::string orig_str = src.attr("get_original_string")().cast<std::string>();
@@ -121,18 +212,12 @@ namespace PYBIND11_NAMESPACE { namespace detail {
         }
 
         static handle cast(const EndfFloatCpp& src, return_value_policy, handle) {
-            static py::object PyEndfFloat = (
-                py::module::import("endf_parserpy.utils.math_utils").attr("EndfFloat")
-            );
             double float_value = static_cast<double>(src);
             std::string orig_str = src.get_original_string();
             if (orig_str.empty()) {
                 return py::float_(static_cast<double>(src)).release();
             } else {
-                py::object endf_float = PyEndfFloat(
-                   py::float_(float_value), py::str(orig_str)
-                );
-                return endf_float.release();
+                return CppEndfFloatPy::get().create(float_value, orig_str).release();
             }
         }
     };

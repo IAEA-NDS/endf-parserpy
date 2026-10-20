@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EndfParserCpp` reads TAB1 and TAB2 records faster: the interpolation table and the pairs of values are read directly into their final containers, which are reserved from the counts in the record and moved instead of copied. The results are identical
 - `EndfParserCpp` parses faster with `preserve_value_strings=True`: Python's cyclic garbage collector is paused while a parse function builds its result, so that it no longer repeatedly traverses the growing result, and its previous state is restored afterwards. The results are identical
 - `EndfParserCpp` reads lines faster: a line is located in the buffer of the input stream and appended as a whole instead of character by character, and the memory of the line is reused for the next line. The results are identical
+- `EndfParserCpp` converts `EndfFloat` objects faster (with `preserve_value_strings=True`): it creates them and reads their value and original string directly instead of calling the Python class and its methods for every value. A check at first use falls back to the previous conversion if the class `EndfFloat` no longer matches. The results are identical
 
 ### Removed
 

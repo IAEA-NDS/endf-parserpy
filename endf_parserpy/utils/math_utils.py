@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2025/03/14
+# Last modified:   2026/10/20
 # License:         MIT
-# Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
@@ -39,6 +39,10 @@ class EndfFloat:
             A string representation that corresponds to the float
             number given as ``value`` argument.
         """
+        # The C++ type caster of EndfFloatCpp (endf_float_cpp.hpp) creates
+        # instances without calling __init__ and reads these two attributes
+        # directly; it checks at first use that its instances agree with
+        # those created here and otherwise falls back to calling the class.
         self._value = float(value)
         self._orig_str = orig_str
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/20
-# Last modified:   2024/10/28
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -86,6 +86,30 @@ class Matrix2d {
       } else {
         return col_start + (i - row_start);
       }
+    }
+
+    // with array_type="numpy" (numpy_ints, numpy_floats, see
+    // cpp_numpy_export_enabled), a rectangular matrix of numbers is a
+    // two-dimensional numpy array of shape (num_rows, num_cols) and a
+    // triangular matrix a list of one-dimensional numpy arrays (the rows)
+    py::object to_pyobj(bool list_mode, bool numpy_ints, bool numpy_floats) {
+      if (! cpp_numpy_export_enabled(data.data(), numpy_ints, numpy_floats)) {
+        return to_pyobj(list_mode || numpy_ints || numpy_floats);
+      }
+      if (! triagonal) {
+        return cpp_numeric_ndarray(data.data(), num_rows, num_cols, true);
+      }
+      py::list ret;
+      int rsidx = get_row_start_index();
+      int rfidx = get_row_last_index();
+      for (int i=rsidx; i <= rfidx; ++i) {
+        int csidx = get_col_start_index(i);
+        int cfidx = get_col_last_index(i);
+        std::size_t len = (cfidx >= csidx) ? cfidx - csidx + 1 : 0;
+        std::size_t offset = (len > 0) ? (i-row_start)*num_cols + (csidx-col_start) : 0;
+        ret.append(cpp_numeric_ndarray(data.data() + offset, len, 0, false));
+      }
+      return ret;
     }
 
     py::object to_pyobj(bool list_mode) {

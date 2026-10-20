@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/25
-# Last modified:   2026/10/20
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -92,6 +92,44 @@ class NestedVector : public std::vector<T> {
         to_pydict(ret, (*this));
         return ret;
       }
+    }
+
+    // with array_type="numpy" (numpy_ints, numpy_floats, see
+    // cpp_numpy_export_enabled), the innermost arrays of numbers are
+    // numpy arrays and the enclosing levels lists
+    py::object to_pyobj(bool list_mode, bool numpy_ints, bool numpy_floats) {
+      if (numpy_ints || numpy_floats) {
+        return to_pyobj_numpy((*this), numpy_ints, numpy_floats);
+      }
+      return to_pyobj(list_mode);
+    }
+
+    template <typename U>
+    py::object to_pyobj_numpy(const NestedVector<NestedVector<U>>& curvec, bool numpy_ints, bool numpy_floats) {
+      py::list ret;
+      for (const auto& elem : curvec) {
+        ret.append(to_pyobj_numpy(elem, numpy_ints, numpy_floats));
+      }
+      return ret;
+    }
+
+    template <typename U>
+    py::object to_pyobj_numpy(const NestedVector<std::vector<U>>& curvec, bool numpy_ints, bool numpy_floats) {
+      py::list ret;
+      for (const auto& elem : curvec) {
+        ret.append(cpp_vector_to_pyobj(elem, numpy_ints, numpy_floats));
+      }
+      return ret;
+    }
+
+    template <typename U>
+    py::object to_pyobj_numpy(const NestedVector<U>& curvec, bool numpy_ints, bool numpy_floats) {
+      if (cpp_numpy_export_enabled(curvec.data(), numpy_ints, numpy_floats)) {
+        return cpp_numeric_ndarray(curvec.data(), curvec.size(), 0, false);
+      }
+      py::list ret;
+      to_pylist(ret, curvec);
+      return ret;
     }
 
     template <typename U>

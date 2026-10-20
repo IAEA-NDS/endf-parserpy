@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2026/10/13
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -54,6 +54,10 @@ def parsefun_header(fun_name):
           int cpp_nr_val;
           int cpp_np_val;
           bool list_mode = parse_opts.array_type != "dict";
+          // array_type="numpy": arrays of numbers are numpy arrays, those
+          // of floats unless their original strings are preserved
+          bool numpy_ints = parse_opts.array_type == "numpy";
+          bool numpy_floats = numpy_ints && ! parse_opts.preserve_value_strings;
         """,
         -8,
     )

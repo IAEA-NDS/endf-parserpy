@@ -208,6 +208,33 @@ namespace PYBIND11_NAMESPACE { namespace detail {
 				value = EndfFloatCpp(float_value, orig_str);
                 return true;
             }
+
+            // case 4: other integers, i.e. objects implementing __index__,
+            // such as numpy integer scalars of any width and signedness
+            if (PyIndex_Check(src.ptr())) {
+                PyObject* int_obj = PyNumber_Index(src.ptr());
+                if (int_obj != nullptr) {
+                    double int_value = PyLong_AsDouble(int_obj);
+                    Py_DECREF(int_obj);
+                    if (! (int_value == -1.0 && PyErr_Occurred())) {
+                        value = EndfFloatCpp(int_value);
+                        return true;
+                    }
+                }
+                PyErr_Clear();
+            }
+
+            // case 5: other floats, i.e. objects implementing __float__,
+            // such as numpy.float32 scalars
+            PyNumberMethods* num_methods = Py_TYPE(src.ptr())->tp_as_number;
+            if (num_methods != nullptr && num_methods->nb_float != nullptr) {
+                double float_value = PyFloat_AsDouble(src.ptr());
+                if (! (float_value == -1.0 && PyErr_Occurred())) {
+                    value = EndfFloatCpp(float_value);
+                    return true;
+                }
+                PyErr_Clear();
+            }
             return false;
         }
 

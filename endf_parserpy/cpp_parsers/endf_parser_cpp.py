@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/10/20
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -150,11 +150,34 @@ class EndfParserCpp(EndfParserBase):
             included at the end of each line. *(writing)*
         array_type : str
             The Python datatype to use for representing arrays read from
-            ENDF-6 files. The two options are ``"dict"`` (default) and
-            ``"list"``. The value ``"list_slow"`` is also accepted and
+            ENDF-6 files. The options are ``"dict"`` (default), ``"list"``
+            and ``"numpy"``. The value ``"list_slow"`` is also accepted and
             equivalent to ``"list"``, for compatibility with the
             :class:`~endf_parserpy.EndfParserPy` class. Any other value
-            raises a :class:`ValueError`. *(parsing)*
+            raises a :class:`ValueError`.
+            With ``"numpy"``, arrays are indexed as with ``"list"``, but
+            arrays of numbers are returned as numpy arrays (the
+            ``numpy`` package must be installed, otherwise an
+            :class:`ImportError` is raised): arrays of integers as
+            ``int64`` arrays and arrays of floats, including the columns of
+            TAB1 records, as ``float64`` arrays. A matrix stored in a
+            rectangular block of a record, e.g. a covariance matrix in
+            MF33 with ``LB=5, LS=0``, is a two-dimensional array; a
+            triangular matrix is a list of one-dimensional arrays (its
+            rows). Arrays of arrays, e.g. one array per incident energy,
+            are lists of numpy arrays, and arrays of other elements, such
+            as sections or strings, are lists as with ``"list"``. If
+            ``preserve_value_strings=True``, arrays of floats are returned
+            as lists, as with ``"list"``, because the original strings
+            cannot be stored in a numpy array; arrays of integers are
+            still numpy arrays. The type of an array thus depends only on
+            the recipe, these two options and the format flags of the
+            record (such as ``LS``), not on the numerical values.
+            When writing with ``"list"`` or ``"numpy"``, numpy arrays (of
+            any integer type for integer fields, of any integer or float
+            type for float fields) and lists can be used interchangeably.
+            ``"numpy"`` is not available in the Python parser.
+            *(parsing, writing)*
         skip_intzero: bool
             For numbers written out in decimal notation, eliminate
             the integer part if zero, e.g. `0.12` becomes `.12` to
@@ -186,7 +209,15 @@ class EndfParserCpp(EndfParserBase):
             :func:`parse` are always parsed in place. The Python parser
             always reads the complete file. *(parsing, C++ only)*
         """
-        _check_array_type(array_type)
+        _check_array_type(array_type, allow_numpy=True)
+        if array_type == "numpy":
+            try:
+                import numpy  # noqa: F401
+            except ImportError as exc:
+                raise ImportError(
+                    "array_type `numpy` requires the numpy package, "
+                    "which could not be imported"
+                ) from exc
         self.read_opts = {
             "ignore_number_mismatch": ignore_number_mismatch,
             "ignore_zero_mismatch": ignore_zero_mismatch,

@@ -43,6 +43,20 @@ inline py::object index_shifter_get_item(const py::dict& obj, const py::str& key
     return obj[key];
 }
 
+// In list mode, an array may also be given as an object other than a list
+// that supports the buffer protocol, in particular a numpy array as
+// produced by parsing with array_type="numpy". Such an object is indexed
+// directly. Converting it to a list with py::cast<py::list>, as done for
+// other objects, gives the same elements, but converts the whole array on
+// every access of an element.
+inline bool index_shifter_is_buffer_array(const py::object& obj) {
+    return ! PyList_Check(obj.ptr()) && PyObject_CheckBuffer(obj.ptr());
+}
+
+inline py::object index_shifter_get_item(const py::object& obj, int key) {
+    return obj[py::cast(key)];
+}
+
 // equivalent of py::cast<V>(obj) without overhead if obj is already of type V
 template <typename V>
 inline V index_shifter_as(const py::object& obj);
@@ -79,6 +93,10 @@ private:
         return key < obj.size();
     }
 
+    bool key_exists(const py::object& obj, int key) {
+        return key < py::len(obj);
+    }
+
     bool key_exists(const py::dict& obj, int key) {
         return obj.contains(py::cast(key));
     }
@@ -93,6 +111,32 @@ private:
 
     void insert_obj(py::dict pyobj, int key, py::object elem) {
         pyobj[py::cast(key)] = elem;
+    }
+
+    void insert_obj(py::object pyobj, int key, py::object elem) {
+        if (key == py::len(pyobj)) {
+            pyobj.attr("append")(elem);
+        } else {
+            pyobj[py::cast(key)] = elem;
+        }
+    }
+
+    // empty container for a missing element of pyobj
+    static py::object new_container(const py::list&) { return py::list(); }
+    static py::object new_container(const py::dict&) { return py::dict(); }
+    static py::object new_container(const py::object&) { return py::list(); }
+
+    py::object setdefault_any(
+        const py::object& pyobj, const std::vector<int>& recipe_indices, const py::object& defval, int i
+    ) {
+        if (list_mode) {
+            if (index_shifter_is_buffer_array(pyobj)) {
+                return setdefault_i(pyobj, recipe_indices, defval, i);
+            }
+            return setdefault_i(index_shifter_as<py::list>(pyobj), recipe_indices, defval, i);
+        } else {
+            return setdefault_i(index_shifter_as<py::dict>(pyobj), recipe_indices, defval, i);
+        }
     }
 
     template <typename V>
@@ -115,10 +159,10 @@ private:
         if (i+1 < recipe_indices.size()) {
             auto& next_level = get_next_level(index_value);
             if (has_defval && ! key_exists(pyobj, py_index_value)) {
-                insert_obj(pyobj, py_index_value, V());
+                insert_obj(pyobj, py_index_value, new_container(pyobj));
             }
-            return next_level.setdefault_i(
-                index_shifter_as<V>(index_shifter_get_item(pyobj, py_index_value)),
+            return next_level.setdefault_any(
+                index_shifter_get_item(pyobj, py_index_value),
                 recipe_indices, defval, i+1
             );
         } else {
@@ -137,11 +181,7 @@ public:
         : start_index(0), accessed(false), list_mode(list_mode) {}
 
     py::object setdefault(const py::object& pyobj, const std::vector<int>& recipe_indices, const py::object& defval) {
-        if (list_mode) {
-            return setdefault_i(index_shifter_as<py::list>(pyobj), recipe_indices, defval, 0);
-        } else {
-            return setdefault_i(index_shifter_as<py::dict>(pyobj), recipe_indices, defval, 0);
-        }
+        return setdefault_any(pyobj, recipe_indices, defval, 0);
     }
 
     py::object get_value(const py::object& pyobj, const std::vector<int>& recipe_indices) {

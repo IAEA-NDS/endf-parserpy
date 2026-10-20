@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/07/29
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -47,14 +47,21 @@ def _record_init_kwargs(init):
     return wrapper
 
 
-def _check_array_type(array_type):
+def _check_array_type(array_type, allow_numpy=False):
     """Reject unknown ``array_type`` values.
 
     The Python and C++ parsers interpret unrecognized values in
     opposite ways (falling back to dict and list mode, respectively),
-    so an invalid value must not pass silently.
+    so an invalid value must not pass silently. The value ``"numpy"``
+    is only accepted if ``allow_numpy`` is true (C++ parser).
     """
     valid_array_types = ("dict", "list", "list_slow")
+    if allow_numpy:
+        valid_array_types += ("numpy",)
+    elif array_type == "numpy":
+        raise ValueError(
+            "array_type `numpy` is only supported by the C++ parser (EndfParserCpp)"
+        )
     if array_type not in valid_array_types:
         raise ValueError(
             f"invalid array_type `{array_type}`, " f"must be one of {valid_array_types}"

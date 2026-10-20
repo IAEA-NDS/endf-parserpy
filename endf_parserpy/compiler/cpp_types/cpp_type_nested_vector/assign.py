@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/10/28
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -90,7 +90,7 @@ class Assign:
     def store_var_in_endf_dict2(vartok, vardict):
         src_varname = Query.get_cpp_varname(vartok, vardict)
         assigncode = cpp.statement(
-            f'cpp_current_dict["{vartok}"] = {src_varname}.to_pyobj(list_mode)'
+            f'cpp_current_dict["{vartok}"] = {src_varname}.to_pyobj(list_mode, numpy_ints, numpy_floats)'
         )
         code = cpp.pureif(Query.did_read_var(vartok, vardict), assigncode)
         return code

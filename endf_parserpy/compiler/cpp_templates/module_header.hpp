@@ -4,6 +4,7 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h> // Necessary for STL containers like std::map
+#include <pybind11/numpy.h> // numpy arrays for array_type="numpy", imported on first use
 
 #include <stdexcept>
 #include <iostream>
@@ -21,6 +22,7 @@
 #include <cmath>      // for std::isfinite
 #include <cerrno>     // for errno (ERANGE)
 #include <climits>    // for INT_MIN / INT_MAX
+#include <cstdint>    // for std::int64_t
 #include <limits>     // for std::numeric_limits
 
 // When Python merges the various
@@ -219,6 +221,86 @@ struct Tab2Body {
   std::vector<int> INT;
   std::vector<int> NBT;
 };
+
+
+// Export of parsed arrays as numpy arrays (array_type="numpy").
+// Arrays of floats (EndfFloatCpp) become float64 arrays if numpy_floats is
+// true, which is not the case with preserve_value_strings=True, as the
+// original strings cannot be stored in a numpy array. Arrays of integers
+// become int64 arrays if numpy_ints is true. Arrays of all other element
+// types are exported as lists, as with array_type="list".
+
+inline bool cpp_numpy_export_enabled(const EndfFloatCpp*, bool numpy_ints, bool numpy_floats) {
+  return numpy_floats;
+}
+
+inline bool cpp_numpy_export_enabled(const int*, bool numpy_ints, bool numpy_floats) {
+  return numpy_ints;
+}
+
+template<typename T>
+inline bool cpp_numpy_export_enabled(const T*, bool numpy_ints, bool numpy_floats) {
+  return false;
+}
+
+// New uninitialized C-contiguous numpy array with elements of type T,
+// created with the numpy C API (as in the constructor of py::array_t,
+// without its intermediate containers); data receives the address of
+// its elements
+template<typename T>
+inline py::object cpp_new_ndarray(int ndim, py::ssize_t* dims, T*& data) {
+  static const int typenum = py::dtype::of<T>().num();
+  py::detail::npy_api& api = py::detail::npy_api::get();
+  PyObject* descr = api.PyArray_DescrFromType_(typenum);
+  if (descr == nullptr) throw py::error_already_set();
+  // PyArray_NewFromDescr steals the reference to descr
+  PyObject* arr = api.PyArray_NewFromDescr_(
+    api.PyArray_Type_, descr, ndim, reinterpret_cast<Py_intptr_t*>(dims),
+    nullptr, nullptr, 0, nullptr
+  );
+  if (arr == nullptr) throw py::error_already_set();
+  data = reinterpret_cast<T*>(py::detail::array_proxy(arr)->data);
+  return py::reinterpret_steal<py::object>(arr);
+}
+
+// numpy array of the given shape (one or two dimensions) filled with the
+// row-major elements starting at src, converted in a single loop
+inline py::object cpp_numeric_ndarray(const EndfFloatCpp* src, std::size_t num_rows, std::size_t num_cols, bool two_dim) {
+  py::ssize_t dims[2] = {static_cast<py::ssize_t>(num_rows), static_cast<py::ssize_t>(num_cols)};
+  double* dst;
+  py::object arr = cpp_new_ndarray<double>(two_dim ? 2 : 1, dims, dst);
+  std::size_t n = two_dim ? num_rows * num_cols : num_rows;
+  for (std::size_t i = 0; i < n; i++) {
+    dst[i] = static_cast<double>(src[i]);
+  }
+  return arr;
+}
+
+inline py::object cpp_numeric_ndarray(const int* src, std::size_t num_rows, std::size_t num_cols, bool two_dim) {
+  py::ssize_t dims[2] = {static_cast<py::ssize_t>(num_rows), static_cast<py::ssize_t>(num_cols)};
+  std::int64_t* dst;
+  py::object arr = cpp_new_ndarray<std::int64_t>(two_dim ? 2 : 1, dims, dst);
+  std::size_t n = two_dim ? num_rows * num_cols : num_rows;
+  for (std::size_t i = 0; i < n; i++) {
+    dst[i] = static_cast<std::int64_t>(src[i]);
+  }
+  return arr;
+}
+
+template<typename T>
+inline py::object cpp_numeric_ndarray(const T*, std::size_t, std::size_t, bool) {
+  // not reached: cpp_numpy_export_enabled is false for other element types
+  throw std::logic_error("no numpy export for this element type");
+}
+
+// std::vector holding a TAB1/TAB2 table column or a list of integers
+template<typename T>
+inline py::object cpp_vector_to_pyobj(const std::vector<T>& vec, bool numpy_ints, bool numpy_floats) {
+  if (cpp_numpy_export_enabled(vec.data(), numpy_ints, numpy_floats)) {
+    return cpp_numeric_ndarray(vec.data(), vec.size(), 0, false);
+  }
+  return py::cast(vec);
+}
 
 
 inline bool seq_contains(py::sequence seq, py::object value) {

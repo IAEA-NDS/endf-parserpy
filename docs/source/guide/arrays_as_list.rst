@@ -69,3 +69,54 @@ If you are using the ``array_type="list"`` option, be aware of the following:
   ``endf_dict = EndfDict(orig_endf_dict, array_type="list")``.
   If you forget this extra argument, intuitive assignments, such as
   ``endf_dict['1/451/MOD/3'] = 4`` won't work and will yield an error message.
+
+
+.. _arrays_as_numpy_sec:
+
+Arrays as numpy arrays
+----------------------
+
+The :class:`~endf_parserpy.EndfParserCpp` class additionally
+supports the option ``array_type="numpy"``, which requires the
+`numpy <https://numpy.org>`_ package. Arrays are then indexed in the
+same way as with ``array_type="list"``, i.e., zero-based, but arrays
+of numbers are returned as numpy arrays, which are created in a single
+step instead of element by element and are therefore faster to
+produce for large arrays:
+
+.. code:: python
+
+   from endf_parserpy import EndfParserCpp
+   parser = EndfParserCpp(array_type="numpy")
+   endf_dict = parser.parsefile("n_2925_29-Cu-63.endf")
+   xstable = endf_dict[3][1]["xstable"]
+   xstable["xs"]   # numpy array of dtype float64
+   xstable["NBT"]  # numpy array of dtype int64
+
+The type of each array depends only on the recipe, the parser options
+and the format flags of the record that holds it (such as ``LS`` below),
+never on the numerical values:
+
+- Arrays of floats, including the columns of TAB1 records, are
+  ``float64`` arrays, and arrays of integers, such as ``NBT`` and
+  ``INT``, are ``int64`` arrays.
+- A matrix that occupies a rectangular block of a record, e.g.
+  the covariance matrix ``F`` of an MF33 subsection with ``LB=5`` and
+  ``LS=0``, is a two-dimensional array. A triangular matrix, e.g. ``F``
+  with ``LB=5`` and ``LS=1``, is a list of one-dimensional arrays, one
+  per row.
+- Arrays of arrays, e.g. the Legendre coefficients for each incident
+  energy, are lists of numpy arrays. Arrays of sections or strings are
+  lists, as with ``array_type="list"``.
+- With ``preserve_value_strings=True``, arrays of floats remain lists
+  (of :class:`~endf_parserpy.EndfFloat` objects), as numpy
+  arrays cannot store the original strings; arrays of integers are still
+  numpy arrays.
+
+Data parsed with ``array_type="numpy"`` can be written with a parser
+created with ``array_type="numpy"`` or ``array_type="list"``, which give
+the same output for the same data. For writing, numpy arrays and lists
+can be used interchangeably; numpy arrays of any integer type are
+accepted for integer fields, and numpy arrays of any integer or float type
+for float fields. The Python parser :class:`~endf_parserpy.EndfParserPy`
+does not support this option.

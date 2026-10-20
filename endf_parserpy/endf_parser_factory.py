@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/10/20
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -111,6 +111,9 @@ class EndfParserFactory:
             on the Python parser otherwise. If ``cpp`` or ``python``,
             selects C++ or Python parser, respectively, and fails
             if requested parser type cannot be selected.
+            With ``array_type="numpy"``, which only the C++ parser
+            supports, ``fastest`` selects the C++ parser and fails
+            if it is not available, and ``python`` fails.
         warn_slow : bool
             If ``True``, issues a :exc:`UserWarning` if user requested
             fastest parser but C++ parser is not available or incompatible
@@ -155,6 +158,18 @@ class EndfParserFactory:
             epf.cpp_compatible_args(parser_args, do_raise=True)
             return epf.get_cpp_parser(parser_args)
 
+        if select == "fastest" and array_type == "numpy":
+            # no fallback on the Python parser, which would return
+            # the arrays in another form
+            epf.cpp_compatible_args(parser_args, do_raise=True)
+            try:
+                return epf.get_cpp_parser(parser_args)
+            except ImportError as exc:
+                raise ImportError(
+                    "array_type `numpy` requires the C++ parser, which "
+                    f"could not be created: {exc}"
+                ) from exc
+
         if select == "fastest":
             if not epf.cpp_compatible_args(
                 parser_args, do_raise=False, warn_slow=warn_slow
@@ -180,6 +195,12 @@ class EndfParserFactory:
     def python_compatible_args(parser_args, do_raise=False):
         return _check_param(
             "Python", "validate_control_records", [False], parser_args, do_raise
+        ) and _check_param(
+            "Python",
+            "array_type",
+            ["dict", "list", "list_slow"],
+            parser_args,
+            do_raise,
         )
 
     @staticmethod

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/10
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -252,7 +252,9 @@ class EndfParserPy(EndfParserBase):
             ``"list"``. The additional option ``"list_slow"`` yields the
             same result as ``"list"`` via a slower implementation and
             exists for debugging purposes. Any other value raises a
-            :class:`ValueError`. *(parsing)*
+            :class:`ValueError`, also ``"numpy"``, which is only
+            available in :class:`~endf_parserpy.EndfParserCpp`.
+            *(parsing)*
         explain_missing_variable : bool
             If the :func:`write` or :func:`writefile` method
             fail because a variable is missing in the dictionary,

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2026/05/17
+# Last modified:   2026/10/20
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -35,7 +35,7 @@ def get_current_template():
 
 
 def read_raw_line(linevar):
-    code = cpp.statement(f"{linevar} = cpp_read_raw_line(cont)")
+    code = cpp.statement(f"cpp_read_raw_line({linevar}, cont)")
     return code
 
 
@@ -63,7 +63,7 @@ def is_blank_line():
 
 def read_line(linevar, mat, mf, mt, parse_opts):
     code = cpp.statement(
-        f"{linevar} = cpp_read_line(cont, {mat}, {mf}, {mt}, {parse_opts})"
+        f"cpp_read_line({linevar}, cont, {mat}, {mf}, {mt}, {parse_opts})"
     )
     return code
 

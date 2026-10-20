@@ -705,10 +705,72 @@ inline int cpp_read_mt_number(const char *str) {
 
 
 inline bool cpp_is_blank_line(const std::string& line) {
-  for (int i=0; i < line.size(); i++) {
-    if (line[i] != ' ') return false;
+  // scanning from the end exits early for regular lines, which end
+  // with the MAT/MF/MT numbers (and possibly a line number)
+  for (std::size_t i = line.size(); i > 0; i--) {
+    if (line[i-1] != ' ') return false;
   }
   return true;
+}
+
+
+// Access to the get area of a stream buffer, i.e. to protected members
+// of std::streambuf, via pointers to members (see cpp_getline).
+struct cpp_streambuf_access : public std::streambuf {
+  static char* get_gptr(std::streambuf* sb) {
+    return (sb->*(&cpp_streambuf_access::gptr))();
+  }
+  static char* get_egptr(std::streambuf* sb) {
+    return (sb->*(&cpp_streambuf_access::egptr))();
+  }
+  static void advance(std::streambuf* sb, int n) {
+    (sb->*(&cpp_streambuf_access::gbump))(n);
+  }
+};
+
+
+// Equivalent of std::getline(is, line) with '\n' as delimiter, including
+// the state flags set on the stream. Instead of extracting the line
+// character by character, the get area of the stream buffer is searched
+// for the delimiter and whole chunks are appended to the line.
+inline std::istream& cpp_getline(std::istream& is, std::string& line) {
+  typedef std::char_traits<char> traits;
+  std::istream::sentry sen(is, true);
+  if (! sen) return is;
+  line.clear();
+  std::streambuf* sb = is.rdbuf();
+  bool extracted = false;
+  while (true) {
+    char* p = cpp_streambuf_access::get_gptr(sb);
+    char* e = cpp_streambuf_access::get_egptr(sb);
+    if (p == e) {
+      traits::int_type c = sb->sgetc();
+      if (traits::eq_int_type(c, traits::eof())) {
+        is.setstate(extracted ? std::ios_base::eofbit
+                              : std::ios_base::eofbit | std::ios_base::failbit);
+        return is;
+      }
+      if (cpp_streambuf_access::get_gptr(sb) == cpp_streambuf_access::get_egptr(sb)) {
+        // stream buffer without get area: extract a single character
+        sb->sbumpc();
+        extracted = true;
+        if (traits::to_char_type(c) == '\n') return is;
+        line.push_back(traits::to_char_type(c));
+      }
+      continue;
+    }
+    std::ptrdiff_t n = e - p;
+    if (n > INT_MAX) n = INT_MAX;  // gbump takes an int
+    char* nl = static_cast<char*>(std::memchr(p, '\n', n));
+    if (nl != nullptr) {
+      line.append(p, nl - p);
+      cpp_streambuf_access::advance(sb, static_cast<int>(nl - p + 1));
+      return is;
+    }
+    line.append(p, n);
+    cpp_streambuf_access::advance(sb, static_cast<int>(n));
+    extracted = true;
+  }
 }
 
 
@@ -807,21 +869,29 @@ inline std::string cpp_read_stream_content(std::istream& in) {
 }
 
 
+// The functions reading a line into an existing string reuse its
+// allocated memory; the line is cleared first so that a failed read
+// leaves an empty line.
+inline void cpp_read_raw_line(std::string& line, std::istream& cont) {
+  line.clear();
+  cpp_getline(cont, line);
+}
+
+
 inline std::string cpp_read_raw_line(std::istream& cont) {
   std::string line;
-  std::getline(cont, line);
+  cpp_read_raw_line(line, cont);
   return line;
 }
 
 
-inline std::string cpp_read_line(
-  std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts
+inline void cpp_read_line(
+  std::string& line, std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts
 ) {
-  std::string line;
-  std::getline(cont, line);
+  line.clear();
+  cpp_getline(cont, line);
   if (parse_opts.ignore_blank_lines) {
-    cpp_is_blank_line(line);
-    while (cpp_is_blank_line(line) && std::getline(cont, line)) {
+    while (cpp_is_blank_line(line) && cpp_getline(cont, line)) {
       // skip blank lines
     }
   }
@@ -842,6 +912,14 @@ inline std::string cpp_read_line(
     if (curmt != mt)
       throw_mismatch_error("MT", mt, curmt, line, "");
   }
+}
+
+
+inline std::string cpp_read_line(
+  std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts
+) {
+  std::string line;
+  cpp_read_line(line, cont, mat, mf, mt, parse_opts);
   return line;
 }
 
@@ -930,12 +1008,13 @@ inline void cpp_read_pairs(
   a.reserve(cpp_reserve_size(n));
   b.reserve(cpp_reserve_size(n));
   int j = 0;
-  std::string line = cpp_read_line(cont, mat, mf, mt, parse_opts);
+  std::string line;
+  cpp_read_line(line, cont, mat, mf, mt, parse_opts);
   for (int i=0; i < numel; i += 2) {
     a.push_back(cpp_read_field<T>(line.c_str(), j++, parse_opts));
     b.push_back(cpp_read_field<T>(line.c_str(), j++, parse_opts));
     if (j > 5 && i+2 < numel) {
-      line = cpp_read_line(cont, mat, mf, mt, parse_opts);
+      cpp_read_line(line, cont, mat, mf, mt, parse_opts);
       j = 0;
     }
   }
@@ -953,11 +1032,12 @@ inline std::vector<T> cpp_read_vec(
   if (numel <= 0) return res;
   res.reserve(cpp_reserve_size(numel));
   int j = 0;
-  std::string line = cpp_read_line(cont, mat, mf, mt, parse_opts);
+  std::string line;
+  cpp_read_line(line, cont, mat, mf, mt, parse_opts);
   for (int i=0; i < numel; i++) {
     res.push_back(cpp_read_field<T>(line.c_str(), j++, parse_opts));
     if (j > 5 && i+1 < numel) {
-      line = cpp_read_line(cont, mat, mf, mt, parse_opts);
+      cpp_read_line(line, cont, mat, mf, mt, parse_opts);
       j = 0;
     }
   }
@@ -1065,7 +1145,7 @@ inline std::vector<std::string> read_section_verbatim(
   int curmt;
   size_t lastpos;
   while (! cont.eof()) {
-    line = cpp_read_line(cont, mat, mf, mt, parse_opts);
+    cpp_read_line(line, cont, mat, mf, mt, parse_opts);
     // remove trailing \r that we may
     // get from reading win-style line endings
     lastpos = line.size() - 1;

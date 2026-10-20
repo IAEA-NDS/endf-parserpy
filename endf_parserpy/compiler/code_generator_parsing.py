@@ -313,7 +313,7 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("bool after_mend = false")
     body += cpp.statement("bool after_tend = false")
     body += cpp.statement("curpos = cont.tellg()")
-    body += cpp.line("while (std::getline(cont, cpp_line)) {")
+    body += cpp.line("while (cpp_getline(cont, cpp_line)) {")
 
     # blank line treatment
     body += cpp.indent_code(

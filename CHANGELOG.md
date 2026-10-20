@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EndfParserCpp` parses files faster, in particular files with many short sections such as decay data: `parsefile` reads the complete file into memory and parses it from there, so that repositioning in the data (at the start of each section and in lookaheads) only moves a pointer instead of discarding and re-reading the buffer of the file stream. This needs additional memory of the size of the file during parsing; the new option `load_file_into_memory=False` of `EndfParserCpp` restores reading through the file stream. `parse` now parses a string in place instead of copying it into a string stream. The results are identical
 - `EndfParserCpp` reads TAB1 and TAB2 records faster: the interpolation table and the pairs of values are read directly into their final containers, which are reserved from the counts in the record and moved instead of copied. The results are identical
 - `EndfParserCpp` parses faster with `preserve_value_strings=True`: Python's cyclic garbage collector is paused while a parse function builds its result, so that it no longer repeatedly traverses the growing result, and its previous state is restored afterwards. The results are identical
+- `EndfParserCpp` reads lines faster: a line is located in the buffer of the input stream and appended as a whole instead of character by character, and the memory of the line is reused for the next line. The results are identical
 
 ### Removed
 

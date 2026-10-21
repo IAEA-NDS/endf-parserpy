@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/07/04
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -40,6 +40,16 @@ def read_ctrl(line, nofail=False, read_opts=None):
             mf = 0
             mt = 0
     else:
+        # int() ignores surrounding whitespace; for anything else
+        # (e.g. blank fields) the general case below applies
+        try:
+            return {
+                "MAT": int(line[ofs : ofs + 4]),
+                "MF": int(line[ofs + 4 : ofs + 6]),
+                "MT": int(line[ofs + 6 : ofs + 9]),
+            }
+        except ValueError:
+            pass
         # blank fields are interpreted as zero
         matstr = line[ofs : ofs + 4].strip()
         mfstr = line[ofs + 4 : ofs + 6].strip()
@@ -444,16 +454,27 @@ def add_linenumbers_to_section(lines, write_opts=None):
     width = write_opts.get("width", 11)
     mfdict = read_ctrl(lines[0], read_opts={"width": width})
     linenum_field_start = width * 6 + 9  # mat + mf + mt field width = 9
-    lines = [t[:linenum_field_start] for t in lines]
     if not write_opts["include_linenum"]:
-        return lines
+        return [t[:linenum_field_start] for t in lines]
     ofs = 1 if mfdict["MF"] != 0 else 0
     linenum_width = 5
     linenum_max = 10**linenum_width - 1
-    lines = [
-        l + str(i % linenum_max + ofs).rjust(linenum_width) for i, l in enumerate(lines)
+    numstrs = _get_linenum_strings(min(len(lines), linenum_max) + ofs)
+    return [
+        t[:linenum_field_start] + numstrs[i % linenum_max + ofs]
+        for i, t in enumerate(lines)
     ]
-    return lines
+
+
+# right-justified line numbers, numstrs[i] == str(i).rjust(5)
+_linenum_strings = []
+
+
+def _get_linenum_strings(n):
+    numstrs = _linenum_strings
+    if len(numstrs) < n:
+        numstrs.extend(str(i).rjust(5) for i in range(len(numstrs), n))
+    return numstrs
 
 
 def split_sections(lines, read_opts=None):
@@ -506,6 +527,11 @@ def split_sections(lines, read_opts=None):
     last_mat = None
     last_mf = None
     last_mt = None
+    # the list of lines of the MF/MT section of the previous regular record
+    regular_sec = None
+    regular_mf = None
+    regular_mt = None
+    ctrl_ofs = 6 * read_opts.get("width", 11)
     while ofs < len(lines) - 1:
         ofs += 1
         line = lines[ofs]
@@ -521,10 +547,16 @@ def split_sections(lines, read_opts=None):
                 "Already encountered Tape End (TEND) record. "
                 + "Nothing else is allowed to follow afterwards."
             )
-        d = read_ctrl(line, read_opts=read_opts)
-        mat = d["MAT"]
-        mf = d["MF"]
-        mt = d["MT"]
+        # same as read_ctrl (see there), without creating a dictionary
+        try:
+            mat = int(line[ctrl_ofs : ctrl_ofs + 4])
+            mf = int(line[ctrl_ofs + 4 : ctrl_ofs + 6])
+            mt = int(line[ctrl_ofs + 6 : ctrl_ofs + 9])
+        except ValueError:
+            d = read_ctrl(line, read_opts=read_opts)
+            mat = d["MAT"]
+            mf = d["MF"]
+            mt = d["MT"]
         is_regular_record = mat != 0 and mf != 0 and mt != 0
         # consistency checks for regular records
         if is_regular_record and not ignore_send_records:
@@ -543,7 +575,11 @@ def split_sections(lines, read_opts=None):
 
         # dealing with regular records
         if is_regular_record:
-            cursec = mfdic.setdefault(mf, {}).setdefault(mt, [])
+            if mf != regular_mf or mt != regular_mt or regular_sec is None:
+                regular_sec = mfdic.setdefault(mf, {}).setdefault(mt, [])
+                regular_mf = mf
+                regular_mt = mt
+            cursec = regular_sec
             cursec.append(line)
             sec_level = 3
             last_mat = mat

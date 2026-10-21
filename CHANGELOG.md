@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EndfParserPy` accesses values and arrays with fewer checks, in particular when writing with `check_arrays=True`. Results and array checks are unchanged
 - `EndfParserPy` converts and formats numbers faster: plain number fields are converted directly, and float formatting uses fewer string operations. Values and written strings are identical
 - `EndfParserPy` resolves array indices given by loop variables, control record specifications and lookahead wrappers with shortcuts. Results are identical
+- `EndfParserPy` splits files into sections and numbers lines faster, which reduces the fixed cost of every parse, also with `include`/`exclude`. Results are identical
 
 ### Removed
 

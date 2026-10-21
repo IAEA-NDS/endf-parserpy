@@ -3,12 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/05/29
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+import logging
 from lark.lexer import Token
 from endf_parserpy.utils.tree_utils import is_tree, get_name, get_child, get_child_value
 from .logging_utils import write_info
@@ -401,7 +402,8 @@ def map_list_dic(
         else:
             return datadic
 
-    write_info(logger, f"Entering list body (lookahead={in_lookahead(loop_vars)})")
+    if logger.isEnabledFor(logging.INFO):
+        write_info(logger, f"Entering list body (lookahead={in_lookahead(loop_vars)})")
 
     # enter subsection if demanded
     list_name_node = get_child(list_line_node, "list_name", nofail=True)

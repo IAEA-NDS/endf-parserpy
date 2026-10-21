@@ -471,7 +471,8 @@ class EndfParserPy(EndfParserBase):
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
-            write_info(self.logger, "Reading a TEXT record", self.ofs)
+            if self.logger.isEnabledFor(logging.INFO):
+                write_info(self.logger, "Reading a TEXT record", self.ofs)
             text_dic, self.ofs = read_text(
                 self.lines, self.ofs, with_ctrl=True, read_opts=self.read_opts
             )
@@ -513,7 +514,8 @@ class EndfParserPy(EndfParserBase):
         if self.rwmode == "read":
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
-            write_info(self.logger, "Reading a HEAD record", self.ofs)
+            if self.logger.isEnabledFor(logging.INFO):
+                write_info(self.logger, "Reading a HEAD record", self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_head(
                 self.lines,
@@ -522,9 +524,12 @@ class EndfParserPy(EndfParserBase):
                 read_opts=self.read_opts,
             )
             cont_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
-            write_info(
-                self.logger, "Content of the HEAD record: " + str(cont_dic), self.ofs
-            )
+            if self.logger.isEnabledFor(logging.INFO):
+                write_info(
+                    self.logger,
+                    "Content of the HEAD record: " + str(cont_dic),
+                    self.ofs,
+                )
             map_head_dic(
                 tree,
                 cont_dic,
@@ -553,7 +558,8 @@ class EndfParserPy(EndfParserBase):
         if self.rwmode == "read":
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
-            write_info(self.logger, "Reading a CONT record", self.ofs)
+            if self.logger.isEnabledFor(logging.INFO):
+                write_info(self.logger, "Reading a CONT record", self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_cont(
                 self.lines,
@@ -561,7 +567,8 @@ class EndfParserPy(EndfParserBase):
                 read_opts=self.read_opts,
             )
             cont_dic.update(self.logbuffer.get_last_entry(key_prefix="__"))
-            write_info(self.logger, "Content of the CONT record: " + str(cont_dic))
+            if self.logger.isEnabledFor(logging.INFO):
+                write_info(self.logger, "Content of the CONT record: " + str(cont_dic))
             map_cont_dic(
                 tree,
                 cont_dic,
@@ -669,7 +676,8 @@ class EndfParserPy(EndfParserBase):
         if self.rwmode == "read":
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
-            write_info(self.logger, "Reading a TAB1 record", self.ofs)
+            if self.logger.isEnabledFor(logging.INFO):
+                write_info(self.logger, "Reading a TAB1 record", self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab1_dic, self.ofs = read_tab1(
                 self.lines,
@@ -706,7 +714,8 @@ class EndfParserPy(EndfParserBase):
         if self.rwmode == "read":
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
-            write_info(self.logger, "Reading a TAB2 record", self.ofs)
+            if self.logger.isEnabledFor(logging.INFO):
+                write_info(self.logger, "Reading a TAB2 record", self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab2_dic, self.ofs = read_tab2(
                 self.lines,
@@ -742,7 +751,8 @@ class EndfParserPy(EndfParserBase):
         if self.rwmode == "read":
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
-            write_info(self.logger, "Reading a LIST record", self.ofs)
+            if self.logger.isEnabledFor(logging.INFO):
+                write_info(self.logger, "Reading a LIST record", self.ofs)
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             list_dic, self.ofs = read_list(
                 self.lines,
@@ -969,10 +979,12 @@ class EndfParserPy(EndfParserBase):
         self.variable_descriptions = EndfDict()
         mfmt_dic = split_sections(lines, read_opts=self.read_opts)
         for mf in mfmt_dic:
-            write_info(self.logger, f"Parsing section MF{mf}")
+            if self.logger.isEnabledFor(logging.INFO):
+                write_info(self.logger, f"Parsing section MF{mf}")
             for mt in mfmt_dic[mf]:
                 cur_ctrl = read_ctrl(mfmt_dic[mf][mt][0], read_opts=self.read_opts)
-                write_info(self.logger, f"Parsing subsection MF/MT {mf}/{mt}")
+                if self.logger.isEnabledFor(logging.INFO):
+                    write_info(self.logger, f"Parsing subsection MF/MT {mf}/{mt}")
                 curlines = mfmt_dic[mf][mt]
                 cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
                 cur_parsefun = get_responsible_recipe_parsefun(

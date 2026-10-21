@@ -3,12 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/05/25
-# Last modified:   2025/05/29
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+import logging
 from collections.abc import (
     MutableMapping,
     MutableSequence,
@@ -51,7 +52,10 @@ def perform_lookahead(
     if_head = get_child(tree, "if_head")
     if_body = get_child(tree, "if_body")
     orig_parser_state = get_parser_state()
-    write_info(logger, "Start lookahead for if head " + reconstruct_tree_str(if_head))
+    if logger.isEnabledFor(logging.INFO):
+        write_info(
+            logger, "Start lookahead for if head " + reconstruct_tree_str(if_head)
+        )
     lookahead_option = get_child(tree, "lookahead_option", nofail=True)
     lookahead_expr = get_child(lookahead_option, "expr")
     lookahead = eval_expr_without_unknown_var(

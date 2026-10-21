@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2026/10/13
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -184,13 +184,14 @@ def map_recorddic_to_datadic(
                 )
 
     # Logging info is only produced the first time we encounter a variable
-    tmp = tuple(v for v in varnames if v is not None)
-    if not should_skip_logging_info(tmp, datadic):
-        varvals = tuple(abbreviate_valstr(datadic[v]) for v in tmp)
-        logger.info(
-            "Variable names in this record: "
-            + ", ".join([f"{v}: {vv}" for v, vv in zip(tmp, varvals)])
-        )
+    if logger.isEnabledFor(logging.INFO):
+        tmp = tuple(v for v in varnames if v is not None)
+        if not should_skip_logging_info(tmp, datadic):
+            varvals = tuple(abbreviate_valstr(datadic[v]) for v in tmp)
+            logger.info(
+                "Variable names in this record: "
+                + ", ".join([f"{v}: {vv}" for v, vv in zip(tmp, varvals)])
+            )
 
     if found_unbound:
         raise SeveralUnboundVariablesError(

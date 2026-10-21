@@ -3,13 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/13
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 import traceback
+import logging
 from endf_parserpy.utils.tree_utils import (
     get_child,
     get_child_value,
@@ -124,7 +125,8 @@ def open_section(
     # provide a pointer so that functions
     # can look for variable names in the outer scope
     datadic["__up"] = curdatadic
-    write_info(logger, f"Open section {varname}[" + ",".join(idcsstr_list) + "]")
+    if logger.isEnabledFor(logging.INFO):
+        write_info(logger, f"Open section {varname}[" + ",".join(idcsstr_list) + "]")
     if path is None:
         return datadic
     else:
@@ -133,7 +135,8 @@ def open_section(
 
 def close_section(extvarname, datadic, logger=None):
     varname = get_varname(extvarname)
-    write_info(logger, f"Close section {varname}")
+    if logger.isEnabledFor(logging.INFO):
+        write_info(logger, f"Close section {varname}")
     curdatadic = datadic
     datadic = datadic["__up"]
     del curdatadic["__up"]
@@ -171,12 +174,13 @@ def cycle_for_loop(
         raise LoopVariableError(
             f"The loop variable {varname} is already in use for another loop"
         )
-    write_info(
-        logger,
-        f"Enter for loop (type {loop_name}) "
-        + reconstruct_tree_str(for_head)
-        + f" (for_start: {start} and for_stop {stop})",
-    )
+    if logger.isEnabledFor(logging.INFO):
+        write_info(
+            logger,
+            f"Enter for loop (type {loop_name}) "
+            + reconstruct_tree_str(for_head)
+            + f" (for_start: {start} and for_stop {stop})",
+        )
     for i in range(start, stop + 1):
         loop_vars[varname] = i
         tree_handler(for_body)
@@ -185,12 +189,13 @@ def cycle_for_loop(
     # and consequently we don't have to delete it
     if start <= stop:
         del loop_vars[varname]
-    write_info(
-        logger,
-        f"Leave for loop (type {loop_name}) "
-        + reconstruct_tree_str(for_head)
-        + f" (for_start: {start} and for_stop: {stop})",
-    )
+    if logger.isEnabledFor(logging.INFO):
+        write_info(
+            logger,
+            f"Leave for loop (type {loop_name}) "
+            + reconstruct_tree_str(for_head)
+            + f" (for_start: {start} and for_stop: {stop})",
+        )
 
 
 def cycle_repeat_loop(
@@ -217,12 +222,13 @@ def cycle_repeat_loop(
         raise LoopVariableError(
             f"The loop variable {varname} is already in use for another loop"
         )
-    write_info(
-        logger,
-        f"Enter repeat/until loop "
-        + reconstruct_tree_str(repeat_head)
-        + f" (start value of {varname}: {start}",
-    )
+    if logger.isEnabledFor(logging.INFO):
+        write_info(
+            logger,
+            f"Enter repeat/until loop "
+            + reconstruct_tree_str(repeat_head)
+            + f" (start value of {varname}: {start}",
+        )
 
     repeat_tail = get_child(tree, "repeat_tail")
     until_cond = get_child(get_child(repeat_tail, "if_head"), "disjunction")
@@ -244,12 +250,13 @@ def cycle_repeat_loop(
         loopvar += 1
 
     del loop_vars[varname]
-    write_info(
-        logger,
-        f"Leave repeat/until loop"
-        + reconstruct_tree_str(repeat_head)
-        + f" ({varname} start: {start} and stop: {loopvar})",
-    )
+    if logger.isEnabledFor(logging.INFO):
+        write_info(
+            logger,
+            f"Leave repeat/until loop"
+            + reconstruct_tree_str(repeat_head)
+            + f" ({varname} start: {start} and stop: {loopvar})",
+        )
 
 
 def eval_if_condition(
@@ -257,9 +264,11 @@ def eval_if_condition(
 ):
     if len(if_condition.children) != 3:
         raise IndexError("if_condition must have three children")
-    write_info(
-        logger, "Dealing with the if_condition " + reconstruct_tree_str(if_condition)
-    )
+    if logger.isEnabledFor(logging.INFO):
+        write_info(
+            logger,
+            "Dealing with the if_condition " + reconstruct_tree_str(if_condition),
+        )
     left_expr = if_condition.children[0]
     cmpop = get_child_value(if_condition, "IF_RELATION")
     right_expr = if_condition.children[2]
@@ -274,9 +283,10 @@ def eval_if_condition(
         if missing_as_false:
             return False
         raise
-    write_info(
-        logger, f"Left side evaluates to {left_val} and right side to {right_val}"
-    )
+    if logger.isEnabledFor(logging.INFO):
+        write_info(
+            logger, f"Left side evaluates to {left_val} and right side to {right_val}"
+        )
     left_val, right_val = comparable_values(left_val, right_val)
     if (
         (cmpop == ">" and left_val > right_val)
@@ -440,7 +450,8 @@ def evaluate_if_statement(
         )
     # evaluate the condition (with variables in datadic potentially
     # affected by the lookahead)
-    write_info(logger, "Evaluate if head " + reconstruct_tree_str(if_head))
+    if logger.isEnabledFor(logging.INFO):
+        write_info(logger, "Evaluate if head " + reconstruct_tree_str(if_head))
     disj = get_child(if_head, "disjunction")
     truthval = determine_truthvalue(
         disj, datadic, loop_vars, parse_opts, missing_as_false=True, logger=logger

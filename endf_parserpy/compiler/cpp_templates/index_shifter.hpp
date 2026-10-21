@@ -57,6 +57,22 @@ inline bool index_shifter_is_buffer_array(const py::object& obj) {
     return ! PyList_Check(obj.ptr()) && PyObject_CheckBuffer(obj.ptr());
 }
 
+// Other sequences than lists (e.g. tuples, read-only views of lists) are
+// indexed directly as well when values are only read. Converting them with
+// py::cast<py::list> copied the whole sequence on every access of an
+// element, which made writing take time quadratic in the length of the
+// array. Mapping types, which also implement __getitem__, are excluded, as
+// their conversion to a list (of the keys) differs from indexing. When
+// default values have to be inserted, which is impossible for e.g. a
+// tuple, the previous conversion (insertion into a temporary list) is kept.
+inline bool index_shifter_is_other_sequence(const py::object& obj) {
+    PyObject* p = obj.ptr();
+    if (PyList_Check(p) || PyDict_Check(p) || ! PySequence_Check(p)) return false;
+    if (PyTuple_Check(p)) return true;
+    int has_keys = PyObject_HasAttrString(p, "keys");
+    return has_keys == 0;
+}
+
 inline py::object index_shifter_get_item(const py::object& obj, int key) {
     return obj[py::cast(key)];
 }
@@ -403,7 +419,8 @@ private:
         const py::object& pyobj, const std::vector<int>& recipe_indices, const py::object& defval, int i
     ) {
         if (list_mode) {
-            if (index_shifter_is_buffer_array(pyobj)) {
+            if (index_shifter_is_buffer_array(pyobj)
+                || (defval.is_none() && index_shifter_is_other_sequence(pyobj))) {
                 return setdefault_i(pyobj, recipe_indices, defval, i);
             }
             return setdefault_i(index_shifter_as<py::list>(pyobj), recipe_indices, defval, i);

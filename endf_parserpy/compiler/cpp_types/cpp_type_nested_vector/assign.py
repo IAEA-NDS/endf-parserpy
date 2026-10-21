@@ -23,6 +23,7 @@ from endf_parserpy.compiler.node_checks import is_loop
 from endf_parserpy.compiler.node_aux import (
     get_loopvar,
 )
+from endf_parserpy.compiler.mode_management import get_layout_recorder
 from ..cpp_varaux import (
     init_local_var_from_global_var,
 )
@@ -79,6 +80,11 @@ class Assign:
                 if destnode is not node:
                     destnode.check_my_identity()
                     destnode.append_precode(new_code)
+                    layout_recorder = get_layout_recorder(vardict)
+                    if layout_recorder is not None:
+                        layout_recorder.record_pointer_preparation(
+                            vartok, i, destnode, node
+                        )
                 else:
                     code += new_code
             ptrvar_old = ptrvar_new
@@ -86,6 +92,13 @@ class Assign:
         dot = "." if len(indices) == 1 else "->"
         code += cpp.statement(f"{ptrvar_old}{dot}set({idxstr}, {exprstr})")
         return code
+
+    def get_layout(vartok, vardict):
+        # element type and number of indices as in define_var
+        specialtype = Query.get_specialtype_name()
+        vartypes = get_var_types(vartok, vardict)
+        dtype = next(v[0] for v in vartypes if v[1] == specialtype)
+        return (specialtype, dtype, len(vartok.indices))
 
     def store_var_in_endf_dict2(vartok, vardict):
         src_varname = Query.get_cpp_varname(vartok, vardict)

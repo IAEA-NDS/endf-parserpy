@@ -343,9 +343,32 @@ def generate_code_from_parsetree(node, vardict):
     return code
 
 
+def new_section_scope(sectok, vardict):
+    """Return the variable dictionary for the scope of a section.
+
+    The section token is stored under the key ``__section`` (keys
+    beginning with ``__`` do not denote variables), so that the path of
+    sections leading to a scope can be determined, see
+    :func:`get_section_path`.
+    """
+    return {"__up": vardict, "__section": sectok}
+
+
+def get_section_path(vardict):
+    """Return the tokens of the sections enclosing a scope (outermost first)."""
+    path = []
+    curdict = vardict
+    while curdict is not None:
+        sectok = curdict.get("__section", None)
+        if sectok is not None:
+            path.append(sectok)
+        curdict = curdict.get("__up", None)
+    return tuple(reversed(path))
+
+
 def _generate_code_for_section(sectok, section_body, vardict, parsefun):
     pardict = vardict
-    vardict = {"__up": pardict}
+    vardict = new_section_scope(sectok, pardict)
     body_code = parsefun(section_body, vardict)
     vardef_code = generate_vardefs(vardict)
     code = cpp.comment(f"open section {sectok}")
@@ -685,7 +708,7 @@ def generate_code_for_tab1(node, vardict):
 
     inner_code = ""
     if sectok is not None:
-        vardict = {"__up": vardict}
+        vardict = new_section_scope(sectok, vardict)
         inner_code += get_prepare_section_func(vardict)(sectok, vardict)
 
     nr_val, addcode = get_counter_field_getter(vardict)(INTvar, 4, vardict)
@@ -761,7 +784,7 @@ def generate_code_for_tab2(node, vardict):
 
     inner_code = ""
     if sectok is not None:
-        vardict = {"__up": vardict}
+        vardict = new_section_scope(sectok, vardict)
         inner_code += get_prepare_section_func(vardict)(sectok, vardict)
 
     nr_val, addcode = get_counter_field_getter(vardict)(INTvar, 4, vardict)
@@ -823,7 +846,7 @@ def generate_code_for_list(node, vardict):
     sectok = None
     if list_name_node is not None:
         sectok = VariableToken(get_child(list_name_node, "extvarname"))
-        vardict = {"__up": vardict}
+        vardict = new_section_scope(sectok, vardict)
 
     lbr = aux.ListBodyRecorder
     icode = lbr.start_list_body_loop(npl_val, vardict)

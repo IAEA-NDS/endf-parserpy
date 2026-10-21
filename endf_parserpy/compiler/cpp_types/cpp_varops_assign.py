@@ -3,13 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2024/05/06
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from ..variable_management import should_track_read
+from ..mode_management import get_layout_recorder
 from .. import cpp_primitives as cpp
 from .cpp_vartype_handling import (
     has_loopvartype,
@@ -59,6 +60,11 @@ def assign_exprstr_to_var(vartok, exprstr, dtype, vardict, node=None):
                 code += update_last_type_var(
                     vartok, dtype=dtype, specialtype=specialtype
                 )
+                layout_recorder = get_layout_recorder(vardict)
+                if layout_recorder is not None:
+                    layout_recorder.record_assignment(
+                        vartok, dtype, specialtype, node, vardict
+                    )
             return code
     raise TypeError(f"{vartok} has unknown type")
 
@@ -74,6 +80,25 @@ def store_var_in_endf_dict(vartok, vardict):
     code = cpp.comment(f"store variable {vartok} in endf dictionary")
     code += dict_assign("cpp_current_dict", indices_str, src_varname)
     return code
+
+
+def get_var_layout(vartok, vardict):
+    """Describe the value that store_var_in_endf_dict2 stores.
+
+    Returns ``None`` if the variable is not stored in the endf
+    dictionary, otherwise a tuple whose first element is the name of the
+    C++ container type responsible for the variable (``Matrix2d``,
+    ``NestedVector`` or ``Scalar``), followed by type-specific details,
+    see the ``get_layout`` methods of the ``Assign`` classes.
+    """
+    if vartok.cpp_namespace:
+        return None
+    if has_loopvartype(vartok, vardict):
+        return None
+    for m in get_vartype_modules():
+        if m.query.is_responsible(vartok, vardict):
+            return m.assign.get_layout(vartok, vardict)
+    raise TypeError(f"{vartok} has unknown type")
 
 
 def store_var_in_endf_dict2(vartok, vardict):

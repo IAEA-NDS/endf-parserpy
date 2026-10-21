@@ -68,6 +68,15 @@ class Assign:
         return code
 
     @classmethod
+    def get_layout(cls, vartok, vardict):
+        # one C++ variable per data type, store_var_in_endf_dict2
+        # stores the one of the data type assigned last
+        specialtype = Query.get_specialtype_name()
+        vartypes = get_var_types(vartok, vardict)
+        dtypes = tuple(v[0] for v in vartypes if v[1] == specialtype)
+        return (specialtype, dtypes)
+
+    @classmethod
     def store_var_in_endf_dict2(cls, vartok, vardict):
         # counter variables are not stored in the endf dictionary
         if has_loopvartype(vartok, vardict):

@@ -24,6 +24,7 @@ from endf_parserpy.compiler.variable_management import (
     get_var_types,
 )
 from endf_parserpy.compiler.node_checks import is_loop, is_loop_head
+from endf_parserpy.compiler.mode_management import get_layout_recorder
 from endf_parserpy.compiler.node_aux import (
     get_loopvar,
     get_loop_body,
@@ -196,6 +197,11 @@ class Assign:
             first_idx_range = (real_inner_start, real_inner_stop)
             second_idx_range = (real_outer_start, real_outer_stop)
 
+        layout_recorder = get_layout_recorder(vardict)
+        if layout_recorder is not None:
+            layout_recorder.record_matrix2d_definition(
+                vartok, node, is_triagonal, is_lower
+            )
         register_var(vartok, dtype, "Matrix2d", vardict)
         varname = Query.get_cpp_varname(vartok, vardict, dtype=dtype)
         # must be here to avoid a circular import error
@@ -221,6 +227,16 @@ class Assign:
         extvarname = Query.assemble_extvarname(varname, indices)
         assigncode = cpp.statement(f"{extvarname} = {exprstr}")
         return assigncode
+
+    @classmethod
+    def get_layout(cls, vartok, vardict):
+        # element type as in define_var; whether the matrix is exported
+        # as rectangular or triangular matrix is determined by the
+        # definition that initialized it (see assign_exprstr_to_var)
+        specialtype = Query.get_specialtype_name()
+        vartypes = get_var_types(vartok, vardict)
+        dtype = next(v[0] for v in vartypes if v[1] == specialtype)
+        return (specialtype, dtype)
 
     @classmethod
     def store_var_in_endf_dict2(cls, vartok, vardict):

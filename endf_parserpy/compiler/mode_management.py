@@ -245,3 +245,30 @@ def get_lookahead_catch_clause(vardict):
         if "__up" not in curdict:
             return "const std::out_of_range& e"
         curdict = curdict["__up"]
+
+
+def register_layout_recorder(recorder, vardict):
+    """Register an object that records the result layout of a recipe.
+
+    The code generator for parsing reports to the recorder every
+    assignment of a variable with the C++ container chosen for it (and the
+    shape of the initialization of a ``Matrix2d`` variable), every
+    creation of elements of nested arrays before a loop, and the
+    variables stored in the result dictionary of each section, see
+    :mod:`endf_parserpy.compiler.recipe_layout`. Recording does not
+    change the generated code.
+    """
+    basic_ops = vardict.setdefault("__basic_ops", {})
+    basic_ops["layout_recorder"] = recorder
+
+
+def get_layout_recorder(vardict):
+    """Return the registered layout recorder or None if there is none."""
+    curdict = vardict
+    while True:
+        basic_ops = curdict.get("__basic_ops", {})
+        if "layout_recorder" in basic_ops:
+            return basic_ops["layout_recorder"]
+        if "__up" not in curdict:
+            return None
+        curdict = curdict["__up"]

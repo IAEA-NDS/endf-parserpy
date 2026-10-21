@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/20
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -50,6 +50,8 @@ from .mode_management import (
     register_lookahead_tellg_statement,
     register_lookahead_seekg_statement,
     register_generate_expr_validation_func,
+    register_layout_recorder,
+    get_layout_recorder,
 )
 from .endf2cpp_aux import (
     get_numeric_field,
@@ -164,6 +166,9 @@ def _prepare_section_func_wrapper(sectok, vardict):
 
 
 def _finalize_section_func_wrapper(sectok, vardict):
+    layout_recorder = get_layout_recorder(vardict)
+    if layout_recorder is not None:
+        layout_recorder.record_section_scope(vardict)
     code = generate_endf_dict_assignments(vardict)
     if sectok is None:
         return code
@@ -176,8 +181,19 @@ def _generate_expr_validation_wrapper(actual_value, node, vardict):
     return code
 
 
-def generate_cpp_parsefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=None):
+def generate_cpp_parsefun(
+    name, endf_recipe, mat=None, mf=None, mt=None, parser=None, layout_recorder=None
+):
+    """Generate the C++ parse function for an ENDF recipe.
+
+    If a ``layout_recorder`` is given, the result layout determined by
+    the code generator is reported to it, see
+    :mod:`endf_parserpy.compiler.recipe_layout`. The generated code does
+    not depend on this argument.
+    """
     vardict = {}
+    if layout_recorder is not None:
+        register_layout_recorder(layout_recorder, vardict)
     register_numeric_field_getter(_get_numeric_field_wrapper, vardict)
     register_text_field_getter(_get_text_field_wrapper, vardict)
     register_tab1_body_getter(_get_tab1_body_wrapper, vardict)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2026/10/13
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -83,7 +83,11 @@ def get_node_value_using_endf_dict(
         return retobj
     else:
         dtypestr = map_dtype(dtype)
-        valcode = f"py::cast<{dtypestr}>({retobj})"
+        if dtype in ("intvec", "floatvec"):
+            # tables of TAB1/TAB2 records, fast path for numpy arrays
+            valcode = f"cpp_cast_vector<{dtypestr}>({retobj})"
+        else:
+            valcode = f"py::cast<{dtypestr}>({retobj})"
         # values of float fields enter arithmetic as doubles, see `cpp_operand`
         return CppFloatValue(valcode) if dtype == float else valcode
 

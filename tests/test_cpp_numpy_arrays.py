@@ -362,3 +362,60 @@ def test_missing_numpy_raises(monkeypatch):
         EndfParserCpp(array_type="numpy")
     # the other modes do not need numpy
     EndfParserCpp(array_type="list")
+
+
+def _replace_arrays(obj, convert):
+    """Replace every numpy array in obj (recursively) by convert(array)."""
+    if isinstance(obj, np.ndarray):
+        return convert(obj)
+    if isinstance(obj, dict):
+        return {k: _replace_arrays(v, convert) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_replace_arrays(v, convert) for v in obj]
+    return obj
+
+
+def _strided(arr):
+    # same values, every other element of a buffer twice as large
+    big = np.empty((2 * arr.shape[0],) + arr.shape[1:], dtype=arr.dtype)
+    big[::2] = arr
+    return big[::2]
+
+
+def _array_module(arr):
+    import array
+
+    if arr.ndim != 1:
+        return arr
+    return array.array("d" if arr.dtype.kind == "f" else "q", arr.tolist())
+
+
+ARRAY_VARIANTS = {
+    "strided": _strided,
+    "byteswapped": lambda a: a.astype(a.dtype.newbyteorder(">")),
+    "fortran_order": lambda a: np.asfortranarray(a),
+    "readonly": lambda a: np.frombuffer(a.tobytes(), dtype=a.dtype).reshape(a.shape),
+    "array_module": _array_module,
+    "masked_array": lambda a: np.ma.masked_array(a),
+}
+
+
+@pytest.mark.parametrize("variant", ARRAY_VARIANTS)
+def test_writing_other_memory_layouts(variant, mf33_text):
+    path = str(TESTDATA / "n_2925_29-Cu-63.endf")
+    parser = EndfParserCpp(**_parse_opts(array_type="numpy"))
+    for text in (Path(path).read_text(), mf33_text):
+        endf_dict = parser.parse(text)
+        expected = parser.write(endf_dict)
+        converted = _replace_arrays(endf_dict, ARRAY_VARIANTS[variant])
+        assert parser.write(converted) == expected
+
+
+def test_writing_transposed_matrix(mf33_text):
+    parser = EndfParserCpp(**_parse_opts(array_type="numpy"))
+    endf_dict = parser.parse(mf33_text)
+    expected = parser.write(endf_dict)
+    ni = endf_dict[33][102]["subsection"][0]["ni_subsection"][0]
+    ni["F"] = np.ascontiguousarray(ni["F"].T).T
+    assert not ni["F"].flags.c_contiguous
+    assert parser.write(endf_dict) == expected

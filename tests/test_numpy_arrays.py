@@ -9,14 +9,16 @@
 #
 ############################################################
 
-"""Tests for the option `array_type="numpy"` of EndfParserCpp.
+"""Tests for the option `array_type="numpy"` of EndfParserCpp and EndfParserPy.
 
 With this option, arrays of numbers are returned as numpy arrays and
 all other arrays as lists. Apart from the types of the containers, the
 result is the same as with `array_type="list"`, and data parsed with
-either option are written in the same way.
+either option are written in the same way. Both parsers return the same
+result (see also test_py_numpy_arrays.py).
 """
 
+import copy
 import sys
 from pathlib import Path
 import pytest
@@ -33,6 +35,40 @@ from endf_parserpy import (
 
 TESTDATA = Path(__file__).parent / "testdata"
 FILES = ["n_2925_29-Cu-63.endf", "tsl_Al.endf"]
+PARSERS = {"cpp": EndfParserCpp, "python": EndfParserPy}
+
+
+@pytest.fixture(params=list(PARSERS))
+def parser_cls(request):
+    return PARSERS[request.param]
+
+
+def _parser(ParserCls, **kwargs):
+    if ParserCls is EndfParserPy:
+        kwargs["print_cache_info"] = False
+    return ParserCls(**kwargs)
+
+
+# The Python parser is slow; parse results are therefore cached and
+# copies of them handed out, and the large MF6 section is not parsed
+# (test_py_numpy_arrays.py compares the complete results of both parsers)
+_PARSED = {}
+
+
+def _exclude(ParserCls, include):
+    return (6,) if ParserCls is EndfParserPy and include is None else None
+
+
+def _parsefile(ParserCls, filename, include=None, **kwargs):
+    key = (ParserCls, filename, include, tuple(sorted(kwargs.items())))
+    if key not in _PARSED:
+        parser = _parser(ParserCls, **kwargs)
+        _PARSED[key] = parser.parsefile(
+            str(TESTDATA / filename),
+            exclude=_exclude(ParserCls, include),
+            include=include,
+        )
+    return copy.deepcopy(_PARSED[key])
 
 
 def _to_lists(obj):
@@ -133,20 +169,25 @@ def _parse_opts(**kwargs):
 
 
 @pytest.mark.parametrize("filename", FILES)
-def test_parse_results_equal_list_mode(filename):
+def test_parse_results_equal_list_mode(filename, parser_cls):
     path = str(TESTDATA / filename)
-    list_dict = EndfParserCpp(array_type="list").parsefile(path)
-    numpy_parser = EndfParserCpp(array_type="numpy")
-    numpy_dict = numpy_parser.parsefile(path)
+    list_dict = _parsefile(parser_cls, filename, array_type="list")
+    numpy_dict = _parsefile(parser_cls, filename, array_type="numpy")
     _assert_same(numpy_dict, list_dict)
-    from_string = numpy_parser.parse(Path(path).read_text())
+    numpy_parser = _parser(parser_cls, array_type="numpy")
+    from_string = numpy_parser.parse(
+        Path(path).read_text(), exclude=_exclude(parser_cls, None)
+    )
+    for mf in _exclude(parser_cls, None) or ():
+        # the lines of unparsed sections read with parsefile end with "\n"
+        from_string.pop(mf, None)
+        list_dict.pop(mf, None)
     _assert_same(from_string, list_dict)
 
 
 @pytest.mark.parametrize("filename", FILES)
-def test_all_arrays_of_numbers_are_numpy_arrays(filename):
-    path = str(TESTDATA / filename)
-    numpy_dict = EndfParserCpp(array_type="numpy").parsefile(path)
+def test_all_arrays_of_numbers_are_numpy_arrays(filename, parser_cls):
+    numpy_dict = _parsefile(parser_cls, filename, array_type="numpy")
     for value in _iter_values(numpy_dict):
         if isinstance(value, list):
             # lists contain no numbers, only sections, arrays or strings
@@ -155,9 +196,8 @@ def test_all_arrays_of_numbers_are_numpy_arrays(filename):
             assert value.dtype in (np.float64, np.int64)
 
 
-def test_dtypes_of_known_arrays():
-    path = str(TESTDATA / "n_2925_29-Cu-63.endf")
-    endf_dict = EndfParserCpp(array_type="numpy").parsefile(path)
+def test_dtypes_of_known_arrays(parser_cls):
+    endf_dict = _parsefile(parser_cls, "n_2925_29-Cu-63.endf", array_type="numpy")
     xstable = endf_dict[3][1]["xstable"]
     for name, dtype in (("E", np.float64), ("xs", np.float64)):
         assert isinstance(xstable[name], np.ndarray)
@@ -174,9 +214,9 @@ def test_dtypes_of_known_arrays():
     assert len(set(len(row) for row in al)) > 1
 
 
-def test_matrices(mf33_text):
-    list_dict = EndfParserCpp(**_parse_opts(array_type="list")).parse(mf33_text)
-    numpy_dict = EndfParserCpp(**_parse_opts(array_type="numpy")).parse(mf33_text)
+def test_matrices(mf33_text, parser_cls):
+    list_dict = _parser(parser_cls, **_parse_opts(array_type="list")).parse(mf33_text)
+    numpy_dict = _parser(parser_cls, **_parse_opts(array_type="numpy")).parse(mf33_text)
     _assert_same(numpy_dict, list_dict)
     ni_list = list_dict[33][102]["subsection"][0]["ni_subsection"]
     ni_numpy = numpy_dict[33][102]["subsection"][0]["ni_subsection"]
@@ -197,12 +237,11 @@ def test_matrices(mf33_text):
 
 @pytest.mark.parametrize("keep_e_opt", [False, True])
 @pytest.mark.parametrize("filename", FILES)
-def test_roundtrip_same_output_as_list_mode(filename, keep_e_opt, tmp_path):
-    path = str(TESTDATA / filename)
-    list_parser = EndfParserCpp(array_type="list", keep_E=keep_e_opt)
-    numpy_parser = EndfParserCpp(array_type="numpy", keep_E=keep_e_opt)
-    list_dict = list_parser.parsefile(path)
-    numpy_dict = numpy_parser.parsefile(path)
+def test_roundtrip_same_output_as_list_mode(filename, keep_e_opt, parser_cls, tmp_path):
+    list_parser = _parser(parser_cls, array_type="list", keep_E=keep_e_opt)
+    numpy_parser = _parser(parser_cls, array_type="numpy", keep_E=keep_e_opt)
+    list_dict = _parsefile(parser_cls, filename, array_type="list")
+    numpy_dict = _parsefile(parser_cls, filename, array_type="numpy")
     expected = list_parser.write(list_dict)
     assert numpy_parser.write(numpy_dict) == expected
     # a parser in list mode writes numpy arrays in the same way
@@ -214,9 +253,9 @@ def test_roundtrip_same_output_as_list_mode(filename, keep_e_opt, tmp_path):
     ).read_bytes()
 
 
-def test_roundtrip_matrices(mf33_text):
-    numpy_parser = EndfParserCpp(**_parse_opts(array_type="numpy"))
-    list_parser = EndfParserCpp(**_parse_opts(array_type="list"))
+def test_roundtrip_matrices(mf33_text, parser_cls):
+    numpy_parser = _parser(parser_cls, **_parse_opts(array_type="numpy"))
+    list_parser = _parser(parser_cls, **_parse_opts(array_type="list"))
     expected = list_parser.write(list_parser.parse(mf33_text))
     assert numpy_parser.write(numpy_parser.parse(mf33_text)) == expected
 
@@ -225,10 +264,10 @@ INT_DTYPES = ["int8", "int16", "int32", "uint8", "uint16", "uint32", "int64", "u
 
 
 @pytest.mark.parametrize("dtype", INT_DTYPES)
-def test_writing_integer_arrays_of_other_dtypes(dtype):
-    path = str(TESTDATA / "n_2925_29-Cu-63.endf")
-    parser = EndfParserCpp(array_type="numpy")
-    endf_dict = parser.parsefile(path, include=(3, 4))
+def test_writing_integer_arrays_of_other_dtypes(dtype, parser_cls):
+    filename = "n_2925_29-Cu-63.endf"
+    parser = _parser(parser_cls, array_type="numpy")
+    endf_dict = _parsefile(parser_cls, filename, include=(3, 4), array_type="numpy")
     expected = parser.write(endf_dict)
     # integer arrays in integer fields: TAB1 interpolation tables
     # (written as a whole) and the array NL (element by element)
@@ -244,17 +283,18 @@ def test_writing_integer_arrays_of_other_dtypes(dtype):
     mf3 = endf_dict[3][2]["xstable"]
     mf3["xs"] = np.zeros(len(mf3["xs"]), dtype=dtype)
     mf4["al"][0] = np.zeros(len(mf4["al"][0]), dtype=dtype)
-    ref_dict = parser.parsefile(path, include=(3, 4))
+    ref_dict = _parsefile(parser_cls, filename, include=(3, 4), array_type="numpy")
     ref_dict[3][2]["xstable"]["xs"] = [0.0] * len(mf3["xs"])
     ref_dict[4][2]["al"][0] = [0.0] * len(mf4["al"][0])
     assert parser.write(endf_dict) == parser.write(ref_dict)
     assert parser.write(endf_dict) != expected
 
 
-def test_writing_numpy_scalars():
-    path = str(TESTDATA / "n_2925_29-Cu-63.endf")
-    parser = EndfParserCpp(array_type="numpy")
-    endf_dict = parser.parsefile(path, include=(3,))
+def test_writing_numpy_scalars(parser_cls):
+    parser = _parser(parser_cls, array_type="numpy")
+    endf_dict = _parsefile(
+        parser_cls, "n_2925_29-Cu-63.endf", include=(3,), array_type="numpy"
+    )
     sec = endf_dict[3][1]
     sec["AWR"] = 62.5
     expected = parser.write(endf_dict)
@@ -265,10 +305,11 @@ def test_writing_numpy_scalars():
     assert parser.write(endf_dict) == expected
 
 
-def test_writing_float32_arrays():
-    path = str(TESTDATA / "n_2925_29-Cu-63.endf")
-    parser = EndfParserCpp(array_type="numpy")
-    endf_dict = parser.parsefile(path, include=(3, 4))
+def test_writing_float32_arrays(parser_cls):
+    parser = _parser(parser_cls, array_type="numpy")
+    endf_dict = _parsefile(
+        parser_cls, "n_2925_29-Cu-63.endf", include=(3, 4), array_type="numpy"
+    )
     # values exactly representable as float32
     values = np.arange(len(endf_dict[3][1]["xstable"]["xs"])) * 0.125
     endf_dict[3][1]["xstable"]["xs"] = values
@@ -281,6 +322,8 @@ def test_writing_float32_arrays():
 
 @pytest.mark.parametrize("dtype", ["int64", "uint64", "uint32"])
 def test_writing_out_of_range_integers_raises(dtype):
+    # EndfParserCpp only: EndfParserPy writes integers of any size
+    # (a field wider than 11 characters), as for Python integers
     path = str(TESTDATA / "n_2925_29-Cu-63.endf")
     parser = EndfParserCpp(array_type="numpy")
     big = np.iinfo(dtype).max
@@ -298,13 +341,14 @@ def test_writing_out_of_range_integers_raises(dtype):
         parser.write(endf_dict)
 
 
-def test_preserve_value_strings():
-    path = str(TESTDATA / "n_2925_29-Cu-63.endf")
+def test_preserve_value_strings(parser_cls):
+    filename = "n_2925_29-Cu-63.endf"
+    path = str(TESTDATA / filename)
     opts = dict(preserve_value_strings=True)
-    list_parser = EndfParserCpp(array_type="list", **opts)
-    numpy_parser = EndfParserCpp(array_type="numpy", **opts)
-    list_dict = list_parser.parsefile(path)
-    numpy_dict = numpy_parser.parsefile(path)
+    list_parser = _parser(parser_cls, array_type="list", **opts)
+    numpy_parser = _parser(parser_cls, array_type="numpy", **opts)
+    list_dict = _parsefile(parser_cls, filename, array_type="list", **opts)
+    numpy_dict = _parsefile(parser_cls, filename, array_type="numpy", **opts)
     _assert_same(numpy_dict, list_dict)
     xstable = numpy_dict[3][1]["xstable"]
     # float arrays remain lists of EndfFloat objects
@@ -321,47 +365,45 @@ def test_preserve_value_strings():
     assert numpy_parser.write(numpy_dict) == lines
 
 
-def test_factory_selects_cpp_parser():
-    for select in ("cpp", "fastest"):
-        parser = EndfParserFactory.create(select=select, array_type="numpy")
-        assert isinstance(parser, EndfParserCpp)
+@pytest.mark.parametrize("select", ["cpp", "python", "fastest"])
+def test_factory(select):
+    parser = EndfParserFactory.create(
+        select=select, array_type="numpy", print_cache_info=False
+    )
+    expected = EndfParserPy if select == "python" else EndfParserCpp
+    assert isinstance(parser, expected)
+    if select == "python":
+        assert parser.parse_opts["array_type"] == "numpy"
+    else:
         assert parser.read_opts["array_type"] == "numpy"
 
 
-def test_factory_python_parser_raises():
-    with pytest.raises(ValueError, match="array_type"):
-        EndfParserFactory.create(select="python", array_type="numpy")
-    with pytest.raises(ValueError, match="compat"):
-        EndfParserFactory.create(
-            select="fastest", require_compat=True, array_type="numpy"
-        )
+def test_factory_require_compat():
+    parser = EndfParserFactory.create(
+        select="fastest", require_compat=True, array_type="numpy"
+    )
+    assert isinstance(parser, EndfParserCpp)
 
 
-def test_python_parser_raises():
-    with pytest.raises(ValueError, match="numpy"):
-        EndfParserPy(array_type="numpy", print_cache_info=False)
-
-
-def test_factory_fastest_does_not_fall_back(monkeypatch):
+def test_factory_fastest_falls_back_on_python_parser(monkeypatch):
     def unavailable(parser_args):
         raise ImportError("C++ module not available")
 
     monkeypatch.setattr(EndfParserFactory, "get_cpp_parser", staticmethod(unavailable))
-    with pytest.raises(ImportError, match="numpy"):
-        EndfParserFactory.create(select="fastest", array_type="numpy")
-    # without numpy arrays, the Python parser is still used as fallback
-    parser = EndfParserFactory.create(
-        select="fastest", array_type="list", warn_slow=False, print_cache_info=False
-    )
+    with pytest.warns(UserWarning, match="C\\+\\+ parser not available"):
+        parser = EndfParserFactory.create(
+            select="fastest", array_type="numpy", print_cache_info=False
+        )
     assert isinstance(parser, EndfParserPy)
+    assert parser.parse_opts["array_type"] == "numpy"
 
 
-def test_missing_numpy_raises(monkeypatch):
+def test_missing_numpy_raises(monkeypatch, parser_cls):
     monkeypatch.setitem(sys.modules, "numpy", None)
     with pytest.raises(ImportError, match="numpy"):
-        EndfParserCpp(array_type="numpy")
+        _parser(parser_cls, array_type="numpy")
     # the other modes do not need numpy
-    EndfParserCpp(array_type="list")
+    _parser(parser_cls, array_type="list")
 
 
 def _replace_arrays(obj, convert):
@@ -401,21 +443,40 @@ ARRAY_VARIANTS = {
 
 
 @pytest.mark.parametrize("variant", ARRAY_VARIANTS)
-def test_writing_other_memory_layouts(variant, mf33_text):
-    path = str(TESTDATA / "n_2925_29-Cu-63.endf")
-    parser = EndfParserCpp(**_parse_opts(array_type="numpy"))
-    for text in (Path(path).read_text(), mf33_text):
-        endf_dict = parser.parse(text)
+def test_writing_other_memory_layouts(variant, mf33_text, parser_cls):
+    parser = _parser(parser_cls, **_parse_opts(array_type="numpy"))
+    endf_dicts = (
+        _parsefile(parser_cls, "n_2925_29-Cu-63.endf", array_type="numpy"),
+        parser.parse(mf33_text),
+    )
+    for endf_dict in endf_dicts:
         expected = parser.write(endf_dict)
         converted = _replace_arrays(endf_dict, ARRAY_VARIANTS[variant])
         assert parser.write(converted) == expected
 
 
-def test_writing_transposed_matrix(mf33_text):
-    parser = EndfParserCpp(**_parse_opts(array_type="numpy"))
+def test_writing_transposed_matrix(mf33_text, parser_cls):
+    parser = _parser(parser_cls, **_parse_opts(array_type="numpy"))
     endf_dict = parser.parse(mf33_text)
     expected = parser.write(endf_dict)
     ni = endf_dict[33][102]["subsection"][0]["ni_subsection"][0]
     ni["F"] = np.ascontiguousarray(ni["F"].T).T
     assert not ni["F"].flags.c_contiguous
     assert parser.write(endf_dict) == expected
+
+
+def test_writing_in_dict_mode_as_with_lists(parser_cls):
+    # numpy arrays are treated like lists in "dict" mode: arrays written
+    # element by element are not found (recipe indices are not list
+    # indices), TAB1 columns written as a whole are accepted
+    filename = "n_2925_29-Cu-63.endf"
+    dict_parser = _parser(parser_cls, array_type="dict")
+    for include, accepted in (((3,), True), ((4,), False)):
+        list_dict = _parsefile(parser_cls, filename, include, array_type="list")
+        numpy_dict = _parsefile(parser_cls, filename, include, array_type="numpy")
+        if accepted:
+            assert dict_parser.write(numpy_dict) == dict_parser.write(list_dict)
+        else:
+            for endf_dict in (list_dict, numpy_dict):
+                with pytest.raises(Exception):
+                    dict_parser.write(endf_dict)

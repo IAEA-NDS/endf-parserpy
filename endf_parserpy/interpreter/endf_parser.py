@@ -89,6 +89,8 @@ from .endf_recipe_utils import (
 from endf_parserpy.endf_recipes import get_recipe_dict
 from endf_parserpy.utils.debugging_utils import TrackingDict
 from .helpers import array_dict_to_list
+from .numpy_annotation import annotate_recipe_tree
+from .numpy_arrays import mark_assignments, convert_arrays, numpy_to_python
 from ..endf_parser_base import (
     EndfParserBase,
     _record_init_kwargs,
@@ -248,13 +250,33 @@ class EndfParserPy(EndfParserBase):
             perfectly represented by an `int`. *(writing)*
         array_type : str
             The Python datatype to use for representing arrays read from
-            ENDF-6 files. The two options are ``"dict"`` (default) and
-            ``"list"``. The additional option ``"list_slow"`` yields the
-            same result as ``"list"`` via a slower implementation and
+            ENDF-6 files. The options are ``"dict"`` (default), ``"list"``
+            and ``"numpy"``. The additional option ``"list_slow"`` yields
+            the same result as ``"list"`` via a slower implementation and
             exists for debugging purposes. Any other value raises a
-            :class:`ValueError`, also ``"numpy"``, which is only
-            available in :class:`~endf_parserpy.EndfParserCpp`.
-            *(parsing)*
+            :class:`ValueError`.
+            With ``"numpy"``, arrays are indexed as with ``"list"``, but
+            arrays of numbers are returned as numpy arrays (the
+            ``numpy`` package must be installed, otherwise an
+            :class:`ImportError` is raised), in the same form as by
+            :class:`~endf_parserpy.EndfParserCpp`: arrays of integers as
+            ``int64`` arrays and arrays of floats, including the columns of
+            TAB1 records, as ``float64`` arrays. A matrix stored in a
+            rectangular block of a record, e.g. a covariance matrix in
+            MF33 with ``LB=5, LS=0``, is a two-dimensional array; a
+            triangular matrix is a list of one-dimensional arrays (its
+            rows). Arrays of arrays are lists of numpy arrays, and arrays
+            of other elements, such as sections or strings, are lists as
+            with ``"list"``. If ``preserve_value_strings=True``, arrays of
+            floats are returned as lists, as with ``"list"``; arrays of
+            integers are still numpy arrays. The form of each array
+            follows the place in the recipe where it is assigned, as in
+            the C++ parser (also for custom recipes). The results of
+            functions in ``parsing_funs`` are not converted.
+            When writing with ``"list"`` or ``"numpy"``, numpy arrays and
+            scalars (of any integer type for integer fields, of any
+            integer or float type for float fields) and lists and Python
+            numbers can be used interchangeably. *(parsing, writing)*
         explain_missing_variable : bool
             If the :func:`write` or :func:`writefile` method
             fail because a variable is missing in the dictionary,
@@ -289,12 +311,22 @@ class EndfParserPy(EndfParserBase):
             these warnings (you will need to `import logging`).
         """
         _check_array_type(array_type)
+        if array_type == "numpy":
+            try:
+                import numpy  # noqa: F401
+            except ImportError as exc:
+                raise ImportError(
+                    "array_type `numpy` requires the numpy package, "
+                    "which could not be imported"
+                ) from exc
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         if recipes is None:
             recipes = get_recipe_dict(endf_format)
         self.tree_dic = get_recipe_parsetree_dic(recipes, cache_dir, print_cache_info)
         self.parsing_funs = parsing_funs if parsing_funs is not None else {}
+        # array_type="numpy": kinds of the variables recorded while parsing
+        self._numpy_forms = None
 
         # endf record treatment
         endf_actions = {}
@@ -880,6 +912,10 @@ class EndfParserPy(EndfParserBase):
         if tree.data in self.endf_actions:
             if should_proceed(self.datadic, self.loop_vars, action_type="endf_action"):
                 self.endf_actions[tree.data](tree)
+                if self._numpy_forms is not None:
+                    marks = getattr(tree, "_np_marks", None)
+                    if marks is not None and "__lookahead" not in self.loop_vars:
+                        mark_assignments(self._numpy_forms, self.datadic, marks)
         elif tree.data in self.meta_actions:
             if should_proceed(self.datadic, self.loop_vars, action_type="meta_action"):
                 self.meta_actions[tree.data](tree)
@@ -975,6 +1011,11 @@ class EndfParserPy(EndfParserBase):
         self.parse_opts["internal_array_type"] = (
             "list" if array_type == "list_slow" else "dict"
         )
+        numpy_mode = array_type == "numpy"
+        if numpy_mode:
+            import numpy
+
+            keep_floats = self.read_opts["preserve_value_strings"]
         tree_dic = self.tree_dic
         self.variable_descriptions = EndfDict()
         mfmt_dic = split_sections(lines, read_opts=self.read_opts)
@@ -1014,26 +1055,39 @@ class EndfParserPy(EndfParserBase):
                     )
                     self.reset_parser_state(rwmode="read", lines=curlines)
                     self.current_path = EndfPath((mf, mt))
+                    if numpy_mode:
+                        if not getattr(cur_tree, "_np_annotated", False):
+                            annotate_recipe_tree(cur_tree)
+                            cur_tree._np_annotated = True
+                        self._numpy_forms = {}
+                        self.parse_opts["numpy_forms"] = self._numpy_forms
                     try:
                         initialize_working_vars(self.datadic)
                         self.datadic.update(cur_ctrl)
                         self.run_instruction(cur_tree)
                         remove_working_vars(self.datadic)
                         mfmt_dic[mf][mt] = self.datadic
-                        if self.parse_opts["array_type"] == "list":
+                        if array_type == "list" or numpy_mode:
                             array_dict_to_list(mfmt_dic[mf][mt])
+                        if numpy_mode:
+                            convert_arrays(numpy, self._numpy_forms, keep_floats)
                     except ParserException as exc:
                         if not nofail:
                             logstr = self.logbuffer.display_record_logs()
-                            del self.parse_opts["internal_array_type"]
+                            self._remove_parse_state_opts()
                             raise type(exc)(
                                 "\nHere is the parser record log until failure:\n\n"
                                 + logstr
                                 + "Error message: "
                                 + str(exc)
                             )
-        del self.parse_opts["internal_array_type"]
+        self._remove_parse_state_opts()
         return mfmt_dic
+
+    def _remove_parse_state_opts(self):
+        del self.parse_opts["internal_array_type"]
+        self.parse_opts.pop("numpy_forms", None)
+        self._numpy_forms = None
 
     def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
         """Convert data into the ENDF-6 format.
@@ -1050,9 +1104,13 @@ class EndfParserPy(EndfParserBase):
             endf_dic = endf_dic.unwrap()
         self.zero_as_blank = zero_as_blank
         array_type = self.parse_opts["array_type"]
-        self.parse_opts["internal_array_type"] = (
-            "list" if array_type in ("list", "list_slow") else "dict"
-        )
+        in_list_mode = array_type in ("list", "list_slow", "numpy")
+        self._numpy_forms = None
+        if in_list_mode:
+            # numpy arrays and scalars are written like lists and
+            # Python numbers with the same values
+            endf_dic = numpy_to_python(endf_dic)
+        self.parse_opts["internal_array_type"] = "list" if in_list_mode else "dict"
         self.reset_parser_state(rwmode="write", datadic={})
         self.variable_descriptions = EndfDict()
         should_check_arrays = self.write_opts["check_arrays"]

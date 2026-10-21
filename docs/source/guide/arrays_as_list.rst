@@ -76,13 +76,14 @@ If you are using the ``array_type="list"`` option, be aware of the following:
 Arrays as numpy arrays
 ----------------------
 
-The :class:`~endf_parserpy.EndfParserCpp` class additionally
-supports the option ``array_type="numpy"``, which requires the
+The :class:`~endf_parserpy.EndfParserCpp` and
+:class:`~endf_parserpy.EndfParserPy` classes additionally
+support the option ``array_type="numpy"``, which requires the
 `numpy <https://numpy.org>`_ package. Arrays are then indexed in the
 same way as with ``array_type="list"``, i.e., zero-based, but arrays
-of numbers are returned as numpy arrays, which are created in a single
-step instead of element by element and are therefore faster to
-produce for large arrays:
+of numbers are returned as numpy arrays. The C++ parser creates them
+in a single step instead of element by element, which is faster for
+large arrays:
 
 .. code:: python
 
@@ -118,5 +119,13 @@ created with ``array_type="numpy"`` or ``array_type="list"``, which give
 the same output for the same data. For writing, numpy arrays and lists
 can be used interchangeably; numpy arrays of any integer type are
 accepted for integer fields, and numpy arrays of any integer or float type
-for float fields. The Python parser :class:`~endf_parserpy.EndfParserPy`
-does not support this option.
+for float fields, as well as numpy scalars of these types.
+
+Both parsers return the same result with ``array_type="numpy"``, also
+for recipes passed with the ``recipes`` argument of
+:class:`~endf_parserpy.EndfParserPy`: the form of an array is
+determined by the place in the recipe where it is assigned, e.g. the
+covariance matrix ``F`` above is a two-dimensional array if it was read
+by the definition for ``LS=0``, and the arrays of the Legendre
+coefficients of an incident energy without coefficients are empty
+``float64`` arrays.

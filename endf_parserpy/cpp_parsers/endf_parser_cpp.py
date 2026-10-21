@@ -176,8 +176,8 @@ class EndfParserCpp(EndfParserBase):
             When writing with ``"list"`` or ``"numpy"``, numpy arrays (of
             any integer type for integer fields, of any integer or float
             type for float fields) and lists can be used interchangeably.
-            ``"numpy"`` is not available in the Python parser.
-            *(parsing, writing)*
+            :class:`~endf_parserpy.EndfParserPy` returns the same result
+            with ``"numpy"``. *(parsing, writing)*
         skip_intzero: bool
             For numbers written out in decimal notation, eliminate
             the integer part if zero, e.g. `0.12` becomes `.12` to
@@ -209,7 +209,7 @@ class EndfParserCpp(EndfParserBase):
             :func:`parse` are always parsed in place. The Python parser
             always reads the complete file. *(parsing, C++ only)*
         """
-        _check_array_type(array_type, allow_numpy=True)
+        _check_array_type(array_type)
         if array_type == "numpy":
             try:
                 import numpy  # noqa: F401

@@ -106,6 +106,11 @@ def _fortstr2float(
             return EndfFloat(valstr, orig_valstr)
         return val
     if valstr.strip() == "":
+        # a blank field is zero; with preserve_value_strings, the blank
+        # string is kept, so that the field is written as it was read (as
+        # by EndfParserCpp)
+        if preserve_value_strings:
+            return EndfFloat(0.0, orig_valstr)
         return 0.0
     if accept_spaces:
         valstr = valstr.replace(" ", "")
@@ -287,12 +292,16 @@ def float2fortstr(val, write_opts=None):
     width = write_opts.get("width", 11)
     if type(val) is not float and isinstance(val, EndfFloat):
         orig_str = val.get_original_string()
-        if width != len(orig_str):
-            raise InvalidFloatError(
-                f"Length of string representation of float number "
-                f"'{orig_str}' incompatible with specified width={width}"
-            )
-        return orig_str
+        if orig_str != "":
+            if width != len(orig_str):
+                raise InvalidFloatError(
+                    f"Length of string representation of float number "
+                    f"'{orig_str}' incompatible with specified width={width}"
+                )
+            return orig_str
+        # no original string: the number is formatted (as by EndfParserCpp,
+        # which uses an empty string for values without an original string)
+        val = float(val)
     # Non-finite values (NaN, +/-inf) cannot be represented in the standard
     # ENDF compact float format. Emit a textual right-aligned representation
     # that fortstr2float can read back; matches the convention seen in some

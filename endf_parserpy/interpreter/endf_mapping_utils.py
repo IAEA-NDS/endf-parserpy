@@ -212,6 +212,28 @@ def _arith_operand(expr, value):
 
 
 def get_indexvalue(expr, datadic, loop_vars, parse_opts, look_up):
+    # shortcut for an index given by a loop variable, with the same checks
+    # and result as the general case (see eval_expr and get_varval)
+    if type(expr) is Tree and datadic is not None and loop_vars is not None:
+        target = getattr(expr, "_eval_target", None)
+        varname = None
+        if type(target) is Token and target.type == "VARNAME":
+            varname = target.value
+        elif type(target) is Tree:
+            # an extvarname node without index specification
+            info = getattr(target, "_varname_and_indexquants", None)
+            if info is not None and info[1] is None:
+                varname = info[0]
+        if varname is not None:
+            if varname in loop_vars:
+                if varname in datadic:
+                    raise LoopVariableError(
+                        f"the variable {varname} is both a loop variable and "
+                        "a record variable, which is forbidden, check the recipe"
+                    )
+                val = loop_vars[varname]
+                if type(val) is int:
+                    return val
     try:
         val = eval_expr_without_unknown_var(
             expr, datadic, loop_vars, parse_opts, look_up

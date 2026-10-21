@@ -26,8 +26,25 @@ from .endf_mapping_core import map_record_helper, map_text_record_helper
 from endf_parserpy.utils.accessories import EndfPath
 
 
-def check_ctrl_spec(record_line_node, record_dic, datadic, rwmode):
+def _get_ctrl_spec_values(record_line_node):
+    # the expected MAT, MF and MT specification of a record node in the
+    # recipe; stored in the (never modified) recipe tree node
+    try:
+        return record_line_node._ctrl_spec_values
+    except AttributeError:
+        pass
     ctrl_spec = get_child(record_line_node, "ctrl_spec")
+    values = (
+        get_child_value(ctrl_spec, "MAT_SPEC"),
+        get_child_value(ctrl_spec, "MF_SPEC"),
+        get_child_value(ctrl_spec, "MT_SPEC"),
+    )
+    record_line_node._ctrl_spec_values = values
+    return values
+
+
+def check_ctrl_spec(record_line_node, record_dic, datadic, rwmode):
+    exp_mat, exp_mf, exp_mt = _get_ctrl_spec_values(record_line_node)
     dic = record_dic if rwmode == "read" else datadic
     # if MAT not found in local scope, scan the outer ones
     while "MAT" not in dic and "__up" in dic:
@@ -38,9 +55,6 @@ def check_ctrl_spec(record_line_node, record_dic, datadic, rwmode):
     cur_mat = dic["MAT"]
     cur_mf = dic["MF"]
     cur_mt = dic["MT"]
-    exp_mat = get_child_value(ctrl_spec, "MAT_SPEC")
-    exp_mf = get_child_value(ctrl_spec, "MF_SPEC")
-    exp_mt = get_child_value(ctrl_spec, "MT_SPEC")
     if exp_mat != "MAT" and int(exp_mat) != cur_mat:
         raise UnexpectedControlRecordError(
             f"Expected MAT {exp_mat} but encountered {cur_mat}"

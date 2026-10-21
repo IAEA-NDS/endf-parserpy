@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2024/12/10
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
@@ -200,9 +200,12 @@ class EndfPath(Sequence):
     def __add__(self, other):
         if not isinstance(other, EndfPath):
             other = EndfPath(other)
-        new_endfpath = EndfPath(
-            self._path_elements + other._path_elements, self.array_type, self.leading
-        )
+        # The path elements of both are already standardized, and
+        # standardizing their concatenation would leave it unchanged.
+        new_endfpath = EndfPath.__new__(EndfPath)
+        new_endfpath._path_elements = self._path_elements + other._path_elements
+        new_endfpath.array_type = self.array_type
+        new_endfpath.leading = self.leading
         return new_endfpath
 
     def __radd__(self, other):

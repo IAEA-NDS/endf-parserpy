@@ -107,6 +107,14 @@ def undo_lookahead_changes(datadic, loop_vars, orig_parser_state, set_parser_sta
 class LookaheadObject:
 
     def __new__(self, orig_obj):
+        # shortcuts for the built-in types, same result as below
+        t = type(orig_obj)
+        if t is dict:
+            return super().__new__(LookaheadDict)
+        if t is list:
+            return super().__new__(LookaheadList)
+        if t is set:
+            return super().__new__(LookaheadSet)
         if isinstance(orig_obj, MutableMapping):
             return super().__new__(LookaheadDict)
         if isinstance(orig_obj, MutableSequence):
@@ -124,11 +132,25 @@ class LookaheadObject:
 
     @staticmethod
     def wrap_mutable(obj):
-        if LookaheadObject.is_mutable_type(obj) and not isinstance(
-            obj, LookaheadObject
-        ):
+        # shortcuts for common types, same result as the general case below
+        t = type(obj)
+        if t is dict or t is list or t is set:
+            return LookaheadObject(obj)
+        if t is int or t is float or t is str or obj is None:
+            return obj
+        # the decision only depends on the type and is stored per type
+        should_wrap = _should_wrap_type.get(t)
+        if should_wrap is None:
+            should_wrap = LookaheadObject.is_mutable_type(obj) and not isinstance(
+                obj, LookaheadObject
+            )
+            _should_wrap_type[t] = should_wrap
+        if should_wrap:
             return LookaheadObject(obj)
         return obj
+
+
+_should_wrap_type = {}
 
 
 class LookaheadDict(MutableMapping, LookaheadObject):
@@ -145,6 +167,19 @@ class LookaheadDict(MutableMapping, LookaheadObject):
         if isinstance(value, LookaheadObject):
             self._update_dict[key] = value
         return value
+
+    def __contains__(self, key):
+        # same as the inherited Mapping.__contains__ (via __getitem__)
+        if key in self._update_dict:
+            return True
+        try:
+            value = self._orig_dict[key]
+        except KeyError:
+            return False
+        value = LookaheadObject.wrap_mutable(value)
+        if isinstance(value, LookaheadObject):
+            self._update_dict[key] = value
+        return True
 
     def __setitem__(self, key, value):
         value = LookaheadObject.wrap_mutable(value)

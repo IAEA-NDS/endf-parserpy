@@ -90,7 +90,12 @@ from endf_parserpy.endf_recipes import get_recipe_dict
 from endf_parserpy.utils.debugging_utils import TrackingDict
 from .helpers import array_dict_to_list
 from .numpy_annotation import annotate_recipe_tree
-from .numpy_arrays import mark_assignments, convert_arrays, numpy_to_python
+from .numpy_arrays import (
+    mark_assignments,
+    convert_arrays,
+    fill_empty_elements,
+    numpy_to_python,
+)
 from ..endf_parser_base import (
     EndfParserBase,
     _record_init_kwargs,
@@ -1012,10 +1017,14 @@ class EndfParserPy(EndfParserBase):
             "list" if array_type == "list_slow" else "dict"
         )
         numpy_mode = array_type == "numpy"
+        # with "list", "list_slow" and "numpy", the elements of nested arrays
+        # are created where the C++ code creates them (see numpy_arrays)
+        prepare_arrays = array_type != "dict"
         if numpy_mode:
             import numpy
 
             keep_floats = self.read_opts["preserve_value_strings"]
+            self.parse_opts["numpy_marks"] = True
         tree_dic = self.tree_dic
         self.variable_descriptions = EndfDict()
         mfmt_dic = split_sections(lines, read_opts=self.read_opts)
@@ -1055,12 +1064,14 @@ class EndfParserPy(EndfParserBase):
                     )
                     self.reset_parser_state(rwmode="read", lines=curlines)
                     self.current_path = EndfPath((mf, mt))
-                    if numpy_mode:
+                    if prepare_arrays:
                         if not getattr(cur_tree, "_np_annotated", False):
                             annotate_recipe_tree(cur_tree)
                             cur_tree._np_annotated = True
-                        self._numpy_forms = {}
-                        self.parse_opts["numpy_forms"] = self._numpy_forms
+                        array_forms = {}
+                        self.parse_opts["array_forms"] = array_forms
+                        if numpy_mode:
+                            self._numpy_forms = array_forms
                     try:
                         initialize_working_vars(self.datadic)
                         self.datadic.update(cur_ctrl)
@@ -1069,8 +1080,10 @@ class EndfParserPy(EndfParserBase):
                         mfmt_dic[mf][mt] = self.datadic
                         if array_type == "list" or numpy_mode:
                             array_dict_to_list(mfmt_dic[mf][mt])
+                        if array_type == "list":
+                            fill_empty_elements(array_forms)
                         if numpy_mode:
-                            convert_arrays(numpy, self._numpy_forms, keep_floats)
+                            convert_arrays(numpy, array_forms, keep_floats)
                     except ParserException as exc:
                         if not nofail:
                             logstr = self.logbuffer.display_record_logs()
@@ -1086,7 +1099,8 @@ class EndfParserPy(EndfParserBase):
 
     def _remove_parse_state_opts(self):
         del self.parse_opts["internal_array_type"]
-        self.parse_opts.pop("numpy_forms", None)
+        self.parse_opts.pop("array_forms", None)
+        self.parse_opts.pop("numpy_marks", None)
         self._numpy_forms = None
 
     def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
@@ -1111,6 +1125,11 @@ class EndfParserPy(EndfParserBase):
             # Python numbers with the same values
             endf_dic = numpy_to_python(endf_dic)
         self.parse_opts["internal_array_type"] = "list" if in_list_mode else "dict"
+        if in_list_mode:
+            # the start indices of nested arrays are those of their
+            # elements created before loops when parsing (see numpy_arrays)
+            self.parse_opts["array_forms"] = {}
+            self.parse_opts["array_write"] = True
         self.reset_parser_state(rwmode="write", datadic={})
         self.variable_descriptions = EndfDict()
         should_check_arrays = self.write_opts["check_arrays"]
@@ -1125,6 +1144,9 @@ class EndfParserPy(EndfParserBase):
                 cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
                 is_parsed = isinstance(endf_dic[mf][mt], Mapping)
                 if cur_tree is not None and is_parsed:
+                    if in_list_mode and not getattr(cur_tree, "_np_annotated", False):
+                        annotate_recipe_tree(cur_tree)
+                        cur_tree._np_annotated = True
                     datadic = endf_dic[mf][mt]
                     if should_check_arrays:
                         datadic = TrackingDict(datadic)
@@ -1173,7 +1195,7 @@ class EndfParserPy(EndfParserBase):
                             errmsg += "\n\n" + explain_header + "\n"
                             errmsg += "-" * len(explain_header) + "\n"
                             errmsg += explanation
-                        del self.parse_opts["internal_array_type"]
+                        self._remove_write_state_opts()
                         raise type(exc)(errmsg)
                     # check if arrays have been written in their entirety
                     if should_check_arrays:
@@ -1250,8 +1272,13 @@ class EndfParserPy(EndfParserBase):
             )
         )
         del self.zero_as_blank
-        del self.parse_opts["internal_array_type"]
+        self._remove_write_state_opts()
         return lines
+
+    def _remove_write_state_opts(self):
+        del self.parse_opts["internal_array_type"]
+        self.parse_opts.pop("array_forms", None)
+        self.parse_opts.pop("array_write", None)
 
     def parsefile(self, filename, exclude=None, include=None, nofail=False):
         """Parse ENDF-6 formatted data stored in a file.

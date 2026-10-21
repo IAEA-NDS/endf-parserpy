@@ -29,6 +29,12 @@ different kinds, and it does not change the type of a variable when it
 only checks the value of a variable read before; therefore the C++
 variable that is stored is that of the first assignment.
 
+The elements of nested arrays are also created with ``array_type="list"``
+and ``"list_slow"``, so that empty inner arrays are empty lists as with
+:class:`~endf_parserpy.EndfParserCpp` (:func:`fill_empty_elements`), and
+the writer registers the start indices of nested arrays at the same
+places in these modes.
+
 This module does not import numpy itself; the functions that need it
 receive the numpy module as argument.
 """
@@ -36,6 +42,7 @@ receive the numpy module as argument.
 import sys
 from collections.abc import Mapping
 from .endf_mapping_utils import get_indexvalue
+from .helpers import shift_indices, list_setdefault
 
 
 def _kinds_of(forms, datadic):
@@ -63,10 +70,16 @@ def prepare_elements(forms, datadic, loop_vars, parse_opts, preparations):
     """Create the elements of nested arrays created before a loop.
 
     ``preparations`` is the ``_np_prepare`` annotation of the loop node.
-    The elements are created in the internal ``"dict"`` representation
-    of arrays (keys are the indices of the recipe).
+    The elements are created in the internal representation of arrays,
+    as dictionaries (keys are the indices of the recipe) or, with
+    ``array_type="list_slow"``, as lists. When writing (in the list
+    modes), only the start indices of the arrays are registered, so that
+    the elements are found at the same positions as after parsing.
     """
     kinds = _kinds_of(forms, datadic)
+    if parse_opts["internal_array_type"] == "list":
+        _prepare_list_elements(datadic, loop_vars, parse_opts, preparations, kinds)
+        return
     for varname, indexspecs, kind in preparations:
         cur = datadic.get(varname)
         if cur is None:
@@ -86,6 +99,50 @@ def prepare_elements(forms, datadic, loop_vars, parse_opts, preparations):
             cur = nxt
         if varname not in kinds:
             kinds[varname] = kind
+
+
+def _prepare_list_elements(datadic, loop_vars, parse_opts, preparations, kinds):
+    for varname, indexspecs, kind in preparations:
+        idcs = [
+            (
+                loop_vars[q]
+                if type(q) is str
+                else get_indexvalue(q, datadic, loop_vars, parse_opts, True)
+            )
+            for q in indexspecs
+        ]
+        idcs = shift_indices(varname, idcs, datadic)
+        if "array_write" in parse_opts:
+            # writing: only the start indices are registered
+            continue
+        cur = datadic.setdefault(varname, [])
+        for idx in idcs:
+            cur = list_setdefault(cur, idx, [])
+        if varname not in kinds:
+            kinds[varname] = kind
+
+
+def fill_empty_elements(forms):
+    """Replace the elements created without values by empty lists.
+
+    Used with ``array_type="list"`` after the conversion of the arrays
+    from their internal representation as dictionaries, which leaves the
+    created elements as empty dictionaries.
+    """
+    for datadic, kinds in forms.values():
+        for varname in kinds:
+            value = datadic.get(varname)
+            if type(value) is dict or type(value) is list:
+                datadic[varname] = _empty_dicts_to_lists(value)
+
+
+def _empty_dicts_to_lists(value):
+    if type(value) is dict:
+        return [] if len(value) == 0 else value
+    for i, v in enumerate(value):
+        if type(v) is dict or type(v) is list:
+            value[i] = _empty_dicts_to_lists(v)
+    return value
 
 
 # ---------------------------------------------------------------------

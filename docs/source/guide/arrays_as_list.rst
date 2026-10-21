@@ -55,6 +55,9 @@ If you are using the ``array_type="list"`` option, be aware of the following:
   can't be written to an ENDF file with a parser object initialized with
   ``EndfParserPy(array_type="dict")`` and vice-versa. It is recommended to
   choose one parser mode and use it consistently throughout a project.
+- An inner array without elements, e.g. the Legendre coefficients
+  ``al[i]`` of an MF4 incident energy with ``NL[i]=0``, is an empty list
+  in list mode, whereas it is absent in dict mode.
 - :ref:`EndfPath notation <endf_path_class>` and the
   :ref:`EndfDict <endf_dict_class>` class can also be used with
   ENDF dictionaries in list mode. However, all arrays and sections are

@@ -428,6 +428,11 @@ class TrackingList(MutableSequence):
         if any(self._accessed):
             for k in range(len(self._baselist)):
                 if not self._accessed[k]:
+                    # an empty element (e.g. the array of an inner loop
+                    # without iterations) contains nothing to write
+                    v = self._baselist[k]
+                    if isinstance(v, (MutableSequence, MutableMapping)) and len(v) == 0:
+                        continue
                     indexpath = path + "/" + str(k)
                     raise IndexError(f"The content of {indexpath} was not accessed")
         for k, curval in enumerate(self._baselist):

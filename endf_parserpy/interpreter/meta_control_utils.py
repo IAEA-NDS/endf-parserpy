@@ -127,8 +127,8 @@ def open_section(
     # can look for variable names in the outer scope
     datadic["__up"] = curdatadic
     # array_type="numpy": variables assigned in a named TAB1/TAB2/LIST record
-    if "__lookahead" not in loop_vars:
-        forms = parse_opts.get("numpy_forms")
+    if "__lookahead" not in loop_vars and "numpy_marks" in parse_opts:
+        forms = parse_opts.get("array_forms")
         if forms is not None:
             marks = getattr(extvarname, "_np_marks", None)
             if marks is not None:
@@ -151,22 +151,22 @@ def close_section(extvarname, datadic, logger=None):
     return datadic
 
 
-def _numpy_loop_actions(tree, datadic, loop_vars, parse_opts, iterates):
-    # array_type="numpy" (see numpy_arrays): the C++ code creates elements
-    # of nested arrays each time it reaches a loop and assigns variables
-    # in a LIST loop if its body is executed; not in a lookahead, whose
-    # changes are discarded
+def _array_loop_actions(tree, datadic, loop_vars, parse_opts, iterates):
+    # array_type="list" and "numpy" (see numpy_arrays): the C++ code
+    # creates elements of nested arrays each time it reaches a loop and,
+    # for "numpy", the kinds of the variables assigned in a LIST loop are
+    # recorded if its body is executed; not in a lookahead, whose changes
+    # are discarded
     if "__lookahead" in loop_vars:
         return
-    forms = parse_opts.get("numpy_forms")
-    if forms is None:
-        return
+    forms = parse_opts["array_forms"]
     preparations = getattr(tree, "_np_prepare", None)
     if preparations is not None:
         prepare_elements(forms, datadic, loop_vars, parse_opts, preparations)
-    marks = getattr(tree, "_np_marks", None)
-    if marks is not None and iterates:
-        mark_assignments(forms, datadic, marks)
+    if iterates and "numpy_marks" in parse_opts:
+        marks = getattr(tree, "_np_marks", None)
+        if marks is not None:
+            mark_assignments(forms, datadic, marks)
 
 
 def cycle_for_loop(
@@ -207,8 +207,8 @@ def cycle_for_loop(
             + reconstruct_tree_str(for_head)
             + f" (for_start: {start} and for_stop {stop})",
         )
-    if "numpy_forms" in parse_opts:
-        _numpy_loop_actions(tree, datadic, loop_vars, parse_opts, start <= stop)
+    if "array_forms" in parse_opts:
+        _array_loop_actions(tree, datadic, loop_vars, parse_opts, start <= stop)
     for i in range(start, stop + 1):
         loop_vars[varname] = i
         tree_handler(for_body)
@@ -258,8 +258,8 @@ def cycle_repeat_loop(
             + f" (start value of {varname}: {start}",
         )
 
-    if "numpy_forms" in parse_opts:
-        _numpy_loop_actions(tree, datadic, loop_vars, parse_opts, True)
+    if "array_forms" in parse_opts:
+        _array_loop_actions(tree, datadic, loop_vars, parse_opts, True)
     repeat_tail = get_child(tree, "repeat_tail")
     until_cond = get_child(get_child(repeat_tail, "if_head"), "disjunction")
 

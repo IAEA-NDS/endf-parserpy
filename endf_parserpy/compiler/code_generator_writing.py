@@ -215,7 +215,9 @@ def _get_tab1_body_wrapper(xvar, yvar, nr, np, vardict):
         code += set_tab1_body(
             "cpp_draft_line", valcode, "mat", "mf", "mt", "linenum", "write_opts"
         )
-    return valcode, code
+    # all members of tab1_body are assigned anew before each use, so its
+    # content can be moved to the variables of the record instead of copied
+    return f"std::move({valcode})", code
 
 
 def _get_tab2_body_wrapper(nr, vardict):
@@ -235,7 +237,9 @@ def _get_tab2_body_wrapper(nr, vardict):
         code += set_tab2_body(
             "cpp_draft_line", valcode, "mat", "mf", "mt", "linenum", "write_opts"
         )
-    return valcode, code
+    # all members of tab2_body are assigned anew before each use, so its
+    # content can be moved to the variables of the record instead of copied
+    return f"std::move({valcode})", code
 
 
 def _get_custom_int_field_wrapper(node, start, length, vardict, idx=None, row=None):

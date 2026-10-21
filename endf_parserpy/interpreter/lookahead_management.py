@@ -20,6 +20,7 @@ from .tree_analysis import reconstruct_tree_str
 from .endf_mapping_utils import (
     get_child,
     eval_expr_without_unknown_var,
+    _single_lookup_types,
 )
 from .custom_exceptions import UnexpectedControlRecordError
 
@@ -247,3 +248,7 @@ class LookaheadSet(MutableSet, LookaheadObject):
                 "if they have already existed in the original dict."
             )
         return self._update_set.discard(value)
+
+
+# see endf_mapping_utils._get_array_value_in_dict_mode
+_single_lookup_types.add(LookaheadDict)

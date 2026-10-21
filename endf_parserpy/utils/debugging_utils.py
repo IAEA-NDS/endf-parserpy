@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2025/06/02
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -275,6 +275,22 @@ class TrackingDict(MutableMapping):
             obj, (MutableMapping, MutableSequence)
         )
 
+    @staticmethod
+    def _should_track_fast(key, obj):
+        # same result as _should_track, with shortcuts for the common types
+        t = type(obj)
+        if t is dict or t is list:
+            is_trackable = True
+        elif t is float or t is int or t is str:
+            is_trackable = False
+        else:
+            is_trackable = isinstance(obj, (MutableMapping, MutableSequence))
+        if not is_trackable:
+            return False
+        if type(key) is int:
+            return True
+        return not str(key).startswith("__")
+
     def _is_tracked(self, key):
         return key in self._trackingobjs
 
@@ -290,10 +306,26 @@ class TrackingDict(MutableMapping):
         retval = self._basedict.__getitem__(key)
         if isinstance(key, int):
             self._accessed.add(key)
-        if self._should_track(key, retval) and not self._is_tracked(key):
-            self._trackingobjs[key] = self._create_trackobj(retval)
-        retval = self._trackingobjs.get(key, retval)
+        trackingobjs = self._trackingobjs
+        if key in trackingobjs:
+            return trackingobjs[key]
+        if self._should_track_fast(key, retval):
+            retval = trackingobjs[key] = self._create_trackobj(retval)
         return retval
+
+    def __contains__(self, key):
+        # same as the inherited Mapping.__contains__ (via __getitem__),
+        # including the recording of the access
+        try:
+            retval = self._basedict.__getitem__(key)
+        except KeyError:
+            return False
+        if isinstance(key, int):
+            self._accessed.add(key)
+        trackingobjs = self._trackingobjs
+        if key not in trackingobjs and self._should_track_fast(key, retval):
+            trackingobjs[key] = self._create_trackobj(retval)
+        return True
 
     def __setitem__(self, key, value):
         if key in self._accessed:

@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EndfParserCpp` writes numpy arrays faster: the elements of numpy arrays of type `float64` and of the integer types are read directly from the memory of the array instead of creating a numpy scalar per element, also for the two-dimensional arrays of matrices, and TAB1/TAB2 tables given as numpy arrays (also of type `float32`) are converted in a single loop. Data parsed with `array_type="numpy"` are thus written about as fast as data parsed with `array_type="list"`. All other cases, e.g. subclasses of `numpy.ndarray`, other element types, byte orders other than the native one, or integers outside the range of a C++ `int`, use the previous conversion. The output is identical
 - `EndfParserPy` builds its INFO log messages only if the INFO level is enabled. The logged text is unchanged
 - `EndfParserPy` parses and writes faster: the static analysis of the recipe tree (variable names and indices of nodes, literal values, enclosing nodes in expressions, recipe strings for logging) is done once per node and cached instead of for every value. Results are identical
+- `EndfParserPy` accesses values and arrays with fewer checks, in particular when writing with `check_arrays=True`. Results and array checks are unchanged
 
 ### Removed
 

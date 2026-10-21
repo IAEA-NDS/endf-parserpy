@@ -40,6 +40,7 @@ from .helpers import (
 import re
 from fractions import Fraction
 from endf_parserpy.utils.math_utils import EndfFloat, math_op
+from endf_parserpy.utils.debugging_utils import TrackingDict
 
 
 # Arithmetic of ENDF recipe expressions
@@ -233,9 +234,27 @@ def substitute_abbreviation(val, datadic, loop_vars, parse_opts, look_up):
     return val
 
 
+# Mapping types for which `idx in d` followed by `d[idx]` is equivalent to
+# `d[idx]` raising KeyError for a missing key (also with respect to the
+# recording of the access in TrackingDict and LookaheadDict objects).
+_single_lookup_types = {dict, TrackingDict}
+
+
 def _get_array_value_in_dict_mode(varname, array_cont, idcs, raise_if_missing):
     curdic = array_cont
     for idx in idcs:
+        if type(curdic) in _single_lookup_types:
+            # same as the general case below with a single lookup
+            try:
+                curdic = curdic[idx]
+                continue
+            except KeyError:
+                pass
+            if not raise_if_missing:
+                return None
+            raise UnavailableIndexError(
+                f"index {idx} does not exist in array {varname}"
+            )
         if idx in curdic:
             curdic = curdic[idx]
         elif not raise_if_missing:
@@ -357,8 +376,11 @@ def get_varval(
             idxquants = get_indexquants(expr)
             expr._varname_and_indexquants = (varname, idxquants)
 
+    # the membership test `varname in datadic` is done once per dictionary
+    in_datadic = None
     if loop_vars is not None:
-        if varname in datadic and varname in loop_vars:
+        in_datadic = varname in datadic
+        if in_datadic and varname in loop_vars:
             raise LoopVariableError(
                 f"the variable {varname} is both a loop variable and "
                 "a record variable, which is forbidden, check the recipe"
@@ -367,9 +389,12 @@ def get_varval(
             return loop_vars[varname]
 
     orig_datadic = datadic
-    while varname not in datadic and "__up" in datadic and look_up:
+    if in_datadic is None:
+        in_datadic = varname in datadic
+    while not in_datadic and "__up" in datadic and look_up:
         datadic = datadic["__up"]
-    if varname not in datadic:
+        in_datadic = varname in datadic
+    if not in_datadic:
         if raise_if_missing:
             raise VariableNotFoundError(f"variable {varname} not found", varname)
         return None

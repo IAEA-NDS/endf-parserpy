@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/12
-# Last modified:   2024/10/13
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -37,7 +37,9 @@ def array_dict_to_list(dic):
         if not isinstance(obj, MutableMapping):
             continue
         array_dict_to_list(obj)
-        if not all(isinstance(k, int) for k in obj):
+        # an empty dict is an empty (sub)section, which stays a dict
+        # (as with EndfParserCpp), not an array
+        if len(obj) == 0 or not all(isinstance(k, int) for k in obj):
             continue
         min_idx = min(k for k in obj)
         max_idx = max(k for k in obj)

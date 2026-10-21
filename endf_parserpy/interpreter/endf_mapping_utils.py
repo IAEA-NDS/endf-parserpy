@@ -3,12 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/13
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+from lark.tree import Tree
+from lark.lexer import Token
 from endf_parserpy.utils.tree_utils import (
     is_tree,
     get_name,
@@ -145,9 +147,39 @@ def to_integer_solution(val, cast_int):
     return val
 
 
+# Results of the analysis of recipe tree nodes that depend only on the
+# node itself (recipe trees are never modified) are computed once and
+# stored in the node (Tree objects) or, for tokens, which do not accept
+# new attributes, in dictionaries keyed by token type and value.
+_token_literal_values = {}
+_token_number_values = {}
+
+
 def _decimal_literal_value(expr):
     # exact value of a literal (possibly negated or in brackets),
     # e.g. 0.1 is 1/10; None if expr is not a literal
+    t = type(expr)
+    if t is Tree:
+        try:
+            return expr._decimal_literal_value
+        except AttributeError:
+            pass
+        value = _decimal_literal_value_uncached(expr)
+        expr._decimal_literal_value = value
+        return value
+    elif t is Token:
+        key = (expr.type, expr.value)
+        try:
+            return _token_literal_values[key]
+        except KeyError:
+            pass
+        value = _decimal_literal_value_uncached(expr)
+        _token_literal_values[key] = value
+        return value
+    return _decimal_literal_value_uncached(expr)
+
+
+def _decimal_literal_value_uncached(expr):
     sign = 1
     while True:
         name = get_name(expr, nofail=True)
@@ -313,9 +345,17 @@ def get_varval(
     eval_abbrev=True,
     raise_if_missing=False,
 ):
-    varname_or_extvarname_check(expr)
-    varname = get_varname(expr)
-    idxquants = get_indexquants(expr)
+    if type(expr) is Token and expr.type == "VARNAME":
+        varname = expr.value
+        idxquants = None
+    else:
+        try:
+            varname, idxquants = expr._varname_and_indexquants
+        except AttributeError:
+            varname_or_extvarname_check(expr)
+            varname = get_varname(expr)
+            idxquants = get_indexquants(expr)
+            expr._varname_and_indexquants = (varname, idxquants)
 
     if loop_vars is not None:
         if varname in datadic and varname in loop_vars:
@@ -384,12 +424,20 @@ def count_unassigned_vars(expr, datadic, loop_vars, parse_opts, look_up=True):
 
 
 def get_varname(expr):
-    if is_tree(expr):
+    t = type(expr)
+    if t is Tree:
+        try:
+            return expr._varname
+        except AttributeError:
+            pass
+        varname = None
         for ch in expr.children:
             varname = get_varname(ch)
             if varname is not None:
-                return varname
-    elif is_token(expr):
+                break
+        expr._varname = varname
+        return varname
+    elif t is Token:
         if get_name(expr) == "VARNAME":
             return get_value(expr)
     return None
@@ -398,6 +446,16 @@ def get_varname(expr):
 def get_indexquants(expr):
     if not is_tree(expr):
         return None
+    try:
+        return expr._indexquants
+    except AttributeError:
+        pass
+    idxquants = _get_indexquants_uncached(expr)
+    expr._indexquants = idxquants
+    return idxquants
+
+
+def _get_indexquants_uncached(expr):
     node_type = get_name(expr)
     if node_type in ("section_head", "list_name", "table_name"):
         expr = get_child(expr, "extvarname")
@@ -452,6 +510,56 @@ def varvalue_expr_conversion(vv, val, rwmode, cast_int=True):
         return math_add(vv[0], math_mul(val, vv[1]))
 
 
+_EVAL_EXPR_NODE_NAMES = (
+    "VARNAME",
+    "extvarname",
+    "NUMBER",
+    "DESIRED_NUMBER",
+    "minusexpr",
+    "addition",
+    "subtraction",
+    "multiplication",
+    "modulo",
+    "division",
+    "inconsistent_varspec",
+)
+
+
+def _get_eval_target(tree):
+    # Follow the nodes that eval_expr passes on to their single child
+    # (last branch of eval_expr) and store the node reached in the tree.
+    target = tree
+    while type(target) is Tree and get_name(target) not in _EVAL_EXPR_NODE_NAMES:
+        ch_first = target.children[0]
+        ch_last = target.children[-1]
+        if (
+            is_token(ch_first)
+            and get_name(ch_first) == "LPAR"
+            and is_token(ch_last)
+            and get_name(ch_last) == "RPAR"
+        ):
+            trimmed_children = target.children[1:-1]
+        else:
+            trimmed_children = target.children
+        assert len(trimmed_children) == 1
+        target = trimmed_children[0]
+    tree._eval_target = target
+    return target
+
+
+def _eval_number_token(expr):
+    vstr = expr.value
+    # a desired number is suffixed by a question mark
+    # so we strip that away before proceeding
+    vstr = vstr.rstrip("?")
+    # if it was an integer, we preserve this quality
+    if re.match("^ *[0-9]+ *$", vstr):
+        v = int(vstr)
+    else:
+        v = float(vstr)
+    return (v, 0, None)
+
+
 def eval_expr_without_unknown_var(
     expr, datadic=None, loop_vars=None, parse_opts=None, look_up=True, cast_int=True
 ):
@@ -468,7 +576,20 @@ def eval_expr(
     cast_int=True,
     accept_missing=True,
 ):
-    name = get_name(expr, nofail=True)
+    t = type(expr)
+    if t is Tree:
+        # skip nodes that only enclose a single expression (e.g. in brackets)
+        try:
+            expr = expr._eval_target
+        except AttributeError:
+            expr = _get_eval_target(expr)
+        t = type(expr)
+    if t is Token:
+        name = str(expr.type)
+    elif t is Tree:
+        name = str(expr.data)
+    else:
+        name = get_name(expr, nofail=True)
     # reminder: VARNAME is is a string of letters and number, e.g., foo1
     #           extvarname can contain an index specification, e.g., foo1[i]
     if name in ("VARNAME", "extvarname"):
@@ -496,16 +617,14 @@ def eval_expr(
                 return (val, 0, None)
 
     elif name == "NUMBER" or name == "DESIRED_NUMBER":
-        vstr = expr.value
-        # a desired number is suffixed by a question mark
-        # so we strip that away before proceeding
-        vstr = vstr.rstrip("?")
-        # if it was an integer, we preserve this quality
-        if re.match("^ *[0-9]+ *$", vstr):
-            v = int(vstr)
-        else:
-            v = float(vstr)
-        return (v, 0, None)
+        key = (name, expr.value)
+        try:
+            return _token_number_values[key]
+        except KeyError:
+            pass
+        value = _eval_number_token(expr)
+        _token_number_values[key] = value
+        return value
     elif name == "minusexpr":
         v = eval_expr(
             expr.children[1],

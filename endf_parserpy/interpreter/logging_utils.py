@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2024/12/07
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,7 +11,7 @@
 
 
 import logging
-from endf_parserpy.utils.tree_utils import reconstruct_tree_str
+from .tree_analysis import reconstruct_tree_str
 
 
 def setup_logger(logger_name, log_level, log_format=None):

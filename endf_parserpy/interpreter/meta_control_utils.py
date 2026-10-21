@@ -16,8 +16,8 @@ from endf_parserpy.utils.tree_utils import (
     get_child_value,
     get_name,
     get_child_names,
-    reconstruct_tree_str,
 )
+from .tree_analysis import reconstruct_tree_str
 from .endf_mapping_utils import (
     eval_expr_without_unknown_var,
     comparable_values,

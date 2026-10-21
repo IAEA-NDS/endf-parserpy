@@ -16,9 +16,7 @@ from collections.abc import (
     MutableSet,
 )
 from .logging_utils import write_info
-from endf_parserpy.utils.tree_utils import (
-    reconstruct_tree_str,
-)
+from .tree_analysis import reconstruct_tree_str
 from .endf_mapping_utils import (
     get_child,
     eval_expr_without_unknown_var,

@@ -9,7 +9,8 @@
 #
 ############################################################
 
-from endf_parserpy.utils.tree_utils import is_token, get_name, search_name, get_value
+from endf_parserpy.utils.tree_utils import is_token, get_name, get_value
+from .tree_analysis import search_name
 from endf_parserpy.utils.math_utils import math_allclose
 from .logging_utils import logging, abbreviate_valstr, should_skip_logging_info
 from .custom_exceptions import (

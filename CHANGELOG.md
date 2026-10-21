@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EndfParserPy` builds its INFO log messages only if the INFO level is enabled. The logged text is unchanged
 - `EndfParserPy` parses and writes faster: the static analysis of the recipe tree (variable names and indices of nodes, literal values, enclosing nodes in expressions, recipe strings for logging) is done once per node and cached instead of for every value. Results are identical
 - `EndfParserPy` accesses values and arrays with fewer checks, in particular when writing with `check_arrays=True`. Results and array checks are unchanged
+- `EndfParserPy` converts and formats numbers faster: plain number fields are converted directly, and float formatting uses fewer string operations. Values and written strings are identical
 
 ### Removed
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/13
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -11,6 +11,7 @@
 
 from .custom_exceptions import InvalidIntegerError, InvalidFloatError
 from math import log10, floor, isfinite
+import re
 from copy import deepcopy
 from ..utils.math_utils import EndfFloat
 
@@ -54,16 +55,56 @@ def fortstr2float(valstr, read_opts=None):
             :class:`float` that corresponds to string
             representation of number.
     """
-    orig_valstr = valstr
     if read_opts is None:
         read_opts = {}
-    accept_spaces = read_opts.get("accept_spaces", True)
-    preserve_value_strings = read_opts.get("preserve_value_strings", False)
-    accept_nan_inf = read_opts.get("accept_nan_inf", True)
-    accept_d_exponent = read_opts.get("accept_d_exponent", True)
-    width = read_opts.get("width", None)
+    return _fortstr2float(valstr, *_fortstr2float_opts(read_opts))
+
+
+def _fortstr2float_opts(read_opts):
+    return (
+        read_opts.get("accept_spaces", True),
+        read_opts.get("preserve_value_strings", False),
+        read_opts.get("accept_nan_inf", True),
+        read_opts.get("accept_d_exponent", True),
+        read_opts.get("width", None),
+    )
+
+
+# A number of the form ` 1.234567+8`, `-12.5`, `1.5-3 ` (only spaces
+# around it): the steps in _fortstr2float yield the mantissa followed
+# by `E` and the exponent (if present), so it is converted directly.
+_match_plain_number = re.compile(
+    " *([+-]?(?:[0-9]*\\.)?[0-9]+)(?:([+-][0-9]+))? *"
+).fullmatch
+
+
+def _fortstr2float(
+    valstr,
+    accept_spaces,
+    preserve_value_strings,
+    accept_nan_inf,
+    accept_d_exponent,
+    width,
+):
+    orig_valstr = valstr
     if width is not None:
         valstr = valstr[:width]
+    m = _match_plain_number(valstr)
+    if m is not None:
+        mantissa, exponent = m.groups()
+        if exponent is not None:
+            valstr = mantissa + "E" + exponent
+        else:
+            valstr = mantissa
+        val = float(valstr)
+        if not accept_nan_inf and not isfinite(val):
+            raise InvalidFloatError(
+                f"non-finite value (overflow / inf / NaN) in field: '{orig_valstr}'. "
+                f"Set `accept_nan_inf=True` to allow non-finite values."
+            )
+        if preserve_value_strings:
+            return EndfFloat(valstr, orig_valstr)
+        return val
     if valstr.strip() == "":
         return 0.0
     if accept_spaces:
@@ -129,20 +170,12 @@ def float2basicnumstr(val, write_opts=None):
 
 def _fortranify_expformstr(numstr, keep_E=False):
     # remove the unnecessary zeros in exponent
-    zerostart = zerostop = numstr.index("e") + 2
-    numstr_len = len(numstr)
-    while numstr[zerostop] == "0":
-        zerostop += 1
-        if zerostop == numstr_len:
-            break
-    if zerostop < numstr_len:
-        numstr = numstr[:zerostart] + numstr[zerostop:]
-    else:
-        numstr = numstr[:zerostart] + "0"
+    epos = numstr.index("e")
+    expdigits = numstr[epos + 2 :].lstrip("0") or "0"
     # remove `e` character if requested
-    if not keep_E:
-        numstr = numstr.replace("e", "")
-    return numstr
+    if keep_E:
+        return numstr[: epos + 2] + expdigits
+    return numstr[:epos] + numstr[epos + 1 : epos + 2] + expdigits
 
 
 def _is_carried_mantissa(numstr):
@@ -169,25 +202,36 @@ def float2expformstr(val, write_opts=None):
     keep_E = write_opts.get("keep_E", False)
 
     # get number of digits in exponent
-    expnumstr = f"{val:.6e}"
-    expnumstr = expnumstr[expnumstr.index("e") + 2 :]
-    exp_len = 1
-    for i, c in enumerate(expnumstr):
-        if c != "0":
-            exp_len = len(expnumstr) - i
-            break
+    numstr6 = f"{val:.6e}"
+    epos = numstr6.index("e")
+    exp_len = len(numstr6[epos + 2 :].lstrip("0")) or 1
     # calculate available digits after comma
     prec = width - exp_len - 4
     if abuse_signpos and val >= 0:
         prec += 1
     if keep_E:
         prec -= 1
-    # produce the number
-    numstr = f"{{:.{prec}e}}".format(val)
-    numstr = _fortranify_expformstr(numstr, keep_E)
+    # produce the number (the string for precision 6 is already available)
+    if prec == 6:
+        numstr = numstr6
+    else:
+        numstr = f"{{:.{prec}e}}".format(val)
+        epos = numstr.index("e")
+    # same as _fortranify_expformstr(numstr, keep_E)
+    expdigits = numstr[epos + 2 :].lstrip("0") or "0"
+    if keep_E:
+        numstr = numstr[: epos + 2] + expdigits
+    else:
+        numstr = numstr[:epos] + numstr[epos + 1 : epos + 2] + expdigits
 
     # deal with special case of the sort 9.9999e-9 vs 1.00000-10
-    if not _fits_width(numstr, val, width, abuse_signpos):
+    # (same as `not _fits_width(numstr, val, width, abuse_signpos)`)
+    numstr_len = len(numstr)
+    if abuse_signpos:
+        fits = numstr_len <= width
+    else:
+        fits = not (numstr_len > width or (val >= 0 and numstr_len == width))
+    if not fits:
         prec -= 1
         numstr = f"{{:.{prec}e}}".format(val)
         numstr = _fortranify_expformstr(numstr, keep_E)
@@ -198,7 +242,10 @@ def float2expformstr(val, write_opts=None):
     # with fewer (1.000000+10). Without a carry (the mantissa is not
     # 1.000...), one more digit makes the number one character longer, so
     # that it no longer fits; the loop is then skipped.
-    while prec < 20 and _is_carried_mantissa(numstr):
+    # (_is_carried_mantissa is false unless the mantissa starts with 1)
+    while (
+        prec < 20 and numstr.lstrip(" +-")[:1] == "1" and _is_carried_mantissa(numstr)
+    ):
         candidate = f"{{:.{prec+1}e}}".format(val)
         candidate = _fortranify_expformstr(candidate, keep_E)
         if not _fits_width(candidate, val, width, abuse_signpos):
@@ -238,7 +285,7 @@ def float2fortstr(val, write_opts=None):
         String representation of the :class:`float` number
     """
     width = write_opts.get("width", 11)
-    if isinstance(val, EndfFloat):
+    if type(val) is not float and isinstance(val, EndfFloat):
         orig_str = val.get_original_string()
         if width != len(orig_str):
             raise InvalidFloatError(
@@ -304,9 +351,27 @@ def read_fort_floats(line, n=6, read_opts=None):
     """
     width = read_opts.get("width", 11)
     assert isinstance(line, str)
+    opts = _fortstr2float_opts(read_opts)
+    accept_nan_inf = opts[2]
+    preserve_value_strings = opts[1]
+    if not accept_nan_inf or preserve_value_strings or opts[4] not in (None, width):
+        return [
+            _fortstr2float(line[i : i + width], *opts)
+            for i in range(0, n * width, width)
+        ]
+    # same as _fortstr2float, with the conversion of plain numbers inline
     vals = []
     for i in range(0, n * width, width):
-        vals.append(fortstr2float(line[i : i + width], read_opts=read_opts))
+        valstr = line[i : i + width]
+        m = _match_plain_number(valstr)
+        if m is not None:
+            mantissa, exponent = m.groups()
+            if exponent is not None:
+                vals.append(float(mantissa + "E" + exponent))
+            else:
+                vals.append(float(mantissa))
+        else:
+            vals.append(_fortstr2float(valstr, *opts))
     return vals
 
 
@@ -329,7 +394,4 @@ def write_fort_floats(vals, write_opts=None):
         String with numbers written one-after-another
         in text fields of fixed width.
     """
-    line = ""
-    for i, v in enumerate(vals):
-        line += float2fortstr(v, write_opts=write_opts)
-    return line
+    return "".join([float2fortstr(v, write_opts=write_opts) for v in vals])

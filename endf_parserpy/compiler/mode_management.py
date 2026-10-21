@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/10
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -63,6 +63,21 @@ def register_custom_int_field_getter(func, vardict):
 
 def get_custom_int_field_getter(vardict):
     return _get_getter("custom_int_field_getter", vardict)
+
+
+def register_custom_int_row_binder(func, vardict):
+    _register_getter(
+        func,
+        vardict,
+        "custom_int_row_binder",
+        ("node", "count", "lookahead"),
+    )
+
+
+def get_custom_int_row_binder(vardict):
+    # optional, None if not registered
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    return pardict["__basic_ops"].get("custom_int_row_binder")
 
 
 def register_counter_field_getter(func, vardict):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/20
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -94,6 +94,7 @@ from .mode_management import (
     get_tab1_body_getter,
     get_tab2_body_getter,
     get_custom_int_field_getter,
+    get_custom_int_row_binder,
     get_counter_field_getter,
     get_send_line_func,
     get_prepare_line_func,
@@ -598,11 +599,21 @@ def generate_code_for_intg(node, vardict):
     )
     code += cpp.statement("std::vector<int> cpp_intvec")
     code += cpp.statement("int elpos = 0")
+    # If available (writing), the values of the row are retrieved once
+    # before the loop over the fields rather than once per field
+    getter_kwargs = {}
+    row_binder = get_custom_int_row_binder(vardict)
+    if row_binder is not None:
+        count = "(cpp_end - cpp_start + cpp_step - 1) / cpp_step"
+        rowvar, addcode = row_binder(kij_expr, count, vardict)
+        if rowvar is not None:
+            code += addcode
+            getter_kwargs["row"] = rowvar
     code += cpp.line(
         "for (int cpp_i = cpp_start; cpp_i < cpp_end; cpp_i += cpp_step) {"
     )
     valcode, addcode = get_custom_int_field_getter(vardict)(
-        kij_expr, "cpp_i", "cpp_step", vardict, idx="elpos"
+        kij_expr, "cpp_i", "cpp_step", vardict, idx="elpos", **getter_kwargs
     )
     code += addcode
     code += cpp.statement(f"cpp_intvec.push_back({valcode})", cpp.INDENT)

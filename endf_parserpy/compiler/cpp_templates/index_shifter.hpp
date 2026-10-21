@@ -547,4 +547,51 @@ public:
 };
 
 
+// ---------------------------------------------------------------------
+// Values of INTG records (writing)
+//
+// The first n elements of the row of integers of an INTG record, each one
+// converted as py::cast<int>(row[py::cast(i)]), so that the row is
+// retrieved from the dictionary once per record rather than once per
+// field. Exact lists are read with PyList_GET_ITEM, one-dimensional numpy
+// arrays of an integer type directly from memory. For other objects, a
+// list or array with fewer than n elements, and a numpy array with values
+// outside the range of int, the generic access is used for the remaining
+// elements, so that the same exception is raised for the same element.
+// ---------------------------------------------------------------------
+
+inline std::vector<int> cpp_intg_row_values(const py::object& row, int n) {
+    std::vector<int> vals;
+    vals.reserve(n);
+    PyObject* p = row.ptr();
+    CppNdarrayView view;
+    if (PyList_CheckExact(p)) {
+        if (PyList_GET_SIZE(p) >= n) {
+            for (int i = 0; i < n; i++) {
+                vals.push_back(py::cast<int>(py::handle(PyList_GET_ITEM(p, i))));
+            }
+        }
+    } else if (cpp_ndarray_view(p, view) && view.ndim == 1 && view.dims[0] >= n
+               && (view.kind == NDKIND_SIGNED || view.kind == NDKIND_UNSIGNED)) {
+        for (int i = 0; i < n; i++) {
+            const char* ptr = view.data + i * view.strides[0];
+            long long v;
+            if (view.kind == NDKIND_SIGNED) {
+                v = cpp_ndarray_read_signed(ptr, view.itemsize);
+            } else {
+                unsigned long long u = cpp_ndarray_read_unsigned(ptr, view.itemsize);
+                if (u > static_cast<unsigned long long>(INT_MAX)) break;
+                v = static_cast<long long>(u);
+            }
+            if (v < INT_MIN || v > INT_MAX) break;
+            vals.push_back(static_cast<int>(v));
+        }
+    }
+    for (int i = static_cast<int>(vals.size()); i < n; i++) {
+        vals.push_back(py::cast<int>(row[py::cast(i)]));
+    }
+    return vals;
+}
+
+
 #endif // INDEX_SHIFTER_HPP

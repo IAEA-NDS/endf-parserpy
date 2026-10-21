@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/20
+# Last modified:   2026/10/21
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -42,6 +42,7 @@ from .mode_management import (
     register_numeric_field_getter,
     register_text_field_getter,
     register_custom_int_field_getter,
+    register_custom_int_row_binder,
     register_counter_field_getter,
     register_tab1_body_getter,
     register_tab2_body_getter,
@@ -80,6 +81,7 @@ from .endf2cpp_aux_writing import (
     close_section,
 )
 from .lookahead_management import in_lookahead
+from .variable_management import expand_abbreviation
 
 
 def mf_mt_writefun_name(mf, mt):
@@ -236,12 +238,17 @@ def _get_tab2_body_wrapper(nr, vardict):
     return valcode, code
 
 
-def _get_custom_int_field_wrapper(node, start, length, vardict, idx=None):
+def _get_custom_int_field_wrapper(node, start, length, vardict, idx=None, row=None):
     code = ""
     if not in_lookahead(vardict):
-        valcode = get_expr_value_using_endf_dict(
-            node, "cpp_index_shifter_store", int, vardict, idx=idx
-        )
+        if row is not None:
+            # element idx of the values retrieved by _custom_int_row_binder
+            valcode = f"{row}[{idx}]"
+        else:
+            valcode = get_expr_value_using_endf_dict(
+                node, "cpp_index_shifter_store", int, vardict, idx=idx
+            )
+            valcode, code = _bind_field_value(valcode)
         code += set_custom_int_field("cpp_draft_line", start, length, valcode)
     else:
         defaults = {int: -99999}
@@ -249,6 +256,30 @@ def _get_custom_int_field_wrapper(node, start, length, vardict, idx=None):
             node, "cpp_index_shifter_store", int, vardict, defaults, idx=idx
         )
     return valcode, code
+
+
+def _custom_int_row_binder(node, count, vardict):
+    # The fields of an INTG record are filled with the elements of a
+    # row of integers. The first `count` elements of the row are retrieved
+    # once and stored in a local std::vector<int> whose name is returned,
+    # so that the row is not retrieved from the Python dictionary again
+    # for each field. None is returned if this is not applicable.
+    if in_lookahead(vardict):
+        return None, ""
+    exprtree = transform_nodes(convert_to_exprtree(node), expand_abbreviation, vardict)
+    if not isinstance(exprtree, VariableToken):
+        return None, ""
+    rowobj = get_expr_value_using_endf_dict(
+        node, "cpp_index_shifter_store", None, vardict
+    )
+    if "get_value(" not in rowobj:
+        return None, ""
+    _field_value_counter[0] += 1
+    name = f"cpp_wrow_{_field_value_counter[0]}"
+    code = cpp.statement(
+        f"std::vector<int> {name} = cpp_intg_row_values({rowobj}, {count})"
+    )
+    return name, code
 
 
 def _get_counter_field_wrapper(node, idx, vardict):
@@ -364,6 +395,7 @@ def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_tab1_body_getter(_get_tab1_body_wrapper, vardict)
     register_tab2_body_getter(_get_tab2_body_wrapper, vardict)
     register_custom_int_field_getter(_get_custom_int_field_wrapper, vardict)
+    register_custom_int_row_binder(_custom_int_row_binder, vardict)
     register_counter_field_getter(_get_counter_field_wrapper, vardict)
     register_send_line_func(_prepare_send_func_wrapper, vardict)
     register_prepare_line_func(_prepare_line_func_wrapper, vardict)

@@ -136,6 +136,13 @@ inline int cpp_int_to_padded_chars(char* buf, int width, int value) {
 inline void cpp_write_custom_int_field(std::string &str, int start, int length, int value) {
   char buf[32];
   int n = cpp_int_to_padded_chars(buf, length, value);
+  if (n > length) {
+    // a wider number would shift the following fields of the line
+    throw std::runtime_error(
+      "integer " + std::to_string(value) + " does not fit into a field of width "
+      + std::to_string(length)
+    );
+  }
   str.replace(start, length, buf, n);
 }
 

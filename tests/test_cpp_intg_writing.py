@@ -274,3 +274,30 @@ def test_intg_invalid_ndigit(ndigit):
     _, _, rows = _intg_data(2)
     with pytest.raises(Exception):
         _write(ndigit, [list(r) for r in rows])
+
+
+@pytest.mark.parametrize("ndigit", NDIGITS)
+@pytest.mark.parametrize("field", ["KIJ", "II"])
+@pytest.mark.parametrize("ParserCls", [EndfParserCpp, EndfParserPy])
+def test_intg_value_too_wide(ndigit, field, ParserCls):
+    # values that do not fit into their field raise an error instead of
+    # shifting the following fields
+    ii, jj, rows = _intg_data(ndigit)
+    rows = [list(r) for r in rows]
+    if field == "KIJ":
+        rows[1][2] = 10 ** (ndigit + 1)
+    else:
+        ii = list(ii)
+        ii[1] = 10**5
+    if ParserCls is EndfParserPy:
+        parser = EndfParserPy(
+            ignore_send_records=True, ignore_missing_tpid=True, print_cache_info=False
+        )
+        array_type = "dict"
+    else:
+        parser = _make_parser("list")
+        array_type = "list"
+    endf_dict = parser.parse(MF32_LCOMP2_RML)
+    _set_intg(_range(endf_dict), ndigit, ii, jj, rows, array_type)
+    with pytest.raises(Exception, match="does not fit"):
+        parser.write(endf_dict)

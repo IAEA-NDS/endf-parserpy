@@ -60,8 +60,23 @@ def read_ctrl(line, nofail=False, read_opts=None):
     return {"MAT": mat, "MF": mf, "MT": mt}
 
 
+def check_int_fields(values, widths):
+    """Raise an error for an integer that does not fit into its field.
+
+    A wider number would shift the following fields of the line.
+    """
+    for value, width in zip(values, widths):
+        if len(str(value)) > width:
+            raise InvalidIntegerError(
+                f"integer {value} does not fit into a field of width {width}"
+            )
+
+
 def write_ctrl(dic):
-    return "{:>4}{:>2}{:>3}".format(dic["MAT"], dic["MF"], dic["MT"])
+    ctrl = "{:>4}{:>2}{:>3}".format(dic["MAT"], dic["MF"], dic["MT"])
+    if len(ctrl) != 9:
+        check_int_fields((dic["MAT"], dic["MF"], dic["MT"]), (4, 2, 3))
+    return ctrl
 
 
 def get_ctrl(dic, nofail=False):
@@ -119,6 +134,8 @@ def write_dir(dic, with_ctrl=True, write_opts=None):
     L2 = str(dic["L2"]).rjust(width)
     N1 = str(dic["N1"]).rjust(width)
     N2 = str(dic["N2"]).rjust(width)
+    if len(L1 + L2 + N1 + N2) != 4 * width:
+        check_int_fields([dic[k] for k in ("L1", "L2", "N1", "N2")], [width] * 4)
     CTRL = write_ctrl(dic) if with_ctrl else ""
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
@@ -164,9 +181,20 @@ def write_intg(dic, with_ctrl=True, ndigit=None, write_opts=None):
     II = str(dic["II"]).rjust(5)
     JJ = str(dic["JJ"]).rjust(5)
     spacer = "" if ndigit == 6 else " "
-    KIJ = "".join([str(c).rjust(ndigit + 1) for c in dic["KIJ"]])
+    kij = dic["KIJ"]
+    if len(kij) > INTG_NUM_VALUES[ndigit]:
+        raise InvalidIntegerError(
+            f"more than {INTG_NUM_VALUES[ndigit]} values KIJ "
+            f"of an INTG record with NDIGIT={ndigit}"
+        )
+    KIJ = "".join([str(c).rjust(ndigit + 1) for c in kij])
+    fields = II + JJ + spacer + KIJ
+    if len(fields) != 10 + len(spacer) + len(kij) * (ndigit + 1):
+        check_int_fields(
+            [dic["II"], dic["JJ"]] + list(kij), [5, 5] + [ndigit + 1] * len(kij)
+        )
     CTRL = write_ctrl(dic) if with_ctrl else ""
-    return [(II + JJ + spacer + KIJ).ljust(width * 6) + CTRL]
+    return [fields.ljust(width * 6) + CTRL]
 
 
 def read_cont(lines, ofs=0, with_ctrl=True, read_opts=None):
@@ -206,6 +234,8 @@ def write_cont(dic, with_ctrl=True, write_opts=None):
     L2 = str(dic["L2"]).rjust(width)
     N1 = str(dic["N1"]).rjust(width)
     N2 = str(dic["N2"]).rjust(width)
+    if len(L1 + L2 + N1 + N2) != 4 * width:
+        check_int_fields([dic[k] for k in ("L1", "L2", "N1", "N2")], [width] * 4)
     CTRL = write_ctrl(dic) if with_ctrl else ""
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
@@ -441,7 +471,10 @@ def write_endf_numbers(vals, to_int=False, write_opts=None):
     for i in range(0, len(vals), 6):
         m = min(i + 6, len(vals))
         if to_int:
-            lines.append("".join([str(v).rjust(width) for v in vals[i:m]]))
+            line = "".join([str(v).rjust(width) for v in vals[i:m]])
+            if len(line) != (m - i) * width:
+                check_int_fields(vals[i:m], [width] * (m - i))
+            lines.append(line)
         else:
             lines.append(write_fort_floats(vals[i:m], write_opts=write_opts))
     # no line for no values, as read_endf_numbers reads none

@@ -313,9 +313,18 @@ private:
     bool list_mode;
     std::vector<IndexShifter> next_level;
 
+    // index bookkeeping of the next level for the element at position idx
+    // (relative to the first index accessed at this level); elements may be
+    // skipped, e.g. inner arrays without elements, and with dict arrays an
+    // element may precede the first one accessed (list mode rejects negative
+    // positions in shift_index)
     IndexShifter& get_next_level(int idx) {
-        if (idx == next_level.size()) {
-            next_level.push_back(IndexShifter(list_mode));
+        if (idx < 0) {
+            next_level.insert(next_level.begin(), -idx, IndexShifter(list_mode));
+            start_index += idx;
+            idx = 0;
+        } else if (idx >= static_cast<int>(next_level.size())) {
+            next_level.resize(idx + 1, IndexShifter(list_mode));
         }
         return next_level[idx];
     }

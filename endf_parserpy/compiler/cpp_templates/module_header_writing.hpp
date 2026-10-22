@@ -673,11 +673,28 @@ template<typename T>
 }
 
 
+// the arrays of a TAB1/TAB2 table that are written in pairs must have
+// the same number of elements
+inline void cpp_check_same_size(
+  std::size_t size1, std::size_t size2, const char* name1, const char* name2, const char* rectype
+) {
+  if (size1 != size2) {
+    throw std::runtime_error(
+      std::string("the arrays ") + name1 + " and " + name2 + " of a " + rectype
+      + " record must have the same number of elements (" + std::to_string(size1)
+      + " and " + std::to_string(size2) + ")"
+    );
+  }
+}
+
+
 inline void write_tab1_body(
   std::string& line, const Tab1Body& tab_body, int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
 ) {
-  assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
-  assert(tab_body.X.size() == tab_body.Y.size() && "X and Y must have same size");
+  // checked at runtime (not with assert, which is disabled in release
+  // builds), as the loops below index both arrays of a pair
+  cpp_check_same_size(tab_body.NBT.size(), tab_body.INT.size(), "NBT", "INT", "TAB1");
+  cpp_check_same_size(tab_body.X.size(), tab_body.Y.size(), "x", "y", "TAB1");
   int nr = tab_body.INT.size();
   int np = tab_body.X.size();
   std::ostringstream oss;
@@ -713,7 +730,7 @@ inline void write_tab1_body(
 inline void write_tab2_body(
   std::string& line, const Tab2Body& tab_body, int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
 ) {
-  assert(tab_body.INT.size() == tab_body.NBT.size() && "INT and NBT must have same size");
+  cpp_check_same_size(tab_body.NBT.size(), tab_body.INT.size(), "NBT", "INT", "TAB2");
   int nr = tab_body.INT.size();
   std::ostringstream oss;
   std::string curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);

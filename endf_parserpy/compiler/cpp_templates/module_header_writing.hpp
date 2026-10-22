@@ -688,6 +688,29 @@ inline void cpp_check_same_size(
 }
 
 
+// lines with the n pairs (first[i], second[i]), three pairs per line;
+// no line for n=0, as the parsers read ceil(2n/6) lines
+template<typename T1, typename T2>
+inline void cpp_write_pairs(
+  std::ostringstream& oss, const std::vector<T1>& first, const std::vector<T2>& second, int n,
+  int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
+) {
+  if (n == 0) return;
+  std::string curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
+  int j = 0;
+  for (int i=0; i < n; i++) {
+    cpp_write_field(curline, j++, first[i], write_opts);
+    cpp_write_field(curline, j++, second[i], write_opts);
+    if (j > 5 && i+1 < n) {
+      oss << curline;
+      curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
+      j = 0;
+    }
+  }
+  oss << curline;
+}
+
+
 inline void write_tab1_body(
   std::string& line, const Tab1Body& tab_body, int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
 ) {
@@ -698,31 +721,8 @@ inline void write_tab1_body(
   int nr = tab_body.INT.size();
   int np = tab_body.X.size();
   std::ostringstream oss;
-  std::string curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
-  int j = 0;
-  for (int i=0; i < nr; i++) {
-    cpp_write_field(curline, j++, tab_body.NBT[i], write_opts);
-    cpp_write_field(curline, j++, tab_body.INT[i], write_opts);
-    if (j > 5 && i+1 < nr) {
-      oss << curline;
-      curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
-      j = 0;
-    }
-  }
-  oss << curline;
-
-  j = 0;
-  curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
-  for (int i=0; i < np; i++) {
-    cpp_write_field(curline, j++, tab_body.X[i], write_opts);
-    cpp_write_field(curline, j++, tab_body.Y[i], write_opts);
-    if (j > 5 && i+1 < np) {
-      oss << curline;
-      curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
-      j = 0;
-    }
-  }
-  oss << curline;
+  cpp_write_pairs(oss, tab_body.NBT, tab_body.INT, nr, mat, mf, mt, linenum, write_opts);
+  cpp_write_pairs(oss, tab_body.X, tab_body.Y, np, mat, mf, mt, linenum, write_opts);
   line = oss.str();
 }
 
@@ -733,18 +733,7 @@ inline void write_tab2_body(
   cpp_check_same_size(tab_body.NBT.size(), tab_body.INT.size(), "NBT", "INT", "TAB2");
   int nr = tab_body.INT.size();
   std::ostringstream oss;
-  std::string curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
-  int j = 0;
-  for (int i=0; i < nr; i++) {
-    cpp_write_field(curline, j++, tab_body.NBT[i], write_opts);
-    cpp_write_field(curline, j++, tab_body.INT[i], write_opts);
-    if (j > 5 && i+1 < nr) {
-      oss << curline;
-      curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
-      j = 0;
-    }
-  }
-  oss << curline;
+  cpp_write_pairs(oss, tab_body.NBT, tab_body.INT, nr, mat, mf, mt, linenum, write_opts);
   line = oss.str();
 }
 

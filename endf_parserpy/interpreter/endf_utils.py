@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -431,7 +431,9 @@ def write_endf_numbers(vals, to_int=False, write_opts=None):
             lines.append("".join([str(v).rjust(width) for v in vals[i:m]]))
         else:
             lines.append(write_fort_floats(vals[i:m], write_opts=write_opts))
-    lines[-1] = lines[-1].ljust(width * 6)
+    # no line for no values, as read_endf_numbers reads none
+    if lines:
+        lines[-1] = lines[-1].ljust(width * 6)
     return lines
 
 

@@ -470,6 +470,18 @@ private:
     }
 
 public:
+    // register the position of the element with the given recipe indices
+    // (one index per level, from the first) without accessing it, so that
+    // the start index of each level is the first index of the loop that
+    // creates the elements, also if an element remains empty
+    void register_element(const std::vector<int>& recipe_indices, int i=0) {
+        int index_value;
+        shift_index(recipe_indices[i], index_value);
+        if (i+1 < static_cast<int>(recipe_indices.size())) {
+            get_next_level(index_value).register_element(recipe_indices, i+1);
+        }
+    }
+
     IndexShifter()
         : start_index(0), accessed(false), list_mode(false) {}
 
@@ -539,6 +551,19 @@ public:
             it = index_shifter_map.insert(std::make_pair(varname, IndexShifter(list_mode))).first;
         }
         return it->second.setdefault(pyobj, indices, defval);
+    }
+
+    // with list mode, register the element of a nested array that the
+    // parsing code creates before the loop filling it (see
+    // IndexShifter::register_element); dict arrays are indexed by the
+    // recipe indices themselves
+    void register_element(const std::string& varname, const std::vector<int>& indices) {
+        if (!list_mode) return;
+        IndexShifterMap::iterator it = index_shifter_map.find(varname);
+        if (it == index_shifter_map.end()) {
+            it = index_shifter_map.insert(std::make_pair(varname, IndexShifter(list_mode))).first;
+        }
+        it->second.register_element(indices);
     }
 
     bool has_value(const std::string& varname) {

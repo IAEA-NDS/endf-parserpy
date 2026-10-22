@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -49,6 +49,7 @@ from .mode_management import (
     register_send_line_func,
     register_prepare_line_func,
     register_finalize_line_func,
+    register_nested_element_hook,
     register_prepare_line_tape_func,
     register_finalize_line_tape_func,
     register_prepare_section_func,
@@ -339,6 +340,16 @@ def _finalize_line_func_wrapper(vardict):
     return code
 
 
+def _nested_element_func_wrapper(vartok, indices):
+    # the start index of each level of a nested array with array_type="list"
+    # is the first index of the loop that creates its elements, as in the
+    # parsing code, also if an element remains empty (see IndexShifter)
+    idcsarg = "std::vector<int>({" + ", ".join(indices) + "})"
+    return cpp.statement(
+        f'cpp_index_shifter_store.register_element("{vartok}", {idcsarg})'
+    )
+
+
 def _prepare_line_tape_func_wrapper():
     # cpp_line not used but kept in order to avoid
     # rewritig the printing of error messages including template strings
@@ -404,6 +415,7 @@ def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
     register_send_line_func(_prepare_send_func_wrapper, vardict)
     register_prepare_line_func(_prepare_line_func_wrapper, vardict)
     register_finalize_line_func(_finalize_line_func_wrapper, vardict)
+    register_nested_element_hook(_nested_element_func_wrapper, vardict)
     register_prepare_line_tape_func(_prepare_line_tape_func_wrapper, vardict)
     register_finalize_line_tape_func(_finalize_line_tape_func_wrapper, vardict)
     register_prepare_section_func(_prepare_section_func_wrapper, vardict)

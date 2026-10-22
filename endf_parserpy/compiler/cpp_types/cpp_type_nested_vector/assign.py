@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -20,6 +20,7 @@ from endf_parserpy.compiler.variable_management import (
     get_var_types,
 )
 from endf_parserpy.compiler.node_checks import is_loop
+from endf_parserpy.compiler.mode_management import get_nested_element_hook
 from endf_parserpy.compiler.node_aux import (
     get_loopvar,
 )
@@ -63,6 +64,7 @@ class Assign:
             return False
 
         register_var(vartok, dtype, "NestedVector", vardict)
+        nested_element_hook = get_nested_element_hook(vardict)
         code = ""
         cpp_varname = Query.get_cpp_varname(vartok, vardict, dtype=dtype)
         ptrvar_old = cpp_varname
@@ -74,6 +76,8 @@ class Assign:
             new_code = cpp.statement(
                 f"{ptrvar_new} = {ptrvar_old}{dot}prepare({idxstr})"
             )
+            if nested_element_hook is not None:
+                new_code += nested_element_hook(vartok, indices[: i + 1])
             if node is not None:
                 destnode = moveup_ptrassign(vartok, i, node, limit_node)
                 limit_node = destnode

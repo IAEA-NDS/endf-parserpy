@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -218,6 +218,31 @@ def get_lookahead_presence_check(vardict):
         basic_ops = curdict.get("__basic_ops", {})
         if "lookahead_presence_check" in basic_ops:
             return basic_ops["lookahead_presence_check"]
+        if "__up" not in curdict:
+            return None
+        curdict = curdict["__up"]
+
+
+def register_nested_element_hook(func, vardict):
+    """Register a function that returns code to be executed where the
+    code for parsing creates an element of a nested array (before the
+    loop that fills it), called with the variable token and the index
+    expressions of the element.
+
+    Without a registered function, no such code is generated, see
+    :func:`get_nested_element_hook`.
+    """
+    _register_getter(func, vardict, "nested_element_hook", ("vartok", "indices"))
+
+
+def get_nested_element_hook(vardict):
+    """Return the registered function for elements of nested arrays or
+    ``None``."""
+    curdict = vardict
+    while True:
+        basic_ops = curdict.get("__basic_ops", {})
+        if "nested_element_hook" in basic_ops:
+            return basic_ops["nested_element_hook"]
         if "__up" not in curdict:
             return None
         curdict = curdict["__up"]

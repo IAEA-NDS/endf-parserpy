@@ -16,8 +16,13 @@ nested array, stored by the position relative to the first element
 accessed. An element that is not accessed, e.g. al[i] of an MF4 incident
 energy with NL[i]=0, left a gap, and the bookkeeping of the following
 element was read and written outside of its memory. This corrupted the
-heap (crashes, possibly later and elsewhere). The output of EndfParserCpp
-must be identical to that of EndfParserPy.
+heap (crashes, possibly later and elsewhere).
+
+With array_type="list", the start index of each level must be the first
+index of the loop that creates the elements, not the first index accessed,
+so that an empty first inner array (al[0] for NL[1]=0) does not shift the
+other elements. The output of EndfParserCpp must be identical to that of
+EndfParserPy.
 """
 
 from pathlib import Path
@@ -64,26 +69,8 @@ def test_mf4_dict_roundtrip(empty):
     assert _lines(parser.write(parser.parse("\n".join(text)))) == text
 
 
-# With array_type="list", the writer of EndfParserCpp takes the start index
-# of a nested array from the first element accessed, so an empty first inner
-# array (al[0] for NL[1]=0) shifts all elements (IndexError); not fixed here
-LIST_CASES = [
-    (
-        pytest.param(
-            e,
-            marks=pytest.mark.xfail(
-                raises=IndexError, strict=True, reason="empty first inner array"
-            ),
-        )
-        if 1 in e
-        else e
-    )
-    for e in EMPTY_CASES
-]
-
-
 @pytest.mark.parametrize("mode", ["list", "numpy"])
-@pytest.mark.parametrize("empty", LIST_CASES, ids=str)
+@pytest.mark.parametrize("empty", EMPTY_CASES, ids=str)
 def test_mf4_roundtrip_list_modes(empty, mode):
     if mode == "numpy":
         pytest.importorskip("numpy")

@@ -123,6 +123,19 @@ def write_dir(dic, with_ctrl=True, write_opts=None):
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
 
 
+# number of correlation values KIJ per INTG record for each NDIGIT, from the
+# formats 2I5,1X,18I3,1X / 2I5,1X,13I4,3X / 2I5,1X,11I5 / 2I5,1X,9I6,1X /
+# 2I5,8I7 of ENDF-102 (Section 0.6.4.9)
+INTG_NUM_VALUES = {2: 18, 3: 13, 4: 11, 5: 9, 6: 8}
+
+
+def intg_field_starts(ndigit):
+    """Start columns (0-based) of the KIJ fields of an INTG record."""
+    start = 11 if ndigit <= 5 else 10
+    step = ndigit + 1
+    return range(start, start + INTG_NUM_VALUES[ndigit] * step, step)
+
+
 def read_intg(lines, ofs=0, with_ctrl=True, ndigit=None, read_opts=None):
     if ndigit is None:
         raise ValueError("ndigit must be specified")
@@ -131,7 +144,7 @@ def read_intg(lines, ofs=0, with_ctrl=True, ndigit=None, read_opts=None):
     elif ndigit < 2 or ndigit > 6:
         raise InvalidIntegerError("NDIGIT must be between 2 and 6")
     ndigit = int(ndigit)
-    range_iter = range(11, 65, ndigit + 1) if ndigit <= 5 else range(10, 65, ndigit + 1)
+    range_iter = intg_field_starts(ndigit)
     line = lines[ofs]
     dic = {
         "II": read_fort_int(line[0:5]),

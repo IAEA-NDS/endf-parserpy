@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -613,12 +613,15 @@ def generate_code_for_intg(node, vardict):
     code += generate_code_for_varassign(ii_expr, vardict, val_ii, int)
     code += generate_code_for_varassign(jj_expr, vardict, val_jj, int)
     code += cpp.statement("int cpp_step = cpp_ndigit + 1")
-    code += cpp.statement("int cpp_end = 65")
     code += cpp.statement("int cpp_start")
     code += cpp.ifelse(
         "cpp_ndigit <= 5",
         cpp.statement("cpp_start = 11"),
         cpp.statement("cpp_start = 10"),
+    )
+    # number of KIJ values for each NDIGIT according to ENDF-102
+    code += cpp.statement(
+        "int cpp_end = cpp_start + cpp_intg_num_values(cpp_ndigit) * cpp_step"
     )
     code += cpp.statement("std::vector<int> cpp_intvec")
     code += cpp.statement("int elpos = 0")

@@ -85,6 +85,15 @@ inline double cpp_div(const EndfFloatCpp& x, const EndfFloatCpp& y) {
 }
 
 
+// number of correlation values KIJ per INTG record for NDIGIT=2..6, from
+// the formats 2I5,1X,18I3,1X / 2I5,1X,13I4,3X / 2I5,1X,11I5 /
+// 2I5,1X,9I6,1X / 2I5,8I7 of ENDF-102 (Section 0.6.4.9)
+inline int cpp_intg_num_values(int ndigit) {
+  static const int num_values[] = {18, 13, 11, 9, 8};
+  return num_values[ndigit - 2];
+}
+
+
 inline int cpp_mod(int x, int y) {
   if (y == 0) {
     throw std::runtime_error("modulo by zero in expression " +

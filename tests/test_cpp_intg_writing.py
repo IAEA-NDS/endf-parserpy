@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -54,10 +54,12 @@ NDIGITS = [2, 3, 4, 5, 6]
 NUM_LINES = 7
 
 
+# number of KIJ fields of an INTG record (ENDF-102, Section 0.6.4.9)
+NUM_VALUES = {2: 18, 3: 13, 4: 11, 5: 9, 6: 8}
+
+
 def _num_values(ndigit):
-    # number of KIJ fields of an INTG record as read and written
-    start = 11 if ndigit <= 5 else 10
-    return len(range(start, 65, ndigit + 1))
+    return NUM_VALUES[ndigit]
 
 
 def _make_parser(array_type):
@@ -135,21 +137,18 @@ def test_intg_records_written(ndigit):
         assert len(line) == 80
         assert int(line[0:5]) == ii[k]
         assert int(line[5:10]) == jj[k]
-        # for NDIGIT=3, the 14th field, which is read and written as the
-        # other fields, overlaps the first column of the MAT number
-        assert line[67 if ndigit == 3 else 66 : 75] == "263132151"[ndigit == 3 :]
-        # all values but a last one overlapping the MAT number
+        assert line[66:75] == "263132151"
         for m, value in enumerate(rows[k]):
             pos = start + m * width
-            if pos + width <= 66:
-                assert int(line[pos : pos + width]) == value
-    if ndigit != 3:
-        # same output as the Python writer
-        _, _, rows = _intg_data(ndigit)
-        py_parser = EndfParserPy(ignore_send_records=True, ignore_missing_tpid=True)
-        endf_dict = py_parser.parse(MF32_LCOMP2_RML)
-        _set_intg(_range(endf_dict), ndigit, ii, jj, rows, "dict")
-        assert _lines(py_parser.write(endf_dict)) == lines
+            assert int(line[pos : pos + width]) == value
+        # the columns after the last field are blank
+        assert line[start + len(rows[k]) * width : 66].strip() == ""
+    # same output as the Python writer
+    _, _, rows = _intg_data(ndigit)
+    py_parser = EndfParserPy(ignore_send_records=True, ignore_missing_tpid=True)
+    endf_dict = py_parser.parse(MF32_LCOMP2_RML)
+    _set_intg(_range(endf_dict), ndigit, ii, jj, rows, "dict")
+    assert _lines(py_parser.write(endf_dict)) == lines
 
 
 def _numpy_variants():
@@ -224,13 +223,10 @@ def test_intg_roundtrip(ndigit, mode):
     parser = _make_parser(mode)
     endf_dict = parser.parse(text)
     assert _range(endf_dict)["NDIGIT"] == ndigit
-    written = _lines(parser.write(endf_dict))
-    # a second round trip as values overlapping the MAT number (NDIGIT=3)
-    # are read back with the MAT number
-    written2 = _lines(parser.write(parser.parse("\n".join(written))))
-    assert written2 == written
-    if ndigit != 3:
-        assert written == text.splitlines()
+    kij = _range(endf_dict)["KIJ"]
+    first_row = kij[min(kij)] if isinstance(kij, dict) else kij[0]
+    assert len(first_row) == NUM_VALUES[ndigit]
+    assert _lines(parser.write(endf_dict)) == text.splitlines()
 
 
 @pytest.mark.parametrize("ndigit", NDIGITS)

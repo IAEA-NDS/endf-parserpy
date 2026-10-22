@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -1012,6 +1012,7 @@ class EndfParserPy(EndfParserBase):
         """
         if isinstance(lines, str):
             lines = lines.split("\n")
+        self._remove_array_state_opts()
         array_type = self.parse_opts["array_type"]
         self.parse_opts["internal_array_type"] = (
             "list" if array_type == "list_slow" else "dict"
@@ -1087,20 +1088,24 @@ class EndfParserPy(EndfParserBase):
                     except ParserException as exc:
                         if not nofail:
                             logstr = self.logbuffer.display_record_logs()
-                            self._remove_parse_state_opts()
+                            self._remove_array_state_opts()
                             raise type(exc)(
                                 "\nHere is the parser record log until failure:\n\n"
                                 + logstr
                                 + "Error message: "
                                 + str(exc)
                             )
-        self._remove_parse_state_opts()
+        self._remove_array_state_opts()
         return mfmt_dic
 
-    def _remove_parse_state_opts(self):
-        del self.parse_opts["internal_array_type"]
+    def _remove_array_state_opts(self):
+        # also called at the start of parse() and write(): these options
+        # change how arrays are treated (see numpy_arrays), so they must
+        # not linger if an error path of a previous call left them behind
+        self.parse_opts.pop("internal_array_type", None)
         self.parse_opts.pop("array_forms", None)
         self.parse_opts.pop("numpy_marks", None)
+        self.parse_opts.pop("array_write", None)
         self._numpy_forms = None
 
     def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
@@ -1117,9 +1122,9 @@ class EndfParserPy(EndfParserBase):
         if isinstance(endf_dic, EndfDict):
             endf_dic = endf_dic.unwrap()
         self.zero_as_blank = zero_as_blank
+        self._remove_array_state_opts()
         array_type = self.parse_opts["array_type"]
         in_list_mode = array_type in ("list", "list_slow", "numpy")
-        self._numpy_forms = None
         if in_list_mode:
             # numpy arrays and scalars are written like lists and
             # Python numbers with the same values
@@ -1195,7 +1200,7 @@ class EndfParserPy(EndfParserBase):
                             errmsg += "\n\n" + explain_header + "\n"
                             errmsg += "-" * len(explain_header) + "\n"
                             errmsg += explanation
-                        self._remove_write_state_opts()
+                        self._remove_array_state_opts()
                         raise type(exc)(errmsg)
                     # check if arrays have been written in their entirety
                     if should_check_arrays:
@@ -1272,13 +1277,8 @@ class EndfParserPy(EndfParserBase):
             )
         )
         del self.zero_as_blank
-        self._remove_write_state_opts()
+        self._remove_array_state_opts()
         return lines
-
-    def _remove_write_state_opts(self):
-        del self.parse_opts["internal_array_type"]
-        self.parse_opts.pop("array_forms", None)
-        self.parse_opts.pop("array_write", None)
 
     def parsefile(self, filename, exclude=None, include=None, nofail=False):
         """Parse ENDF-6 formatted data stored in a file.

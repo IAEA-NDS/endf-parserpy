@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -115,3 +115,23 @@ def test_dict_mode_unchanged(mf4_text):
     endf_dict = _py_parser(array_type="dict", loglevel=40).parse(mf4_text)
     al = endf_dict[4][2]["al"]
     assert 1 not in al and 2 not in al and len(al) == 19
+
+
+@pytest.mark.parametrize("mode", ["list", "list_slow", "numpy"])
+def test_empty_arrays_after_failed_write(mode, mf4_text):
+    # a failed write must not leave the array state options of the parser
+    # behind: a later parse would skip the creation of the empty inner
+    # arrays and silently return the result of the dict-based conversion
+    if mode == "numpy":
+        pytest.importorskip("numpy")
+    parser = _py_parser(array_type=mode, loglevel=40)
+    reference = None if mode == "numpy" else _exact(parser.parse(mf4_text))
+    with pytest.raises(Exception):
+        # the MF number of the section contradicts its key, which
+        # raises before the recipe of the section is executed
+        parser.write({4: {2: {"MF": 3, "MT": 2}}})
+    py_dict = parser.parse(mf4_text)
+    if reference is not None:
+        assert _exact(py_dict) == reference
+    al = py_dict[4][2]["al"]
+    assert all(len(al[i]) == 0 for i in (0, 1, -1))

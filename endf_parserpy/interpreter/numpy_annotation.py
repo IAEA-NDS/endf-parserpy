@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -577,16 +577,28 @@ class _Walker:
             for v in limit_vars.values()
         ):
             return None
+        # the limits of both loops must not contain arrays, and only one
+        # loop may depend on the variable of the other (triangular matrix)
         is_triagonal = False
         is_lower = False
-        outer_key = (_loopvar(outer), 0)
-        for j, lim in enumerate(inner_lims):
-            vs = _vars_of(lim)
-            if any(v.nidx > 0 for v in vs.values()):
-                return None
-            if outer_key in vs:
-                is_triagonal = True
-                is_lower = j != 0
+        num_depends = 0
+        lims_and_keys = (
+            (_loop_limits(outer), (_loopvar(inner), 0), True),
+            (inner_lims, (_loopvar(outer), 0), False),
+        )
+        for lims, key, is_outer in lims_and_keys:
+            depends = False
+            for j, lim in enumerate(lims):
+                vs = _vars_of(lim)
+                if any(v.nidx > 0 for v in vs.values()):
+                    return None
+                if key in vs:
+                    depends = True
+                    is_triagonal = True
+                    is_lower = (j == 0) if is_outer else (j != 0)
+            num_depends += depends
+        if num_depends > 1:
+            return None
         return ("Matrix2d", dtype, 2, is_triagonal, is_lower)
 
 

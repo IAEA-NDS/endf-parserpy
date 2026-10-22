@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -69,3 +69,42 @@ def test_annotation_follows_code_generator(recipe, recipe_parser):
     }
     assert assignments == expected_assignments
     assert preparations == set(layout["preparations"])
+
+
+# Matrices of custom recipes: the proof of the code generator that a
+# variable with two indices can be stored as a matrix checks the limits of
+# both loops (before, only those of the inner loop were checked)
+MATRIX_RECIPES = {
+    "rectangular": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, N, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, 3, 0/ {M[i,j]}{j=1 to 3} ]LIST
+        endfor
+        SEND
+        """,
+        "Matrix2d",
+    ),
+    "outer limit with array": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, 2, 0/ NA[1], NA[2] ]LIST
+        for i=1 to NA[1]:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, 3, 0/ {M[i,j]}{j=1 to 3} ]LIST
+        endfor
+        SEND
+        """,
+        "NestedVector",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", list(MATRIX_RECIPES))
+def test_matrix_proof_checks_both_loops(case, recipe_parser):
+    recipe, container = MATRIX_RECIPES[case]
+    layout = get_recipe_layout(recipe)
+    kinds = {a[3][0] for a in layout["assignments"] if a[2] == "M"}
+    assert kinds == {container}
+    walker = annotate_recipe_tree(recipe_parser.parse(recipe))
+    assert {
+        kind[0] for var, _, kind, _, _ in walker.assignments if var.name == "M"
+    } == {container}

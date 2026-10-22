@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2026/10/21
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -156,19 +156,19 @@ class Assign:
         for i in range(2):
             curlims = lims[i]
             depends[i] = False
-        for j, lim in enumerate(curlims):
-            vs = get_variables_in_expr(lim)
-            # ensure that no arrays are in the
-            # limits of the loop variable
-            if any(len(w.indices) > 0 for w in vs):
-                return return_fail()
-            if lvars[i] in vs:
-                depends[i] = True
-                is_triagonal = True
-                if i == 0:
-                    is_lower = j == 0
-                else:
-                    is_lower = j != 0
+            for j, lim in enumerate(curlims):
+                vs = get_variables_in_expr(lim)
+                # ensure that no arrays are in the
+                # limits of the loop variable
+                if any(len(w.indices) > 0 for w in vs):
+                    return return_fail()
+                if lvars[i] in vs:
+                    depends[i] = True
+                    is_triagonal = True
+                    if i == 0:
+                        is_lower = j == 0
+                    else:
+                        is_lower = j != 0
 
         # we only allow full and triagonal matrices
         num_depends = sum(depends)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2026/10/20
+# Last modified:   2026/10/22
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -254,8 +254,15 @@ class ListBodyRecorder:
             ),
             cpp.INDENT,
         )
+        # as the first body line, the last one only exists if the LIST is
+        # non-empty; finalizing it unconditionally would write the header
+        # line of an NPL=0 LIST a second time
+        finalize_code = get_finalize_line_func(vardict)(vardict)
+        if finalize_code:
+            code += cpp.indent_code(
+                cpp.pureif("cpp_npl > 0", finalize_code), cpp.INDENT
+            )
         code += cpp.close_block()
-        code += get_finalize_line_func(vardict)(vardict)
         return code
 
     @staticmethod

@@ -337,8 +337,9 @@ def generate_master_parsefun(name, recipefuns):
             aux.is_blank_line(),
             cpp.ifelse(
                 cpp.logical_or(["after_tend", "parse_opts.ignore_blank_lines"]),
-                # if branch
-                cpp.statement("continue"),
+                # if branch: the next section starts after the blank line
+                # (the stream is set back to curpos before it is parsed)
+                cpp.statement("curpos = cont.tellg()") + cpp.statement("continue"),
                 # else branch
                 cpp.throw_runtime_error(
                     "Blank line detected: Correct file or use `ignore_blank_lines` option"

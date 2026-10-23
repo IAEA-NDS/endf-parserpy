@@ -708,7 +708,7 @@ inline bool cpp_is_blank_line(const std::string& line) {
   // scanning from the end exits early for regular lines, which end
   // with the MAT/MF/MT numbers (and possibly a line number)
   for (std::size_t i = line.size(); i > 0; i--) {
-    if (line[i-1] != ' ') return false;
+    if (line[i-1] != ' ' && line[i-1] != '\t') return false;
   }
   return true;
 }
@@ -733,7 +733,7 @@ struct cpp_streambuf_access : public std::streambuf {
 // the state flags set on the stream. Instead of extracting the line
 // character by character, the get area of the stream buffer is searched
 // for the delimiter and whole chunks are appended to the line.
-inline std::istream& cpp_getline(std::istream& is, std::string& line) {
+inline std::istream& cpp_getline_with_cr(std::istream& is, std::string& line) {
   typedef std::char_traits<char> traits;
   std::istream::sentry sen(is, true);
   if (! sen) return is;
@@ -771,6 +771,17 @@ inline std::istream& cpp_getline(std::istream& is, std::string& line) {
     cpp_streambuf_access::advance(sb, static_cast<int>(n));
     extracted = true;
   }
+}
+
+
+// A line without the line terminator: the newline and, for a file with
+// CRLF line endings (e.g. written on Windows), the carriage return before
+// it, so that every reader sees the same line (blank lines included) as
+// EndfParserPy, which reads the file in text mode.
+inline std::istream& cpp_getline(std::istream& is, std::string& line) {
+  cpp_getline_with_cr(is, line);
+  if (! line.empty() && line.back() == '\r') line.pop_back();
+  return is;
 }
 
 
@@ -880,7 +891,6 @@ inline std::string cpp_read_stream_content(std::istream& in) {
 inline std::size_t cpp_pad_short_line(std::string& line) {
   const std::size_t min_size = 75;
   if (line.size() >= min_size) return line.size();
-  if (! line.empty() && line.back() == '\r') line.pop_back();
   std::size_t content_size = line.size();
   line.append(min_size - content_size, ' ');
   return content_size;
@@ -1164,17 +1174,9 @@ inline std::vector<std::string> read_section_verbatim(
   std::vector<std::string> secvec;
   int curmf;
   int curmt;
-  size_t lastpos;
   std::size_t content_size;
   while (! cont.eof()) {
     cpp_read_line(line, cont, mat, mf, mt, parse_opts, &content_size);
-    // remove trailing \r that we may
-    // get from reading win-style line endings
-    lastpos = line.size() - 1;
-    if (line[lastpos] == '\r') {
-      line.erase(lastpos);
-      content_size = line.size();
-    }
     curmf = std::stoi(line.substr(70, 2));
     curmt = std::stoi(line.substr(72, 3));
     if (curmf != mf || curmt != mt) break;

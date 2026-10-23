@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/22
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -26,8 +26,20 @@ import pytest
 from endf_parserpy.endf_recipes import get_recipe_dict, list_endf_flavors
 from endf_parserpy.endf_recipes.endf_lark_ebnf import endf_recipe_grammar
 from endf_parserpy.interpreter.endf_recipe_utils import get_recipe_parser
-from endf_parserpy.interpreter.numpy_annotation import annotate_recipe_tree, node_path
+from endf_parserpy.interpreter.numpy_annotation import annotate_recipe_tree
 from endf_parserpy.compiler.recipe_layout import get_recipe_layout
+
+
+def node_path(walker, node):
+    """Child indices leading from the root of the tree to ``node``."""
+    path = []
+    cur = node
+    par = walker.parent(cur)
+    while par is not None:
+        path.append(next(i for i, c in enumerate(par.children) if c is cur))
+        cur = par
+        par = walker.parent(cur)
+    return tuple(reversed(path))
 
 
 def _all_recipes():

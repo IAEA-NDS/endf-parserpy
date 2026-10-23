@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/22
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -54,6 +54,8 @@ for all recipes of the package.
 
 from lark.tree import Tree
 from lark.lexer import Token
+from ..utils.tree_utils import get_child
+from .custom_exceptions import RecipeAnnotationError
 
 
 RECORD_NODES = (
@@ -82,17 +84,11 @@ _COLLAPSED_NODES = ("expr", "addpart", "mulpart", "bracketexpr")
 _KEPT_TOKENS = ("VARNAME", "NUMBER", "DESIRED_NUMBER")
 
 
-class RecipeAnnotationError(Exception):
-    pass
-
-
 def _child(node, name, nofail=False):
-    for c in node.children:
-        if (c.data if isinstance(c, Tree) else c.type) == name:
-            return c
-    if nofail:
-        return None
-    raise RecipeAnnotationError(f"no child {name} in {node.data}")
+    child = get_child(node, name, nofail=True)
+    if child is None and not nofail:
+        raise RecipeAnnotationError(f"no child {name} in {node.data}")
+    return child
 
 
 def _children(node, name):
@@ -616,15 +612,3 @@ def annotate_recipe_tree(tree):
         root_scope.vars[(name, 0)] = False
     walker.walk(tree, root_scope)
     return walker
-
-
-def node_path(walker, node):
-    """Child indices leading from the root of the tree to ``node``."""
-    path = []
-    cur = node
-    par = walker.parent(cur)
-    while par is not None:
-        path.append(next(i for i, c in enumerate(par.children) if c is cur))
-        cur = par
-        par = walker.parent(cur)
-    return tuple(reversed(path))

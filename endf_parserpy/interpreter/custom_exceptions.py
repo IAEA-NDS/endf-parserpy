@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/13
-# Last modified:   2026/05/15
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -107,3 +107,10 @@ class MissingSectionError(ParserException):
         super().__init__(message)
         self.section_name = section_name
         self.section_type = section_type
+
+
+# not a ParserException: raised while annotating a recipe parse tree for
+# the list modes (see numpy_annotation), not while parsing data, and it
+# must not be absorbed by the handlers that catch ParserException
+class RecipeAnnotationError(EndfParserpyError):
+    pass

@@ -188,6 +188,64 @@ BLOCK_RECIPES = {
         """,
         {0},
     ),
+    "limit read before and checked in the loop": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, N, NP, 0, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, NP, 0/ {M[q,i]}{q=1 to NP} ]LIST
+        endfor
+        SEND
+        """,
+        {2},
+    ),
+    "limit first read in the loop": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, N, 0, 0, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, NP, 0/ {M[q,i]}{q=1 to NP} ]LIST
+        endfor
+        SEND
+        """,
+        {0},
+    ),
+    "limit only the size of a table before": (
+        # the fields NR and NP of a TAB1 record are the sizes of its tables,
+        # so NP is first read in the loop (as in MF7/MT2)
+        """
+        [MAT, 1, MT/ 0.0, 0.0, N, 0, NR, NP/ E / Y ]TAB1
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, NP, 0/ {M[q,i]}{q=1 to NP} ]LIST
+        endfor
+        SEND
+        """,
+        {0},
+    ),
+    "limit possibly read before": (
+        # NP is only read if L == 1; otherwise the first LIST record
+        # assigns it
+        """
+        [MAT, 1, MT/ 0.0, 0.0, N, L, 0, 0]HEAD
+        if L == 1:
+            [MAT, 1, MT/ 0.0, 0.0, NP, 0, 0, 0]CONT
+        endif
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, NP, 0/ {M[q,i]}{q=1 to NP} ]LIST
+        endfor
+        SEND
+        """,
+        {0},
+    ),
+    "limit read before and redefined as abbreviation": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, N, NP, 0, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, NP, 0/ {M[q,i]}{q=1 to NP} ]LIST
+            NP := 3
+        endfor
+        SEND
+        """,
+        {0},
+    ),
     "mutually exclusive branches": (
         """
         [MAT, 1, MT/ 0.0, 0.0, LB, 0, N, 0]HEAD

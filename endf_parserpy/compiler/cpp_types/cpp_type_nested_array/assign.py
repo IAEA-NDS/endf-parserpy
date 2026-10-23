@@ -12,6 +12,7 @@
 from lark.lexer import Token
 from endf_parserpy.utils.tree_utils import get_child
 import endf_parserpy.compiler.cpp_primitives as cpp
+from endf_parserpy.compiler.expr_utils.custom_nodes import VariableToken
 from endf_parserpy.compiler.expr_utils.node_checks import is_variable
 from endf_parserpy.compiler.expr_utils.equation_utils import (
     contains_variable,
@@ -91,18 +92,124 @@ def _branches(node, scope):
 
 
 def _occurs_elsewhere(node, vartok, site, branches):
-    # whether vartok occurs in node apart from the site, skipping the
-    # branches of if-clauses that exclude the branch of the site
+    # whether the variable (same name and number of indices) occurs in
+    # node apart from the site, also in indices, skipping the branches of
+    # if-clauses that exclude the branch of the site
     if node is site:
         return False
+    if isinstance(node, VariableToken):
+        if str(node) == str(vartok) and len(node.indices) == len(vartok.indices):
+            return True
+        return any(_occurs_elsewhere(i, vartok, site, branches) for i in node.indices)
     if isinstance(node, Token):
-        return node == vartok
+        return False
+    if node.data == "extvarname":
+        # outside of expressions, variables are not converted to tokens
+        name = get_child(node, "VARNAME")
+        nidx = sum(1 for c in node.children if getattr(c, "data", None) == "indexquant")
+        if str(name) == str(vartok) and nidx == len(vartok.indices):
+            return True
     for child in node.children:
         if is_if_clause(node) and branches.get(id(node), id(child)) != id(child):
             continue
         if _occurs_elsewhere(child, vartok, site, branches):
             return True
     return False
+
+
+# nodes whose children are executed one after the other
+_SEQUENCE_NODES = (
+    "endf_recipe",
+    "for_body",
+    "repeat_body",
+    "section_body",
+    "if_body",
+    "list_body",
+    "list_line",
+)
+# nodes of records through which a field of a record is reached
+_RECORD_PATH_NODES = (
+    "code_token",
+    "endf_line",
+    "head_or_cont_line",
+    "dir_line",
+    "intg_line",
+    "tab1_line",
+    "tab2_line",
+    "record_fields",
+    "dir_fields",
+    "intg_fields",
+)
+_TABLE_FIELDS = {"tab1_fields": (4, 5), "tab2_fields": (4,)}
+
+
+def _in_field(node, vartok):
+    # whether vartok is in a field of a record reached from node without
+    # passing a loop, an if-clause or a section, so that the field is read
+    # each time node is executed
+    if isinstance(node, Token):
+        return False
+    if node.data == "expr":
+        return contains_variable(node, vartok)
+    if node.data == "list_line":
+        # the fields in the body of a named LIST record are variables
+        # of its own scope
+        named = get_child(node, "list_name", nofail=True) is not None
+        return any(
+            _in_field(c, vartok)
+            for c in node.children
+            if not isinstance(c, Token)
+            and (c.data == "record_fields" or (c.data == "list_body" and not named))
+        )
+    if node.data in _TABLE_FIELDS:
+        # the fields NR and NP of a TAB1 record and NR of a TAB2 record
+        # are the sizes of its tables, not assignments of variables
+        exprs = [
+            c
+            for c in get_child(node, "record_fields").children
+            if not isinstance(c, Token) and c.data == "expr"
+        ]
+        skip = _TABLE_FIELDS[node.data]
+        return any(_in_field(e, vartok) for i, e in enumerate(exprs) if i not in skip)
+    if node.data in _RECORD_PATH_NODES or node.data == "list_body":
+        return any(_in_field(c, vartok) for c in node.children)
+    return False
+
+
+def _is_read_before(vartok, loop):
+    # whether a field with vartok is read each time before the loop
+    curnode = loop
+    while curnode.parent is not None:
+        parent = curnode.parent
+        if parent.data in _SEQUENCE_NODES:
+            for child in parent.children:
+                if child is curnode:
+                    break
+                if _in_field(child, vartok):
+                    return True
+        curnode = parent
+    return False
+
+
+def _only_in_expressions(node, vartok, in_expr=False):
+    # whether vartok occurs in node only in expressions
+    if isinstance(node, Token):
+        return in_expr or node != vartok
+    in_expr = in_expr or node.data == "expr"
+    return all(_only_in_expressions(c, vartok, in_expr) for c in node.children)
+
+
+def _is_checked_only(vartok, loop):
+    # A scalar variable whose value is read from a field each time before
+    # the loop is known when the loop starts; its fields in the loop are
+    # then only checked against this value (by both parsers), so that
+    # the variable does not change in the loop, provided it is not
+    # redefined there in another way (e.g. as abbreviation)
+    return (
+        len(vartok.indices) == 0
+        and _is_read_before(vartok, loop)
+        and _only_in_expressions(loop, vartok)
+    )
 
 
 def _is_block(vartok, node, block, outer, vardict):
@@ -134,7 +241,9 @@ def _is_block(vartok, node, block, outer, vardict):
                     return False
                 if has_loopvartype(v, vardict):
                     continue
-                if contains_variable(outer, v, filters=[is_loop_head]):
+                if not contains_variable(outer, v, filters=[is_loop_head]):
+                    continue
+                if not _is_checked_only(v, outer):
                     return False
     if num_leading > 0:
         if _prepare_dests(vartok, node, num_leading)[-1] is not outer:

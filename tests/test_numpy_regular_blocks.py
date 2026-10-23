@@ -215,3 +215,56 @@ def test_mf33_matrix_forms(mf33_text):
         f = numpy_sub["F"]
         f = f.tolist() if isinstance(f, np.ndarray) else [r.tolist() for r in f]
         assert f == list_sub["F"]
+
+
+# ---------------------------------------------------------------------
+# MF7/MT2: S[q,i] is not a block: its limit NP is the size of the table
+# of the TAB1 record before the loop over i, which is not an assignment
+# of NP, and NP is first read in the LIST record in the loop
+# ---------------------------------------------------------------------
+
+
+def _mf7_section(lthr):
+    # coherent elastic scattering at T0 and LT=2 further temperatures
+    np_, lt = 3, 2
+    section = {"MAT": 1325, "MF": 7, "MT": 2, "ZA": 13027.0, "AWR": 26.75}
+    section.update({"LTHR": lthr, "T0": 20.0, "LT": lt, "NP": np_, "LI": 2})
+    section["S_T0_table"] = {
+        "Eint": [0.0037, 0.0050, 0.0100],
+        "S": [0.0053, 0.0088, 0.0135],
+        "INT": [1],
+        "NBT": [np_],
+    }
+    section["T"] = {1: 80.0, 2: 293.6}
+    section["S"] = {q: {i: 0.001 * q + 0.0001 * i for i in (1, 2)} for q in (1, 2, 3)}
+    if lthr == 3:
+        section.update({"SB": 0.0082, "Tint": [20.0, 400.0, 800.0]})
+        section.update({"Wp": [0.1, 0.2, 0.3], "INT": [2], "NBT": [np_]})
+    return {7: {2: section}}
+
+
+@pytest.fixture(scope="module", params=[1, 3], ids=["LTHR=1", "LTHR=3"])
+def mf7_text(request):
+    return _text(_mf7_section(request.param))
+
+
+@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("name", PARSERS)
+def test_mf7_roundtrip(mf7_text, name, mode):
+    result = _parse(mf7_text, name, mode)
+    assert "\n".join(_parser(name, mode).write(result)) == mf7_text
+
+
+@pytest.mark.parametrize("mode", SAME_RESULT_MODES)
+def test_mf7_same_result_both_parsers(mf7_text, mode):
+    py_result = _parse(mf7_text, "python", mode)
+    assert _exact(py_result) == _exact(_parse(mf7_text, "cpp", mode))
+
+
+@pytest.mark.parametrize("name", PARSERS)
+def test_mf7_layout(mf7_text, name):
+    s_numpy = _parse(mf7_text, name, "numpy")[7][2]["S"]
+    s_list = _parse(mf7_text, name, "list")[7][2]["S"]
+    assert isinstance(s_numpy, list) and len(s_numpy) == 3
+    assert all(isinstance(row, np.ndarray) and row.shape == (2,) for row in s_numpy)
+    assert [row.tolist() for row in s_numpy] == s_list

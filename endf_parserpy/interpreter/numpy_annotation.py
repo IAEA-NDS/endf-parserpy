@@ -587,8 +587,11 @@ class _Walker:
            loop variable, so that each block is created only once;
         5. the limits of the loops of the block do not depend on the
            loop variables of the block, and the other variables in them
-           are loop variables of enclosing loops or do not occur in the
-           outermost loop of the block (except in loop heads);
+           are loop variables of enclosing loops, do not occur in the
+           outermost loop of the block (except in loop heads), or are
+           scalars read from a field of a record each time before the
+           outermost loop that occur in it only in expressions (their
+           fields in the loop are then only checked);
         6. with leading indices, the element of the last leading index
            is created before the outermost loop of the block (by the
            rule for the creation of elements of nested arrays).
@@ -616,8 +619,8 @@ class _Walker:
                 return block, loops[rank - 1]
         return None
 
-    def occurs_elsewhere(self, name, expr):
-        # see condition 3 of find_block; any token with the name counts
+    def occurs_elsewhere(self, key, expr):
+        # see condition 3 of find_block
         branches = {}
         scope = expr
         while self.parent(scope) is not None and not _is_scope_node(scope):
@@ -625,14 +628,38 @@ class _Walker:
             if parent.data == "if_clause":
                 branches[id(parent)] = id(scope)
             scope = parent
-        return _occurs_in(scope, name, expr, branches)
+        return _occurs_in(scope, key, expr, branches)
+
+    def is_read_before(self, name, loop):
+        # whether a field with the variable is read each time before the
+        # loop (see condition 5 of find_block)
+        cur = loop
+        while self.parent(cur) is not None:
+            parent = self.parent(cur)
+            if parent.data in _SEQUENCE_NODES:
+                for child in parent.children:
+                    if child is cur:
+                        break
+                    if _in_field(child, name):
+                        return True
+            cur = parent
+        return False
+
+    def is_checked_only(self, key, loop):
+        # a scalar variable read from a field each time before the loop and
+        # occurring in the loop only in expressions is only checked there
+        return (
+            key[1] == 0
+            and self.is_read_before(key[0], loop)
+            and _only_in_expressions(loop, key[0])
+        )
 
     def is_block(self, var, expr, idxexprs, block, outer, scope):
         num_leading = var.nidx - len(block)
         loopvars = {(_loopvar(loop), 0) for loop in block}
         if any(_all_vars(e) & loopvars for e in idxexprs[:num_leading]):
             return False
-        if self.occurs_elsewhere(var.name, expr):
+        if self.occurs_elsewhere(var.key, expr):
             return False
         leading = {_bare_varname(e) for e in idxexprs[:num_leading]}
         cur = self.parent(outer)
@@ -645,15 +672,86 @@ class _Walker:
                 for key in _all_vars(lim):
                     if key in loopvars:
                         return False
+                    if key[1] == 0 and scope.abbrevs and key[0] in scope.abbrevs:
+                        return False
                     if scope.is_loopvar(key):
                         continue
-                    if contains_var(outer, key[0], skip_loop_heads=True):
+                    if not contains_var(outer, key[0], skip_loop_heads=True):
+                        continue
+                    if not self.is_checked_only(key, outer):
                         return False
         if num_leading > 0:
             dests = self.prepare_dests(var, expr, num_leading)
             if dests[-1] is not outer:
                 return False
         return True
+
+
+# nodes whose children are executed one after the other
+_SEQUENCE_NODES = (
+    "endf_recipe",
+    "for_body",
+    "repeat_body",
+    "section_body",
+    "if_body",
+    "list_body",
+    "list_line",
+)
+# nodes of records through which a field of a record is reached
+_RECORD_PATH_NODES = (
+    "code_token",
+    "endf_line",
+    "head_or_cont_line",
+    "dir_line",
+    "intg_line",
+    "tab1_line",
+    "tab2_line",
+    "record_fields",
+    "dir_fields",
+    "intg_fields",
+)
+_TABLE_FIELDS = {"tab1_fields": (4, 5), "tab2_fields": (4,)}
+
+
+def _in_field(node, name):
+    # whether the variable is in a field of a record reached from node
+    # without passing a loop, an if-clause or a section, so that the
+    # field is read each time node is executed
+    if isinstance(node, Token):
+        return False
+    if node.data == "expr":
+        return contains_var(node, name)
+    if node.data == "list_line":
+        # the fields in the body of a named LIST record are variables of
+        # its own scope
+        named = _child(node, "list_name", nofail=True) is not None
+        return any(
+            _in_field(c, name)
+            for c in node.children
+            if isinstance(c, Tree)
+            and (c.data == "record_fields" or (c.data == "list_body" and not named))
+        )
+    if node.data in _TABLE_FIELDS:
+        # the fields NR and NP of a TAB1 record and NR of a TAB2 record
+        # are the sizes of its tables, not assignments of variables
+        exprs = [
+            c
+            for c in _child(node, "record_fields").children
+            if isinstance(c, Tree) and c.data == "expr"
+        ]
+        skip = _TABLE_FIELDS[node.data]
+        return any(_in_field(e, name) for i, e in enumerate(exprs) if i not in skip)
+    if node.data in _RECORD_PATH_NODES or node.data == "list_body":
+        return any(_in_field(c, name) for c in node.children)
+    return False
+
+
+def _only_in_expressions(node, name, in_expr=False):
+    # whether a token `name` occurs in node only in expressions
+    if isinstance(node, Token):
+        return in_expr or str(node) != name
+    in_expr = in_expr or node.data == "expr"
+    return all(_only_in_expressions(c, name, in_expr) for c in node.children)
 
 
 def _is_scope_node(node):
@@ -665,17 +763,18 @@ def _is_scope_node(node):
     )
 
 
-def _occurs_in(node, name, site, branches):
-    # whether a token `name` is in node apart from the site, skipping the
-    # branches of if-clauses that exclude the branch of the site
-    if node is site:
+def _occurs_in(node, key, site, branches):
+    # whether the variable (name and number of indices) occurs in node
+    # apart from the site, also in indices, skipping the branches of
+    # if-clauses that exclude the branch of the site
+    if node is site or isinstance(node, Token):
         return False
-    if isinstance(node, Token):
-        return str(node) == name
+    if node.data == "extvarname" and Var(node).key == key:
+        return True
     for child in node.children:
         if node.data == "if_clause" and branches.get(id(node), id(child)) != id(child):
             continue
-        if _occurs_in(child, name, site, branches):
+        if _occurs_in(child, key, site, branches):
             return True
     return False
 

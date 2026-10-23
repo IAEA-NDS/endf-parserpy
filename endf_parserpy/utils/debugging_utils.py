@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2026/10/21
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -373,6 +373,14 @@ class TrackingDict(MutableMapping):
         return self._basedict
 
 
+def _is_empty_array(obj):
+    # an array without elements, also with empty inner arrays
+    if not isinstance(obj, (MutableSequence, MutableMapping)):
+        return False
+    values = obj.values() if isinstance(obj, MutableMapping) else obj
+    return all(_is_empty_array(v) for v in values)
+
+
 class TrackingList(MutableSequence):
 
     def __init__(self, list_like):
@@ -429,9 +437,9 @@ class TrackingList(MutableSequence):
             for k in range(len(self._baselist)):
                 if not self._accessed[k]:
                     # an empty element (e.g. the array of an inner loop
-                    # without iterations) contains nothing to write
-                    v = self._baselist[k]
-                    if isinstance(v, (MutableSequence, MutableMapping)) and len(v) == 0:
+                    # without iterations, or the rows of a regular block
+                    # with a zero dimension) contains nothing to write
+                    if _is_empty_array(self._baselist[k]):
                         continue
                     indexpath = path + "/" + str(k)
                     raise IndexError(f"The content of {indexpath} was not accessed")

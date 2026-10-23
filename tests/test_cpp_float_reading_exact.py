@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/20
-# Last modified:   2026/10/20
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -80,6 +80,36 @@ def _field_strings():
         value = rng.uniform(-1e5, 1e5)
         field = f"{value:.{rng.randint(0, 5)}f}"[:11]
         fields.append(field.rjust(11))
+    # the layouts d.dddddd+d and d.ddddd+dd of most fields, which are
+    # converted by a separate first stage: zeros, signs and the limits
+    # of the power of ten that can be applied exactly
+    fields += [
+        "-0.000000+0",
+        " 0.000000-0",
+        "+0.000000+9",
+        "-0.00000-99",
+        " 0.00000+99",
+        " 1.23456+27",
+        "-9.99999+27",
+        " 1.23456+28",
+        " 1.23456-17",
+        "-9.99999-17",
+        " 1.23456-18",
+        "+9.999999-9",
+        " 1.00000+22",
+        " 1.00000-22",
+        " 0.00001+27",
+        " 0.00001-17",
+    ]
+    for _ in range(2000):
+        first = rng.choice(" +-")
+        if rng.random() < 0.5:
+            digits = f"{rng.randint(0, 9999999):07d}"
+            exponent = f"{rng.choice('+-')}{rng.randint(0, 9)}"
+        else:
+            digits = f"{rng.randint(0, 999999):06d}"
+            exponent = f"{rng.choice('+-')}{rng.randint(0, 99):02d}"
+        fields.append(first + digits[0] + "." + digits[1:] + exponent)
     # decimal numbers close to a rounding tie of the double conversion
     for _ in range(500):
         mantissa = str(rng.randint(1000000, 9999999))

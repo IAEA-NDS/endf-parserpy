@@ -318,6 +318,87 @@ inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
 }
 
 
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__)
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define CPP_FIELD_SWAR_LE 1
+#endif
+#elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86) || defined(_M_ARM64) || defined(_M_ARM))
+#define CPP_FIELD_SWAR_LE 1
+#endif
+
+// First stage: the two layouts of almost all float fields in ENDF-6 files,
+// " d.dddddd+d" and " d.ddddd+dd" (first character blank, '+' or '-';
+// exponent sign '+' or '-'), checked and decoded with 64-bit integer
+// operations on two overlapping loads of the 11 bytes of the field.
+// Returns 1 if converted, -1 if the field has one of these layouts but
+// the power of ten is out of range (the common path rejects it as
+// well), and 0 for any other content.
+inline int cpp_fast_field_swar(const char* str, double &result) {
+#ifdef CPP_FIELD_SWAR_LE
+  static const double p10[] = {
+    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
+    1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22
+  };
+  const std::uint64_t ones = 0x0101010101010101ULL;
+  std::uint64_t a, b;
+  std::memcpy(&a, str, 8);       // bytes 0..7
+  std::memcpy(&b, str + 3, 8);   // bytes 3..10
+  // digit value in each byte; high bit of nd* set where a byte is no digit
+  const std::uint64_t ta = a ^ (0x30 * ones);
+  const std::uint64_t tb = b ^ (0x30 * ones);
+  const std::uint64_t nda = (ta | (ta + 0x76 * ones)) & (0x80 * ones);
+  const std::uint64_t ndb = (tb | (tb + 0x76 * ones)) & (0x80 * ones);
+  const unsigned c0 = static_cast<unsigned>(a & 0xff);
+  // byte 0 blank or sign, byte 1 digit, byte 2 '.', bytes 3..7 digits
+  if ((nda & 0x8080808080008000ULL) != 0
+      || ((a >> 16) & 0xff) != '.'
+      || ! (c0 == ' ' || c0 == '+' || c0 == '-')) {
+    return 0;
+  }
+  const std::uint64_t d1 = (ta >> 8) & 0xff;
+  const unsigned c8 = static_cast<unsigned>((b >> 40) & 0xff);
+  const unsigned c9 = static_cast<unsigned>((b >> 48) & 0xff);
+  std::uint64_t w;   // the significand digits, most significant first
+  int expo, nfrac;
+  bool eneg;
+  if ((c9 == '+' || c9 == '-') && (ndb & 0x8000808080808080ULL) == 0) {
+    // d.dddddd+d: digits at bytes 1, 3..8, exponent at byte 10
+    w = (tb << 16) | (d1 << 8);
+    expo = static_cast<int>(tb >> 56);
+    nfrac = 6;
+    eneg = (c9 == '-');
+  } else if ((c8 == '+' || c8 == '-') && (ndb & 0x8080008080808080ULL) == 0) {
+    // d.ddddd+dd: digits at bytes 1, 3..7, exponent at bytes 9, 10
+    w = (tb << 24) | (d1 << 16);
+    expo = static_cast<int>((tb >> 48) & 0xff) * 10 + static_cast<int>(tb >> 56);
+    nfrac = 5;
+    eneg = (c8 == '-');
+  } else {
+    return 0;
+  }
+  // eight digits to a number (most significant digit in the lowest byte)
+  w = (w * 10) + (w >> 8);
+  w = (((w & 0x000000FF000000FFULL) * 0x000F424000000064ULL)
+       + (((w >> 16) & 0x000000FF000000FFULL) * 0x0000271000000001ULL)) >> 32;
+  const unsigned long long mant = static_cast<std::uint32_t>(w);
+  const bool neg = (c0 == '-');
+  const int k = (eneg ? -expo : expo) - nfrac;
+  double v = static_cast<double>(mant);
+  if (mant != 0) {
+    if (k > 22 || k < -22) return -1;
+    if (k > 0) v *= p10[k];
+    else if (k < 0) v /= p10[-k];
+  }
+  result = neg ? -v : v;
+  return 1;
+#else
+  (void) str;
+  (void) result;
+  return 0;
+#endif
+}
+
+
 // Single-pass conversion of the 11 characters of a float field for the
 // common case: leading spaces, a decimal number of the form
 // [+-]digits[.digits] optionally followed by an exponent introduced by
@@ -327,8 +408,12 @@ inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
 // power of ten are exactly representable and a single IEEE multiplication
 // or division gives the correctly rounded result, i.e. the same value as
 // std::strtod. Returns false for any other content of the field, which
-// is then handled by the general code path.
+// is then handled by the general code path. The two layouts of almost
+// all fields are first tried with cpp_fast_field_swar, which gives the
+// same result for them.
 inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, double &result) {
+  const int swar = cpp_fast_field_swar(str, result);
+  if (swar != 0) return swar > 0;
   static const double p10[] = {
     1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
     1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22

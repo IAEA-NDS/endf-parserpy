@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2026/10/21
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -87,8 +87,8 @@ def get_var_layout(vartok, vardict):
 
     Returns ``None`` if the variable is not stored in the endf
     dictionary, otherwise a tuple whose first element is the name of the
-    C++ container type responsible for the variable (``Matrix2d``,
-    ``NestedVector`` or ``Scalar``), followed by type-specific details,
+    C++ container type responsible for the variable (``NestedArray`` or
+    ``Scalar``), followed by type-specific details,
     see the ``get_layout`` methods of the ``Assign`` classes.
     """
     if vartok.cpp_namespace:

@@ -33,21 +33,28 @@ named TAB1, TAB2 and LIST records, ``list_loop`` nodes)
     also if the loop body is never executed (see ``moveup_ptrassign`` in
     the code generator). An index is given by the name of a loop
     variable or by its ``indexquant`` node.
+``_np_blocks`` (loop nodes)
+    A tuple of ``(varname, indexspecs, loops, kind)``: the C++ code
+    creates the regular block of the trailing indices of ``varname``
+    with the leading indices ``indexspecs`` each time it reaches the
+    loop, the outermost loop of the block; ``loops`` are the loops of
+    the indices of the block, whose limits give its shape (see
+    :meth:`_Walker.find_block`).
 
-A kind is a tuple ``(container, dtype, num_indices, is_triagonal,
-is_lower)`` with ``container`` one of ``"Scalar"``, ``"NestedVector"`` and
-``"Matrix2d"`` and ``dtype`` one of ``"float"``, ``"int"``, ``"str"``,
-``"floatvec"`` (TAB1 columns) and ``"intvec"`` (TAB1/TAB2 interpolation
-tables, integers of INTG records); the last two items are only
-meaningful for ``"Matrix2d"``.
+A kind is a tuple ``(container, dtype, num_indices, block_rank)`` with
+``container`` one of ``"Scalar"`` and ``"NestedArray"``, ``dtype`` one
+of ``"float"``, ``"int"``, ``"str"``, ``"floatvec"`` (TAB1 columns) and
+``"intvec"`` (TAB1/TAB2 interpolation tables, integers of INTG
+records), and ``block_rank`` the number of trailing indices that form a
+regular block, i.e. a numpy array with as many dimensions, or 0.
 
 The rules replicate those of the code generator for parsing
 (``endf_parserpy.compiler``): which variables of a field are assigned
 (``generate_code_for_varassign``, ``generate_code_from_record_fields``),
-the data type of each field, the proof that a variable with two indices
-can be stored as matrix (``cpp_type_matrix2d/assign.py``) and the
+the data type of each field, the rule for regular blocks of trailing
+indices (``find_block`` in ``cpp_type_nested_array/assign.py``) and the
 placement of the preparation of nested arrays (``moveup_ptrassign`` in
-``cpp_type_nested_vector``). The test ``tests/test_numpy_annotation.py``
+``cpp_type_nested_array``). The test ``tests/test_numpy_annotation.py``
 compares the result with the decisions reported by the code generator
 for all recipes of the package.
 """
@@ -272,6 +279,7 @@ class _Walker:
         self.parents = {id(root): None}
         self.assignments = []
         self.preparations = []
+        self.blocks = []
 
     def parent(self, node):
         return self.parents[id(node)]
@@ -290,7 +298,7 @@ class _Walker:
         if entry not in marks:
             anchor._np_marks = marks + (entry,)
 
-    def prepare(self, loop, varname, indexquants, kind, scope):
+    def index_specs(self, indexquants, scope):
         # an index given by a loop variable is represented by its name,
         # other indices by their indexquant node
         specs = []
@@ -302,7 +310,11 @@ class _Walker:
                     specs.append(v.name)
                     continue
             specs.append(q)
-        entry = (varname, tuple(specs), kind)
+        return tuple(specs)
+
+    def prepare(self, loop, varname, indexquants, kind, scope):
+        specs = self.index_specs(indexquants, scope)
+        entry = (varname, specs, kind)
         preps = getattr(loop, "_np_prepare", ())
         if not any(
             p[0] == varname
@@ -485,29 +497,50 @@ class _Walker:
         if scope.is_loopvar(key):
             # loop variables are not assigned
             return
-        kind = None
-        if var.nidx == 2 and expr is not None:
-            kind = self.matrix2d_kind(var, expr, dtype, scope)
-        if kind is None:
-            container = "Scalar" if var.nidx == 0 else "NestedVector"
-            kind = (container, dtype, var.nidx, False, False)
+        if var.nidx == 0:
+            kind = ("Scalar", dtype, 0, 0)
+            block = None
+        else:
+            block = None if expr is None else self.find_block(var, expr, scope)
+            rank = 0 if block is None else len(block[0])
+            kind = ("NestedArray", dtype, var.nidx, rank)
         scope.vars.setdefault(key, False)
         self.mark(anchor, var.name, kind)
         self.assignments.append((var, expr, kind, anchor, scope.path()))
-        if kind[0] == "NestedVector" and expr is not None:
-            self.prepare_nested(var, expr, kind, scope)
-
-    def prepare_nested(self, var, expr, kind, scope):
-        # see moveup_ptrassign in cpp_type_nested_vector/auxiliary.py
-        limit = None
+        if expr is None:
+            return
+        num_leading = var.nidx - kind[3] if block else var.nidx - 1
+        dests = self.prepare_dests(var, expr, num_leading)
         indexquants = var.indexquants()
-        for i in range(var.nidx - 1):
-            idxexpr = indexquants[i].children[0]
-            dest = self.moveup(var, idxexpr, expr, limit)
-            limit = dest
+        for i, dest in enumerate(dests):
             if dest is not expr:
                 self.prepare(dest, var.name, indexquants[: i + 1], kind, scope)
                 self.preparations.append((var, i, dest, expr))
+        if block:
+            self.add_block(var, expr, kind, block, scope)
+
+    def prepare_dests(self, var, expr, num_levels):
+        # where the elements of the first num_levels levels of a nested
+        # array are created, see moveup_ptrassign in the code generator
+        dests = []
+        limit = None
+        indexquants = var.indexquants()
+        for i in range(num_levels):
+            limit = self.moveup(var, indexquants[i].children[0], expr, limit)
+            dests.append(limit)
+        return dests
+
+    def add_block(self, var, expr, kind, block, scope):
+        # the regular block of the trailing indices is created before
+        # its outermost loop, see the regularity rule in find_block
+        block, outer = block
+        num_leading = var.nidx - len(block)
+        specs = self.index_specs(var.indexquants()[:num_leading], scope)
+        entry = (var.name, specs, block, kind)
+        blocks = getattr(outer, "_np_blocks", ())
+        if not any(b[0] == var.name for b in blocks):
+            outer._np_blocks = blocks + (entry,)
+        self.blocks.append((var, num_leading, outer, expr))
 
     def moveup(self, var, idxexpr, node, limit):
         checkpoint = node
@@ -529,73 +562,137 @@ class _Walker:
                 checkpoint = cur
         return checkpoint
 
-    def matrix2d_kind(self, var, expr, dtype, scope):
-        # see Assign.assign_exprstr_to_var in cpp_type_matrix2d/assign.py
-        indexquants = var.indexquants()
-        if not all(_simple_index(q) for q in indexquants):
+    def find_block(self, var, expr, scope):
+        """Loops of the largest regular block of trailing indices.
+
+        Returns the loops of the trailing indices ``i_{k+1}, ..., i_n``
+        of ``var`` (in the order of the indices) that form a regular
+        block, i.e. a rectangular array whose shape is known before its
+        outermost loop starts, together with the outermost loop, or
+        ``None`` if there is no such block with at least two indices.
+        The block has the largest number of indices for which:
+
+        1. the variable is assigned here for the first time, and the
+           trailing indices are the bare loop variables of the innermost
+           enclosing ``for`` or LIST loops, one index per loop in any
+           order, without an if-statement or a section in between;
+        2. the leading indices do not depend on the loop variables of
+           the block;
+        3. the variable does not occur elsewhere in its scope (the
+           enclosing section or named LIST record, or the recipe),
+           except in branches of if-statements that exclude the branch
+           of the assignment, so that no other code writes to the block;
+        4. each loop enclosing the outermost loop of the block (in the
+           scope of the variable) has a leading index that is its bare
+           loop variable, so that each block is created only once;
+        5. the limits of the loops of the block do not depend on the
+           loop variables of the block, and the other variables in them
+           are loop variables of enclosing loops or do not occur in the
+           outermost loop of the block (except in loop heads);
+        6. with leading indices, the element of the last leading index
+           is created before the outermost loop of the block (by the
+           rule for the creation of elements of nested arrays).
+        """
+        if var.nidx < 2 or scope.find(var.key) is not None:
             return None
-        # matrices are only defined by a single assignment
-        if scope.find(var.key) is not None:
-            return None
-        idxexprs = [q.children[0] for q in indexquants]
-        inner = outer = None
+        idxexprs = [q.children[0] for q in var.indexquants()]
+        names = [_bare_varname(e) for e in idxexprs]
+        loops = []
         cur = self.parent(expr)
-        while cur is not None:
-            if cur.data in LOOP_NODES:
-                lv = _loopvar(cur)
-                if any(contains_var(e, lv) for e in idxexprs):
-                    if inner is None:
-                        inner = cur
-                    elif outer is None:
-                        outer = cur
-                        break
+        while cur is not None and len(loops) < var.nidx:
+            if cur.data in ("if_clause", "section", "repeat_loop"):
+                break
+            if cur.data in ("for_loop", "list_loop"):
+                loops.append(cur)
             cur = self.parent(cur)
-        if cur is None:
-            return None
-        outer_body = _loop_body(outer)
-        if contains_var(outer_body, var.name, skip_nodes=(expr,)):
-            return None
-        inner_body = _loop_body(inner)
-        for e in idxexprs:
-            for v in _var_set(e).values():
-                if v.nidx > 0:
-                    return None
-                if contains_var(outer_body, v.name, skip_nodes=(inner,)):
-                    return None
-                if contains_var(inner_body, v.name, skip_nodes=(expr,)):
-                    return None
-        inner_lims = _loop_limits(inner)
-        limit_vars = {}
-        for lim in _loop_limits(outer) + inner_lims:
-            limit_vars.update(_vars_of(lim))
-        if any(
-            contains_var(outer, v.name, skip_loop_heads=True)
-            for v in limit_vars.values()
-        ):
-            return None
-        # the limits of both loops must not contain arrays, and only one
-        # loop may depend on the variable of the other (triangular matrix)
-        is_triagonal = False
-        is_lower = False
-        num_depends = 0
-        lims_and_keys = (
-            (_loop_limits(outer), (_loopvar(inner), 0), True),
-            (inner_lims, (_loopvar(outer), 0), False),
-        )
-        for lims, key, is_outer in lims_and_keys:
-            depends = False
-            for j, lim in enumerate(lims):
-                vs = _vars_of(lim)
-                if any(v.nidx > 0 for v in vs.values()):
-                    return None
-                if key in vs:
-                    depends = True
-                    is_triagonal = True
-                    is_lower = (j == 0) if is_outer else (j != 0)
-            num_depends += depends
-        if num_depends > 1:
-            return None
-        return ("Matrix2d", dtype, 2, is_triagonal, is_lower)
+        for rank in range(len(loops), 1, -1):
+            # the loops of the trailing indices, in the order of the indices
+            byvar = {_loopvar(loop): loop for loop in loops[:rank]}
+            trailing = names[-rank:]
+            if None in trailing or set(trailing) != set(byvar):
+                continue
+            block = tuple(byvar[name] for name in trailing)
+            if self.is_block(var, expr, idxexprs, block, loops[rank - 1], scope):
+                return block, loops[rank - 1]
+        return None
+
+    def occurs_elsewhere(self, name, expr):
+        # see condition 3 of find_block; any token with the name counts
+        branches = {}
+        scope = expr
+        while self.parent(scope) is not None and not _is_scope_node(scope):
+            parent = self.parent(scope)
+            if parent.data == "if_clause":
+                branches[id(parent)] = id(scope)
+            scope = parent
+        return _occurs_in(scope, name, expr, branches)
+
+    def is_block(self, var, expr, idxexprs, block, outer, scope):
+        num_leading = var.nidx - len(block)
+        loopvars = {(_loopvar(loop), 0) for loop in block}
+        if any(_all_vars(e) & loopvars for e in idxexprs[:num_leading]):
+            return False
+        if self.occurs_elsewhere(var.name, expr):
+            return False
+        leading = {_bare_varname(e) for e in idxexprs[:num_leading]}
+        cur = self.parent(outer)
+        while cur is not None and not _is_scope_node(cur):
+            if cur.data in LOOP_NODES and _loopvar(cur) not in leading:
+                return False
+            cur = self.parent(cur)
+        for loop in block:
+            for lim in _loop_limits(loop):
+                for key in _all_vars(lim):
+                    if key in loopvars:
+                        return False
+                    if scope.is_loopvar(key):
+                        continue
+                    if contains_var(outer, key[0], skip_loop_heads=True):
+                        return False
+        if num_leading > 0:
+            dests = self.prepare_dests(var, expr, num_leading)
+            if dests[-1] is not outer:
+                return False
+        return True
+
+
+def _is_scope_node(node):
+    # sections and named LIST records have their own variables
+    if node.data == "section":
+        return True
+    return (
+        node.data == "list_line" and _child(node, "list_name", nofail=True) is not None
+    )
+
+
+def _occurs_in(node, name, site, branches):
+    # whether a token `name` is in node apart from the site, skipping the
+    # branches of if-clauses that exclude the branch of the site
+    if node is site:
+        return False
+    if isinstance(node, Token):
+        return str(node) == name
+    for child in node.children:
+        if node.data == "if_clause" and branches.get(id(node), id(child)) != id(child):
+            continue
+        if _occurs_in(child, name, site, branches):
+            return True
+    return False
+
+
+def _bare_varname(expr):
+    # name of a variable without indices that is the whole expression
+    node = _simplified(expr)
+    if isinstance(node, Tree) and node.data == "extvarname":
+        v = Var(node)
+        if v.nidx == 0:
+            return v.name
+    return None
+
+
+def _all_vars(node):
+    # (name, nidx) of all variables in an expression, also in indices
+    return {Var(n).key for n in node.iter_subtrees() if n.data == "extvarname"}
 
 
 def annotate_recipe_tree(tree):

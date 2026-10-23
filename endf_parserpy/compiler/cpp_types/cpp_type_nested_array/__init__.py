@@ -3,7 +3,7 @@ from .query import Query
 from .assign import Assign
 
 
-class CppTypeMatrix2d:
+class CppTypeNestedArray:
 
     query = Query
     assign = Assign

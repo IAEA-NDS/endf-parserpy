@@ -79,14 +79,19 @@ def test_annotation_follows_code_generator(recipe, recipe_parser):
         (node_path(walker, loop), node_path(walker, expr), var.name, level)
         for var, level, loop, expr in walker.preparations
     }
+    blocks = {
+        (node_path(walker, loop), node_path(walker, expr), var.name, num_leading)
+        for var, num_leading, loop, expr in walker.blocks
+    }
     assert assignments == expected_assignments
     assert preparations == set(layout["preparations"])
+    assert blocks == set(layout["blocks"])
 
 
-# Matrices of custom recipes: the proof of the code generator that a
-# variable with two indices can be stored as a matrix checks the limits of
-# both loops (before, only those of the inner loop were checked)
-MATRIX_RECIPES = {
+# Regular blocks in custom recipes: the rank of the block of each
+# assignment of M (0: no block), determined in the same way by the code
+# generator and the annotation
+BLOCK_RECIPES = {
     "rectangular": (
         """
         [MAT, 1, MT/ 0.0, 0.0, 0, 0, N, 0]HEAD
@@ -95,7 +100,17 @@ MATRIX_RECIPES = {
         endfor
         SEND
         """,
-        "Matrix2d",
+        {2},
+    ),
+    "transposed": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, N, 0]HEAD
+        for j=1 to 3:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, NW, 0/ {M[i,j]}{i=1 to N} ]LIST
+        endfor
+        SEND
+        """,
+        {2},
     ),
     "outer limit with array": (
         """
@@ -105,18 +120,99 @@ MATRIX_RECIPES = {
         endfor
         SEND
         """,
-        "NestedVector",
+        {2},
+    ),
+    "block of the trailing two of three indices": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, N, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, K[i], L[i], 0, 0]CONT
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, NW, 0/
+                {{M[i,j,k]}{k=1 to L[i]}}{j=1 to K[i]} ]LIST
+        endfor
+        SEND
+        """,
+        {2},
+    ),
+    "inner limit with outer variable": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, N, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, i, 0/ {M[i,j]}{j=1 to i} ]LIST
+        endfor
+        SEND
+        """,
+        {0},
+    ),
+    "limit read in outer loop": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, N, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, NC[i], 0/ {M[i,j]}{j=1 to NC[i]} ]LIST
+        endfor
+        SEND
+        """,
+        {0},
+    ),
+    "later write": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, N, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, 3, 0/ {M[i,j]}{j=1 to 3} ]LIST
+        endfor
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, 3, 0/ {M[N+1,j]}{j=1 to 3} ]LIST
+        SEND
+        """,
+        {0},
+    ),
+    "later read": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, N, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, 3, 0/ {M[i,j]}{j=1 to 3} ]LIST
+        endfor
+        [MAT, 1, MT/ M[1,1], 0.0, 0, 0, 0, 0]CONT
+        SEND
+        """,
+        {0},
+    ),
+    "enclosing loop without leading index": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, N, 0]HEAD
+        for q=1 to 2:
+            for i=1 to q:
+                [MAT, 1, MT/ 0.0, 0.0, 0, 0, 3, 0/ {M[i,j]}{j=1 to 3} ]LIST
+            endfor
+        endfor
+        SEND
+        """,
+        {0},
+    ),
+    "mutually exclusive branches": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, LB, 0, N, 0]HEAD
+        if LB == 1:
+            for i=1 to N:
+                [MAT, 1, MT/ 0.0, 0.0, 0, 0, 3, 0/ {M[i,j]}{j=1 to 3} ]LIST
+            endfor
+        else:
+            for i=1 to N:
+                [MAT, 1, MT/ 0.0, 0.0, 0, 0, 2, 0/ {M[i,j]}{j=1 to 2} ]LIST
+            endfor
+        endif
+        SEND
+        """,
+        {2},
     ),
 }
 
 
-@pytest.mark.parametrize("case", list(MATRIX_RECIPES))
-def test_matrix_proof_checks_both_loops(case, recipe_parser):
-    recipe, container = MATRIX_RECIPES[case]
+@pytest.mark.parametrize("case", list(BLOCK_RECIPES))
+def test_blocks_of_custom_recipes(case, recipe_parser):
+    recipe, ranks = BLOCK_RECIPES[case]
     layout = get_recipe_layout(recipe)
-    kinds = {a[3][0] for a in layout["assignments"] if a[2] == "M"}
-    assert kinds == {container}
+    assert {a[3][3] for a in layout["assignments"] if a[2] == "M"} == ranks
     walker = annotate_recipe_tree(recipe_parser.parse(recipe))
     assert {
-        kind[0] for var, _, kind, _, _ in walker.assignments if var.name == "M"
-    } == {container}
+        kind[3] for var, _, kind, _, _ in walker.assignments if var.name == "M"
+    } == ranks

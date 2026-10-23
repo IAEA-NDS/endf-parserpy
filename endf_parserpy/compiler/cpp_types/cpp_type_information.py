@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/25
-# Last modified:   2024/05/02
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -32,8 +32,7 @@ class LazyModuleClass:
 
 
 _SPECIALTYPE_MODULES = (
-    LazyModuleClass(f"{_THIS_PCKG}.cpp_type_matrix2d", "CppTypeMatrix2d"),
-    LazyModuleClass(f"{_THIS_PCKG}.cpp_type_nested_vector", "CppTypeNestedVector"),
+    LazyModuleClass(f"{_THIS_PCKG}.cpp_type_nested_array", "CppTypeNestedArray"),
     LazyModuleClass(f"{_THIS_PCKG}.cpp_type_scalar", "CppTypeScalar"),
 )
 

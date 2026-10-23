@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/21
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -40,8 +40,9 @@ receive the numpy module as argument.
 """
 
 import sys
+from endf_parserpy.utils.tree_utils import get_child
 from collections.abc import Mapping
-from .endf_mapping_utils import get_indexvalue
+from .endf_mapping_utils import get_indexvalue, eval_expr_without_unknown_var
 from .helpers import shift_indices, list_setdefault
 
 
@@ -66,6 +67,48 @@ def mark_assignments(forms, datadic, marks):
             kinds[varname] = kind
 
 
+def _index_values(indexspecs, datadic, loop_vars, parse_opts):
+    # an index is given by the name of a loop variable or by an
+    # indexquant node
+    return [
+        (
+            loop_vars[q]
+            if type(q) is str
+            else get_indexvalue(q, datadic, loop_vars, parse_opts, True)
+        )
+        for q in indexspecs
+    ]
+
+
+def _create_element(datadic, varname, idcs, parse_opts):
+    # create the (possibly nested) element with the recipe indices idcs
+    # in the internal representation of arrays, as dictionaries (keys are
+    # the indices of the recipe) or, with array_type="list_slow", as
+    # lists; returns the element and its container and key in the
+    # container, or None if an element on the way is not an array
+    if parse_opts["internal_array_type"] == "list":
+        idcs = shift_indices(varname, idcs, datadic)
+        cur = datadic.setdefault(varname, [])
+        parent = key = None
+        for idx in idcs:
+            parent, key = cur, idx
+            cur = list_setdefault(cur, idx, [])
+        return cur, parent, key
+    cur = datadic.get(varname)
+    if cur is None:
+        cur = datadic[varname] = {}
+    parent = key = None
+    for idx in idcs:
+        if type(cur) is not dict:
+            return None
+        parent, key = cur, idx
+        nxt = cur.get(idx)
+        if nxt is None:
+            nxt = cur[idx] = {}
+        cur = nxt
+    return cur, parent, key
+
+
 def prepare_elements(forms, datadic, loop_vars, parse_opts, preparations):
     """Create the elements of nested arrays created before a loop.
 
@@ -77,49 +120,100 @@ def prepare_elements(forms, datadic, loop_vars, parse_opts, preparations):
     the elements are found at the same positions as after parsing.
     """
     kinds = _kinds_of(forms, datadic)
-    if parse_opts["internal_array_type"] == "list":
-        _prepare_list_elements(datadic, loop_vars, parse_opts, preparations, kinds)
-        return
     for varname, indexspecs, kind in preparations:
-        cur = datadic.get(varname)
-        if cur is None:
-            cur = datadic[varname] = {}
-        # an index is given by the name of a loop variable or by an
-        # indexquant node
-        for q in indexspecs:
-            if type(cur) is not dict:
-                break
-            if type(q) is str:
-                idx = loop_vars[q]
-            else:
-                idx = get_indexvalue(q, datadic, loop_vars, parse_opts, True)
-            nxt = cur.get(idx)
-            if nxt is None:
-                nxt = cur[idx] = {}
-            cur = nxt
-        if varname not in kinds:
-            kinds[varname] = kind
-
-
-def _prepare_list_elements(datadic, loop_vars, parse_opts, preparations, kinds):
-    for varname, indexspecs, kind in preparations:
-        idcs = [
-            (
-                loop_vars[q]
-                if type(q) is str
-                else get_indexvalue(q, datadic, loop_vars, parse_opts, True)
-            )
-            for q in indexspecs
-        ]
-        idcs = shift_indices(varname, idcs, datadic)
+        idcs = _index_values(indexspecs, datadic, loop_vars, parse_opts)
         if "array_write" in parse_opts:
             # writing: only the start indices are registered
+            if parse_opts["internal_array_type"] == "list":
+                shift_indices(varname, idcs, datadic)
             continue
-        cur = datadic.setdefault(varname, [])
-        for idx in idcs:
-            cur = list_setdefault(cur, idx, [])
+        _create_element(datadic, varname, idcs, parse_opts)
         if varname not in kinds:
             kinds[varname] = kind
+
+
+class EmptyBlock(dict):
+    """A regular block without elements, with its shape.
+
+    With ``array_type="numpy"``, a regular block of numbers with leading
+    indices is a numpy array of the shape of the block also if it has no
+    elements, e.g. of shape ``(0, 3)``; the shape is only known from the
+    limits of the loops of the block. It is recorded by representing the
+    block as instance of this class instead of a dictionary until the
+    conversion to numpy arrays (:func:`convert_arrays`). An empty
+    dictionary is not converted to a list (see ``array_dict_to_list``).
+    """
+
+    __slots__ = ("shape",)
+
+
+def create_blocks(datadic, loop_vars, parse_opts, blocks):
+    """Create the regular blocks created before a loop.
+
+    ``blocks`` is the ``_np_blocks`` annotation of the loop node. A block
+    with leading indices is an element of the array, created where the
+    C++ code creates it. If the block has no elements, it is the empty
+    list of rows (if its first dimension is not zero, e.g. ``[[], []]``
+    for the shape ``(2, 0)``) or, if it is converted to a numpy array, an
+    :class:`EmptyBlock`. A block without leading indices is the whole
+    variable, which only exists if the block has elements (as in the C++
+    code), so nothing needs to be done.
+    """
+    if "array_write" in parse_opts:
+        return
+    keep_floats = parse_opts.get("numpy_keep_floats")
+    for varname, indexspecs, loops, kind in blocks:
+        if len(indexspecs) == 0:
+            continue
+        shape = tuple(
+            max(0, stop - start + 1)
+            for start, stop in (
+                loop_limits(loop, datadic, loop_vars, parse_opts) for loop in loops
+            )
+        )
+        if all(shape):
+            continue
+        idcs = _index_values(indexspecs, datadic, loop_vars, parse_opts)
+        created = _create_element(datadic, varname, idcs, parse_opts)
+        if created is None:
+            continue
+        block, parent, key = created
+        is_numeric = kind[1] == "int" or (kind[1] == "float" and not keep_floats)
+        if keep_floats is not None and is_numeric:
+            if type(block) is dict and len(block) == 0:
+                parent[key] = EmptyBlock()
+                parent[key].shape = shape
+            continue
+        # the rows (and rows of rows...) before the first dimension zero
+        firsts = [loop_limits(l, datadic, loop_vars, parse_opts)[0] for l in loops]
+        for pos in _positions(shape[: shape.index(0)]):
+            row = [first + p for first, p in zip(firsts, pos)]
+            _create_element(datadic, varname, idcs + row, parse_opts)
+
+
+def loop_limits(loop, datadic, loop_vars, parse_opts):
+    """The first and last value of the variable of a for or LIST loop."""
+    head = get_child(loop, "for_head" if loop.data == "for_loop" else "list_for_head")
+    return tuple(
+        int(
+            eval_expr_without_unknown_var(
+                get_child(head, n), datadic, loop_vars, parse_opts
+            )
+        )
+        for n in ("for_start", "for_stop")
+    )
+
+
+def _positions(dims):
+    if len(dims) == 0:
+        return
+    if len(dims) == 1:
+        for i in range(dims[0]):
+            yield (i,)
+        return
+    for i in range(dims[0]):
+        for rest in _positions(dims[1:]):
+            yield (i,) + rest
 
 
 def fill_empty_elements(forms):
@@ -167,26 +261,24 @@ class _Converter:
         return self.dtypes.get(dtype)
 
     def convert(self, value, kind):
-        container, dtype, nidx, is_triagonal, is_lower = kind
+        container, dtype, nidx, rank = kind
+        npdtype = self.element_dtype(dtype)
         if container == "Scalar":
             if dtype not in _VEC_DTYPES:
                 return value
-            return self.to_nested(value, self.element_dtype(dtype), 1)
-        npdtype = self.element_dtype(dtype)
-        if container == "NestedVector":
-            depth = nidx + 1 if dtype in _VEC_DTYPES else nidx
-            return self.to_nested(value, npdtype, depth)
-        # Matrix2d
-        if npdtype is None or type(value) is not list:
-            return value
-        if is_triagonal:
-            return [self.to_1d(row, npdtype) for row in value]
-        arr = self.np.array(value, dtype=npdtype)
-        if arr.ndim != 2:
-            raise TypeError("matrix is not rectangular")
-        return arr
+            return self.to_nested(value, npdtype, 1, 1)
+        if dtype in _VEC_DTYPES:
+            return self.to_nested(value, npdtype, nidx + 1, 1)
+        # the trailing `rank` indices of a regular block form one array
+        if rank < 2 or npdtype is None:
+            rank = 1
+        return self.to_nested(value, npdtype, nidx, rank)
 
-    def to_nested(self, value, npdtype, depth):
+    def to_nested(self, value, npdtype, depth, rank):
+        # value has `depth` indices, the last `rank` of which form a
+        # single numpy array
+        if type(value) is EmptyBlock:
+            return self.np.empty(value.shape, dtype=npdtype)
         if type(value) is dict and len(value) == 0:
             # an element created before a loop without assigned elements
             if depth == 1 and npdtype is not None:
@@ -194,9 +286,16 @@ class _Converter:
             return []
         if type(value) is not list:
             return value
-        if depth == 1:
-            return value if npdtype is None else self.to_1d(value, npdtype)
-        return [self.to_nested(v, npdtype, depth - 1) for v in value]
+        if depth == rank:
+            if npdtype is None:
+                return value
+            if rank == 1:
+                return self.to_1d(value, npdtype)
+            arr = self.np.array(value, dtype=npdtype)
+            if arr.ndim != rank:
+                raise TypeError("regular block is not rectangular")
+            return arr
+        return [self.to_nested(v, npdtype, depth - 1, rank) for v in value]
 
     def to_1d(self, value, npdtype):
         if type(value) is not list:

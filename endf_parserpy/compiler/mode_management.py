@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/22
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -276,9 +276,9 @@ def register_layout_recorder(recorder, vardict):
     """Register an object that records the result layout of a recipe.
 
     The code generator for parsing reports to the recorder every
-    assignment of a variable with the C++ container chosen for it (and the
-    shape of the initialization of a ``Matrix2d`` variable), every
-    creation of elements of nested arrays before a loop, and the
+    assignment of a variable with the C++ container chosen for it, every
+    creation of elements of nested arrays and of regular blocks before a
+    loop, and the
     variables stored in the result dictionary of each section, see
     :mod:`endf_parserpy.compiler.recipe_layout`. Recording does not
     change the generated code.

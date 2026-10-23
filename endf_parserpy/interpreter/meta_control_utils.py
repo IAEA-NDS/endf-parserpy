@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/21
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -42,7 +42,7 @@ from .helpers import (
     shift_indices,
     list_setdefault,
 )
-from .numpy_arrays import mark_assignments, prepare_elements
+from .numpy_arrays import mark_assignments, prepare_elements, create_blocks
 
 
 def initialize_working_vars(datadic):
@@ -163,6 +163,9 @@ def _array_loop_actions(tree, datadic, loop_vars, parse_opts, iterates):
     preparations = getattr(tree, "_np_prepare", None)
     if preparations is not None:
         prepare_elements(forms, datadic, loop_vars, parse_opts, preparations)
+    blocks = getattr(tree, "_np_blocks", None)
+    if blocks is not None:
+        create_blocks(datadic, loop_vars, parse_opts, blocks)
     if iterates and "numpy_marks" in parse_opts:
         marks = getattr(tree, "_np_marks", None)
         if marks is not None:

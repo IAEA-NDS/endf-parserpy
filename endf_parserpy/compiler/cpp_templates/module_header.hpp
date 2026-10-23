@@ -272,24 +272,24 @@ inline py::object cpp_new_ndarray(int ndim, py::ssize_t* dims, T*& data) {
   return py::reinterpret_steal<py::object>(arr);
 }
 
-// numpy array of the given shape (one or two dimensions) filled with the
-// row-major elements starting at src, converted in a single loop
-inline py::object cpp_numeric_ndarray(const EndfFloatCpp* src, std::size_t num_rows, std::size_t num_cols, bool two_dim) {
-  py::ssize_t dims[2] = {static_cast<py::ssize_t>(num_rows), static_cast<py::ssize_t>(num_cols)};
+// numpy array of the given shape filled with the row-major elements
+// starting at src, converted in a single loop
+inline py::object cpp_numeric_ndarray(const EndfFloatCpp* src, int ndim, py::ssize_t* dims) {
   double* dst;
-  py::object arr = cpp_new_ndarray<double>(two_dim ? 2 : 1, dims, dst);
-  std::size_t n = two_dim ? num_rows * num_cols : num_rows;
+  py::object arr = cpp_new_ndarray<double>(ndim, dims, dst);
+  std::size_t n = 1;
+  for (int d = 0; d < ndim; d++) n *= dims[d];
   for (std::size_t i = 0; i < n; i++) {
     dst[i] = static_cast<double>(src[i]);
   }
   return arr;
 }
 
-inline py::object cpp_numeric_ndarray(const int* src, std::size_t num_rows, std::size_t num_cols, bool two_dim) {
-  py::ssize_t dims[2] = {static_cast<py::ssize_t>(num_rows), static_cast<py::ssize_t>(num_cols)};
+inline py::object cpp_numeric_ndarray(const int* src, int ndim, py::ssize_t* dims) {
   std::int64_t* dst;
-  py::object arr = cpp_new_ndarray<std::int64_t>(two_dim ? 2 : 1, dims, dst);
-  std::size_t n = two_dim ? num_rows * num_cols : num_rows;
+  py::object arr = cpp_new_ndarray<std::int64_t>(ndim, dims, dst);
+  std::size_t n = 1;
+  for (int d = 0; d < ndim; d++) n *= dims[d];
   for (std::size_t i = 0; i < n; i++) {
     dst[i] = static_cast<std::int64_t>(src[i]);
   }
@@ -297,7 +297,7 @@ inline py::object cpp_numeric_ndarray(const int* src, std::size_t num_rows, std:
 }
 
 template<typename T>
-inline py::object cpp_numeric_ndarray(const T*, std::size_t, std::size_t, bool) {
+inline py::object cpp_numeric_ndarray(const T*, int, py::ssize_t*) {
   // not reached: cpp_numpy_export_enabled is false for other element types
   throw std::logic_error("no numpy export for this element type");
 }
@@ -306,7 +306,8 @@ inline py::object cpp_numeric_ndarray(const T*, std::size_t, std::size_t, bool) 
 template<typename T>
 inline py::object cpp_vector_to_pyobj(const std::vector<T>& vec, bool numpy_ints, bool numpy_floats) {
   if (cpp_numpy_export_enabled(vec.data(), numpy_ints, numpy_floats)) {
-    return cpp_numeric_ndarray(vec.data(), vec.size(), 0, false);
+    py::ssize_t dim = static_cast<py::ssize_t>(vec.size());
+    return cpp_numeric_ndarray(vec.data(), 1, &dim);
   }
   return py::cast(vec);
 }

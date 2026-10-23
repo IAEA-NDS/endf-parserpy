@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/22
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -1026,6 +1026,7 @@ class EndfParserPy(EndfParserBase):
 
             keep_floats = self.read_opts["preserve_value_strings"]
             self.parse_opts["numpy_marks"] = True
+            self.parse_opts["numpy_keep_floats"] = keep_floats
         tree_dic = self.tree_dic
         self.variable_descriptions = EndfDict()
         mfmt_dic = split_sections(lines, read_opts=self.read_opts)
@@ -1105,6 +1106,7 @@ class EndfParserPy(EndfParserBase):
         self.parse_opts.pop("internal_array_type", None)
         self.parse_opts.pop("array_forms", None)
         self.parse_opts.pop("numpy_marks", None)
+        self.parse_opts.pop("numpy_keep_floats", None)
         self.parse_opts.pop("array_write", None)
         self._numpy_forms = None
 

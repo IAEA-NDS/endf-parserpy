@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/22
+# Last modified:   2026/10/23
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -180,7 +180,7 @@ def _generate_code_for_varassign(
     except MultipleVariableOccurrenceError as exc:
         if not throw_cpp:
             raise exc
-        special_type = "Scalar" if len(vartok.indices) == 0 else "NestedVector"
+        special_type = "Scalar" if len(vartok.indices) == 0 else "NestedArray"
         register_var(vartok, dtype, special_type, vardict)
         exprstr = transform_nodes(node, node2str)
         return cpp.throw_runtime_error(

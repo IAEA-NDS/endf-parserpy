@@ -90,6 +90,7 @@ from endf_parserpy.endf_recipes import get_recipe_dict
 from endf_parserpy.utils.debugging_utils import TrackingDict
 from .helpers import array_dict_to_list
 from .numpy_annotation import annotate_recipe_tree
+from .custom_exceptions import RecipeAnnotationError
 from .numpy_arrays import (
     mark_assignments,
     convert_arrays,
@@ -101,6 +102,33 @@ from ..endf_parser_base import (
     _record_init_kwargs,
     _check_array_type,
 )
+
+
+def _annotate_tree(tree, raise_error=False):
+    """Annotate a recipe tree for the creation of array elements.
+
+    The annotation (see numpy_annotation) is done once per tree. If the
+    recipe contains a construct that the annotation does not support
+    (``RecipeAnnotationError``), the tree remains without annotation,
+    and the arrays are parsed and written as before the annotation was
+    introduced, i.e. elements of nested arrays are only created when
+    values are assigned to them. With ``raise_error=True`` (used for
+    ``array_type="numpy"``, whose result is determined by the annotation),
+    the error is raised instead. Returns whether the tree is annotated.
+    """
+    state = getattr(tree, "_np_annotated", None)
+    if state is None:
+        try:
+            annotate_recipe_tree(tree)
+            state = True
+        except RecipeAnnotationError as exc:
+            state = exc
+        tree._np_annotated = state
+    if state is not True:
+        if raise_error:
+            raise RecipeAnnotationError(str(state))
+        return False
+    return True
 
 
 class EndfParserPy(EndfParserBase):
@@ -1018,9 +1046,9 @@ class EndfParserPy(EndfParserBase):
             "list" if array_type == "list_slow" else "dict"
         )
         numpy_mode = array_type == "numpy"
-        # with "list", "list_slow" and "numpy", the elements of nested arrays
-        # are created where the C++ code creates them (see numpy_arrays)
-        prepare_arrays = array_type != "dict"
+        # the elements of nested arrays are created where the C++ code
+        # creates them (see numpy_arrays), unless the recipe cannot be
+        # annotated (see _annotate_tree)
         if numpy_mode:
             import numpy
 
@@ -1066,14 +1094,14 @@ class EndfParserPy(EndfParserBase):
                     )
                     self.reset_parser_state(rwmode="read", lines=curlines)
                     self.current_path = EndfPath((mf, mt))
-                    if prepare_arrays:
-                        if not getattr(cur_tree, "_np_annotated", False):
-                            annotate_recipe_tree(cur_tree)
-                            cur_tree._np_annotated = True
+                    if _annotate_tree(cur_tree, raise_error=numpy_mode):
                         array_forms = {}
                         self.parse_opts["array_forms"] = array_forms
                         if numpy_mode:
                             self._numpy_forms = array_forms
+                    else:
+                        array_forms = {}
+                        self.parse_opts.pop("array_forms", None)
                     try:
                         initialize_working_vars(self.datadic)
                         self.datadic.update(cur_ctrl)
@@ -1151,9 +1179,8 @@ class EndfParserPy(EndfParserBase):
                 cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
                 is_parsed = isinstance(endf_dic[mf][mt], Mapping)
                 if cur_tree is not None and is_parsed:
-                    if in_list_mode and not getattr(cur_tree, "_np_annotated", False):
-                        annotate_recipe_tree(cur_tree)
-                        cur_tree._np_annotated = True
+                    if in_list_mode:
+                        _annotate_tree(cur_tree)
                     datadic = endf_dic[mf][mt]
                     if should_check_arrays:
                         datadic = TrackingDict(datadic)

@@ -132,7 +132,7 @@ def test_numpy_shapes(text, name):
     assert [b.shape for b in blocks] == _expected_shapes(mt)
 
 
-@pytest.mark.parametrize("mode", ["list", "numpy"])
+@pytest.mark.parametrize("mode", ["dict", "list", "numpy"])
 def test_same_result_both_parsers(text, mode):
     mt, text = text
     assert _exact(_parse(text, "python", mode)) == _exact(_parse(text, "cpp", mode))

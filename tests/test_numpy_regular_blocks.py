@@ -19,8 +19,7 @@ MF33 with LB=5/LS=0. A block whose loops have no iterations is an empty
 array of the shape given by the loop limits, e.g. (0, NA[j]+1) for
 NEP[j]=0 and (NEP[j], 0) for NA[j]=-1; with array_type="list" and
 "dict", the result is the same as before (empty lists or dictionaries).
-Both parsers return the same result (with array_type="list" and
-"numpy") and write it back unchanged.
+Both parsers return the same result and write it back unchanged.
 """
 
 import copy
@@ -33,9 +32,6 @@ np = pytest.importorskip("numpy")
 
 TESTDATA = Path(__file__).parent / "testdata"
 MODES = ("dict", "list", "numpy")
-# with array_type="dict", EndfParserCpp keeps the empty elements of nested
-# arrays created before the loops, EndfParserPy omits them (as before)
-SAME_RESULT_MODES = ("list", "numpy")
 PARSERS = ("cpp", "python")
 
 
@@ -124,7 +120,7 @@ def test_mf6_roundtrip(mf6_section, case, name, mode):
     assert "\n".join(written) == text
 
 
-@pytest.mark.parametrize("mode", SAME_RESULT_MODES)
+@pytest.mark.parametrize("mode", MODES)
 @pytest.mark.parametrize("case", MF6_CASES, ids=str)
 def test_mf6_same_result_both_parsers(mf6_section, case, mode):
     text, _ = _mf6_text(mf6_section, *case)
@@ -255,7 +251,7 @@ def test_mf7_roundtrip(mf7_text, name, mode):
     assert "\n".join(_parser(name, mode).write(result)) == mf7_text
 
 
-@pytest.mark.parametrize("mode", SAME_RESULT_MODES)
+@pytest.mark.parametrize("mode", MODES)
 def test_mf7_same_result_both_parsers(mf7_text, mode):
     py_result = _parse(mf7_text, "python", mode)
     assert _exact(py_result) == _exact(_parse(mf7_text, "cpp", mode))

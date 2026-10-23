@@ -351,6 +351,10 @@ class TrackingDict(MutableMapping):
         if len(self._accessed) > 0:
             for k in self._basedict:
                 if isinstance(k, int) and k not in self._accessed:
+                    # an empty element (e.g. the array of an inner loop
+                    # without iterations) contains nothing to write
+                    if _is_empty_array(self._basedict[k]):
+                        continue
                     indexpath = path + "/" + str(k)
                     raise IndexError(f"The content of {indexpath} was not accessed")
         for k in self._basedict:

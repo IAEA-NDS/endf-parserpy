@@ -797,14 +797,27 @@ def _all_vars(node):
 def annotate_recipe_tree(tree):
     """Annotate the parse tree of a recipe for ``array_type="numpy"``.
 
-    Returns the walker, whose attributes ``assignments`` and
-    ``preparations`` list the assignments and the preparations of nested
-    arrays found (used by the tests).
+    Returns the walker, whose attributes ``assignments``,
+    ``preparations`` and ``blocks`` list the assignments, the
+    preparations of nested arrays and the regular blocks found (used by
+    the tests). If the recipe contains a construct that is not supported,
+    a ``RecipeAnnotationError`` is raised and the tree is left without
+    annotations.
     """
     walker = _Walker(tree)
     walker.register_parents(tree)
     root_scope = _Scope()
     for name in ("MAT", "MF", "MT"):
         root_scope.vars[(name, 0)] = False
-    walker.walk(tree, root_scope)
+    try:
+        walker.walk(tree, root_scope)
+    except RecipeAnnotationError:
+        for node in tree.iter_subtrees():
+            for attr in _ANNOTATIONS:
+                if attr in node.__dict__:
+                    delattr(node, attr)
+        raise
     return walker
+
+
+_ANNOTATIONS = ("_np_marks", "_np_prepare", "_np_blocks")

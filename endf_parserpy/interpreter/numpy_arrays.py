@@ -29,11 +29,13 @@ different kinds, and it does not change the type of a variable when it
 only checks the value of a variable read before; therefore the C++
 variable that is stored is that of the first assignment.
 
-The elements of nested arrays are also created with ``array_type="list"``
-and ``"list_slow"``, so that empty inner arrays are empty lists as with
-:class:`~endf_parserpy.EndfParserCpp` (:func:`fill_empty_elements`), and
-the writer registers the start indices of nested arrays at the same
-places in these modes.
+The elements of nested arrays are also created with ``array_type="dict"``,
+``"list"`` and ``"list_slow"``, so that empty inner arrays are empty
+dictionaries or lists as with :class:`~endf_parserpy.EndfParserCpp`
+(:func:`fill_empty_elements`), and the writer registers the start indices
+of nested arrays at the same places in the list modes. If a recipe cannot
+be annotated, the elements are only created when values are assigned to
+them, except with ``array_type="numpy"``, which then raises an error.
 
 This module does not import numpy itself; the functions that need it
 receive the numpy module as argument.

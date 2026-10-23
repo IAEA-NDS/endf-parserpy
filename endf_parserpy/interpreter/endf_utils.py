@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/22
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -97,7 +97,10 @@ def read_text(lines, ofs=0, with_ctrl=True, read_opts=None):
     width = read_opts.get("width", 11)
     ofs2 = width * 6
     line = lines[ofs]
-    dic = {"HL": line[0:ofs2]}
+    # columns missing from a short line are blanks, so that every text
+    # field has the length given in the recipe (by default up to the end
+    # of the text columns), as with EndfParserCpp
+    dic = {"HL": line[0:ofs2].ljust(ofs2)}
     if with_ctrl:
         ctrl = read_ctrl(line, read_opts=read_opts)
         dic.update(ctrl)

@@ -38,6 +38,11 @@ from .endf_recipe_mf1 import ENDF_RECIPE_MF1_MT4
 from .endf_recipe_mf4 import ENDF_RECIPE_MF4_MT1
 from .endf_recipe_mf4 import ENDF_RECIPE_MF4_MT2
 
+# lengths of the text fields of TEXT records
+from .endf_recipe_mf6 import ENDF_RECIPE_MF6_MT1
+from .endf_recipe_mf6 import ENDF_RECIPE_MF6_MT2
+from .endf_recipe_mf6 import ENDF_RECIPE_MF6_MT3
+
 endf_recipe_dictionary = {}
 defdic(endf_recipe_dictionary, (2, 1), ENDF_RECIPE_MF2_MT1)
 defdic(endf_recipe_dictionary, (2, 2), ENDF_RECIPE_MF2_MT2)
@@ -69,3 +74,6 @@ defdic(endf_recipe_dictionary, (1, 3), ENDF_RECIPE_MF1_MT3)
 defdic(endf_recipe_dictionary, (1, 4), ENDF_RECIPE_MF1_MT4)
 defdic(endf_recipe_dictionary, (4, 1), ENDF_RECIPE_MF4_MT1)
 defdic(endf_recipe_dictionary, (4, 2), ENDF_RECIPE_MF4_MT2)
+defdic(endf_recipe_dictionary, (6, 1), ENDF_RECIPE_MF6_MT1)
+defdic(endf_recipe_dictionary, (6, 2), ENDF_RECIPE_MF6_MT2)
+defdic(endf_recipe_dictionary, (6, 3), ENDF_RECIPE_MF6_MT3)

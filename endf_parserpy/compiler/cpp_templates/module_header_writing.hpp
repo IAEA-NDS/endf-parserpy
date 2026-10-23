@@ -147,6 +147,27 @@ inline void cpp_write_custom_int_field(std::string &str, int start, int length, 
 }
 
 
+// The value of a text field must have the length of the field in the
+// recipe; the value of a field without a length in the recipe (which
+// spans the remaining text columns) may be shorter and is padded with
+// blanks. A value of another length would shift the following columns.
+inline void cpp_write_text_field(
+  std::string& line, int start, int length, const std::string& value,
+  const char* varname, bool pad
+) {
+  int size = static_cast<int>(value.size());
+  if (size > length || (! pad && size != length)) {
+    throw std::runtime_error(
+      std::string("string in variable ") + varname + " is of length "
+      + std::to_string(size) + " but expected to be of length "
+      + (pad ? "at most " : "") + std::to_string(length)
+    );
+  }
+  // the line is prepared with blanks, so a shorter value leaves blanks
+  line.replace(start, size, value);
+}
+
+
 inline void cpp_write_mat_number(std::string& str, int value) {
   cpp_write_custom_int_field(str, 66, 4, value);
 }

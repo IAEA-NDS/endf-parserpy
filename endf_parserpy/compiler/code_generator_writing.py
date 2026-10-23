@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/22
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -176,13 +176,17 @@ def _convert_field_value(node, valcode, dtype, lenient):
     return valcode
 
 
-def _get_text_field_wrapper(node, start, length, vardict):
+def _get_text_field_wrapper(node, start, length, vardict, pad=False):
+    # pad: the field has no length in the recipe and spans the remaining
+    # text columns, so that a shorter value is padded with blanks
     code = ""
     if not in_lookahead(vardict):
         valcode = get_expr_value_using_endf_dict(
             node, "cpp_index_shifter_store", str, vardict
         )
-        code += set_text_field("cpp_draft_line", start, length, valcode)
+        code += set_text_field(
+            "cpp_draft_line", start, length, valcode, str(VariableToken(node)), pad
+        )
     else:
         defaults = {str: " " * 11}
         valcode = get_expr_value_using_endf_dict(

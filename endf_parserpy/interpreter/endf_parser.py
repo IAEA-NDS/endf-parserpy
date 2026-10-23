@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/23
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -389,6 +389,7 @@ class EndfParserPy(EndfParserBase):
             "ignore_varspec_mismatch": ignore_varspec_mismatch,
             "fuzzy_matching": fuzzy_matching,
             "array_type": array_type,
+            "width": width,
         }
         self.write_opts = {
             "abuse_signpos": abuse_signpos,

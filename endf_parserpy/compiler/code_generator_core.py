@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/23
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -563,15 +563,20 @@ def generate_code_for_text(node, vardict):
     code += get_prepare_line_func(vardict)(vardict)
     text_fields = get_child(node, "text_fields")
     tphs = [v for v in text_fields.children if is_textplaceholder(v)]
+    # the text fields fill the 66 text columns: a single field without a
+    # length spans all of them, otherwise the lengths must add up to 66
+    txtlens = [get_child(tph, "TEXTLENGTH", nofail=True) for tph in tphs]
+    if len(tphs) > 1 and any(txtlen is None for txtlen in txtlens):
+        raise TypeError("several textplaceholder must have TEXTLENGTH")
+    if txtlens[0] is not None and sum(int(t) for t in txtlens) != 66:
+        raise TypeError(
+            "the lengths of the text fields of a TEXT record must add up to 66, "
+            + f"but add up to {sum(int(t) for t in txtlens)}"
+        )
     ofs = 0
-    is_first = True
     for i, tph in enumerate(tphs):
         v = get_child(tph, "extvarname", nofail=True)
-        txtlen = get_child(tph, "TEXTLENGTH", nofail=True)
-        if is_first:
-            is_first = False
-        elif txtlen is None:
-            raise TypeError("several textplaceholder must have TEXTLENGTH")
+        txtlen = txtlens[i]
         if v is None:
             if txtlen is None:
                 raise TypeError("somthing strange happened")
@@ -580,7 +585,9 @@ def generate_code_for_text(node, vardict):
         length = int(txtlen) if txtlen is not None else 66
         vartok = VariableToken(v)
         dtype = str
-        valcode, addcode = get_text_field_getter(vardict)(v, ofs, length, vardict)
+        valcode, addcode = get_text_field_getter(vardict)(
+            v, ofs, length, vardict, pad=txtlen is None
+        )
         code += addcode
         code += generate_code_for_varassign(vartok, vardict, valcode, dtype)
         ofs += length

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2026/10/21
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -262,6 +262,23 @@ def map_text_record_helper(
     expr_list, basekeys, record_dic, datadic, loop_vars, rwmode, parse_opts=None
 ):
     assert len(basekeys) == 1 and basekeys[0] == "HL"
+    # the text fields fill the text columns (66 for the field width 11): a
+    # single field without a length spans all of them, otherwise the
+    # lengths must add up to the number of text columns
+    width = 11 if parse_opts is None else parse_opts.get("width", 11)
+    text_width = 6 * width
+    textlengths = [get_child(expr, "TEXTLENGTH", nofail=True) for expr in expr_list]
+    if len(expr_list) > 1 and any(t is None for t in textlengths):
+        raise SizeMismatchError(
+            "Several text fields of a TEXT record must all have a length"
+        )
+    if textlengths[0] is not None:
+        total = sum(int(get_value(t)) for t in textlengths)
+        if total != text_width:
+            raise SizeMismatchError(
+                "The lengths of the text fields of a TEXT record must add up "
+                + f"to {text_width}, but add up to {total}"
+            )
     if rwmode == "read":
         charcount = 0
         fullstring = record_dic[basekeys[0]]
@@ -301,14 +318,23 @@ def map_text_record_helper(
                     parse_opts,
                     raise_if_missing=True,
                 )
-                if textlength is not None and len(curstr) != textlength:
+                # a field without a length spans the remaining text columns
+                # and may be shorter (it is padded with blanks)
+                if (textlength is not None and len(curstr) != textlength) or (
+                    textlength is None and len(curstr) > text_width - len(fullstring)
+                ):
                     varnamestr = generate_varname_str(
                         extvarname_node, datadic, loop_vars, parse_opts, True
+                    )
+                    expected = (
+                        textlength
+                        if textlength is not None
+                        else f"at most {text_width - len(fullstring)}"
                     )
                     raise SizeMismatchError(
                         f"String in variable {varnamestr} is of "
                         + f"length {len(curstr)} but expected to be of "
-                        + f"length {textlength}"
+                        + f"length {expected}"
                     )
             else:
                 if textlength is None:

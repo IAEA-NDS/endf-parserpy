@@ -94,7 +94,7 @@ def _get_numeric_field_wrapper(node, idx, dtype, vardict):
     return valcode, code
 
 
-def _get_text_field_wrapper(node, start, length, vardict):
+def _get_text_field_wrapper(node, start, length, vardict, pad=False):
     valcode = get_text_field(start, length)
     code = ""
     return valcode, code

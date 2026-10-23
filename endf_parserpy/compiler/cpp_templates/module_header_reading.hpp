@@ -872,9 +872,25 @@ inline std::string cpp_read_stream_content(std::istream& in) {
 // The functions reading a line into an existing string reuse its
 // allocated memory; the line is cleared first so that a failed read
 // leaves an empty line.
+// The fields and the MAT/MF/MT numbers are read at fixed columns up to
+// column 75. Columns missing from a shorter line are blanks (as for
+// EndfParserPy, which reads the columns of a line by slicing), so that the
+// readers never read past the end of the line.
+// Returns the length of the line content before the padding.
+inline std::size_t cpp_pad_short_line(std::string& line) {
+  const std::size_t min_size = 75;
+  if (line.size() >= min_size) return line.size();
+  if (! line.empty() && line.back() == '\r') line.pop_back();
+  std::size_t content_size = line.size();
+  line.append(min_size - content_size, ' ');
+  return content_size;
+}
+
+
 inline void cpp_read_raw_line(std::string& line, std::istream& cont) {
   line.clear();
   cpp_getline(cont, line);
+  cpp_pad_short_line(line);
 }
 
 
@@ -885,8 +901,11 @@ inline std::string cpp_read_raw_line(std::istream& cont) {
 }
 
 
+// content_size (if given) receives the length of the line before the
+// padding of a short line (see cpp_pad_short_line)
 inline void cpp_read_line(
-  std::string& line, std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts
+  std::string& line, std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts,
+  std::size_t* content_size = nullptr
 ) {
   line.clear();
   cpp_getline(cont, line);
@@ -900,6 +919,8 @@ inline void cpp_read_line(
       "Blank line detected: Correct file or use `ignore_blank_lines` option"
     );
   }
+  std::size_t size = cpp_pad_short_line(line);
+  if (content_size != nullptr) *content_size = size;
 
   if (parse_opts.validate_control_records) {
     int curmat = cpp_read_mat_number(line.c_str());
@@ -1144,19 +1165,22 @@ inline std::vector<std::string> read_section_verbatim(
   int curmf;
   int curmt;
   size_t lastpos;
+  std::size_t content_size;
   while (! cont.eof()) {
-    cpp_read_line(line, cont, mat, mf, mt, parse_opts);
+    cpp_read_line(line, cont, mat, mf, mt, parse_opts, &content_size);
     // remove trailing \r that we may
     // get from reading win-style line endings
     lastpos = line.size() - 1;
     if (line[lastpos] == '\r') {
       line.erase(lastpos);
+      content_size = line.size();
     }
     curmf = std::stoi(line.substr(70, 2));
     curmt = std::stoi(line.substr(72, 3));
     if (curmf != mf || curmt != mt) break;
+    // the line as read (without the blanks added to a short line), with
     // the newline for compatibility with the Python parser
-    secvec.push_back(line + "\n");
+    secvec.push_back(line.substr(0, content_size) + "\n");
     curpos = cont.tellg();
   }
   if (! is_first && (curmf != mf || curmt != 0)) {

@@ -344,29 +344,39 @@ private:
         return index_shifter_get_item(obj, key);
     }
 
-    // element (key, recipe_indices[i+1]) of a two-dimensional numpy array,
-    // with the index bookkeeping of the next level as in the recursion;
-    // an empty object if the generic access is to be used
-    py::object get_item_2d(const py::list&, IndexShifter&, int, const std::vector<int>&, int) {
+    // element (key, recipe_indices[i+1], ...) of a numpy array with one
+    // dimension per remaining index (at least two), e.g. a regular block
+    // of trailing indices, with the index bookkeeping of the next levels
+    // as in the recursion; an empty object if the generic access is to be
+    // used
+    py::object get_item_nd(const py::list&, IndexShifter&, int, const std::vector<int>&, int) {
         return py::object();
     }
 
-    py::object get_item_2d(const py::dict&, IndexShifter&, int, const std::vector<int>&, int) {
+    py::object get_item_nd(const py::dict&, IndexShifter&, int, const std::vector<int>&, int) {
         return py::object();
     }
 
-    py::object get_item_2d(
+    py::object get_item_nd(
         const py::object& obj, IndexShifter& next, int key, const std::vector<int>& recipe_indices, int i
     ) {
         CppNdarrayView view;
-        if (i + 2 != static_cast<int>(recipe_indices.size()) || ! cpp_ndarray_view(obj.ptr(), view)
-            || view.ndim != 2 || key < 0 || key >= view.dims[0]) {
+        const int ndim = static_cast<int>(recipe_indices.size()) - i;
+        if (ndim < 2 || ! cpp_ndarray_view(obj.ptr(), view) || view.ndim != ndim
+            || key < 0 || key >= view.dims[0]) {
             return py::object();
         }
-        int index_value;
-        int col = next.shift_index(recipe_indices[i+1], index_value);
-        if (col < 0 || col >= view.dims[1]) return py::object();
-        return cpp_ndarray_element(view, view.data + key * view.strides[0] + col * view.strides[1]);
+        const char* ptr = view.data + key * view.strides[0];
+        IndexShifter* level = &next;
+        for (int d = 1; d < ndim; d++) {
+            int index_value;
+            int pos = level->shift_index(recipe_indices[i+d], index_value);
+            if (pos < 0 || pos >= view.dims[d]) return py::object();
+            ptr += pos * view.strides[d];
+            // get_next_level only changes the levels below `level`
+            if (d + 1 < ndim) level = &level->get_next_level(index_value);
+        }
+        return cpp_ndarray_element(view, ptr);
     }
 
     // position in the Python container of the element with the recipe
@@ -451,7 +461,7 @@ private:
                 insert_obj(pyobj, py_index_value, new_container(pyobj));
             }
             if (! has_defval) {
-                py::object item = get_item_2d(pyobj, next_level, py_index_value, recipe_indices, i);
+                py::object item = get_item_nd(pyobj, next_level, py_index_value, recipe_indices, i);
                 if (item) return item;
             }
             return next_level.setdefault_any(

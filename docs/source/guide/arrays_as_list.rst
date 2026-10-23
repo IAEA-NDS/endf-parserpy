@@ -104,14 +104,20 @@ never on the numerical values:
 - Arrays of floats, including the columns of TAB1 records, are
   ``float64`` arrays, and arrays of integers, such as ``NBT`` and
   ``INT``, are ``int64`` arrays.
-- A matrix that occupies a rectangular block of a record, e.g.
-  the covariance matrix ``F`` of an MF33 subsection with ``LB=5`` and
-  ``LS=0``, is a two-dimensional array. A triangular matrix, e.g. ``F``
-  with ``LB=5`` and ``LS=1``, is a list of one-dimensional arrays, one
-  per row.
-- Arrays of arrays, e.g. the Legendre coefficients for each incident
-  energy, are lists of numpy arrays. Arrays of sections or strings are
-  lists, as with ``array_type="list"``.
+- If the trailing indices of an array form a *regular block*, i.e. a
+  rectangular array for each value of the leading indices, the block is
+  a single numpy array with one dimension per index, and the leading
+  indices are lists. For example, the covariance matrix ``F`` of an
+  MF33 subsection with ``LB=5`` and ``LS=0`` is a two-dimensional array,
+  and ``b`` of an MF6 subsection with ``LAW=1`` is a list with one
+  two-dimensional array of shape ``(NEP[j], NA[j]+1)`` per incident
+  energy ``j``.
+- A triangular matrix, e.g. ``F`` with ``LB=5`` and ``LS=1``, is a list
+  of one-dimensional arrays, one per row. Likewise, other arrays of
+  arrays whose inner arrays may differ in length, e.g. the Legendre
+  coefficients for each incident energy, are lists of numpy arrays.
+  Arrays of sections or strings are lists, as with
+  ``array_type="list"``.
 - With ``preserve_value_strings=True``, arrays of floats remain lists
   (of :class:`~endf_parserpy.EndfFloat` objects), as numpy
   arrays cannot store the original strings; arrays of integers are still
@@ -132,3 +138,17 @@ covariance matrix ``F`` above is a two-dimensional array if it was read
 by the definition for ``LS=0``, and the arrays of the Legendre
 coefficients of an incident energy without coefficients are empty
 ``float64`` arrays.
+
+Whether the trailing indices form a regular block is decided for each
+place in the recipe where a variable is assigned. They do if they are
+the loop variables of the innermost loops around this place (``for``
+loops or loops in LIST records, one index per loop, in any order,
+without an ``if`` statement or a section in between), if the limits of
+these loops do not change within the block (they may depend on the
+leading indices, so that the shape of the blocks may differ), and if no
+other place in the same section assigns or uses the variable, except in
+branches of ``if`` statements that exclude each other. A block whose
+loops have no iterations is an empty array of the shape given by the
+loop limits, e.g. of shape ``(0, NA[j]+1)`` if ``NEP[j]=0``. If all
+indices of a variable belong to the block, e.g. the matrix ``F`` above,
+the variable is only present if the block has elements.

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -626,6 +626,19 @@ def generate_master_writefun(name, recipefuns):
     return code
 
 
+def _call_writefun(callcode):
+    """Call a writing function; an error message is escaped (see
+    cpp_rethrow_escaped)."""
+    code = cpp.line("try {")
+    code += cpp.statement(callcode, cpp.INDENT)
+    code += cpp.line("} catch (const py::error_already_set&) {")
+    code += cpp.statement("throw", cpp.INDENT)
+    code += cpp.line("} catch (const std::runtime_error& cpp_exc) {")
+    code += cpp.statement("cpp_rethrow_escaped(cpp_exc)", cpp.INDENT)
+    code += cpp.close_block()
+    return code
+
+
 def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
     args_str = ", ".join(arg[0] + " " + arg[1] for arg in extra_args)
     args_str = ", " + args_str if args_str != "" else args_str
@@ -636,7 +649,9 @@ def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
         outer, inner = _split_wrapper_names(entry)
         code += cpp.line(f"py::str {outer}(py::dict endf_dict{args_str}) {{")
         code += cpp.statement("std::ostringstream oss", cpp.INDENT)
-        code += cpp.statement(f"{inner}_ostream(oss, endf_dict{args_str2})", cpp.INDENT)
+        code += cpp.indent_code(
+            _call_writefun(f"{inner}_ostream(oss, endf_dict{args_str2})"), cpp.INDENT
+        )
         # each byte becomes the character with the same code
         code += cpp.statement("return cpp_bytes_to_pystr(oss.str())", cpp.INDENT)
         code += cpp.close_block()
@@ -668,8 +683,9 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
             ),
             cpp.INDENT,
         )
-        code += cpp.statement(
-            f"{inner}_ostream(outfile, endf_dict{args_str2})", cpp.INDENT
+        code += cpp.indent_code(
+            _call_writefun(f"{inner}_ostream(outfile, endf_dict{args_str2})"),
+            cpp.INDENT,
         )
         code += cpp.statement("outfile.close()", cpp.INDENT)
         code += cpp.close_block()

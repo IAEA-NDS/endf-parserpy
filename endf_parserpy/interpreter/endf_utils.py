@@ -16,7 +16,11 @@ from .fortran_utils import (
     write_fort_floats,
     read_fort_int,
 )
-from endf_parserpy.utils.text_encoding import line_content, check_line_ascii
+from endf_parserpy.utils.text_encoding import (
+    line_content,
+    check_line_ascii,
+    long_line_hint,
+)
 from .custom_exceptions import (
     NotSectionEndError,
     UnexpectedEndOfInputError,
@@ -624,14 +628,17 @@ def split_sections(lines, read_opts=None):
             if sec_level >= 3 and last_mt != mt:
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MT", mt, last_mt, ofs)
+                    + long_line_hint(line)
                 )
             if sec_level >= 2 and last_mf != mf:
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MF", mf, last_mf, ofs)
+                    + long_line_hint(line)
                 )
             if sec_level >= 1 and last_mat != mat:
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MAT", mat, last_mat, ofs)
+                    + long_line_hint(line)
                 )
 
         # dealing with regular records
@@ -655,22 +662,23 @@ def split_sections(lines, read_opts=None):
         if sec_level >= 2 and mat != last_mat:
             raise UnexpectedControlRecordError(
                 make_send_error_message("MAT", mat, last_mat, ofs)
+                + long_line_hint(line)
             )
         if sec_level == 1 and mat != 0:
             raise UnexpectedControlRecordError(
-                make_send_error_message("MAT", mat, 0, ofs)
+                make_send_error_message("MAT", mat, 0, ofs) + long_line_hint(line)
             )
         if sec_level >= 3 and mf != last_mf:
             raise UnexpectedControlRecordError(
-                make_send_error_message("MF", mf, last_mf, ofs)
+                make_send_error_message("MF", mf, last_mf, ofs) + long_line_hint(line)
             )
         if sec_level < 3 and mf != 0:
             raise UnexpectedControlRecordError(
-                make_send_error_message("MF", mf, 0, ofs)
+                make_send_error_message("MF", mf, 0, ofs) + long_line_hint(line)
             )
         if sec_level == 0 and mat != -1:
             raise UnexpectedControlRecordError(
-                make_send_error_message("MAT", mat, -1, ofs)
+                make_send_error_message("MAT", mat, -1, ofs) + long_line_hint(line)
             )
         sec_level -= 1
         # Next line just for checking all fields are zero or blank

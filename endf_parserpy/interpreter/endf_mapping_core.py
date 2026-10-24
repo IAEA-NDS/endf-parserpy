@@ -13,7 +13,7 @@ from endf_parserpy.utils.tree_utils import is_token, get_name, get_value
 from .tree_analysis import search_name
 from endf_parserpy.utils.math_utils import math_allclose
 from .logging_utils import logging, abbreviate_valstr, should_skip_logging_info
-from endf_parserpy.utils.text_encoding import check_text_value
+from endf_parserpy.utils.text_encoding import check_text_value, escape_text
 from .custom_exceptions import (
     NumberMismatchError,
     InvalidIntegerError,
@@ -78,7 +78,7 @@ def log_offending_line(record_dic, logging_method, logger=None):
         logfun("Record specification: " + record_spec)
     if "__line" in record_dic:
         line = record_dic["__line"]
-        logfun("Offending line: " + line)
+        logfun("Offending line: " + escape_text(line))
 
 
 def map_recorddic_to_datadic(

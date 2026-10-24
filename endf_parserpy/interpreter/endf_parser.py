@@ -95,6 +95,7 @@ from endf_parserpy.utils.text_encoding import (
     ENDF_ENCODING,
     check_input,
     check_verbatim_line,
+    long_line_hint,
 )
 from .numpy_arrays import (
     mark_assignments,
@@ -1157,9 +1158,20 @@ class EndfParserPy(EndfParserBase):
                                 + logstr
                                 + "Error message: "
                                 + str(exc)
+                                + self._last_record_hint()
                             )
         self._remove_array_state_opts()
         return mfmt_dic
+
+    def _last_record_hint(self):
+        # hint if the line of the last record read is longer than 80 columns
+        queue = self.logbuffer.get_queue()
+        if len(queue) == 0:
+            return ""
+        ofs = queue[-1]["ofs"]
+        if not isinstance(ofs, int) or not 0 <= ofs < len(self.lines):
+            return ""
+        return long_line_hint(self.lines[ofs])
 
     def _remove_array_state_opts(self):
         # also called at the start of parse() and write(): these options

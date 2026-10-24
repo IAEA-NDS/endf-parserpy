@@ -1051,6 +1051,36 @@ inline bool cpp_last_line_info(std::istream& cont, long& lineno, std::size_t& le
 }
 
 
+// A hint for an error message if the last line read from the stream
+// (see cpp_last_line_info) is longer than 80 columns, otherwise empty.
+inline std::string cpp_long_line_hint(std::istream& cont) {
+  long lineno;
+  std::size_t length;
+  if (! cpp_last_line_info(cont, lineno, length) || length <= 80) return "";
+  std::ostringstream oss;
+  oss << "Hint: line " << lineno << " is longer than 80 columns (" << length
+      << " columns; non-ASCII multi-byte characters or text beyond column 80?)";
+  return oss.str();
+}
+
+
+// To be called in a catch block for a std::runtime_error raised while
+// parsing the data in cont: rethrows it with the message escaped (see
+// cpp_escape_message) and with a hint if the last line read is longer
+// than 80 columns. Exceptions of derived classes, e.g. failures to open
+// a file, are rethrown unchanged.
+[[noreturn]] inline void cpp_rethrow_parse_error(const std::runtime_error& e, std::istream& cont) {
+  if (typeid(e) != typeid(std::runtime_error)) throw;
+  std::string msg = cpp_escape_message(e.what());
+  std::string hint = cpp_long_line_hint(cont);
+  if (! hint.empty()) {
+    if (msg.empty() || msg[msg.size()-1] != '\n') msg += "\n";
+    msg += hint;
+  }
+  throw std::runtime_error(msg);
+}
+
+
 // With accept_non_ascii=false, raise an error at the first character of
 // a line outside printable ASCII (codes 32 to 126). size is the length
 // of the line content (without the line ending and without the blanks
@@ -1094,10 +1124,16 @@ inline std::string cpp_read_raw_line(std::istream& cont) {
 
 
 // content_size (if given) receives the length of the line before the
-// padding of a short line (see cpp_pad_short_line)
+// padding of a short line (see cpp_pad_short_line).
+// The MAT/MF/MT numbers of a line are checked with
+// validate_control_records=true and, if check_long_line is true, for a
+// line longer than 80 columns: such a line is not valid, and a non-ASCII
+// character that occupies several bytes (e.g. in UTF-8) in a TEXT record
+// shifts the MAT/MF/MT columns, which EndfParserPy, which divides a file
+// into sections by these columns, also detects.
 inline void cpp_read_line(
   std::string& line, std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts,
-  std::size_t* content_size = nullptr
+  std::size_t* content_size = nullptr, bool check_long_line = true
 ) {
   line.clear();
   cpp_getline(cont, line);
@@ -1115,7 +1151,7 @@ inline void cpp_read_line(
   if (content_size != nullptr) *content_size = size;
   cpp_check_line_ascii(line, size, cont, parse_opts);
 
-  if (parse_opts.validate_control_records) {
+  if (parse_opts.validate_control_records || (check_long_line && size > 80)) {
     int curmat = cpp_read_mat_number(line.c_str());
     int curmf = cpp_read_mf_number(line.c_str());
     int curmt = cpp_read_mt_number(line.c_str());
@@ -1361,7 +1397,8 @@ inline py::list read_section_verbatim(
   int curmt;
   std::size_t content_size;
   while (! cont.eof()) {
-    cpp_read_line(line, cont, mat, mf, mt, parse_opts, &content_size);
+    // the MF/MT numbers of every line are checked below
+    cpp_read_line(line, cont, mat, mf, mt, parse_opts, &content_size, false);
     curmf = std::stoi(line.substr(70, 2));
     curmt = std::stoi(line.substr(72, 3));
     if (curmf != mf || curmt != mt) break;

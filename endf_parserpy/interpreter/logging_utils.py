@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/21
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -12,6 +12,7 @@
 
 import logging
 from .tree_analysis import reconstruct_tree_str
+from endf_parserpy.utils.text_encoding import escape_text
 
 
 def setup_logger(logger_name, log_level, log_format=None):
@@ -115,7 +116,8 @@ class RingBuffer:
         for curentry in self.get_queue():
             outstr += f'-------- Line {curentry["ofs"]} -----------\n'
             outstr += "Template:  {}\n".format(curentry["record_spec"])
-            outstr += 'Line:     "{}"\n\n'.format(curentry["line"])
+            # characters outside printable ASCII are escaped, e.g. \x92
+            outstr += 'Line:     "{}"\n\n'.format(escape_text(curentry["line"]))
         return outstr
 
     def save_reduced_record_log(self, record_tree, onlyfirst=False):

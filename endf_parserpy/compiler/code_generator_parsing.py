@@ -511,6 +511,20 @@ def _split_wrapper_names(entry):
     return entry, entry
 
 
+def _return_parsed(callcode, stream):
+    """Return the result of a parse function; an error message is escaped
+    and gets a hint if the last line read is too long (see
+    cpp_rethrow_parse_error)."""
+    code = cpp.line("try {")
+    code += cpp.statement(f"return {callcode}", cpp.INDENT)
+    code += cpp.line("} catch (const py::error_already_set&) {")
+    code += cpp.statement("throw", cpp.INDENT)
+    code += cpp.line("} catch (const std::runtime_error& cpp_exc) {")
+    code += cpp.statement(f"cpp_rethrow_parse_error(cpp_exc, {stream})", cpp.INDENT)
+    code += cpp.close_block()
+    return code
+
+
 def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
     args_str = ", ".join(arg[0] + " " + arg[1] for arg in extra_args)
     args_str = ", " + args_str if args_str != "" else args_str
@@ -535,8 +549,9 @@ def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
             cpp.INDENT,
         )
         code += cpp.statement("std::istream cpp_instream(&cpp_membuf)", cpp.INDENT)
-        code += cpp.statement(
-            f"return {inner}_istream(cpp_instream{args_str2})", cpp.INDENT
+        code += cpp.indent_code(
+            _return_parsed(f"{inner}_istream(cpp_instream{args_str2})", "cpp_instream"),
+            cpp.INDENT,
         )
         code += cpp.close_block()
         code += cpp.line("")
@@ -570,7 +585,7 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
         # the file stream, which needs less memory
         code += cpp.pureif(
             cpp.logical_not("parse_opts.load_file_into_memory"),
-            cpp.statement(f"return {inner}_istream(inpfile{args_str2})"),
+            _return_parsed(f"{inner}_istream(inpfile{args_str2})", "inpfile"),
         )
         code += cpp.statement(
             "std::string cpp_content = cpp_read_stream_content(inpfile)", cpp.INDENT
@@ -580,8 +595,9 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
             cpp.INDENT,
         )
         code += cpp.statement("std::istream cpp_instream(&cpp_membuf)", cpp.INDENT)
-        code += cpp.statement(
-            f"return {inner}_istream(cpp_instream{args_str2})", cpp.INDENT
+        code += cpp.indent_code(
+            _return_parsed(f"{inner}_istream(cpp_instream{args_str2})", "cpp_instream"),
+            cpp.INDENT,
         )
         code += cpp.close_block()
         code += cpp.line("")

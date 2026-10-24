@@ -24,6 +24,7 @@
 #include <climits>    // for INT_MIN / INT_MAX
 #include <cstdint>    // for std::int64_t
 #include <limits>     // for std::numeric_limits
+#include <typeinfo>   // for typeid
 
 // When Python merges the various
 // C++ files, there is no need
@@ -385,6 +386,43 @@ inline std::string cpp_text_from_pyobj(const py::handle& obj, const char* varnam
     throw std::logic_error("unexpected string conversion failure");
   }
   return out;
+}
+
+
+// The message of an error with the characters outside printable ASCII
+// (codes 32 to 126) escaped, except for the newline, which separates the
+// lines of the message: TAB and CR become \t and \r, other bytes \xhh,
+// e.g. \x92 (as in EndfParserPy, see escape_text). A message containing
+// the content of a line may contain any byte; pybind11 decodes the
+// message as UTF-8, which fails for some bytes.
+inline std::string cpp_escape_message(const char* msg) {
+  std::string out;
+  for (const char* p = msg; *p != '\0'; ++p) {
+    unsigned char c = static_cast<unsigned char>(*p);
+    if ((c >= 32 && c <= 126) || c == '\n') {
+      out.push_back(static_cast<char>(c));
+    } else if (c == '\t') {
+      out += "\\t";
+    } else if (c == '\r') {
+      out += "\\r";
+    } else {
+      const char* hex = "0123456789abcdef";
+      out += "\\x";
+      out.push_back(hex[c >> 4]);
+      out.push_back(hex[c & 15]);
+    }
+  }
+  return out;
+}
+
+
+// To be called in a catch block for a std::runtime_error raised by the
+// writing functions: rethrows it with the message escaped (see
+// cpp_escape_message). Exceptions of derived classes, e.g. failures to
+// open a file, are rethrown unchanged.
+[[noreturn]] inline void cpp_rethrow_escaped(const std::runtime_error& e) {
+  if (typeid(e) != typeid(std::runtime_error)) throw;
+  throw std::runtime_error(cpp_escape_message(e.what()));
 }
 
 

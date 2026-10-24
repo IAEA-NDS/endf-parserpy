@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/21
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -14,6 +14,7 @@ from math import log10, floor, isfinite
 import re
 from copy import deepcopy
 from ..utils.math_utils import EndfFloat
+from endf_parserpy.utils.text_encoding import escape_text
 
 
 def read_fort_int(valstr):
@@ -23,7 +24,7 @@ def read_fort_int(valstr):
         try:
             return int(valstr)
         except ValueError as valerr:
-            raise InvalidIntegerError(valerr)
+            raise InvalidIntegerError(escape_text(str(valerr)))
 
 
 def fortstr2float(valstr, read_opts=None):
@@ -99,7 +100,8 @@ def _fortstr2float(
         val = float(valstr)
         if not accept_nan_inf and not isfinite(val):
             raise InvalidFloatError(
-                f"non-finite value (overflow / inf / NaN) in field: '{orig_valstr}'. "
+                "non-finite value (overflow / inf / NaN) in field: "
+                f"'{escape_text(orig_valstr)}'. "
                 f"Set `accept_nan_inf=True` to allow non-finite values."
             )
         if preserve_value_strings:
@@ -124,10 +126,12 @@ def _fortstr2float(
     try:
         val = float(valstr)
     except ValueError as valerr:
-        raise InvalidFloatError(valerr)
+        # characters outside printable ASCII are escaped, e.g. \x92
+        raise InvalidFloatError(escape_text(str(valerr)))
     if not accept_nan_inf and not isfinite(val):
         raise InvalidFloatError(
-            f"non-finite value (overflow / inf / NaN) in field: '{orig_valstr}'. "
+            "non-finite value (overflow / inf / NaN) in field: "
+            f"'{escape_text(orig_valstr)}'. "
             f"Set `accept_nan_inf=True` to allow non-finite values."
         )
     if preserve_value_strings:

@@ -65,6 +65,34 @@ def describe_char(char):
     return f"U+{code:04X}{name}"
 
 
+def escape_text(text):
+    """Make characters outside printable ASCII visible in a message.
+
+    TAB, CR and LF become ``\\t``, ``\\r`` and ``\\n``, other characters
+    up to U+00FF (bytes of an ENDF-6 file) ``\\xhh``, e.g. ``\\x92``,
+    and characters above U+00FF ``\\uhhhh`` or ``\\Uhhhhhhhh``.
+    Printable ASCII characters, including the backslash, are unchanged,
+    as in the messages of the C++ parser.
+    """
+    if _non_printable_ascii.search(text) is None:
+        return text
+    return _non_printable_ascii.sub(lambda m: _escape_char(m.group(0)), text)
+
+
+def long_line_hint(line):
+    """A hint for an error message if a line is longer than 80 columns.
+
+    Empty for a line of at most 80 columns (without the line ending).
+    """
+    length = len(line_content(line))
+    if length <= 80:
+        return ""
+    return (
+        f"\nHint: the line is longer than 80 columns ({length} columns; "
+        "non-ASCII multi-byte characters or text beyond column 80?)"
+    )
+
+
 def describe_byte(code):
     """Describe a byte (a character up to U+00FF) outside printable ASCII."""
     if code == 0x09:

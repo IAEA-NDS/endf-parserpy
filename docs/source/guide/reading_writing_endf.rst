@@ -124,7 +124,11 @@ positions, and reading and writing a file reproduces its bytes.
 For instance, the byte 0x92 appears as the character ``"\x92"`` in a
 text field, and the UTF-8 encoded apostrophe ``’`` (three bytes) as
 the three characters ``"â\x80\x99"``; such a character occupies three
-columns of a line, so that the following columns are shifted.
+columns of a line, so that the following columns are shifted. Both
+parsers reject a line whose MAT/MF/MT columns are shifted in this way,
+and an error message ends with a hint if the line is longer than 80
+columns. In error messages, characters outside printable ASCII are
+shown as escapes, e.g. ``\x92`` or ``\t``.
 To obtain the text intended by the author of a file, the string can
 be converted, e.g. ``text.encode("latin-1").decode("cp1252")`` or
 ``text.encode("latin-1").decode("utf-8")``.

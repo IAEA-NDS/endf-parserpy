@@ -216,7 +216,10 @@ class EndfParserCpp(EndfParserBase):
             MAT / MF / MT control record fields in every line of an
             ENDF-6 section are consistent with the surrounding section
             structure. Off by default; only the Python parser performs
-            this validation unconditionally. *(parsing, C++ only)*
+            this validation unconditionally. The MAT / MF / MT fields
+            of a line longer than 80 columns, e.g. of a TEXT record
+            with a multi-byte character, whose columns are shifted,
+            are always checked. *(parsing, C++ only)*
         load_file_into_memory : bool
             If ``True`` (default), :func:`parsefile` reads the complete
             file into memory before parsing it, which makes parsing

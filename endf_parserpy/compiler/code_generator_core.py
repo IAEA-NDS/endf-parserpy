@@ -405,6 +405,16 @@ def generate_code_for_loop(node, vardict):
     return code
 
 
+def _branch_vardict(vardict):
+    # each branch of an if-clause gets its own copy of the abbreviations,
+    # so that an abbreviation defined (or redefined) in a branch is not
+    # visible after the if-clause
+    new_vardict = vardict.copy()
+    if "__abbrevs" in new_vardict:
+        new_vardict["__abbrevs"] = dict(new_vardict["__abbrevs"])
+    return new_vardict
+
+
 def generate_code_for_if_clause(node, vardict):
     add_vardict = {}
     if_statement = get_child(node, "if_statement")
@@ -417,12 +427,12 @@ def generate_code_for_if_clause(node, vardict):
             cpp.statement("bool cpp_found_match = false", indent=cpp.INDENT),
         ]
     )
-    new_vardict = vardict.copy()
+    new_vardict = _branch_vardict(vardict)
     if_statement_code = generate_code_for_if_statement(if_statement, new_vardict)
     update_vardict(add_vardict, new_vardict)
     code += cpp.indent_code(if_statement_code, cpp.INDENT)
     for elif_statement in elif_statements:
-        new_vardict = vardict.copy()
+        new_vardict = _branch_vardict(vardict)
         code += cpp.indent_code(
             code=cpp.pureif(
                 condition="! cpp_found_match",
@@ -433,7 +443,7 @@ def generate_code_for_if_clause(node, vardict):
         update_vardict(add_vardict, new_vardict)
     if else_statement is not None:
         else_code = get_child(else_statement, "if_body")
-        new_vardict = vardict.copy()
+        new_vardict = _branch_vardict(vardict)
         code += cpp.indent_code(
             cpp.pureif(
                 condition="! cpp_found_match",

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/23
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -448,8 +448,24 @@ def evaluate_if_clause(
         if_body = get_child(else_tree, "if_body")
 
     if if_body is not None and eval_body:
+        # abbreviations defined (or redefined) in the branch are not
+        # visible after the if-clause, as in the code generator
+        saved = {name: datadic[name] for name in datadic.get("__abbrevs", ())}
         tree_handler(if_body)
+        _restore_abbreviations(datadic, saved)
     return if_body
+
+
+def _restore_abbreviations(datadic, saved):
+    abbrevs = datadic.get("__abbrevs")
+    if abbrevs is None:
+        return
+    for name in tuple(abbrevs):
+        if name not in saved:
+            del datadic[name]
+            abbrevs.discard(name)
+    for name, expr in saved.items():
+        datadic[name] = expr
 
 
 def evaluate_if_statement(

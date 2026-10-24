@@ -243,7 +243,9 @@ class _Scope:
     def copy(self):
         s = _Scope(self.parent, self.name)
         s.vars = dict(self.vars)
-        s.abbrevs = self.abbrevs
+        # the abbreviations of a branch of an if-clause are not visible
+        # after it (as in the code generator)
+        s.abbrevs = None if self.abbrevs is None else dict(self.abbrevs)
         return s
 
     def find(self, key):

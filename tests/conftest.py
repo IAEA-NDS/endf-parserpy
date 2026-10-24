@@ -1,4 +1,5 @@
 from pathlib import Path
+import pytest
 
 
 def str_to_bool(value):
@@ -32,6 +33,28 @@ def pytest_addoption(parser):
     parser.addoption("--preserve_value_strings", type=str_to_bool, default=False)
     # endf format
     parser.addoption("--endf_format", type=str, default="endf6-ext")
+    # tests marked as exhaustive take minutes and are skipped by default
+    parser.addoption(
+        "--run-exhaustive",
+        action="store_true",
+        default=False,
+        help="run the tests marked as exhaustive",
+    )
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "exhaustive: long-running test, enabled with --run-exhaustive"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--run-exhaustive"):
+        return
+    skip = pytest.mark.skip(reason="exhaustive test, enable with --run-exhaustive")
+    for item in items:
+        if "exhaustive" in item.keywords:
+            item.add_marker(skip)
 
 
 def pytest_generate_tests(metafunc):

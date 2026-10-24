@@ -13,6 +13,7 @@ from endf_parserpy.utils.tree_utils import is_token, get_name, get_value
 from .tree_analysis import search_name
 from endf_parserpy.utils.math_utils import math_allclose
 from .logging_utils import logging, abbreviate_valstr, should_skip_logging_info
+from endf_parserpy.utils.text_encoding import check_text_value
 from .custom_exceptions import (
     NumberMismatchError,
     InvalidIntegerError,
@@ -318,6 +319,11 @@ def map_text_record_helper(
                     parse_opts,
                     raise_if_missing=True,
                 )
+                if isinstance(curstr, str) and not curstr.isascii():
+                    varnamestr = generate_varname_str(
+                        extvarname_node, datadic, loop_vars, parse_opts, True
+                    )
+                    check_text_value(curstr, f"the string in variable {varnamestr}")
                 # a field without a length spans the remaining text columns
                 # and may be shorter (it is padded with blanks)
                 if (textlength is not None and len(curstr) != textlength) or (

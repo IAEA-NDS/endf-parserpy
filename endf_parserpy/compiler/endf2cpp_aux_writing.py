@@ -106,6 +106,6 @@ def close_section(current_dict="cpp_current_dict", parent_dict="cpp_parent_dict"
 
 def write_section_verbatim(ostreamvar, listobj, write_opts):
     code = cpp.statement(
-        f"write_section_verbatim({ostreamvar}, {listobj}, {write_opts})"
+        f"write_section_verbatim({ostreamvar}, {listobj}, {write_opts}, mf, mt)"
     )
     return code

@@ -16,6 +16,7 @@ from .fortran_utils import (
     write_fort_floats,
     read_fort_int,
 )
+from endf_parserpy.utils.text_encoding import line_content
 from .custom_exceptions import (
     NotSectionEndError,
     UnexpectedEndOfInputError,
@@ -487,8 +488,11 @@ def write_endf_numbers(vals, to_int=False, write_opts=None):
 
 
 def is_blank_line(line):
-    l = "".join(line.strip())
-    return l == ""
+    # a line of blanks and tabs (without its line ending) as in
+    # EndfParserCpp; other characters that str.strip removes, e.g. a form
+    # feed or the Latin-1 characters U+0085 and U+00A0 (bytes 0x85 and
+    # 0xa0), are not blank
+    return line.strip() == "" and line_content(line).strip(" \t") == ""
 
 
 def skip_blank_lines(lines, ofs):
@@ -553,7 +557,7 @@ def split_sections(lines, read_opts=None):
     ignore_send_records = read_opts.get("ignore_send_records", False)
     ignore_missing_tpid = read_opts.get("ignore_missing_tpid", False)
     ofs = 0
-    while lines[ofs].strip() == "":
+    while is_blank_line(lines[ofs]):
         if not ignore_blank_lines:
             raise BlankLineError(f"Line {ofs} is a blank line.")
         ofs += 1
@@ -586,7 +590,7 @@ def split_sections(lines, read_opts=None):
     while ofs < len(lines) - 1:
         ofs += 1
         line = lines[ofs]
-        if line.strip() == "":
+        if line.strip() == "" and is_blank_line(line):
             if sec_level == -1:
                 continue
             if ignore_blank_lines:

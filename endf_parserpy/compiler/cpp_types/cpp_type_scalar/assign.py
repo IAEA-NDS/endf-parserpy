@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2026/10/21
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -92,6 +92,9 @@ class Assign:
                 src_varname = (
                     f"cpp_vector_to_pyobj({src_varname}, numpy_ints, numpy_floats)"
                 )
+            elif dtype == str:
+                # text: each byte becomes the character with the same code
+                src_varname = f"cpp_bytes_to_pystr({src_varname})"
             assigncode = cpp.statement(f'cpp_current_dict["{vartok}"] = {src_varname}')
             cond = cpp.logical_and(
                 [

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/05/18
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -180,7 +180,8 @@ def iter_parse_tape_file(
 
 def _iter_parse_file(path, parser, exclude, include, on_error):
     """Generator backing :func:`iter_parse_tape_file`; holds the file open."""
-    with open(path, "r") as fh:
+    # bytes are mapped to characters with Latin-1 as by the parsers
+    with open(path, "r", encoding="latin-1") as fh:
         yield from _iter_materials(fh, parser, exclude, include, on_error)
 
 
@@ -325,6 +326,7 @@ def write_tape_file(
         )
     # newline="" disables newline translation so the tape is written with
     # LF terminators on every platform (text mode would emit CRLF on Windows)
-    with open(path, "w", newline="") as fh:
+    # (and each character is written as the byte with the same code)
+    with open(path, "w", newline="", encoding="latin-1") as fh:
         for chunk in _iter_tape_chunks(materials, parser, exclude, include):
             fh.write(chunk)

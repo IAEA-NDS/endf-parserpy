@@ -794,7 +794,26 @@ inline std::string cpp_prepare_send(
 }
 
 
-inline int get_mat_from_mfmt_section(py::object mfmt_section) {
+// The bytes of a line of a section given as a list of strings (see
+// cpp_text_from_pyobj); lineno counts from 1, mf and mt are the keys of
+// the section in the dictionary.
+inline std::string cpp_verbatim_line_from_pyobj(
+  const py::handle& obj, int lineno, int mf, int mt
+) {
+  if (! PyUnicode_Check(obj.ptr())) {
+    return py::cast<std::string>(obj);
+  }
+  std::string out;
+  if (! cpp_pystr_to_bytes(obj.ptr(), out)) {
+    // raises the error (a character above U+00FF)
+    cpp_text_encoding_function("check_verbatim_line")(obj, lineno, mf, mt);
+    throw std::logic_error("unexpected string conversion failure");
+  }
+  return out;
+}
+
+
+inline int get_mat_from_mfmt_section(py::object mfmt_section, int mf, int mt) {
   int mat;
   if (py::isinstance<py::dict>(mfmt_section)) {
     py::dict mfmt_section_dict = py::cast<py::dict>(mfmt_section);
@@ -810,7 +829,7 @@ inline int get_mat_from_mfmt_section(py::object mfmt_section) {
   if (mfmt_section_list.size() == 0) {
     throw std::runtime_error("list representing section is empty");
   }
-  std::string first_line = py::cast<std::string>(mfmt_section_list[0]);
+  std::string first_line = cpp_verbatim_line_from_pyobj(mfmt_section_list[0], 1, mf, mt);
   std::string matstr = first_line.substr(66, 4);
   mat = std::stoi(matstr);
   return mat;
@@ -818,18 +837,20 @@ inline int get_mat_from_mfmt_section(py::object mfmt_section) {
 
 
 inline void write_section_verbatim(
-  std::ostream& oss, py::list mfmt_section, WritingOptions &write_opts
+  std::ostream& oss, py::list mfmt_section, WritingOptions &write_opts,
+  int dict_mf, int dict_mt
 ) {
   if (mfmt_section.size() == 0) {
     throw std::runtime_error("an MF/MT section must not be represented by an empty list");
   }
-  std::string first_line = py::cast<std::string>(mfmt_section[0]);
+  std::string first_line = cpp_verbatim_line_from_pyobj(mfmt_section[0], 1, dict_mf, dict_mt);
   int mat = cpp_read_mat_number(first_line.c_str());
   int mf = cpp_read_mf_number(first_line.c_str());
   int mt = cpp_read_mt_number(first_line.c_str());
   int linenum = (mf != 0) ? 0 : -1;  // first written number is 0 for tape head
+  int lineno = 0;
   for (const auto& item : mfmt_section) {
-    std::string linestr = py::cast<std::string>(item);
+    std::string linestr = cpp_verbatim_line_from_pyobj(item, ++lineno, dict_mf, dict_mt);
     if (write_opts.include_linenum) {
       linestr.resize(80);
       cpp_write_line_number(linestr, (linenum % 99999) + 1);

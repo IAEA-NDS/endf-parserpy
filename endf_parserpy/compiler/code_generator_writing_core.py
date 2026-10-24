@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2026/10/21
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -86,6 +86,9 @@ def get_node_value_using_endf_dict(
         if dtype in ("intvec", "floatvec"):
             # tables of TAB1/TAB2 records, fast path for numpy arrays
             valcode = f"cpp_cast_vector<{dtypestr}>({retobj})"
+        elif dtype == str:
+            # text: each character becomes the byte with the same code
+            valcode = f'cpp_text_from_pyobj({retobj}, "{varname}")'
         else:
             valcode = f"py::cast<{dtypestr}>({retobj})"
         # values of float fields enter arithmetic as doubles, see `cpp_operand`
@@ -116,7 +119,7 @@ def contains_arithmetic(node):
 
 
 def get_mat_from_mfmt_section(mfmt_dict):
-    code = f"get_mat_from_mfmt_section({mfmt_dict})"
+    code = f"get_mat_from_mfmt_section({mfmt_dict}, mf, mt)"
     return code
 
 

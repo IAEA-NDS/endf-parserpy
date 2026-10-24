@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/10/21
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -283,6 +283,10 @@ class EndfParserCpp(EndfParserBase):
             This argument can be either a list of strings with each
             string storing a single line, or a string containing
             all ENDF-6 formatted data including linebreaks.
+            Each character stands for the byte with the same code
+            (see :func:`parsefile`), so the strings must not contain
+            characters above U+00FF, which raise an
+            ``InvalidCharacterError`` naming their line and column.
         exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             See explanation of parameter ``exclude`` in
             :func:`parsefile` for details.
@@ -305,7 +309,12 @@ class EndfParserCpp(EndfParserBase):
         Parameters
         ----------
         filename : str
-            Path to the ENDF-6 file
+            Path to the ENDF-6 file. Every byte of the file becomes
+            the character with the same code (Latin-1 encoding), on
+            every platform, so that no file fails to decode and the
+            columns of a line are byte positions. For instance, a
+            byte 0x92 (an apostrophe in Windows-1252) in a text field
+            is read as ``"\\x92"``.
         exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             MF/MT sections to exclude in the parsing process.
             Excluded sections will only be available as a list of strings.
@@ -364,7 +373,12 @@ class EndfParserCpp(EndfParserBase):
         Parameters
         ----------
         filename : str
-            Path of the file to be created.
+            Path of the file to be created. Every character of the
+            written text becomes the byte with the same code (Latin-1
+            encoding), so that text read with :func:`parsefile` is
+            written back unchanged. A text value with a character
+            above U+00FF raises an ``InvalidCharacterError`` naming
+            the variable.
         endf_dict : dict
             Nested dictionary with nuclear data. Keys of first level
             are MF numbers and the keys of second level MT numbers.

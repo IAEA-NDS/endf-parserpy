@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/13
-# Last modified:   2026/10/23
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -66,6 +66,16 @@ class InvalidFloatError(ParserException):
 
 
 class InconsistentSectionBracketsError(ParserException):
+    pass
+
+
+class InvalidCharacterError(ParserException):
+    """A character that cannot be read or written.
+
+    Raised for characters above U+00FF in strings to be parsed or
+    written, which do not correspond to a byte of an ENDF-6 file.
+    """
+
     pass
 
 

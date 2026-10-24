@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/23
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -43,11 +43,11 @@ inline py::object cpp_values_to_pyobj(const T* vals, std::size_t n, int start, b
   }
   if (list_mode || numpy_ints || numpy_floats) {
     py::list ret;
-    for (std::size_t i = 0; i < n; i++) ret.append(py::cast(vals[i]));
+    for (std::size_t i = 0; i < n; i++) ret.append(cpp_value_to_pyobj(vals[i]));
     return ret;
   }
   py::dict ret;
-  for (std::size_t i = 0; i < n; i++) ret[py::cast(start + (int)i)] = py::cast(vals[i]);
+  for (std::size_t i = 0; i < n; i++) ret[py::cast(start + (int)i)] = cpp_value_to_pyobj(vals[i]);
   return ret;
 }
 

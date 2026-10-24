@@ -323,7 +323,7 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("int last_mf")
     body += cpp.statement("int last_mt")
     body += cpp.statement("std::string cpp_line")
-    body += cpp.statement("std::vector<std::string> verbatim_section")
+    body += cpp.statement("py::list verbatim_section")
     body += cpp.statement("bool found_tpid = false")
     body += cpp.statement("bool after_fend = false")
     body += cpp.statement("bool after_mend = false")
@@ -512,10 +512,19 @@ def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
     code = ""
     for entry in parsefuns:
         outer, inner = _split_wrapper_names(entry)
-        code += cpp.line(f"py::dict {outer}(std::string& strcont{args_str}) {{")
+        # the data is a Python string (each character is mapped to the
+        # byte with the same code) or bytes, which are parsed in place
+        code += cpp.line(f"py::dict {outer}(py::object strcont{args_str}) {{")
         code += cpp.statement("cpp_gc_pause cpp_gc_guard", cpp.INDENT)
+        code += cpp.statement("const char* cpp_data", cpp.INDENT)
+        code += cpp.statement("std::size_t cpp_size", cpp.INDENT)
+        code += cpp.statement("py::object cpp_data_holder", cpp.INDENT)
         code += cpp.statement(
-            "cpp_memory_streambuf cpp_membuf(strcont.data(), strcont.size())",
+            "cpp_parse_input_bytes(strcont, cpp_data, cpp_size, cpp_data_holder)",
+            cpp.INDENT,
+        )
+        code += cpp.statement(
+            "cpp_memory_streambuf cpp_membuf(cpp_data, cpp_size)",
             cpp.INDENT,
         )
         code += cpp.statement("std::istream cpp_instream(&cpp_membuf)", cpp.INDENT)

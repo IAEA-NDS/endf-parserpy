@@ -91,6 +91,11 @@ from endf_parserpy.utils.debugging_utils import TrackingDict
 from .helpers import array_dict_to_list
 from .numpy_annotation import annotate_recipe_tree
 from .custom_exceptions import RecipeAnnotationError
+from endf_parserpy.utils.text_encoding import (
+    ENDF_ENCODING,
+    check_input,
+    check_verbatim_line,
+)
 from .numpy_arrays import (
     mark_assignments,
     convert_arrays,
@@ -1029,6 +1034,10 @@ class EndfParserPy(EndfParserBase):
             This argument can be either a list of strings with each
             string storing a single line, or a string containing
             all ENDF-6 formatted data including linebreaks.
+            Each character stands for the byte with the same code
+            (see :func:`parsefile`), so the strings must not contain
+            characters above U+00FF, which raise an
+            ``InvalidCharacterError`` naming their line and column.
         exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             See explanation of parameter ``exclude`` in
             :func:`parsefile` for details.
@@ -1039,6 +1048,9 @@ class EndfParserPy(EndfParserBase):
             See explanation of parameter ``nofail`` in
             :func:`parsefile` for details.
         """
+        # each character corresponds to a byte of an ENDF-6 file (see
+        # text_encoding), so characters above U+00FF cannot occur
+        check_input(lines)
         if isinstance(lines, str):
             lines = lines.split("\n")
         self._remove_array_state_opts()
@@ -1262,6 +1274,9 @@ class EndfParserPy(EndfParserBase):
                     # list of strings in the parse step
                     # and we output that unchanged
                     curlines = endf_dic[mf][mt].copy()
+                    for i, curline in enumerate(curlines):
+                        if not curline.isascii():
+                            check_verbatim_line(curline, i + 1, mf, mt)
                     curlines = add_linenumbers_to_section(
                         curlines, write_opts=self.write_opts
                     )
@@ -1316,7 +1331,12 @@ class EndfParserPy(EndfParserBase):
         Parameters
         ----------
         filename : str
-            Path to the ENDF-6 file
+            Path to the ENDF-6 file. Every byte of the file becomes
+            the character with the same code (Latin-1 encoding), on
+            every platform, so that no file fails to decode and the
+            columns of a line are byte positions. For instance, a
+            byte 0x92 (an apostrophe in Windows-1252) in a text field
+            is read as ``"\\x92"``.
         exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             MF/MT sections to exclude in the parsing process.
             Excluded sections will only be available as a list of strings.
@@ -1353,7 +1373,9 @@ class EndfParserPy(EndfParserBase):
             `MF`/`MT` combination is determined by the
             corresponding ENDF recipe.
         """
-        with open(filename, "r") as fin:
+        # every byte is mapped to the character with the same code
+        # (Latin-1) on every platform, see text_encoding
+        with open(filename, "r", encoding=ENDF_ENCODING) as fin:
             lines = fin.readlines()
         return self.parse(lines, exclude, include, nofail=nofail)
 
@@ -1371,7 +1393,12 @@ class EndfParserPy(EndfParserBase):
         Parameters
         ----------
         filename : str
-            Path of the file to be created.
+            Path of the file to be created. Every character of the
+            written text becomes the byte with the same code (Latin-1
+            encoding), so that text read with :func:`parsefile` is
+            written back unchanged. A text value with a character
+            above U+00FF raises an ``InvalidCharacterError`` naming
+            the variable.
         endf_dic : dict
             Nested dictionary with nuclear data. Keys of first level
             are MF numbers and the keys of second level MT numbers.
@@ -1402,8 +1429,9 @@ class EndfParserPy(EndfParserBase):
         else:
             lines = self.write(endf_dic, exclude, include, zero_as_blank)
             # newline="" disables newline translation: the ENDF text is
-            # written with LF on every platform, never CRLF on Windows
-            with open(filename, "w", newline="") as fout:
+            # written with LF on every platform, never CRLF on Windows;
+            # each character is written as the byte with the same code
+            with open(filename, "w", newline="", encoding=ENDF_ENCODING) as fout:
                 fout.write("\n".join(lines))
 
 

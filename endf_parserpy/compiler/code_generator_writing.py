@@ -634,10 +634,11 @@ def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
     code = ""
     for entry in writefuns:
         outer, inner = _split_wrapper_names(entry)
-        code += cpp.line(f"std::string {outer}(py::dict endf_dict{args_str}) {{")
+        code += cpp.line(f"py::str {outer}(py::dict endf_dict{args_str}) {{")
         code += cpp.statement("std::ostringstream oss", cpp.INDENT)
         code += cpp.statement(f"{inner}_ostream(oss, endf_dict{args_str2})", cpp.INDENT)
-        code += cpp.statement("return oss.str()", cpp.INDENT)
+        # each byte becomes the character with the same code
+        code += cpp.statement("return cpp_bytes_to_pystr(oss.str())", cpp.INDENT)
         code += cpp.close_block()
         code += cpp.line("")
     return code

@@ -302,6 +302,92 @@ inline py::object cpp_numeric_ndarray(const T*, int, py::ssize_t*) {
   throw std::logic_error("no numpy export for this element type");
 }
 
+// Conversion between the bytes of ENDF-6 data and Python strings.
+// As in EndfParserPy, every byte is mapped to the character with the
+// same code and back (Latin-1), so that no data can fail to decode,
+// the columns of a line are byte positions and the bytes of the data
+// are reproduced when it is written (see the Python module
+// endf_parserpy.utils.text_encoding, whose functions raise the
+// errors for strings that cannot be converted, so that both parsers
+// raise the same errors).
+
+inline py::str cpp_bytes_to_pystr(const char* data, std::size_t size) {
+  PyObject* obj = PyUnicode_DecodeLatin1(data, static_cast<Py_ssize_t>(size), nullptr);
+  if (obj == nullptr) throw py::error_already_set();
+  return py::reinterpret_steal<py::str>(obj);
+}
+
+inline py::str cpp_bytes_to_pystr(const std::string& str) {
+  return cpp_bytes_to_pystr(str.data(), str.size());
+}
+
+// a value of a variable (or an element of an array) as a Python object
+template<typename T>
+inline py::object cpp_value_to_pyobj(const T& value) {
+  return py::cast(value);
+}
+
+inline py::object cpp_value_to_pyobj(const std::string& value) {
+  return cpp_bytes_to_pystr(value);
+}
+
+// A function of the Python module endf_parserpy.utils.text_encoding,
+// imported only on the error paths that call it.
+inline py::object cpp_text_encoding_function(const char* name) {
+  return py::module::import("endf_parserpy.utils.text_encoding").attr(name);
+}
+
+// The bytes of a Python string, i.e. the codes of its characters, if they
+// are all at most U+00FF. A string whose characters are all at most
+// U+00FF is stored by Python with one byte per character, which is used
+// directly; data and size refer to the memory of the string.
+inline bool cpp_pystr_bytes(PyObject* obj, const char*& data, std::size_t& size) {
+  if (PyUnicode_KIND(obj) == PyUnicode_1BYTE_KIND) {
+    data = reinterpret_cast<const char*>(PyUnicode_1BYTE_DATA(obj));
+    size = static_cast<std::size_t>(PyUnicode_GET_LENGTH(obj));
+    return true;
+  }
+  return false;
+}
+
+// Same as cpp_pystr_bytes, but the bytes are copied into out. Strings
+// not stored with one byte per character (which normally contain a
+// character above U+00FF) are converted with the Latin-1 codec.
+inline bool cpp_pystr_to_bytes(PyObject* obj, std::string& out) {
+  const char* data;
+  std::size_t size;
+  if (cpp_pystr_bytes(obj, data, size)) {
+    out.assign(data, size);
+    return true;
+  }
+  PyObject* bytes = PyUnicode_AsLatin1String(obj);
+  if (bytes == nullptr) {
+    PyErr_Clear();
+    return false;
+  }
+  out.assign(PyBytes_AS_STRING(bytes), static_cast<std::size_t>(PyBytes_GET_SIZE(bytes)));
+  Py_DECREF(bytes);
+  return true;
+}
+
+// The bytes of the value of a text field to be written. A value that
+// is not a Python string is converted as before (e.g. bytes).
+inline std::string cpp_text_from_pyobj(const py::handle& obj, const char* varname) {
+  if (! PyUnicode_Check(obj.ptr())) {
+    return py::cast<std::string>(obj);
+  }
+  std::string out;
+  if (! cpp_pystr_to_bytes(obj.ptr(), out)) {
+    // raises the error (a character above U+00FF)
+    cpp_text_encoding_function("check_text_value")(
+      obj, std::string("the string in variable ") + varname
+    );
+    throw std::logic_error("unexpected string conversion failure");
+  }
+  return out;
+}
+
+
 // std::vector holding a TAB1/TAB2 table column or a list of integers
 template<typename T>
 inline py::object cpp_vector_to_pyobj(const std::vector<T>& vec, bool numpy_ints, bool numpy_floats) {

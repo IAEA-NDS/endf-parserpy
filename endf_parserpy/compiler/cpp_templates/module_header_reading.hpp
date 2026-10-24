@@ -870,6 +870,35 @@ inline std::istream& cpp_getline(std::istream& is, std::string& line) {
 }
 
 
+// The data to be parsed by `parse`: a Python string, whose characters
+// are mapped to the bytes with the same codes (see cpp_bytes_to_pystr),
+// or bytes. The bytes are not copied; they belong to `cont`, which
+// must remain alive while they are used.
+inline void cpp_parse_input_bytes(
+  const py::object& cont, const char*& data, std::size_t& size, py::object& holder
+) {
+  PyObject* obj = cont.ptr();
+  if (PyUnicode_Check(obj)) {
+    if (cpp_pystr_bytes(obj, data, size)) return;
+    PyObject* bytes = PyUnicode_AsLatin1String(obj);
+    if (bytes == nullptr) {
+      PyErr_Clear();
+      // raises the error (a character above U+00FF)
+      cpp_text_encoding_function("raise_input_error")(cont);
+      throw std::logic_error("unexpected string conversion failure");
+    }
+    holder = py::reinterpret_steal<py::object>(bytes);
+    obj = bytes;
+  }
+  if (PyBytes_Check(obj)) {
+    data = PyBytes_AS_STRING(obj);
+    size = static_cast<std::size_t>(PyBytes_GET_SIZE(obj));
+    return;
+  }
+  throw py::type_error("the data to be parsed must be given as str or bytes");
+}
+
+
 // Pauses Python's cyclic garbage collector while a parse function builds
 // its result. The result consists of a large number of container objects
 // (and, with preserve_value_strings, EndfFloat objects), whose creation
@@ -1251,12 +1280,14 @@ inline Tab1Body read_tab1_body(
 }
 
 
-inline std::vector<std::string> read_section_verbatim(
+// The lines of a section are returned as Python strings (see
+// cpp_bytes_to_pystr).
+inline py::list read_section_verbatim(
     int mat, int mf, int mt, std::istream& cont, bool is_first, ParsingOptions &parse_opts
 ) {
   std::streampos curpos;
   std::string line;
-  std::vector<std::string> secvec;
+  py::list secvec;
   int curmf;
   int curmt;
   std::size_t content_size;
@@ -1267,7 +1298,9 @@ inline std::vector<std::string> read_section_verbatim(
     if (curmf != mf || curmt != mt) break;
     // the line as read (without the blanks added to a short line), with
     // the newline for compatibility with the Python parser
-    secvec.push_back(line.substr(0, content_size) + "\n");
+    line.resize(content_size);
+    line.push_back('\n');
+    secvec.append(cpp_bytes_to_pystr(line));
     curpos = cont.tellg();
   }
   if (! is_first && (curmf != mf || curmt != 0)) {

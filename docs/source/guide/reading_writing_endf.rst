@@ -106,6 +106,39 @@ respectively:
    list_parsed_sections(endf_dict)
    list_unparsed_sections(endf_dict)
 
+.. _encoding_subsec:
+
+Characters and bytes
+--------------------
+
+The ENDF-6 format restricts the content of lines to printable ASCII
+characters, but some files contain other bytes, e.g. a Windows-1252
+apostrophe (byte 0x92) or a UTF-8 encoded character (several bytes)
+in the descriptive text of MF1/MT451.
+Both :class:`~endf_parserpy.EndfParserPy` and
+:class:`~endf_parserpy.EndfParserCpp` map every byte of a file to the
+Python character with the same code and back, i.e. they use the
+Latin-1 (ISO 8859-1) encoding, on every operating system. Therefore,
+no file fails to decode, the columns of a line are always byte
+positions, and reading and writing a file reproduces its bytes.
+For instance, the byte 0x92 appears as the character ``"\x92"`` in a
+text field, and the UTF-8 encoded apostrophe ``’`` (three bytes) as
+the three characters ``"â\x80\x99"``; such a character occupies three
+columns of a line, so that the following columns are shifted.
+To obtain the text intended by the author of a file, the string can
+be converted, e.g. ``text.encode("latin-1").decode("cp1252")`` or
+``text.encode("latin-1").decode("utf-8")``.
+
+Strings passed to the ``parse`` method and text values to be written
+must consist of characters up to U+00FF, which correspond to a single
+byte. Other characters, e.g. ``’`` (U+2019), raise an
+``InvalidCharacterError`` (from
+``endf_parserpy.interpreter.custom_exceptions``) that names the
+position of the character in the input or the variable whose value
+contains it. To parse the content of a file, read it with
+``parsefile`` or decode it with the Latin-1 encoding.
+
+
 .. _writing_endf_file_subsec:
 
 Writing an ENDF-6 file

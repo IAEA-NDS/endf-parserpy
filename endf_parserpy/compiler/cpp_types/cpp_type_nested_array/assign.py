@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/23
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -111,7 +111,13 @@ def _occurs_elsewhere(node, vartok, site, branches):
             return True
     for child in node.children:
         if is_if_clause(node) and branches.get(id(node), id(child)) != id(child):
-            continue
+            # of a branch that excludes the branch of the site, only the
+            # condition is considered (an else branch has none)
+            if isinstance(child, Token):
+                continue
+            child = get_child(child, "if_head", nofail=True)
+            if child is None:
+                continue
         if _occurs_elsewhere(child, vartok, site, branches):
             return True
     return False
@@ -215,8 +221,11 @@ def _is_checked_only(vartok, loop):
 def _is_block(vartok, node, block, outer, vardict):
     num_leading = len(vartok.indices) - len(block)
     loopvars = {get_loopvar(loop) for loop in block}
+    # variables compared by name and number of indices (loop variables
+    # have none), as in the walker of numpy_annotation
+    loopvar_keys = {(str(v), 0) for v in loopvars}
     for idx in vartok.indices[:num_leading]:
-        if any(v in loopvars for v in _all_variables(idx)):
+        if any((str(v), len(v.indices)) in loopvar_keys for v in _all_variables(idx)):
             return False
     scope = node
     while scope.parent is not None and not _is_scope_node(scope):
@@ -269,7 +278,9 @@ def find_block(vartok, node, vardict):
     loops = []
     curnode = node.parent
     while curnode is not None and len(loops) < num_indices:
-        if is_if_clause(curnode) or is_section(curnode) or is_repeat_loop(curnode):
+        # a block does not extend beyond an if-clause, a repeat loop or the
+        # scope of a section or a named LIST record
+        if is_if_clause(curnode) or is_repeat_loop(curnode) or _is_scope_node(curnode):
             break
         if is_for_loop(curnode) or curnode.data == "list_loop":
             loops.append(curnode)

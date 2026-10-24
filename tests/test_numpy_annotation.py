@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/23
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -241,6 +241,16 @@ BLOCK_RECIPES = {
         for i=1 to N:
             [MAT, 1, MT/ 0.0, 0.0, 0, 0, NP, 0/ {M[q,i]}{q=1 to NP} ]LIST
             NP := 3
+        endfor
+        SEND
+        """,
+        {0},
+    ),
+    "block does not span the scope of a named LIST record": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, N, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, 3, 0/ {M[i,j]}{j=1 to 3} ]LIST (sub[i])
         endfor
         SEND
         """,

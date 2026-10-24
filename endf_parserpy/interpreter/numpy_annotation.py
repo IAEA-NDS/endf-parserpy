@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/23
+# Last modified:   2026/10/24
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -603,7 +603,9 @@ class _Walker:
         loops = []
         cur = self.parent(expr)
         while cur is not None and len(loops) < var.nidx:
-            if cur.data in ("if_clause", "section", "repeat_loop"):
+            # a block does not extend beyond an if-clause, a repeat loop or
+            # the scope of a section or a named LIST record
+            if cur.data in ("if_clause", "repeat_loop") or _is_scope_node(cur):
                 break
             if cur.data in ("for_loop", "list_loop"):
                 loops.append(cur)
@@ -773,7 +775,13 @@ def _occurs_in(node, key, site, branches):
         return True
     for child in node.children:
         if node.data == "if_clause" and branches.get(id(node), id(child)) != id(child):
-            continue
+            # of a branch that excludes the branch of the site, only the
+            # condition is considered (an else branch has none)
+            if isinstance(child, Token):
+                continue
+            child = _child(child, "if_head", nofail=True)
+            if child is None:
+                continue
         if _occurs_in(child, key, site, branches):
             return True
     return False

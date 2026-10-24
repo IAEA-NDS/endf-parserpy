@@ -160,7 +160,8 @@ Unlike the other subcommands, ``endf-cli validate`` applies strict defaults to t
 parsing-leniency flags out of the box. Specifically, ``ignore_number_mismatch``,
 ``ignore_zero_mismatch``, ``ignore_varspec_mismatch``, ``accept_spaces``,
 ``ignore_blank_lines``, ``ignore_send_records``, ``ignore_missing_tpid``,
-``accept_nan_inf``, and ``accept_d_exponent`` all default to ``False`` for
+``accept_nan_inf``, ``accept_d_exponent``, and ``accept_non_ascii`` all
+default to ``False`` for
 ``validate``. Run
 ``endf-cli validate --help`` to see the per-flag defaults. Each flag can still be
 relaxed individually on the command line, e.g.

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -56,6 +56,7 @@ class EndfParserCpp(EndfParserBase):
         ignore_missing_tpid=False,
         accept_nan_inf=True,
         accept_d_exponent=True,
+        accept_non_ascii=True,
         validate_control_records=False,
         load_file_into_memory=True,
         abuse_signpos=False,
@@ -127,6 +128,23 @@ class EndfParserCpp(EndfParserBase):
             unless the original string representation is preserved and
             written verbatim (see ``preserve_value_strings``).
             *(parsing)*
+        accept_non_ascii: bool
+            If ``True`` (default), accept characters outside printable
+            ASCII (codes 32 to 126) in the content of lines, i.e. control
+            characters such as TAB as well as all bytes from 128 to 255,
+            e.g. a Windows-1252 apostrophe (byte 0x92) or the bytes of a
+            UTF-8 encoded character in a TEXT record. The ENDF-6 format
+            does not allow such characters. If ``False``, parsing raises
+            an ``InvalidCharacterError`` at the first such character of a
+            line (in a TEXT record, a section read verbatim or any other
+            record), naming its line, column, MAT/MF/MT and byte value,
+            and writing raises an ``InvalidCharacterError`` naming the
+            variable if a text value (or a line of a section given as a
+            list of strings) contains such a character. The line ending
+            is not checked, and lines of blanks and tabs are blank lines
+            (see ``ignore_blank_lines``). Every byte is read as the
+            character with the same code (Latin-1) with either setting.
+            *(parsing, writing)*
         abuse_signpos: bool
             Permit positive numbers to start in the first character slot
             of an ENDF-6 field, which is usually reserved for the sign,
@@ -228,6 +246,7 @@ class EndfParserCpp(EndfParserBase):
             "ignore_missing_tpid": ignore_missing_tpid,
             "accept_nan_inf": accept_nan_inf,
             "accept_d_exponent": accept_d_exponent,
+            "accept_non_ascii": accept_non_ascii,
             "preserve_value_strings": preserve_value_strings,
             "validate_control_records": validate_control_records,
             "load_file_into_memory": load_file_into_memory,
@@ -240,6 +259,7 @@ class EndfParserCpp(EndfParserBase):
             "skip_intzero": skip_intzero,
             "prefer_noexp": prefer_noexp,
             "preserve_value_strings": preserve_value_strings,
+            "accept_non_ascii": accept_non_ascii,
             "array_type": array_type,
         }
         subpackage = "endf_parserpy.cpp_parsers"

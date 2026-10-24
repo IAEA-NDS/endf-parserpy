@@ -20,6 +20,7 @@ struct WritingOptions {
   bool skip_intzero;
   bool preserve_value_strings;
   bool include_linenum;
+  bool accept_non_ascii;
   std::string array_type;
 };
 
@@ -32,6 +33,7 @@ inline WritingOptions default_writing_options() {
     false,  // skip_intzero
     false,  // preserve_value_strings
     true,   // include_linenum
+    true,   // accept_non_ascii
     "dict"  // array_type
   };
 }
@@ -62,6 +64,8 @@ namespace pybind11 { namespace detail {
           value.include_linenum = d["include_linenum"].cast<bool>();
         else if (key_str == "preserve_value_strings")
           value.preserve_value_strings = d["preserve_value_strings"].cast<bool>();
+        else if (key_str == "accept_non_ascii")
+          value.accept_non_ascii = d["accept_non_ascii"].cast<bool>();
         else if (key_str == "array_type")
           value.array_type = d["array_type"].cast<std::string>();
         else
@@ -89,6 +93,9 @@ namespace pybind11 { namespace detail {
       if (! d.contains("include_linenum")) {
         value.include_linenum = default_opts.include_linenum;
       }
+      if (! d.contains("accept_non_ascii")) {
+        value.accept_non_ascii = default_opts.accept_non_ascii;
+      }
       if (! d.contains("array_type")) {
         value.array_type = default_opts.array_type;
       }
@@ -104,6 +111,7 @@ namespace pybind11 { namespace detail {
       d["skip_intzero"] = src.skip_intzero;
       d["preserve_value_strings"] = src.preserve_value_strings;
       d["include_linenum"] = src.include_linenum;
+      d["accept_non_ascii"] = src.accept_non_ascii;
       d["array_type"] = src.array_type;
       return d.release();
     }
@@ -147,14 +155,35 @@ inline void cpp_write_custom_int_field(std::string &str, int start, int length, 
 }
 
 
+// The position of the first character outside printable ASCII (codes
+// 32 to 126) among the first size characters of str, or size if none.
+inline std::size_t cpp_find_non_ascii(const char* str, std::size_t size) {
+  for (std::size_t i = 0; i < size; i++) {
+    unsigned char c = static_cast<unsigned char>(str[i]);
+    if (c < 32 || c > 126) return i;
+  }
+  return size;
+}
+
+
 // The value of a text field must have the length of the field in the
 // recipe; the value of a field without a length in the recipe (which
 // spans the remaining text columns) may be shorter and is padded with
 // blanks. A value of another length would shift the following columns.
+// With accept_non_ascii=false, the value must consist of printable ASCII
+// characters.
 inline void cpp_write_text_field(
   std::string& line, int start, int length, const std::string& value,
-  const char* varname, bool pad
+  const char* varname, bool pad, WritingOptions &write_opts
 ) {
+  if (! write_opts.accept_non_ascii
+      && cpp_find_non_ascii(value.data(), value.size()) != value.size()) {
+    // raises the error (shared with EndfParserPy)
+    cpp_text_encoding_function("check_text_value")(
+      cpp_bytes_to_pystr(value), std::string("the string in variable ") + varname, false
+    );
+    throw std::logic_error("unexpected return from check_text_value");
+  }
   int size = static_cast<int>(value.size());
   if (size > length || (! pad && size != length)) {
     throw std::runtime_error(
@@ -851,6 +880,20 @@ inline void write_section_verbatim(
   int lineno = 0;
   for (const auto& item : mfmt_section) {
     std::string linestr = cpp_verbatim_line_from_pyobj(item, ++lineno, dict_mf, dict_mt);
+    if (! write_opts.accept_non_ascii) {
+      // the columns that are written (see below), without the line ending
+      std::size_t size = linestr.size();
+      if (size > 0 && linestr[size-1] == '\n') size--;
+      if (size > 0 && linestr[size-1] == '\r') size--;
+      if (size > 75) size = 75;
+      if (cpp_find_non_ascii(linestr.data(), size) != size) {
+        // raises the error (shared with EndfParserPy)
+        cpp_text_encoding_function("check_verbatim_line")(
+          item, lineno, dict_mf, dict_mt, false
+        );
+        throw std::logic_error("unexpected return from check_verbatim_line");
+      }
+    }
     if (write_opts.include_linenum) {
       linestr.resize(80);
       cpp_write_line_number(linestr, (linenum % 99999) + 1);

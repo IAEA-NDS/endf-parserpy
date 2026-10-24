@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -164,6 +164,7 @@ class EndfParserPy(EndfParserBase):
         ignore_missing_tpid=False,
         accept_nan_inf=True,
         accept_d_exponent=True,
+        accept_non_ascii=True,
         keep_E=False,
         preserve_value_strings=False,
         include_linenum=True,
@@ -253,6 +254,23 @@ class EndfParserPy(EndfParserBase):
             according to ``keep_E``), unless the original string
             representation is preserved and written verbatim (see
             ``preserve_value_strings``). *(parsing)*
+        accept_non_ascii: bool
+            If ``True`` (default), accept characters outside printable
+            ASCII (codes 32 to 126) in the content of lines, i.e. control
+            characters such as TAB as well as all bytes from 128 to 255,
+            e.g. a Windows-1252 apostrophe (byte 0x92) or the bytes of a
+            UTF-8 encoded character in a TEXT record. The ENDF-6 format
+            does not allow such characters. If ``False``, parsing raises
+            an ``InvalidCharacterError`` at the first such character of a
+            line (in a TEXT record, a section read verbatim or any other
+            record), naming its line, column, MAT/MF/MT and byte value,
+            and writing raises an ``InvalidCharacterError`` naming the
+            variable if a text value (or a line of a section given as a
+            list of strings) contains such a character. The line ending
+            is not checked, and lines of blanks and tabs are blank lines
+            (see ``ignore_blank_lines``). Every byte is read as the
+            character with the same code (Latin-1) with either setting.
+            *(parsing, writing)*
         keep_E : bool
             If ``True``, include the `e` character in scientific notation,
             e.g. `1.23e-8` instead of `1.23-8`. The inclusion establishes
@@ -395,6 +413,7 @@ class EndfParserPy(EndfParserBase):
             "fuzzy_matching": fuzzy_matching,
             "array_type": array_type,
             "width": width,
+            "accept_non_ascii": accept_non_ascii,
         }
         self.write_opts = {
             "abuse_signpos": abuse_signpos,
@@ -406,6 +425,7 @@ class EndfParserPy(EndfParserBase):
             "width": width,
             "check_arrays": check_arrays,
             "strict_datatypes": strict_datatypes,
+            "accept_non_ascii": accept_non_ascii,
         }
         self.read_opts = {
             "accept_spaces": accept_spaces,
@@ -414,6 +434,7 @@ class EndfParserPy(EndfParserBase):
             "ignore_missing_tpid": ignore_missing_tpid,
             "accept_nan_inf": accept_nan_inf,
             "accept_d_exponent": accept_d_exponent,
+            "accept_non_ascii": accept_non_ascii,
             "width": width,
             "preserve_value_strings": preserve_value_strings,
         }
@@ -1274,9 +1295,12 @@ class EndfParserPy(EndfParserBase):
                     # list of strings in the parse step
                     # and we output that unchanged
                     curlines = endf_dic[mf][mt].copy()
+                    accept_non_ascii = self.write_opts["accept_non_ascii"]
                     for i, curline in enumerate(curlines):
-                        if not curline.isascii():
-                            check_verbatim_line(curline, i + 1, mf, mt)
+                        if not accept_non_ascii or not curline.isascii():
+                            check_verbatim_line(
+                                curline, i + 1, mf, mt, accept_non_ascii
+                            )
                     curlines = add_linenumbers_to_section(
                         curlines, write_opts=self.write_opts
                     )

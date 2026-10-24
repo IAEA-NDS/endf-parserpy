@@ -138,6 +138,19 @@ position of the character in the input or the variable whose value
 contains it. To parse the content of a file, read it with
 ``parsefile`` or decode it with the Latin-1 encoding.
 
+Characters outside printable ASCII (codes 32 to 126), i.e. control
+characters such as TAB and all bytes from 128 to 255, are accepted
+by default. With the argument ``accept_non_ascii=False`` (also used by
+``endf-cli validate``), reading raises an ``InvalidCharacterError`` at
+the first such character, naming its line, column, MAT/MF/MT and byte
+value, e.g. ``byte 0x92 (likely a Windows-1252 character)``, and
+writing raises an ``InvalidCharacterError`` if a text value contains
+such a character:
+
+.. code:: Python
+
+   parser = EndfParserPy(accept_non_ascii=False)
+
 
 .. _writing_endf_file_subsec:
 

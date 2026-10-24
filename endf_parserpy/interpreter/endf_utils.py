@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -16,7 +16,7 @@ from .fortran_utils import (
     write_fort_floats,
     read_fort_int,
 )
-from endf_parserpy.utils.text_encoding import line_content
+from endf_parserpy.utils.text_encoding import line_content, check_line_ascii
 from .custom_exceptions import (
     NotSectionEndError,
     UnexpectedEndOfInputError,
@@ -556,12 +556,16 @@ def split_sections(lines, read_opts=None):
     ignore_blank_lines = read_opts.get("ignore_blank_lines", False)
     ignore_send_records = read_opts.get("ignore_send_records", False)
     ignore_missing_tpid = read_opts.get("ignore_missing_tpid", False)
+    accept_non_ascii = read_opts.get("accept_non_ascii", True)
+    width = read_opts.get("width", 11)
     ofs = 0
     while is_blank_line(lines[ofs]):
         if not ignore_blank_lines:
             raise BlankLineError(f"Line {ofs} is a blank line.")
         ofs += 1
     mfdic = {}
+    if not accept_non_ascii:
+        check_line_ascii(lines[ofs], ofs + 1, width)
     th = read_ctrl(lines[ofs], read_opts=read_opts)
     th_mat = th["MAT"]
     th_mf = th["MF"]
@@ -597,6 +601,8 @@ def split_sections(lines, read_opts=None):
                 continue
             else:
                 raise BlankLineError(f"Line {ofs} is a blank line.")
+        if not accept_non_ascii:
+            check_line_ascii(line, ofs + 1, width)
         if sec_level == -1:
             raise UnexpectedControlRecordError(
                 "Already encountered Tape End (TEND) record. "

@@ -23,6 +23,7 @@ struct ParsingOptions {
   bool ignore_missing_tpid;
   bool accept_nan_inf;
   bool accept_d_exponent;
+  bool accept_non_ascii;
   bool preserve_value_strings;
   bool validate_control_records;
   bool load_file_into_memory;
@@ -41,6 +42,7 @@ inline ParsingOptions default_parsing_options() {
     false,  // ignore_missing_tpid
     true,   // accept_nan_inf
     true,   // accept_d_exponent
+    true,   // accept_non_ascii
     false,  // preserve_value_strings
     false,  // validate_control_records
     true,   // load_file_into_memory
@@ -80,6 +82,8 @@ namespace pybind11 { namespace detail {
           value.accept_nan_inf = d["accept_nan_inf"].cast<bool>();
         else if (key_str == "accept_d_exponent")
           value.accept_d_exponent = d["accept_d_exponent"].cast<bool>();
+        else if (key_str == "accept_non_ascii")
+          value.accept_non_ascii = d["accept_non_ascii"].cast<bool>();
         else if (key_str == "preserve_value_strings")
           value.preserve_value_strings = d["preserve_value_strings"].cast<bool>();
         else if (key_str == "validate_control_records")
@@ -131,6 +135,10 @@ namespace pybind11 { namespace detail {
         value.accept_d_exponent = default_opts.accept_d_exponent;
       }
 
+      if (! d.contains("accept_non_ascii")) {
+        value.accept_non_ascii = default_opts.accept_non_ascii;
+      }
+
       if (! d.contains("preserve_value_strings")) {
         value.preserve_value_strings = default_opts.preserve_value_strings;
       }
@@ -162,6 +170,7 @@ namespace pybind11 { namespace detail {
       d["ignore_missing_tpid"] = src.ignore_missing_tpid;
       d["accept_nan_inf"] = src.accept_nan_inf;
       d["accept_d_exponent"] = src.accept_d_exponent;
+      d["accept_non_ascii"] = src.accept_non_ascii;
       d["preserve_value_strings"] = src.preserve_value_strings;
       d["validate_control_records"] = src.validate_control_records;
       d["load_file_into_memory"] = src.load_file_into_memory;
@@ -1011,6 +1020,65 @@ inline std::size_t cpp_pad_short_line(std::string& line) {
 }
 
 
+// The number (counting from 1) and the length (without the line
+// ending) of the last line read from a stream, i.e. of the line that ends
+// before the current position. The stream is read again from its
+// beginning, which is only done for error messages; the position is
+// restored. Returns false if the stream cannot be repositioned.
+inline bool cpp_last_line_info(std::istream& cont, long& lineno, std::size_t& length) {
+  cont.clear();
+  std::streampos pos = cont.tellg();
+  if (pos == std::streampos(-1)) return false;
+  cont.seekg(0);
+  if (! cont) {
+    cont.clear();
+    cont.seekg(pos);
+    return false;
+  }
+  lineno = 0;
+  length = 0;
+  std::string line;
+  while (true) {
+    std::streampos start = cont.tellg();
+    if (start == std::streampos(-1) || start >= pos) break;
+    if (! cpp_getline(cont, line)) break;
+    lineno++;
+    length = line.size();
+  }
+  cont.clear();
+  cont.seekg(pos);
+  return lineno > 0;
+}
+
+
+// With accept_non_ascii=false, raise an error at the first character of
+// a line outside printable ASCII (codes 32 to 126). size is the length
+// of the line content (without the line ending and without the blanks
+// added to a short line, see cpp_pad_short_line), which has just been
+// read from cont. The error is raised by the Python function shared
+// with EndfParserPy, so that both parsers give the same message.
+inline void cpp_check_line_ascii(
+  const std::string& line, std::size_t size, std::istream& cont, ParsingOptions &parse_opts
+) {
+  if (parse_opts.accept_non_ascii) return;
+  for (std::size_t i = 0; i < size; i++) {
+    unsigned char c = static_cast<unsigned char>(line[i]);
+    if (c >= 32 && c <= 126) continue;
+    long lineno = 0;
+    std::size_t length;
+    cpp_last_line_info(cont, lineno, length);
+    // the MAT/MF/MT columns (the line is at least 75 characters long)
+    int mat = cpp_read_custom_int_field(line.c_str(), 66, 4);
+    int mf = cpp_read_custom_int_field(line.c_str(), 70, 2);
+    int mt = cpp_read_custom_int_field(line.c_str(), 72, 3);
+    cpp_text_encoding_function("raise_non_ascii_line_error")(
+      lineno, i + 1, mat, mf, mt, static_cast<int>(c)
+    );
+    throw std::logic_error("unexpected return from raise_non_ascii_line_error");
+  }
+}
+
+
 inline void cpp_read_raw_line(std::string& line, std::istream& cont) {
   line.clear();
   cpp_getline(cont, line);
@@ -1045,6 +1113,7 @@ inline void cpp_read_line(
   }
   std::size_t size = cpp_pad_short_line(line);
   if (content_size != nullptr) *content_size = size;
+  cpp_check_line_ascii(line, size, cont, parse_opts);
 
   if (parse_opts.validate_control_records) {
     int curmat = cpp_read_mat_number(line.c_str());

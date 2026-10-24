@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -319,11 +319,18 @@ def map_text_record_helper(
                     parse_opts,
                     raise_if_missing=True,
                 )
-                if isinstance(curstr, str) and not curstr.isascii():
+                accept_non_ascii = parse_opts.get("accept_non_ascii", True)
+                if isinstance(curstr, str) and (
+                    not accept_non_ascii or not curstr.isascii()
+                ):
                     varnamestr = generate_varname_str(
                         extvarname_node, datadic, loop_vars, parse_opts, True
                     )
-                    check_text_value(curstr, f"the string in variable {varnamestr}")
+                    check_text_value(
+                        curstr,
+                        f"the string in variable {varnamestr}",
+                        accept_non_ascii,
+                    )
                 # a field without a length spans the remaining text columns
                 # and may be shorter (it is padded with blanks)
                 if (textlength is not None and len(curstr) != textlength) or (

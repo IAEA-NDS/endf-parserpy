@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -51,7 +51,7 @@ def set_numeric_field(linevar, fieldpos, dtype, value, write_opts):
 def set_text_field(linevar, start, length, value, varname, pad):
     padstr = "true" if pad else "false"
     code = cpp.statement(
-        f'cpp_write_text_field({linevar}, {start}, {length}, {value}, "{varname}", {padstr})'
+        f'cpp_write_text_field({linevar}, {start}, {length}, {value}, "{varname}", {padstr}, write_opts)'
     )
     return code
 

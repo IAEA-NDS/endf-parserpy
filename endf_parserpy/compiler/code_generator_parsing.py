@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -349,7 +349,14 @@ def generate_master_parsefun(name, recipefuns):
     )
 
     # columns missing from a short line are blanks (see cpp_pad_short_line)
-    body += cpp.statement("cpp_pad_short_line(cpp_line)", cpp.INDENT)
+    body += cpp.statement(
+        "std::size_t cpp_content_size = cpp_pad_short_line(cpp_line)", cpp.INDENT
+    )
+    # with accept_non_ascii=false, only printable ASCII characters
+    body += cpp.statement(
+        "cpp_check_line_ascii(cpp_line, cpp_content_size, cont, parse_opts)",
+        cpp.INDENT,
+    )
     matval = aux.get_custom_int_field(66, 4)
     mfval = aux.get_custom_int_field(70, 2)
     mtval = aux.get_custom_int_field(72, 3)

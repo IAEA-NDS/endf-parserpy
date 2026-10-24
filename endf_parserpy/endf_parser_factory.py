@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/10/21
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -73,6 +73,7 @@ class EndfParserFactory:
         ignore_missing_tpid=False,
         accept_nan_inf=True,
         accept_d_exponent=True,
+        accept_non_ascii=True,
         keep_E=False,
         preserve_value_strings=False,
         include_linenum=True,

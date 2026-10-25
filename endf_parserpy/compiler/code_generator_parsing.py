@@ -570,26 +570,25 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
         outer, inner = _split_wrapper_names(entry)
         code += cpp.line(f"py::dict {outer}_file(std::string& filename{args_str}) {{")
         code += cpp.statement("cpp_gc_pause cpp_gc_guard", cpp.INDENT)
-        code += cpp.statement(
-            "std::ifstream inpfile(filename, std::ios::binary)", cpp.INDENT
-        )
-        code += cpp.pureif(
+        # by default, the whole file is read into memory, which makes
+        # repositioning in the stream (at section starts and in lookaheads)
+        # cheap; with load_file_into_memory=false, the file is read through
+        # the file stream, which needs less memory
+        stream_code = cpp.statement("std::ifstream inpfile(filename, std::ios::binary)")
+        stream_code += cpp.pureif(
             cpp.logical_not("inpfile.is_open()"),
             cpp.statement(
                 "throw std::ifstream::failure" + '("failed to open file " + filename)'
             ),
         )
-        # by default, the whole file is read into memory, which makes
-        # repositioning in the stream (at section starts and in lookaheads)
-        # cheap; with load_file_into_memory=false, the file is read through
-        # the file stream, which needs less memory
-        code += cpp.pureif(
-            cpp.logical_not("parse_opts.load_file_into_memory"),
-            _return_parsed(f"{inner}_istream(inpfile{args_str2})", "inpfile"),
+        stream_code += _return_parsed(f"{inner}_istream(inpfile{args_str2})", "inpfile")
+        code += cpp.indent_code(
+            cpp.pureif(
+                cpp.logical_not("parse_opts.load_file_into_memory"), stream_code
+            ),
+            cpp.INDENT,
         )
-        code += cpp.statement(
-            "std::string cpp_content = cpp_read_stream_content(inpfile)", cpp.INDENT
-        )
+        code += cpp.statement("cpp_file_content cpp_content(filename)", cpp.INDENT)
         code += cpp.statement(
             "cpp_memory_streambuf cpp_membuf(cpp_content.data(), cpp_content.size())",
             cpp.INDENT,

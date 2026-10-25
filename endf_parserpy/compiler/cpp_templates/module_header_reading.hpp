@@ -1462,26 +1462,54 @@ protected:
 };
 
 
-// Read the complete content of an input stream (opened file) into a string;
-// if the stream is not seekable, it is copied through its stream buffer.
-inline std::string cpp_read_stream_content(std::istream& in) {
-  std::string content;
-  std::istream::pos_type start = in.tellg();
-  if (start != std::istream::pos_type(-1) && in.seekg(0, std::ios_base::end)) {
-    std::istream::pos_type end = in.tellg();
-    in.seekg(start);
-    if (end != std::istream::pos_type(-1) && in) {
-      content.resize(static_cast<std::size_t>(end - start));
-      in.read(&content[0], static_cast<std::streamsize>(content.size()));
-      content.resize(static_cast<std::size_t>(in.gcount()));
-      return content;
+// The complete content of a file, read into memory. The memory is
+// allocated once for the size of the file and the file is read into it
+// with std::fread, without initializing the memory first (as resizing a
+// std::string would) and without copying the data through the buffer
+// of a file stream. A file whose size cannot be determined (e.g. a pipe)
+// or that is larger than its size determined before reading is read
+// in chunks into memory that grows as needed. As for a file stream, a
+// read error ends the content, i.e. only the bytes read before the error
+// are parsed.
+class cpp_file_content {
+  private:
+    struct closer {
+      void operator()(std::FILE* file) const { std::fclose(file); }
+    };
+
+  public:
+    explicit cpp_file_content(const std::string& filename) {
+      std::FILE* file = std::fopen(filename.c_str(), "rb");
+      if (file == nullptr) {
+        throw std::ifstream::failure("failed to open file " + filename);
+      }
+      std::unique_ptr<std::FILE, closer> file_guard(file);
+      // one more byte than the size of the file, so that the end of the
+      // file is detected by the first read
+      std::size_t capacity = 64 * 1024;
+      if (std::fseek(file, 0, SEEK_END) == 0) {
+        long end = std::ftell(file);
+        if (end >= 0) capacity = static_cast<std::size_t>(end) + 1;
+      }
+      std::rewind(file);
+      buf_.reset(new char[capacity]);
+      while (true) {
+        size_ += std::fread(buf_.get() + size_, 1, capacity - size_, file);
+        if (size_ < capacity) break;
+        std::unique_ptr<char[]> larger(new char[2 * capacity]);
+        std::memcpy(larger.get(), buf_.get(), size_);
+        buf_.swap(larger);
+        capacity *= 2;
+      }
     }
-  }
-  in.clear();
-  std::ostringstream oss;
-  oss << in.rdbuf();
-  return oss.str();
-}
+
+    const char* data() const { return buf_.get(); }
+    std::size_t size() const { return size_; }
+
+  private:
+    std::unique_ptr<char[]> buf_;
+    std::size_t size_ = 0;
+};
 
 
 // The functions reading a line into an existing string reuse its

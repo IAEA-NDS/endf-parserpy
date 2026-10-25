@@ -24,6 +24,7 @@
 #include <climits>    // for INT_MIN / INT_MAX
 #include <cstdint>    // for std::int64_t
 #include <limits>     // for std::numeric_limits
+#include <memory>     // for std::unique_ptr
 #include <typeinfo>   // for typeid
 
 // When Python merges the various

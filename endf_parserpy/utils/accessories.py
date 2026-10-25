@@ -3,12 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2026/10/21
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+import sys
 from collections.abc import (
     Mapping,
     MutableMapping,
@@ -21,6 +22,30 @@ from ..interpreter.helpers import (
 )
 
 
+def is_numpy_array(obj):
+    """Check whether an object is a numpy array with at least one dimension.
+
+    numpy is not imported for this check: if it has not been imported,
+    there can be no numpy arrays.
+    """
+    numpy = sys.modules.get("numpy")
+    return numpy is not None and isinstance(obj, numpy.ndarray) and obj.ndim > 0
+
+
+def _is_array_like(obj):
+    return (isinstance(obj, Sequence) and not isinstance(obj, str)) or is_numpy_array(
+        obj
+    )
+
+
+def _check_resizable(obj, action):
+    if is_numpy_array(obj):
+        raise TypeError(
+            f"cannot {action} a numpy array, as its size is fixed; "
+            + "assign a new array to the enclosing element instead"
+        )
+
+
 def recursive_equality_check(obj1, obj2, ids):
     """Compare recursively two nested data structures.
 
@@ -28,11 +53,23 @@ def recursive_equality_check(obj1, obj2, ids):
     data structures that may contain basic datatypes
     (:class:`int`, :class:`float`, :class:`str`),
     objects that are subclasses of :class:`collections.abc.Sequence`
-    (e.g. :class:`list` and :class:`tuple`)
-    and :class:`collections.abc.Mapping` (e.g. :class:`dict`).
+    (e.g. :class:`list` and :class:`tuple`),
+    :class:`collections.abc.Mapping` (e.g. :class:`dict`)
+    and numpy arrays, which are compared element by element
+    with each other and with sequences.
     """
     if id(obj1) == id(obj2):
         return True
+    elif is_numpy_array(obj1) or is_numpy_array(obj2):
+        if not (_is_array_like(obj1) and _is_array_like(obj2)):
+            return False
+        if is_numpy_array(obj1) and is_numpy_array(obj2):
+            return obj1.shape == obj2.shape and bool((obj1 == obj2).all())
+        if len(obj1) != len(obj2):
+            return False
+        for x, y in zip(obj1, obj2):
+            if not recursive_equality_check(x, y, ids):
+                return False
     elif isinstance(obj1, Sequence) and isinstance(obj2, Sequence):
         if len(obj1) != len(obj2):
             return False
@@ -283,6 +320,8 @@ class EndfPath(Sequence):
                 else:
                     cur[el] = value
             else:
+                if is_el_int and el == len(cur):
+                    _check_resizable(cur, "append an element to")
                 if i + 1 < num_pathels:
                     is_next_el_int = isinstance(pathels[i + 1], int)
                     new_cont = [] if is_next_el_int and not dict_mode else {}
@@ -343,6 +382,7 @@ class EndfPath(Sequence):
         cur = dict_like
         for el in self._path_elements[:-1]:
             cur = cur[el]
+        _check_resizable(cur, "remove an element from")
         del cur[self._path_elements[-1]]
 
 

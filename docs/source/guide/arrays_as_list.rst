@@ -130,6 +130,22 @@ can be used interchangeably; numpy arrays of any integer type are
 accepted for integer fields, and numpy arrays of any integer or float type
 for float fields, as well as numpy scalars of these types.
 
+:ref:`EndfPath notation <endf_path_class>`, the
+:ref:`EndfDict <endf_dict_class>` class (initialized with
+``array_type="list"``, see above) and asterisks in paths work with
+such data as with data parsed with ``array_type="list"``, also for
+elements inside a numpy array, e.g. ``6/5/subsection/0/b/0/1/1`` for
+an element of the two-dimensional array ``b[0]``. Assigning to an
+element of a numpy array changes the array in place. As numpy arrays
+have a fixed size, appending an element to them or removing one raises
+a :class:`TypeError`; assign a new array to the enclosing element
+instead. Comparing an :class:`~endf_parserpy.EndfDict` with another
+dictionary compares numpy arrays element by element, also with lists,
+so that data parsed with ``array_type="numpy"`` and
+``array_type="list"`` compare equal. Note that the elements of integer
+arrays are numpy integers (``numpy.int64``), which are not instances of
+:class:`int`.
+
 Both parsers return the same result with ``array_type="numpy"``, also
 for recipes passed with the ``recipes`` argument of
 :class:`~endf_parserpy.EndfParserPy`: the form of an array is

@@ -14,6 +14,7 @@ from endf_parserpy import EndfPath, EndfDict
 from endf_parserpy.utils.math_utils import EndfFloat
 from itertools import product
 from collections.abc import MutableMapping, MutableSequence
+from endf_parserpy.utils.accessories import is_numpy_array
 
 
 def print_assignment(endf_path, endf_dict, prefix=""):
@@ -42,7 +43,10 @@ def endf_path_generator(endf_path, trail_dict, lead_path=EndfPath()):
         except (KeyError, ValueError, TypeError):
             return
 
-        if not isinstance(curdict, (MutableMapping, MutableSequence)):
+        if not (
+            isinstance(curdict, (MutableMapping, MutableSequence))
+            or is_numpy_array(curdict)
+        ):
             return
 
         results = []

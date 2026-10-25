@@ -332,6 +332,58 @@ inline py::object cpp_value_to_pyobj(const std::string& value) {
   return cpp_bytes_to_pystr(value);
 }
 
+inline py::object cpp_value_to_pyobj(int value) {
+  PyObject* obj = PyLong_FromLong(value);
+  if (obj == nullptr) throw py::error_already_set();
+  return py::reinterpret_steal<py::object>(obj);
+}
+
+// a float is created directly, an EndfFloat with its original string
+// by the type caster of EndfFloatCpp
+inline py::object cpp_value_to_pyobj(const EndfFloatCpp& value) {
+  if (value.has_original_string()) {
+    return py::cast(value);
+  }
+  PyObject* obj = PyFloat_FromDouble(static_cast<double>(value));
+  if (obj == nullptr) throw py::error_already_set();
+  return py::reinterpret_steal<py::object>(obj);
+}
+
+// A list of n elements to be set with cpp_pylist_set; until then, an
+// element is NULL, which is allowed if the list is destroyed (e.g. if
+// an exception is thrown before all elements are set).
+inline py::list cpp_new_pylist(std::size_t n) {
+  PyObject* obj = PyList_New(static_cast<Py_ssize_t>(n));
+  if (obj == nullptr) throw py::error_already_set();
+  return py::reinterpret_steal<py::list>(obj);
+}
+
+// The list takes over the reference of value.
+inline void cpp_pylist_set(py::list& lst, std::size_t i, py::object value) {
+  PyList_SET_ITEM(lst.ptr(), static_cast<Py_ssize_t>(i), value.release().ptr());
+}
+
+// A dictionary with space for n items, so that it is not resized while
+// they are inserted (the order of the keys is the order of insertion).
+inline py::dict cpp_new_pydict(std::size_t n) {
+#if defined(PYPY_VERSION)
+  (void) n;
+  PyObject* obj = PyDict_New();
+#else
+  PyObject* obj = _PyDict_NewPresized(static_cast<Py_ssize_t>(n));
+#endif
+  if (obj == nullptr) throw py::error_already_set();
+  return py::reinterpret_steal<py::dict>(obj);
+}
+
+inline void cpp_pydict_set(py::dict& dct, int key, const py::object& value) {
+  PyObject* keyobj = PyLong_FromLong(key);
+  if (keyobj == nullptr) throw py::error_already_set();
+  int status = PyDict_SetItem(dct.ptr(), keyobj, value.ptr());
+  Py_DECREF(keyobj);
+  if (status != 0) throw py::error_already_set();
+}
+
 // A function of the Python module endf_parserpy.utils.text_encoding,
 // imported only on the error paths that call it.
 inline py::object cpp_text_encoding_function(const char* name) {

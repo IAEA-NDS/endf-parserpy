@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -42,12 +42,12 @@ inline py::object cpp_values_to_pyobj(const T* vals, std::size_t n, int start, b
     return cpp_numeric_ndarray(vals, 1, &dim);
   }
   if (list_mode || numpy_ints || numpy_floats) {
-    py::list ret;
-    for (std::size_t i = 0; i < n; i++) ret.append(cpp_value_to_pyobj(vals[i]));
+    py::list ret = cpp_new_pylist(n);
+    for (std::size_t i = 0; i < n; i++) cpp_pylist_set(ret, i, cpp_value_to_pyobj(vals[i]));
     return ret;
   }
-  py::dict ret;
-  for (std::size_t i = 0; i < n; i++) ret[py::cast(start + (int)i)] = cpp_value_to_pyobj(vals[i]);
+  py::dict ret = cpp_new_pydict(n);
+  for (std::size_t i = 0; i < n; i++) cpp_pydict_set(ret, start + (int)i, cpp_value_to_pyobj(vals[i]));
   return ret;
 }
 
@@ -55,12 +55,12 @@ inline py::object cpp_values_to_pyobj(const T* vals, std::size_t n, int start, b
 template<typename U>
 inline py::object cpp_values_to_pyobj(const std::vector<U>* vals, std::size_t n, int start, bool list_mode, bool numpy_ints, bool numpy_floats) {
   if (list_mode || numpy_ints || numpy_floats) {
-    py::list ret;
-    for (std::size_t i = 0; i < n; i++) ret.append(cpp_vector_to_pyobj(vals[i], numpy_ints, numpy_floats));
+    py::list ret = cpp_new_pylist(n);
+    for (std::size_t i = 0; i < n; i++) cpp_pylist_set(ret, i, cpp_vector_to_pyobj(vals[i], numpy_ints, numpy_floats));
     return ret;
   }
-  py::dict ret;
-  for (std::size_t i = 0; i < n; i++) ret[py::cast(start + (int)i)] = py::cast(vals[i]);
+  py::dict ret = cpp_new_pydict(n);
+  for (std::size_t i = 0; i < n; i++) cpp_pydict_set(ret, start + (int)i, py::cast(vals[i]));
   return ret;
 }
 
@@ -148,15 +148,15 @@ class NestedArray {
         return cpp_values_to_pyobj(ptr, dims[d], first[d], list_mode, false, false);
       }
       if (list_mode) {
-        py::list ret;
+        py::list ret = cpp_new_pylist(dims[d]);
         for (int i = 0; i < dims[d]; i++) {
-          ret.append(block_to_pyobj(d + 1, ptr + i * substride, substride, list_mode, false, false));
+          cpp_pylist_set(ret, i, block_to_pyobj(d + 1, ptr + i * substride, substride, list_mode, false, false));
         }
         return ret;
       }
-      py::dict ret;
+      py::dict ret = cpp_new_pydict(dims[d]);
       for (int i = 0; i < dims[d]; i++) {
-        ret[py::cast(first[d] + i)] = block_to_pyobj(d + 1, ptr + i * substride, substride, list_mode, false, false);
+        cpp_pydict_set(ret, first[d] + i, block_to_pyobj(d + 1, ptr + i * substride, substride, list_mode, false, false));
       }
       return ret;
     }
@@ -241,16 +241,15 @@ class NestedArray {
         return block_to_pyobj(0, data.data(), data.size(), list_mode, false, false);
       }
       if (list_mode || numpy_ints || numpy_floats) {
-        py::list ret;
-        for (const auto& item : items) {
-          ret.append(item.to_pyobj(list_mode, numpy_ints, numpy_floats));
+        py::list ret = cpp_new_pylist(items.size());
+        for (std::size_t i = 0; i < items.size(); i++) {
+          cpp_pylist_set(ret, i, items[i].to_pyobj(list_mode, numpy_ints, numpy_floats));
         }
         return ret;
       }
-      py::dict ret;
-      int index = start;
-      for (const auto& item : items) {
-        ret[py::cast(index++)] = item.to_pyobj(list_mode, numpy_ints, numpy_floats);
+      py::dict ret = cpp_new_pydict(items.size());
+      for (std::size_t i = 0; i < items.size(); i++) {
+        cpp_pydict_set(ret, start + (int)i, items[i].to_pyobj(list_mode, numpy_ints, numpy_floats));
       }
       return ret;
     }

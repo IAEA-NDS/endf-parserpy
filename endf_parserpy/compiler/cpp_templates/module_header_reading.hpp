@@ -259,14 +259,478 @@ inline void throw_number_mismatch_error(
 }
 
 
+// Exact conversion of mant * 10^k for decimal exponents k below -22, the
+// range of the single division used below, i.e. of values below about
+// 1e-16, which occur in many ENDF-6 files (14% of the float fields of
+// tsl-HinH2O of ENDF/B-VIII.0). It uses the algorithm of Eisel and Lemire
+// as in the fast_float library (D. Lemire, "Number parsing at a gigabyte
+// per second", Software: Practice and Experience 51(8), 2021): the
+// significand, shifted so that its most significant bit is set, is
+// multiplied with a 128-bit approximation of 5^k; the upper bits of the
+// product give the significand of the double, its exponent follows from
+// k and the shift. The result is the correctly rounded double (round half
+// to even), subnormal numbers and underflow to zero included, i.e. the
+// same value as std::strtod. The algorithm is valid for any significand
+// below 2^64; the callers pass at most 15 decimal digits (an ENDF-6 field
+// of 11 characters holds at most 10). An exact tie between two doubles is
+// impossible for k < -22, as its decimal significand would need more
+// than 20 digits.
+//
+// The table holds the entries of fast_float for 5^q, q = -342 ... -23:
+// 2^b / 5^-q rounded down, incremented by one, and truncated to 128 bits
+// with the most significant bit set. A significand below 2^64 times 10^q
+// is below half the smallest subnormal number for q < -342, hence zero.
+// Decimal exponents above 22 (values above about 1e22) are not covered:
+// they do not occur in the ENDF/B-VIII.0 and VIII.1 libraries and are
+// left to std::strtod.
+
+#if defined(_MSC_VER) && ! defined(__clang__) && (defined(_M_X64) || defined(_M_ARM64)) && ! defined(_M_ARM64EC)
+#include <intrin.h>
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#define CPP_DECIMAL_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define CPP_DECIMAL_NOINLINE __declspec(noinline)
+#else
+#define CPP_DECIMAL_NOINLINE
+#endif
+
+// high and low 64 bits of the product of a and b
+inline void cpp_mul_64x64_128(std::uint64_t a, std::uint64_t b, std::uint64_t &hi, std::uint64_t &lo) {
+#if defined(__SIZEOF_INT128__) && ! defined(CPP_DECIMAL_GENERIC_MUL)
+  __extension__ typedef unsigned __int128 cpp_uint128;
+  const cpp_uint128 p = static_cast<cpp_uint128>(a) * b;
+  hi = static_cast<std::uint64_t>(p >> 64);
+  lo = static_cast<std::uint64_t>(p);
+#elif defined(_MSC_VER) && ! defined(__clang__) && defined(_M_ARM64) && ! defined(_M_ARM64EC) && ! defined(CPP_DECIMAL_GENERIC_MUL)
+  hi = __umulh(a, b);
+  lo = a * b;
+#elif defined(_MSC_VER) && ! defined(__clang__) && defined(_M_X64) && ! defined(_M_ARM64EC) && ! defined(CPP_DECIMAL_GENERIC_MUL)
+  lo = _umul128(a, b, &hi);
+#else
+  // portable version, e.g. for 32-bit targets
+  const std::uint64_t a0 = a & 0xFFFFFFFFULL, a1 = a >> 32;
+  const std::uint64_t b0 = b & 0xFFFFFFFFULL, b1 = b >> 32;
+  const std::uint64_t p00 = a0 * b0, p01 = a0 * b1, p10 = a1 * b0, p11 = a1 * b1;
+  const std::uint64_t mid = (p00 >> 32) + (p01 & 0xFFFFFFFFULL) + (p10 & 0xFFFFFFFFULL);
+  hi = p11 + (p01 >> 32) + (p10 >> 32) + (mid >> 32);
+  lo = (mid << 32) | (p00 & 0xFFFFFFFFULL);
+#endif
+}
+
+// number of leading zero bits of x > 0
+inline int cpp_leading_zeros_64(std::uint64_t x) {
+#if (defined(__GNUC__) || defined(__clang__)) && ! defined(CPP_DECIMAL_GENERIC_MUL)
+  return __builtin_clzll(x);
+#else
+  int n = 0;
+  if (x >> 32 == 0) { n += 32; x <<= 32; }
+  if (x >> 48 == 0) { n += 16; x <<= 16; }
+  if (x >> 56 == 0) { n += 8; x <<= 8; }
+  if (x >> 60 == 0) { n += 4; x <<= 4; }
+  if (x >> 62 == 0) { n += 2; x <<= 2; }
+  if (x >> 63 == 0) { n += 1; }
+  return n;
+#endif
+}
+
+// Sets result to the double nearest to mant * 10^k (ties to even),
+// negated if neg, for 0 < mant < 2^64 and k < -22. Returns false, leaving
+// result unchanged, for k >= -22 and in the rare cases in which the
+// 128-bit product does not determine the rounding; these are left to the
+// general code path (std::strtod).
+CPP_DECIMAL_NOINLINE inline bool cpp_decimal_to_double_negexp(std::uint64_t mant, int k, bool neg, double &result) {
+  static const std::uint64_t pow5[] = {
+    0xeef453d6923bd65aULL, 0x113faa2906a13b3fULL,   // 5^-342
+    0x9558b4661b6565f8ULL, 0x4ac7ca59a424c507ULL,   // 5^-341
+    0xbaaee17fa23ebf76ULL, 0x5d79bcf00d2df649ULL,   // 5^-340
+    0xe95a99df8ace6f53ULL, 0xf4d82c2c107973dcULL,   // 5^-339
+    0x91d8a02bb6c10594ULL, 0x79071b9b8a4be869ULL,   // 5^-338
+    0xb64ec836a47146f9ULL, 0x9748e2826cdee284ULL,   // 5^-337
+    0xe3e27a444d8d98b7ULL, 0xfd1b1b2308169b25ULL,   // 5^-336
+    0x8e6d8c6ab0787f72ULL, 0xfe30f0f5e50e20f7ULL,   // 5^-335
+    0xb208ef855c969f4fULL, 0xbdbd2d335e51a935ULL,   // 5^-334
+    0xde8b2b66b3bc4723ULL, 0xad2c788035e61382ULL,   // 5^-333
+    0x8b16fb203055ac76ULL, 0x4c3bcb5021afcc31ULL,   // 5^-332
+    0xaddcb9e83c6b1793ULL, 0xdf4abe242a1bbf3dULL,   // 5^-331
+    0xd953e8624b85dd78ULL, 0xd71d6dad34a2af0dULL,   // 5^-330
+    0x87d4713d6f33aa6bULL, 0x8672648c40e5ad68ULL,   // 5^-329
+    0xa9c98d8ccb009506ULL, 0x680efdaf511f18c2ULL,   // 5^-328
+    0xd43bf0effdc0ba48ULL, 0x0212bd1b2566def2ULL,   // 5^-327
+    0x84a57695fe98746dULL, 0x014bb630f7604b57ULL,   // 5^-326
+    0xa5ced43b7e3e9188ULL, 0x419ea3bd35385e2dULL,   // 5^-325
+    0xcf42894a5dce35eaULL, 0x52064cac828675b9ULL,   // 5^-324
+    0x818995ce7aa0e1b2ULL, 0x7343efebd1940993ULL,   // 5^-323
+    0xa1ebfb4219491a1fULL, 0x1014ebe6c5f90bf8ULL,   // 5^-322
+    0xca66fa129f9b60a6ULL, 0xd41a26e077774ef6ULL,   // 5^-321
+    0xfd00b897478238d0ULL, 0x8920b098955522b4ULL,   // 5^-320
+    0x9e20735e8cb16382ULL, 0x55b46e5f5d5535b0ULL,   // 5^-319
+    0xc5a890362fddbc62ULL, 0xeb2189f734aa831dULL,   // 5^-318
+    0xf712b443bbd52b7bULL, 0xa5e9ec7501d523e4ULL,   // 5^-317
+    0x9a6bb0aa55653b2dULL, 0x47b233c92125366eULL,   // 5^-316
+    0xc1069cd4eabe89f8ULL, 0x999ec0bb696e840aULL,   // 5^-315
+    0xf148440a256e2c76ULL, 0xc00670ea43ca250dULL,   // 5^-314
+    0x96cd2a865764dbcaULL, 0x380406926a5e5728ULL,   // 5^-313
+    0xbc807527ed3e12bcULL, 0xc605083704f5ecf2ULL,   // 5^-312
+    0xeba09271e88d976bULL, 0xf7864a44c633682eULL,   // 5^-311
+    0x93445b8731587ea3ULL, 0x7ab3ee6afbe0211dULL,   // 5^-310
+    0xb8157268fdae9e4cULL, 0x5960ea05bad82964ULL,   // 5^-309
+    0xe61acf033d1a45dfULL, 0x6fb92487298e33bdULL,   // 5^-308
+    0x8fd0c16206306babULL, 0xa5d3b6d479f8e056ULL,   // 5^-307
+    0xb3c4f1ba87bc8696ULL, 0x8f48a4899877186cULL,   // 5^-306
+    0xe0b62e2929aba83cULL, 0x331acdabfe94de87ULL,   // 5^-305
+    0x8c71dcd9ba0b4925ULL, 0x9ff0c08b7f1d0b14ULL,   // 5^-304
+    0xaf8e5410288e1b6fULL, 0x07ecf0ae5ee44dd9ULL,   // 5^-303
+    0xdb71e91432b1a24aULL, 0xc9e82cd9f69d6150ULL,   // 5^-302
+    0x892731ac9faf056eULL, 0xbe311c083a225cd2ULL,   // 5^-301
+    0xab70fe17c79ac6caULL, 0x6dbd630a48aaf406ULL,   // 5^-300
+    0xd64d3d9db981787dULL, 0x092cbbccdad5b108ULL,   // 5^-299
+    0x85f0468293f0eb4eULL, 0x25bbf56008c58ea5ULL,   // 5^-298
+    0xa76c582338ed2621ULL, 0xaf2af2b80af6f24eULL,   // 5^-297
+    0xd1476e2c07286faaULL, 0x1af5af660db4aee1ULL,   // 5^-296
+    0x82cca4db847945caULL, 0x50d98d9fc890ed4dULL,   // 5^-295
+    0xa37fce126597973cULL, 0xe50ff107bab528a0ULL,   // 5^-294
+    0xcc5fc196fefd7d0cULL, 0x1e53ed49a96272c8ULL,   // 5^-293
+    0xff77b1fcbebcdc4fULL, 0x25e8e89c13bb0f7aULL,   // 5^-292
+    0x9faacf3df73609b1ULL, 0x77b191618c54e9acULL,   // 5^-291
+    0xc795830d75038c1dULL, 0xd59df5b9ef6a2417ULL,   // 5^-290
+    0xf97ae3d0d2446f25ULL, 0x4b0573286b44ad1dULL,   // 5^-289
+    0x9becce62836ac577ULL, 0x4ee367f9430aec32ULL,   // 5^-288
+    0xc2e801fb244576d5ULL, 0x229c41f793cda73fULL,   // 5^-287
+    0xf3a20279ed56d48aULL, 0x6b43527578c1110fULL,   // 5^-286
+    0x9845418c345644d6ULL, 0x830a13896b78aaa9ULL,   // 5^-285
+    0xbe5691ef416bd60cULL, 0x23cc986bc656d553ULL,   // 5^-284
+    0xedec366b11c6cb8fULL, 0x2cbfbe86b7ec8aa8ULL,   // 5^-283
+    0x94b3a202eb1c3f39ULL, 0x7bf7d71432f3d6a9ULL,   // 5^-282
+    0xb9e08a83a5e34f07ULL, 0xdaf5ccd93fb0cc53ULL,   // 5^-281
+    0xe858ad248f5c22c9ULL, 0xd1b3400f8f9cff68ULL,   // 5^-280
+    0x91376c36d99995beULL, 0x23100809b9c21fa1ULL,   // 5^-279
+    0xb58547448ffffb2dULL, 0xabd40a0c2832a78aULL,   // 5^-278
+    0xe2e69915b3fff9f9ULL, 0x16c90c8f323f516cULL,   // 5^-277
+    0x8dd01fad907ffc3bULL, 0xae3da7d97f6792e3ULL,   // 5^-276
+    0xb1442798f49ffb4aULL, 0x99cd11cfdf41779cULL,   // 5^-275
+    0xdd95317f31c7fa1dULL, 0x40405643d711d583ULL,   // 5^-274
+    0x8a7d3eef7f1cfc52ULL, 0x482835ea666b2572ULL,   // 5^-273
+    0xad1c8eab5ee43b66ULL, 0xda3243650005eecfULL,   // 5^-272
+    0xd863b256369d4a40ULL, 0x90bed43e40076a82ULL,   // 5^-271
+    0x873e4f75e2224e68ULL, 0x5a7744a6e804a291ULL,   // 5^-270
+    0xa90de3535aaae202ULL, 0x711515d0a205cb36ULL,   // 5^-269
+    0xd3515c2831559a83ULL, 0x0d5a5b44ca873e03ULL,   // 5^-268
+    0x8412d9991ed58091ULL, 0xe858790afe9486c2ULL,   // 5^-267
+    0xa5178fff668ae0b6ULL, 0x626e974dbe39a872ULL,   // 5^-266
+    0xce5d73ff402d98e3ULL, 0xfb0a3d212dc8128fULL,   // 5^-265
+    0x80fa687f881c7f8eULL, 0x7ce66634bc9d0b99ULL,   // 5^-264
+    0xa139029f6a239f72ULL, 0x1c1fffc1ebc44e80ULL,   // 5^-263
+    0xc987434744ac874eULL, 0xa327ffb266b56220ULL,   // 5^-262
+    0xfbe9141915d7a922ULL, 0x4bf1ff9f0062baa8ULL,   // 5^-261
+    0x9d71ac8fada6c9b5ULL, 0x6f773fc3603db4a9ULL,   // 5^-260
+    0xc4ce17b399107c22ULL, 0xcb550fb4384d21d3ULL,   // 5^-259
+    0xf6019da07f549b2bULL, 0x7e2a53a146606a48ULL,   // 5^-258
+    0x99c102844f94e0fbULL, 0x2eda7444cbfc426dULL,   // 5^-257
+    0xc0314325637a1939ULL, 0xfa911155fefb5308ULL,   // 5^-256
+    0xf03d93eebc589f88ULL, 0x793555ab7eba27caULL,   // 5^-255
+    0x96267c7535b763b5ULL, 0x4bc1558b2f3458deULL,   // 5^-254
+    0xbbb01b9283253ca2ULL, 0x9eb1aaedfb016f16ULL,   // 5^-253
+    0xea9c227723ee8bcbULL, 0x465e15a979c1cadcULL,   // 5^-252
+    0x92a1958a7675175fULL, 0x0bfacd89ec191ec9ULL,   // 5^-251
+    0xb749faed14125d36ULL, 0xcef980ec671f667bULL,   // 5^-250
+    0xe51c79a85916f484ULL, 0x82b7e12780e7401aULL,   // 5^-249
+    0x8f31cc0937ae58d2ULL, 0xd1b2ecb8b0908810ULL,   // 5^-248
+    0xb2fe3f0b8599ef07ULL, 0x861fa7e6dcb4aa15ULL,   // 5^-247
+    0xdfbdcece67006ac9ULL, 0x67a791e093e1d49aULL,   // 5^-246
+    0x8bd6a141006042bdULL, 0xe0c8bb2c5c6d24e0ULL,   // 5^-245
+    0xaecc49914078536dULL, 0x58fae9f773886e18ULL,   // 5^-244
+    0xda7f5bf590966848ULL, 0xaf39a475506a899eULL,   // 5^-243
+    0x888f99797a5e012dULL, 0x6d8406c952429603ULL,   // 5^-242
+    0xaab37fd7d8f58178ULL, 0xc8e5087ba6d33b83ULL,   // 5^-241
+    0xd5605fcdcf32e1d6ULL, 0xfb1e4a9a90880a64ULL,   // 5^-240
+    0x855c3be0a17fcd26ULL, 0x5cf2eea09a55067fULL,   // 5^-239
+    0xa6b34ad8c9dfc06fULL, 0xf42faa48c0ea481eULL,   // 5^-238
+    0xd0601d8efc57b08bULL, 0xf13b94daf124da26ULL,   // 5^-237
+    0x823c12795db6ce57ULL, 0x76c53d08d6b70858ULL,   // 5^-236
+    0xa2cb1717b52481edULL, 0x54768c4b0c64ca6eULL,   // 5^-235
+    0xcb7ddcdda26da268ULL, 0xa9942f5dcf7dfd09ULL,   // 5^-234
+    0xfe5d54150b090b02ULL, 0xd3f93b35435d7c4cULL,   // 5^-233
+    0x9efa548d26e5a6e1ULL, 0xc47bc5014a1a6dafULL,   // 5^-232
+    0xc6b8e9b0709f109aULL, 0x359ab6419ca1091bULL,   // 5^-231
+    0xf867241c8cc6d4c0ULL, 0xc30163d203c94b62ULL,   // 5^-230
+    0x9b407691d7fc44f8ULL, 0x79e0de63425dcf1dULL,   // 5^-229
+    0xc21094364dfb5636ULL, 0x985915fc12f542e4ULL,   // 5^-228
+    0xf294b943e17a2bc4ULL, 0x3e6f5b7b17b2939dULL,   // 5^-227
+    0x979cf3ca6cec5b5aULL, 0xa705992ceecf9c42ULL,   // 5^-226
+    0xbd8430bd08277231ULL, 0x50c6ff782a838353ULL,   // 5^-225
+    0xece53cec4a314ebdULL, 0xa4f8bf5635246428ULL,   // 5^-224
+    0x940f4613ae5ed136ULL, 0x871b7795e136be99ULL,   // 5^-223
+    0xb913179899f68584ULL, 0x28e2557b59846e3fULL,   // 5^-222
+    0xe757dd7ec07426e5ULL, 0x331aeada2fe589cfULL,   // 5^-221
+    0x9096ea6f3848984fULL, 0x3ff0d2c85def7621ULL,   // 5^-220
+    0xb4bca50b065abe63ULL, 0x0fed077a756b53a9ULL,   // 5^-219
+    0xe1ebce4dc7f16dfbULL, 0xd3e8495912c62894ULL,   // 5^-218
+    0x8d3360f09cf6e4bdULL, 0x64712dd7abbbd95cULL,   // 5^-217
+    0xb080392cc4349decULL, 0xbd8d794d96aacfb3ULL,   // 5^-216
+    0xdca04777f541c567ULL, 0xecf0d7a0fc5583a0ULL,   // 5^-215
+    0x89e42caaf9491b60ULL, 0xf41686c49db57244ULL,   // 5^-214
+    0xac5d37d5b79b6239ULL, 0x311c2875c522ced5ULL,   // 5^-213
+    0xd77485cb25823ac7ULL, 0x7d633293366b828bULL,   // 5^-212
+    0x86a8d39ef77164bcULL, 0xae5dff9c02033197ULL,   // 5^-211
+    0xa8530886b54dbdebULL, 0xd9f57f830283fdfcULL,   // 5^-210
+    0xd267caa862a12d66ULL, 0xd072df63c324fd7bULL,   // 5^-209
+    0x8380dea93da4bc60ULL, 0x4247cb9e59f71e6dULL,   // 5^-208
+    0xa46116538d0deb78ULL, 0x52d9be85f074e608ULL,   // 5^-207
+    0xcd795be870516656ULL, 0x67902e276c921f8bULL,   // 5^-206
+    0x806bd9714632dff6ULL, 0x00ba1cd8a3db53b6ULL,   // 5^-205
+    0xa086cfcd97bf97f3ULL, 0x80e8a40eccd228a4ULL,   // 5^-204
+    0xc8a883c0fdaf7df0ULL, 0x6122cd128006b2cdULL,   // 5^-203
+    0xfad2a4b13d1b5d6cULL, 0x796b805720085f81ULL,   // 5^-202
+    0x9cc3a6eec6311a63ULL, 0xcbe3303674053bb0ULL,   // 5^-201
+    0xc3f490aa77bd60fcULL, 0xbedbfc4411068a9cULL,   // 5^-200
+    0xf4f1b4d515acb93bULL, 0xee92fb5515482d44ULL,   // 5^-199
+    0x991711052d8bf3c5ULL, 0x751bdd152d4d1c4aULL,   // 5^-198
+    0xbf5cd54678eef0b6ULL, 0xd262d45a78a0635dULL,   // 5^-197
+    0xef340a98172aace4ULL, 0x86fb897116c87c34ULL,   // 5^-196
+    0x9580869f0e7aac0eULL, 0xd45d35e6ae3d4da0ULL,   // 5^-195
+    0xbae0a846d2195712ULL, 0x8974836059cca109ULL,   // 5^-194
+    0xe998d258869facd7ULL, 0x2bd1a438703fc94bULL,   // 5^-193
+    0x91ff83775423cc06ULL, 0x7b6306a34627ddcfULL,   // 5^-192
+    0xb67f6455292cbf08ULL, 0x1a3bc84c17b1d542ULL,   // 5^-191
+    0xe41f3d6a7377eecaULL, 0x20caba5f1d9e4a93ULL,   // 5^-190
+    0x8e938662882af53eULL, 0x547eb47b7282ee9cULL,   // 5^-189
+    0xb23867fb2a35b28dULL, 0xe99e619a4f23aa43ULL,   // 5^-188
+    0xdec681f9f4c31f31ULL, 0x6405fa00e2ec94d4ULL,   // 5^-187
+    0x8b3c113c38f9f37eULL, 0xde83bc408dd3dd04ULL,   // 5^-186
+    0xae0b158b4738705eULL, 0x9624ab50b148d445ULL,   // 5^-185
+    0xd98ddaee19068c76ULL, 0x3badd624dd9b0957ULL,   // 5^-184
+    0x87f8a8d4cfa417c9ULL, 0xe54ca5d70a80e5d6ULL,   // 5^-183
+    0xa9f6d30a038d1dbcULL, 0x5e9fcf4ccd211f4cULL,   // 5^-182
+    0xd47487cc8470652bULL, 0x7647c3200069671fULL,   // 5^-181
+    0x84c8d4dfd2c63f3bULL, 0x29ecd9f40041e073ULL,   // 5^-180
+    0xa5fb0a17c777cf09ULL, 0xf468107100525890ULL,   // 5^-179
+    0xcf79cc9db955c2ccULL, 0x7182148d4066eeb4ULL,   // 5^-178
+    0x81ac1fe293d599bfULL, 0xc6f14cd848405530ULL,   // 5^-177
+    0xa21727db38cb002fULL, 0xb8ada00e5a506a7cULL,   // 5^-176
+    0xca9cf1d206fdc03bULL, 0xa6d90811f0e4851cULL,   // 5^-175
+    0xfd442e4688bd304aULL, 0x908f4a166d1da663ULL,   // 5^-174
+    0x9e4a9cec15763e2eULL, 0x9a598e4e043287feULL,   // 5^-173
+    0xc5dd44271ad3cdbaULL, 0x40eff1e1853f29fdULL,   // 5^-172
+    0xf7549530e188c128ULL, 0xd12bee59e68ef47cULL,   // 5^-171
+    0x9a94dd3e8cf578b9ULL, 0x82bb74f8301958ceULL,   // 5^-170
+    0xc13a148e3032d6e7ULL, 0xe36a52363c1faf01ULL,   // 5^-169
+    0xf18899b1bc3f8ca1ULL, 0xdc44e6c3cb279ac1ULL,   // 5^-168
+    0x96f5600f15a7b7e5ULL, 0x29ab103a5ef8c0b9ULL,   // 5^-167
+    0xbcb2b812db11a5deULL, 0x7415d448f6b6f0e7ULL,   // 5^-166
+    0xebdf661791d60f56ULL, 0x111b495b3464ad21ULL,   // 5^-165
+    0x936b9fcebb25c995ULL, 0xcab10dd900beec34ULL,   // 5^-164
+    0xb84687c269ef3bfbULL, 0x3d5d514f40eea742ULL,   // 5^-163
+    0xe65829b3046b0afaULL, 0x0cb4a5a3112a5112ULL,   // 5^-162
+    0x8ff71a0fe2c2e6dcULL, 0x47f0e785eaba72abULL,   // 5^-161
+    0xb3f4e093db73a093ULL, 0x59ed216765690f56ULL,   // 5^-160
+    0xe0f218b8d25088b8ULL, 0x306869c13ec3532cULL,   // 5^-159
+    0x8c974f7383725573ULL, 0x1e414218c73a13fbULL,   // 5^-158
+    0xafbd2350644eeacfULL, 0xe5d1929ef90898faULL,   // 5^-157
+    0xdbac6c247d62a583ULL, 0xdf45f746b74abf39ULL,   // 5^-156
+    0x894bc396ce5da772ULL, 0x6b8bba8c328eb783ULL,   // 5^-155
+    0xab9eb47c81f5114fULL, 0x066ea92f3f326564ULL,   // 5^-154
+    0xd686619ba27255a2ULL, 0xc80a537b0efefebdULL,   // 5^-153
+    0x8613fd0145877585ULL, 0xbd06742ce95f5f36ULL,   // 5^-152
+    0xa798fc4196e952e7ULL, 0x2c48113823b73704ULL,   // 5^-151
+    0xd17f3b51fca3a7a0ULL, 0xf75a15862ca504c5ULL,   // 5^-150
+    0x82ef85133de648c4ULL, 0x9a984d73dbe722fbULL,   // 5^-149
+    0xa3ab66580d5fdaf5ULL, 0xc13e60d0d2e0ebbaULL,   // 5^-148
+    0xcc963fee10b7d1b3ULL, 0x318df905079926a8ULL,   // 5^-147
+    0xffbbcfe994e5c61fULL, 0xfdf17746497f7052ULL,   // 5^-146
+    0x9fd561f1fd0f9bd3ULL, 0xfeb6ea8bedefa633ULL,   // 5^-145
+    0xc7caba6e7c5382c8ULL, 0xfe64a52ee96b8fc0ULL,   // 5^-144
+    0xf9bd690a1b68637bULL, 0x3dfdce7aa3c673b0ULL,   // 5^-143
+    0x9c1661a651213e2dULL, 0x06bea10ca65c084eULL,   // 5^-142
+    0xc31bfa0fe5698db8ULL, 0x486e494fcff30a62ULL,   // 5^-141
+    0xf3e2f893dec3f126ULL, 0x5a89dba3c3efccfaULL,   // 5^-140
+    0x986ddb5c6b3a76b7ULL, 0xf89629465a75e01cULL,   // 5^-139
+    0xbe89523386091465ULL, 0xf6bbb397f1135823ULL,   // 5^-138
+    0xee2ba6c0678b597fULL, 0x746aa07ded582e2cULL,   // 5^-137
+    0x94db483840b717efULL, 0xa8c2a44eb4571cdcULL,   // 5^-136
+    0xba121a4650e4ddebULL, 0x92f34d62616ce413ULL,   // 5^-135
+    0xe896a0d7e51e1566ULL, 0x77b020baf9c81d17ULL,   // 5^-134
+    0x915e2486ef32cd60ULL, 0x0ace1474dc1d122eULL,   // 5^-133
+    0xb5b5ada8aaff80b8ULL, 0x0d819992132456baULL,   // 5^-132
+    0xe3231912d5bf60e6ULL, 0x10e1fff697ed6c69ULL,   // 5^-131
+    0x8df5efabc5979c8fULL, 0xca8d3ffa1ef463c1ULL,   // 5^-130
+    0xb1736b96b6fd83b3ULL, 0xbd308ff8a6b17cb2ULL,   // 5^-129
+    0xddd0467c64bce4a0ULL, 0xac7cb3f6d05ddbdeULL,   // 5^-128
+    0x8aa22c0dbef60ee4ULL, 0x6bcdf07a423aa96bULL,   // 5^-127
+    0xad4ab7112eb3929dULL, 0x86c16c98d2c953c6ULL,   // 5^-126
+    0xd89d64d57a607744ULL, 0xe871c7bf077ba8b7ULL,   // 5^-125
+    0x87625f056c7c4a8bULL, 0x11471cd764ad4972ULL,   // 5^-124
+    0xa93af6c6c79b5d2dULL, 0xd598e40d3dd89bcfULL,   // 5^-123
+    0xd389b47879823479ULL, 0x4aff1d108d4ec2c3ULL,   // 5^-122
+    0x843610cb4bf160cbULL, 0xcedf722a585139baULL,   // 5^-121
+    0xa54394fe1eedb8feULL, 0xc2974eb4ee658828ULL,   // 5^-120
+    0xce947a3da6a9273eULL, 0x733d226229feea32ULL,   // 5^-119
+    0x811ccc668829b887ULL, 0x0806357d5a3f525fULL,   // 5^-118
+    0xa163ff802a3426a8ULL, 0xca07c2dcb0cf26f7ULL,   // 5^-117
+    0xc9bcff6034c13052ULL, 0xfc89b393dd02f0b5ULL,   // 5^-116
+    0xfc2c3f3841f17c67ULL, 0xbbac2078d443ace2ULL,   // 5^-115
+    0x9d9ba7832936edc0ULL, 0xd54b944b84aa4c0dULL,   // 5^-114
+    0xc5029163f384a931ULL, 0x0a9e795e65d4df11ULL,   // 5^-113
+    0xf64335bcf065d37dULL, 0x4d4617b5ff4a16d5ULL,   // 5^-112
+    0x99ea0196163fa42eULL, 0x504bced1bf8e4e45ULL,   // 5^-111
+    0xc06481fb9bcf8d39ULL, 0xe45ec2862f71e1d6ULL,   // 5^-110
+    0xf07da27a82c37088ULL, 0x5d767327bb4e5a4cULL,   // 5^-109
+    0x964e858c91ba2655ULL, 0x3a6a07f8d510f86fULL,   // 5^-108
+    0xbbe226efb628afeaULL, 0x890489f70a55368bULL,   // 5^-107
+    0xeadab0aba3b2dbe5ULL, 0x2b45ac74ccea842eULL,   // 5^-106
+    0x92c8ae6b464fc96fULL, 0x3b0b8bc90012929dULL,   // 5^-105
+    0xb77ada0617e3bbcbULL, 0x09ce6ebb40173744ULL,   // 5^-104
+    0xe55990879ddcaabdULL, 0xcc420a6a101d0515ULL,   // 5^-103
+    0x8f57fa54c2a9eab6ULL, 0x9fa946824a12232dULL,   // 5^-102
+    0xb32df8e9f3546564ULL, 0x47939822dc96abf9ULL,   // 5^-101
+    0xdff9772470297ebdULL, 0x59787e2b93bc56f7ULL,   // 5^-100
+    0x8bfbea76c619ef36ULL, 0x57eb4edb3c55b65aULL,   // 5^-99
+    0xaefae51477a06b03ULL, 0xede622920b6b23f1ULL,   // 5^-98
+    0xdab99e59958885c4ULL, 0xe95fab368e45ecedULL,   // 5^-97
+    0x88b402f7fd75539bULL, 0x11dbcb0218ebb414ULL,   // 5^-96
+    0xaae103b5fcd2a881ULL, 0xd652bdc29f26a119ULL,   // 5^-95
+    0xd59944a37c0752a2ULL, 0x4be76d3346f0495fULL,   // 5^-94
+    0x857fcae62d8493a5ULL, 0x6f70a4400c562ddbULL,   // 5^-93
+    0xa6dfbd9fb8e5b88eULL, 0xcb4ccd500f6bb952ULL,   // 5^-92
+    0xd097ad07a71f26b2ULL, 0x7e2000a41346a7a7ULL,   // 5^-91
+    0x825ecc24c873782fULL, 0x8ed400668c0c28c8ULL,   // 5^-90
+    0xa2f67f2dfa90563bULL, 0x728900802f0f32faULL,   // 5^-89
+    0xcbb41ef979346bcaULL, 0x4f2b40a03ad2ffb9ULL,   // 5^-88
+    0xfea126b7d78186bcULL, 0xe2f610c84987bfa8ULL,   // 5^-87
+    0x9f24b832e6b0f436ULL, 0x0dd9ca7d2df4d7c9ULL,   // 5^-86
+    0xc6ede63fa05d3143ULL, 0x91503d1c79720dbbULL,   // 5^-85
+    0xf8a95fcf88747d94ULL, 0x75a44c6397ce912aULL,   // 5^-84
+    0x9b69dbe1b548ce7cULL, 0xc986afbe3ee11abaULL,   // 5^-83
+    0xc24452da229b021bULL, 0xfbe85badce996168ULL,   // 5^-82
+    0xf2d56790ab41c2a2ULL, 0xfae27299423fb9c3ULL,   // 5^-81
+    0x97c560ba6b0919a5ULL, 0xdccd879fc967d41aULL,   // 5^-80
+    0xbdb6b8e905cb600fULL, 0x5400e987bbc1c920ULL,   // 5^-79
+    0xed246723473e3813ULL, 0x290123e9aab23b68ULL,   // 5^-78
+    0x9436c0760c86e30bULL, 0xf9a0b6720aaf6521ULL,   // 5^-77
+    0xb94470938fa89bceULL, 0xf808e40e8d5b3e69ULL,   // 5^-76
+    0xe7958cb87392c2c2ULL, 0xb60b1d1230b20e04ULL,   // 5^-75
+    0x90bd77f3483bb9b9ULL, 0xb1c6f22b5e6f48c2ULL,   // 5^-74
+    0xb4ecd5f01a4aa828ULL, 0x1e38aeb6360b1af3ULL,   // 5^-73
+    0xe2280b6c20dd5232ULL, 0x25c6da63c38de1b0ULL,   // 5^-72
+    0x8d590723948a535fULL, 0x579c487e5a38ad0eULL,   // 5^-71
+    0xb0af48ec79ace837ULL, 0x2d835a9df0c6d851ULL,   // 5^-70
+    0xdcdb1b2798182244ULL, 0xf8e431456cf88e65ULL,   // 5^-69
+    0x8a08f0f8bf0f156bULL, 0x1b8e9ecb641b58ffULL,   // 5^-68
+    0xac8b2d36eed2dac5ULL, 0xe272467e3d222f3fULL,   // 5^-67
+    0xd7adf884aa879177ULL, 0x5b0ed81dcc6abb0fULL,   // 5^-66
+    0x86ccbb52ea94baeaULL, 0x98e947129fc2b4e9ULL,   // 5^-65
+    0xa87fea27a539e9a5ULL, 0x3f2398d747b36224ULL,   // 5^-64
+    0xd29fe4b18e88640eULL, 0x8eec7f0d19a03aadULL,   // 5^-63
+    0x83a3eeeef9153e89ULL, 0x1953cf68300424acULL,   // 5^-62
+    0xa48ceaaab75a8e2bULL, 0x5fa8c3423c052dd7ULL,   // 5^-61
+    0xcdb02555653131b6ULL, 0x3792f412cb06794dULL,   // 5^-60
+    0x808e17555f3ebf11ULL, 0xe2bbd88bbee40bd0ULL,   // 5^-59
+    0xa0b19d2ab70e6ed6ULL, 0x5b6aceaeae9d0ec4ULL,   // 5^-58
+    0xc8de047564d20a8bULL, 0xf245825a5a445275ULL,   // 5^-57
+    0xfb158592be068d2eULL, 0xeed6e2f0f0d56712ULL,   // 5^-56
+    0x9ced737bb6c4183dULL, 0x55464dd69685606bULL,   // 5^-55
+    0xc428d05aa4751e4cULL, 0xaa97e14c3c26b886ULL,   // 5^-54
+    0xf53304714d9265dfULL, 0xd53dd99f4b3066a8ULL,   // 5^-53
+    0x993fe2c6d07b7fabULL, 0xe546a8038efe4029ULL,   // 5^-52
+    0xbf8fdb78849a5f96ULL, 0xde98520472bdd033ULL,   // 5^-51
+    0xef73d256a5c0f77cULL, 0x963e66858f6d4440ULL,   // 5^-50
+    0x95a8637627989aadULL, 0xdde7001379a44aa8ULL,   // 5^-49
+    0xbb127c53b17ec159ULL, 0x5560c018580d5d52ULL,   // 5^-48
+    0xe9d71b689dde71afULL, 0xaab8f01e6e10b4a6ULL,   // 5^-47
+    0x9226712162ab070dULL, 0xcab3961304ca70e8ULL,   // 5^-46
+    0xb6b00d69bb55c8d1ULL, 0x3d607b97c5fd0d22ULL,   // 5^-45
+    0xe45c10c42a2b3b05ULL, 0x8cb89a7db77c506aULL,   // 5^-44
+    0x8eb98a7a9a5b04e3ULL, 0x77f3608e92adb242ULL,   // 5^-43
+    0xb267ed1940f1c61cULL, 0x55f038b237591ed3ULL,   // 5^-42
+    0xdf01e85f912e37a3ULL, 0x6b6c46dec52f6688ULL,   // 5^-41
+    0x8b61313bbabce2c6ULL, 0x2323ac4b3b3da015ULL,   // 5^-40
+    0xae397d8aa96c1b77ULL, 0xabec975e0a0d081aULL,   // 5^-39
+    0xd9c7dced53c72255ULL, 0x96e7bd358c904a21ULL,   // 5^-38
+    0x881cea14545c7575ULL, 0x7e50d64177da2e54ULL,   // 5^-37
+    0xaa242499697392d2ULL, 0xdde50bd1d5d0b9e9ULL,   // 5^-36
+    0xd4ad2dbfc3d07787ULL, 0x955e4ec64b44e864ULL,   // 5^-35
+    0x84ec3c97da624ab4ULL, 0xbd5af13bef0b113eULL,   // 5^-34
+    0xa6274bbdd0fadd61ULL, 0xecb1ad8aeacdd58eULL,   // 5^-33
+    0xcfb11ead453994baULL, 0x67de18eda5814af2ULL,   // 5^-32
+    0x81ceb32c4b43fcf4ULL, 0x80eacf948770ced7ULL,   // 5^-31
+    0xa2425ff75e14fc31ULL, 0xa1258379a94d028dULL,   // 5^-30
+    0xcad2f7f5359a3b3eULL, 0x096ee45813a04330ULL,   // 5^-29
+    0xfd87b5f28300ca0dULL, 0x8bca9d6e188853fcULL,   // 5^-28
+    0x9e74d1b791e07e48ULL, 0x775ea264cf55347eULL,   // 5^-27
+    0xc612062576589ddaULL, 0x95364afe032a819eULL,   // 5^-26
+    0xf79687aed3eec551ULL, 0x3a83ddbd83f52205ULL,   // 5^-25
+    0x9abe14cd44753b52ULL, 0xc4926a9672793543ULL,   // 5^-24
+    0xc16d9a0095928a27ULL, 0x75b7053c0f178294ULL    // 5^-23
+  };
+  const int smallest_q = -342;
+  std::uint64_t bits;
+  if (k > -23) {
+    return false;
+  } else if (k < smallest_q) {
+    bits = 0;   // below half the smallest subnormal number: zero
+  } else {
+    const int lz = cpp_leading_zeros_64(mant);
+    const std::uint64_t w = mant << lz;
+    const int index = 2 * (k - smallest_q);
+    std::uint64_t hi, lo;
+    cpp_mul_64x64_128(w, pow5[index], hi, lo);
+    // 52 + 3 exact upper bits are needed; refine with the lower half of
+    // the power of five if the bits below them are all ones
+    const std::uint64_t precision_mask = 0xFFFFFFFFFFFFFFFFULL >> 55;
+    if ((hi & precision_mask) == precision_mask) {
+      std::uint64_t hi2, lo2;
+      cpp_mul_64x64_128(w, pow5[index + 1], hi2, lo2);
+      lo += hi2;
+      if (hi2 > lo) hi++;
+    }
+    // the approximation of 5^k may not decide the result (impossible for
+    // k >= -27 as in fast_float): left to std::strtod
+    if (lo == 0xFFFFFFFFFFFFFFFFULL && k < -27) return false;
+    const int upperbit = static_cast<int>(hi >> 63);
+    const int shift = upperbit + 64 - 52 - 3;
+    std::uint64_t m = hi >> shift;
+    // -ceil(log2(5^-k)) + k + 63, without right-shifting a negative number
+    const int power_k = (((152170 + 65536) * k + (2048 * 65536)) >> 16) - 2048 + 63;
+    int power2 = power_k + upperbit - lz + 1023;
+    if (power2 <= 0) {
+      // subnormal number or zero
+      if (-power2 + 1 >= 64) {
+        bits = 0;
+      } else {
+        m >>= -power2 + 1;
+        m += (m & 1);
+        m >>= 1;
+        // rounding up may give the smallest normal number
+        power2 = (m < (1ULL << 52)) ? 0 : 1;
+        bits = (m & ((1ULL << 52) - 1)) | (static_cast<std::uint64_t>(power2) << 52);
+      }
+    } else {
+      m += (m & 1);
+      m >>= 1;
+      if (m >= (2ULL << 52)) {
+        m = 1ULL << 52;
+        power2++;
+      }
+      m &= ~(1ULL << 52);
+      bits = m | (static_cast<std::uint64_t>(power2) << 52);
+    }
+  }
+  if (neg) bits |= 0x8000000000000000ULL;
+  std::memcpy(&result, &bits, sizeof(result));
+  return true;
+}
+
+
 // Fast exact conversion of a plain decimal number of the form
 // [+-]digits[.digits][(e|E)[+-]digits] (as assembled by endfstr2float)
 // to double. If the significand has at most 15 digits and the decimal
 // exponent is at most 22 in magnitude, both the significand and the
 // power of ten are exactly representable and a single IEEE multiplication
 // or division yields the correctly rounded result, i.e. the same value as
-// std::strtod. Returns false for anything else, in which case std::strtod
-// must be used.
+// std::strtod; decimal exponents below -22 are converted exactly with
+// cpp_decimal_to_double_negexp. Returns false for anything else, in which
+// case std::strtod must be used.
 inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
   static const double p10[] = {
     1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
@@ -318,7 +782,8 @@ inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
   int k = expo - nfrac;
   double v = static_cast<double>(mant);
   if (mant != 0) {
-    if (k > 22 || k < -22) return false;
+    if (k < -22) return cpp_decimal_to_double_negexp(mant, k, neg, result);
+    if (k > 22) return false;
     if (k > 0) v *= p10[k];
     else if (k < 0) v /= p10[-k];
   }
@@ -339,9 +804,11 @@ inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
 // " d.dddddd+d" and " d.ddddd+dd" (first character blank, '+' or '-';
 // exponent sign '+' or '-'), checked and decoded with 64-bit integer
 // operations on two overlapping loads of the 11 bytes of the field.
-// Returns 1 if converted, -1 if the field has one of these layouts but
-// the power of ten is out of range (the common path rejects it as
-// well), and 0 for any other content.
+// Decimal exponents below -22 are converted with
+// cpp_decimal_to_double_negexp. Returns 1 if converted, -1 if the field
+// has one of these layouts but its decimal exponent is above 22 or
+// cpp_decimal_to_double_negexp leaves it to std::strtod (the common path
+// rejects it as well), and 0 for any other content.
 inline int cpp_fast_field_swar(const char* str, double &result) {
 #ifdef CPP_FIELD_SWAR_LE
   static const double p10[] = {
@@ -394,7 +861,8 @@ inline int cpp_fast_field_swar(const char* str, double &result) {
   const int k = (eneg ? -expo : expo) - nfrac;
   double v = static_cast<double>(mant);
   if (mant != 0) {
-    if (k > 22 || k < -22) return -1;
+    if (k < -22) return cpp_decimal_to_double_negexp(mant, k, neg, result) ? 1 : -1;
+    if (k > 22) return -1;
     if (k > 0) v *= p10[k];
     else if (k < 0) v /= p10[-k];
   }
@@ -416,8 +884,11 @@ inline int cpp_fast_field_swar(const char* str, double &result) {
 // exponent is at most 22 in magnitude, both the significand and the
 // power of ten are exactly representable and a single IEEE multiplication
 // or division gives the correctly rounded result, i.e. the same value as
-// std::strtod. Returns false for any other content of the field, which
-// is then handled by the general code path. The two layouts of almost
+// std::strtod; decimal exponents below -22 are converted exactly with
+// cpp_decimal_to_double_negexp (same value as std::strtod). Returns false
+// for any other content of the field, more significant digits, decimal
+// exponents above 22 and the rare cases cpp_decimal_to_double_negexp
+// leaves to std::strtod; these are then handled by the general code path. The two layouts of almost
 // all fields are first tried with cpp_fast_field_swar, which gives the
 // same result for them.
 inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, double &result) {
@@ -487,7 +958,8 @@ inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, do
   int k = expo - nfrac;
   double v = static_cast<double>(mant);
   if (mant != 0) {
-    if (k > 22 || k < -22) return false;
+    if (k < -22) return cpp_decimal_to_double_negexp(mant, k, neg, result);
+    if (k > 22) return false;
     if (k > 0) v *= p10[k];
     else if (k < 0) v /= p10[-k];
   }

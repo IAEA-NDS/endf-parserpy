@@ -689,6 +689,92 @@ inline int float2endfstr_chars(char* buf, double value, WritingOptions &write_op
 }
 
 
+// Number of digits of the decimal exponent e as written (without sign).
+inline int cpp_exponent_ndigits(int e) {
+  if (e < 0) e = -e;
+  return (e < 10) ? 1 : ((e < 100) ? 2 : 3);
+}
+
+
+// The 11 characters of a float field for a finite value without the option
+// prefer_noexp, written directly to dst; the same characters as
+// float2endfstr_chars(). Returns false without writing anything if the
+// value needs the general procedure of cpp_float2endfstr_helper_chars():
+// zero is handled here, and so is a nonzero value whose digits are
+// determined by cpp_round_decimal_digits() and whose mantissa is not
+// 1 followed by zeros only (in that case the rounding may have carried
+// into the next decade, and the length of the exponent may change).
+//
+// Why the result is the same: with lead = 1 for a leading blank and
+// neg = 1 for a minus sign, the representation with precision p and the
+// decimal exponent E has lead + neg + p + 4 + nd(E) characters
+// (including the character e), where nd(E) is the number of exponent
+// digits. The general procedure first formats with precision 6 and then
+// takes p = width - lead - neg - 4 - nd(E6), where E6 is the exponent at
+// precision 6. Without a carry at precision p (p <= 6), there is none at
+// precision 6 either, so E6 = E and the representation with this p fills
+// the width exactly. Its mantissa is not 1.000..., so the procedure stops
+// there. For p = 7 (abuse_signpos, positive value, keep_E false), a carry
+// at precision 6 would give E6 = E + 1, which is excluded if it changes
+// nd. The exponent of the value is estimated from its binary exponent
+// (the estimate may be one too small); if nd of the computed exponent
+// differs from the estimate, the digits are computed once more with the
+// corrected precision.
+inline bool cpp_float_field_fast(char* dst, double value, bool abuse_signpos, bool keep_E) {
+  static const unsigned long long p10[] = {
+    1ULL, 10ULL, 100ULL, 1000ULL, 10000ULL, 100000ULL, 1000000ULL,
+    10000000ULL, 100000000ULL, 1000000000ULL
+  };
+  const bool neg = value < 0;  // false for negative zero, written as zero
+  const double a = neg ? -value : value;
+  const int width = keep_E ? 11 : 12;  // including the character e
+  const int lead = (! abuse_signpos && ! neg) ? 1 : 0;
+  const int nsign = lead + (neg ? 1 : 0);
+  unsigned long long m = 0;
+  int E = 0;
+  int nd = 1;
+  int prec;
+  if (a == 0.0) {
+    prec = width - nsign - 5;
+  } else {
+    int bexp;
+    std::frexp(a, &bexp);
+    nd = cpp_exponent_ndigits(
+      static_cast<int>(std::floor((bexp - 1) * 0.30102999566398120))
+    );
+    for (int attempt = 0; ; attempt++) {
+      prec = width - nsign - 4 - nd;
+      if (! cpp_round_decimal_digits(a, prec + 1, m, E)) return false;
+      if (m == p10[prec]) return false;
+      int ndE = cpp_exponent_ndigits(E);
+      if (ndE == nd) break;
+      if (attempt == 1) return false;
+      nd = ndE;
+    }
+    if (prec > 6 && cpp_exponent_ndigits(E + 1) != nd) return false;
+  }
+  char* p = dst;
+  if (lead) *p++ = ' ';
+  if (neg) *p++ = '-';
+  // prec + 1 digits, the first one before the decimal point
+  for (int i = prec + 1; i >= 2; i--) {
+    p[i] = static_cast<char>('0' + m % 10);
+    m /= 10;
+  }
+  p[1] = '.';
+  p[0] = static_cast<char>('0' + m);
+  p += prec + 2;
+  if (keep_E) *p++ = 'e';
+  *p++ = (E < 0) ? '-' : '+';
+  int ae = (E < 0) ? -E : E;
+  for (int i = nd - 1; i >= 0; i--) {
+    p[i] = static_cast<char>('0' + ae % 10);
+    ae /= 10;
+  }
+  return true;
+}
+
+
 inline void field_size_check(const std::string& field) {
   if (field.size() != 11) {
     throw std::runtime_error(
@@ -705,6 +791,10 @@ inline void cpp_write_field_double_at(
   std::string& line, std::size_t pos, const double& value,
   WritingOptions& write_opts
 ) {
+  if (! write_opts.prefer_noexp && pos + 11 <= line.size() && std::isfinite(value)
+      && cpp_float_field_fast(&line[pos], value, write_opts.abuse_signpos, write_opts.keep_E)) {
+    return;
+  }
   char buf[64];
   int n = float2endfstr_chars(buf, value, write_opts);
   if (n != 11) {
@@ -728,7 +818,11 @@ inline void cpp_write_field_EndfFloatCpp_at(
   }
   const std::string& fieldstr = value.original_string_ref();
   field_size_check(fieldstr);
-  line.replace(pos, 11, fieldstr);
+  if (pos + 11 <= line.size()) {
+    std::memcpy(&line[pos], fieldstr.data(), 11);
+  } else {
+    line.replace(pos, 11, fieldstr);
+  }
 }
 
 
@@ -739,7 +833,12 @@ inline void cpp_write_field_int_at(
 ) {
   char buf[32];
   int n = cpp_int_to_padded_chars(buf, 11, value);
-  line.replace(pos, 11, buf, n);
+  // n == 11, as an int has at most 11 characters
+  if (n == 11 && pos + 11 <= line.size()) {
+    std::memcpy(&line[pos], buf, 11);
+  } else {
+    line.replace(pos, 11, buf, n);
+  }
 }
 
 

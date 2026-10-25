@@ -862,12 +862,22 @@ inline void cpp_write_field_EndfFloatCpp_at(
     cpp_write_field_double_at(line, pos, static_cast<double>(value), write_opts);
     return;
   }
-  const std::string& fieldstr = value.original_string_ref();
-  field_size_check(fieldstr);
+  const char* fieldstr = value.original_string_data();
+  std::size_t len = value.original_string_size();
+  if (len != 11) {
+    // of a string longer than EndfFloatCpp::max_stored_size, only its
+    // beginning is available and shown
+    throw std::runtime_error(
+      std::string("wrong size")
+      + std::to_string(len)
+      + std::string("  ")
+      + std::string(fieldstr, value.original_string_stored_size())
+    );
+  }
   if (pos + 11 <= line.size()) {
-    std::memcpy(&line[pos], fieldstr.data(), 11);
+    std::memcpy(&line[pos], fieldstr, 11);
   } else {
-    line.replace(pos, 11, fieldstr);
+    line.replace(pos, 11, fieldstr, 11);
   }
 }
 

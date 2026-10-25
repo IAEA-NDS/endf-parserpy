@@ -1122,8 +1122,7 @@ inline EndfFloatCpp cpp_read_field_EndfFloatCpp(
 ) {
   double float_value = endfstr2float(str+fieldnum*11, parse_opts);
   if (parse_opts.preserve_value_strings) {
-    std::string orig_str(str+fieldnum*11, 11);
-    return EndfFloatCpp(float_value, orig_str);
+    return EndfFloatCpp(float_value, str+fieldnum*11, 11);
   } else {
     return EndfFloatCpp(float_value);
   }

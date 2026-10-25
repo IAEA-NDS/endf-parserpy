@@ -5,6 +5,10 @@
 #include <pybind11/pybind11.h>
 #include <iostream>
 #include <string>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <type_traits>
 
 
 namespace py = pybind11;
@@ -15,26 +19,68 @@ namespace py = pybind11;
 
 // This class must be in sync with the
 // Python class EndfFloat class in endf_parserpy.utils.math_utils
+//
+// The original string is stored inline instead of in a std::string, so
+// that the class is trivially copyable: arrays of values (NestedArray,
+// std::vector) are copied and relocated with memcpy, without constructing
+// and destroying a string per element. Strings of up to 15 bytes are
+// stored completely; this covers the 11 characters of every string from
+// parsing and every string that can be written (exactly 11 characters).
+// Of a longer string, which is only used in the error message of the
+// writer, the true length (as long as it fits into 32 bits) and its
+// beginning are kept: the first 15 bytes for lengths below 255, the first
+// 11 bytes for longer strings, whose length is stored in the last four
+// bytes of the buffer. An empty string means no original string.
 
 class EndfFloatCpp {
 public:
     EndfFloatCpp()
-        : _value(0.0), _orig_str("") {}
+        : _value(0.0), _n(0) {}
 
     EndfFloatCpp(double value)
-        : _value(value), _orig_str("") {}
+        : _value(value), _n(0) {}
+
+    EndfFloatCpp(double value, const char* orig_str, std::size_t len)
+        : _value(value) {
+        set_original_string(orig_str, len);
+    }
 
     EndfFloatCpp(double value, const std::string& orig_str)
-        : _value(value), _orig_str(orig_str) {}
+        : _value(value) {
+        set_original_string(orig_str.data(), orig_str.size());
+    }
 
+    // the stored part of the original string, which is the complete
+    // string if original_string_size() <= max_stored_size
     std::string get_original_string() const {
-        return _orig_str; }
+        return std::string(_s, original_string_stored_size()); }
 
     bool has_original_string() const {
-        return !_orig_str.empty(); }
+        return _n != 0; }
 
-    const std::string& original_string_ref() const {
-        return _orig_str; }
+    // true length of the original string
+    std::size_t original_string_size() const {
+        if (_n != long_marker) return _n;
+        std::uint32_t len;
+        std::memcpy(&len, _s + long_stored_size, sizeof(len));
+        return len;
+    }
+
+    // number of bytes of the original string available at
+    // original_string_data()
+    std::size_t original_string_stored_size() const {
+        if (_n <= max_stored_size) return _n;
+        if (_n == long_marker) return long_stored_size;
+        return max_stored_size;
+    }
+
+    const char* original_string_data() const {
+        return _s; }
+
+    // (enumerators rather than static data members, so that no
+    // out-of-class definition is needed in C++11)
+    enum : std::size_t { max_stored_size = 15 };
+
     bool operator==(const EndfFloatCpp& other) const {
         return static_cast<double>(_value) == static_cast<double>(other._value);
     }
@@ -77,9 +123,35 @@ public:
     }
 
 private:
+    enum : std::size_t {
+        long_marker = 255,
+        long_stored_size = max_stored_size - sizeof(std::uint32_t)
+    };
+
+    void set_original_string(const char* str, std::size_t len) {
+        if (len <= max_stored_size) {
+            std::memcpy(_s, str, len);
+            _n = static_cast<unsigned char>(len);
+        } else if (len < long_marker) {
+            std::memcpy(_s, str, max_stored_size);
+            _n = static_cast<unsigned char>(len);
+        } else {
+            std::uint32_t len32 = (len > UINT32_MAX)
+                ? UINT32_MAX : static_cast<std::uint32_t>(len);
+            std::memcpy(_s, str, long_stored_size);
+            std::memcpy(_s + long_stored_size, &len32, sizeof(len32));
+            _n = long_marker;
+        }
+    }
+
     double _value;
-    std::string _orig_str;
+    char _s[max_stored_size];
+    unsigned char _n;  // length, or long_marker for a length of 255 or more
 };
+
+static_assert(std::is_trivially_copyable<EndfFloatCpp>::value,
+              "EndfFloatCpp must be trivially copyable");
+static_assert(sizeof(EndfFloatCpp) == 24, "unexpected size of EndfFloatCpp");
 
 
 // Fast creation of and access to instances of the Python class EndfFloat
@@ -114,25 +186,25 @@ struct CppEndfFloatPy {
         return *inst;
     }
 
-    py::object create_fast(double value, const std::string& orig_str) {
+    py::object create_fast(double value, const char* orig_str, std::size_t len) {
         PyTypeObject* tp = reinterpret_cast<PyTypeObject*>(cls.ptr());
         py::object obj = py::reinterpret_steal<py::object>(tp->tp_new(tp, empty_args, nullptr));
         if (! obj) throw py::error_already_set();
         py::float_ pyval(value);
-        py::str pystr(orig_str);
+        py::str pystr(orig_str, len);
         if (PyObject_SetAttr(obj.ptr(), key_value, pyval.ptr()) != 0) throw py::error_already_set();
         if (PyObject_SetAttr(obj.ptr(), key_orig_str, pystr.ptr()) != 0) throw py::error_already_set();
         return obj;
     }
 
-    py::object create(double value, const std::string& orig_str) {
-        if (fast_ok) return create_fast(value, orig_str);
-        return cls(py::float_(value), py::str(orig_str));
+    py::object create(double value, const char* orig_str, std::size_t len) {
+        if (fast_ok) return create_fast(value, orig_str, len);
+        return cls(py::float_(value), py::str(orig_str, len));
     }
 
     // value and original string of an instance of exactly the class
     // EndfFloat whose attributes have the expected types
-    bool read_fast(PyObject* obj, double& value, std::string& orig_str) {
+    bool read_fast(PyObject* obj, EndfFloatCpp& result) {
         if (! fast_ok || Py_TYPE(obj) != reinterpret_cast<PyTypeObject*>(cls.ptr())) return false;
         py::object v = py::reinterpret_steal<py::object>(PyObject_GetAttr(obj, key_value));
         if (! v) { PyErr_Clear(); return false; }
@@ -142,8 +214,7 @@ struct CppEndfFloatPy {
         Py_ssize_t len;
         const char* data = PyUnicode_AsUTF8AndSize(s.ptr(), &len);
         if (data == nullptr) { PyErr_Clear(); return false; }
-        value = PyFloat_AS_DOUBLE(v.ptr());
-        orig_str.assign(data, static_cast<std::size_t>(len));
+        result = EndfFloatCpp(PyFloat_AS_DOUBLE(v.ptr()), data, static_cast<std::size_t>(len));
         return true;
     }
 
@@ -157,7 +228,7 @@ private:
         // compare the fast creation with a regular instantiation
         try {
             py::object ref = cls(py::float_(1.5), py::str(" 1.500000+0"));
-            py::object test = create_fast(1.5, " 1.500000+0");
+            py::object test = create_fast(1.5, " 1.500000+0", 11);
             py::object items = py::module::import("builtins").attr("list");
             fast_ok = items(ref.attr("__dict__").attr("items")()).equal(
                 items(test.attr("__dict__").attr("items")()));
@@ -196,10 +267,7 @@ namespace PYBIND11_NAMESPACE { namespace detail {
 
             // case 3: cast Python float to EndfFloatCpp
             else if (py::isinstance(src, PyEndfFloat)) {
-                double fast_value;
-                std::string fast_str;
-                if (endf_float_py.read_fast(src.ptr(), fast_value, fast_str)) {
-                    value = EndfFloatCpp(fast_value, fast_str);
+                if (endf_float_py.read_fast(src.ptr(), value)) {
                     return true;
                 }
 				auto float_method = src.attr("__float__");
@@ -240,11 +308,12 @@ namespace PYBIND11_NAMESPACE { namespace detail {
 
         static handle cast(const EndfFloatCpp& src, return_value_policy, handle) {
             double float_value = static_cast<double>(src);
-            std::string orig_str = src.get_original_string();
-            if (orig_str.empty()) {
-                return py::float_(static_cast<double>(src)).release();
+            if (! src.has_original_string()) {
+                return py::float_(float_value).release();
             } else {
-                return CppEndfFloatPy::get().create(float_value, orig_str).release();
+                return CppEndfFloatPy::get().create(
+                    float_value, src.original_string_data(),
+                    src.original_string_stored_size()).release();
             }
         }
     };

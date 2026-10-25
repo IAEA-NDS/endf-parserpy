@@ -40,7 +40,7 @@ def endf_path_generator(endf_path, trail_dict, lead_path=EndfPath()):
         new_lead_path = endf_path[:first_star_pos]
         try:
             curdict = new_lead_path.get(trail_dict)
-        except (KeyError, ValueError, TypeError):
+        except (KeyError, IndexError, ValueError, TypeError):
             return
 
         if not (

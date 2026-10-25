@@ -128,3 +128,10 @@ def test_binary_logical_ops(lop):
             py_res = eval(py_expr)
             my_res = eval_expr(my_expr, {})
             assert py_res == my_res
+
+
+def test_starred_path_with_list_index_out_of_range():
+    d = {"a": [{"b": [1, 2]}]}
+    assert list(endf_path_generator("a/5/b/*", d)) == []
+    assert [str(p) for p in endf_path_generator("a/0/b/*", d)] == ["a/0/b/0", "a/0/b/1"]
+    assert not eval_expr("/a/5/b/* == 1", d)

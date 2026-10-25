@@ -76,12 +76,23 @@ _VALID_CHECK_EDITS = ("eager", "deferred")
 # sentinel distinguishing "no value given" from an explicit value of None
 _UNSET = object()
 
-# the characters other than "\n" at which str.splitlines() divides a
-# Latin-1 decoded text (the raw text of a section is divided into lines
-# by str.splitlines() where lines are needed, see EndfFile._mini_tape)
-# (a search for each character is several times faster than a regular
-# expression with a character class)
-_OTHER_LINE_BREAKS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85")
+
+def _split_lines(raw):
+    """Divide the raw text of a section into lines.
+
+    A line ends at ``"\n"`` only, as the records of the structural
+    index, and a ``"\r"`` before it (CRLF) is removed; a line ending at
+    the end of the text gives no empty line. Any other character, e.g.
+    FF (0x0C) or NEL (0x85) in a TEXT record, stays in its line, as when
+    the file is parsed directly, so that it is written back unchanged
+    (``str.splitlines()`` would divide the line there).
+    """
+    lines = raw.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    if "\r" in raw:
+        lines = [line[:-1] if line.endswith("\r") else line for line in lines]
+    return lines
 
 
 def _value_match(field, value, tol):
@@ -994,10 +1005,10 @@ class EndfFile:
 
         The result is a single string, the form in which both parsers
         take a tape, so the ordinary parser can be used unchanged. It is
-        the text of the lines ``raw.splitlines()`` between the TPID and
+        the text of the lines ``_split_lines(raw)`` between the TPID and
         the FEND/MEND/TEND records, joined by ``"\n"``. For the usual
-        text, whose only line break is ``"\n"``, this is the text itself,
-        which is therefore not divided into lines and joined again.
+        text, without CR characters (e.g. of CRLF line endings), this is
+        the text itself, which is therefore not divided and joined again.
         """
         tail = (
             _control_line(entry.mat, 0, 0)  # FEND
@@ -1006,8 +1017,8 @@ class EndfFile:
             + "\n"
             + TEND_LINE  # TEND
         )
-        if any(c in raw for c in _OTHER_LINE_BREAKS):
-            lines = raw.splitlines()
+        if "\r" in raw:
+            lines = _split_lines(raw)
             return "\n".join([self._index.tpid_line] + lines + [tail])
         sep = "\n" if raw and not raw.endswith("\n") else ""
         return "".join((self._index.tpid_line, "\n", raw, sep, tail))
@@ -1023,7 +1034,7 @@ class EndfFile:
                     f"failed to parse MF={mf}/MT={mt} of the material at "
                     f"position {entry.position} (MAT={entry.mat})"
                 ) from exc
-            return FailedSection(exc, raw.splitlines(), entry.position, mf, mt)
+            return FailedSection(exc, _split_lines(raw), entry.position, mf, mt)
         if isinstance(section, Mapping):
             return _Section(section)
         return section  # a section without a recipe stays a list of strings
@@ -1095,7 +1106,7 @@ class EndfFile:
             else:
                 sec_entry = self._index[slot.original_position].sections[(mf, mt)]
                 raw = self._get_raw(slot.original_position, mf, mt, sec_entry)
-                section = _strip_send(raw.splitlines())
+                section = _strip_send(_split_lines(raw))
             material.setdefault(mf, {})[mt] = section
         return material
 

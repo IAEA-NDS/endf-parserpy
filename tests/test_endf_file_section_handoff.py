@@ -13,8 +13,11 @@
 
 EndfFile wraps the raw text of a section in a minimal single-material
 tape. The tape is passed to the parser as one string, which must be the
-same as joining the lines ``raw.splitlines()`` and the wrapper records
-with ``"\\n"`` (the previous form), whatever the line breaks of the text.
+same as joining the lines of the text (divided at ``"\\n"`` only, without
+the ``"\\r"`` of CRLF line endings) and the wrapper records with ``"\\n"``,
+whatever the line breaks of the text. Other characters at which
+``str.splitlines()`` divides, e.g. FF or NEL in a TEXT record, stay in
+their line, also when an untouched section is written.
 """
 
 from pathlib import Path
@@ -36,8 +39,17 @@ def parser(request):
         pytest.skip(f"{request.param} backend unavailable")
 
 
+def _raw_lines(raw):
+    # lines end at "\n" only (a "\r" before it is removed), as the
+    # records of the structural index
+    lines = raw.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    return [line[:-1] if line.endswith("\r") else line for line in lines]
+
+
 def _joined(ef, entry, raw):
-    lines = [ef.index.tpid_line] + raw.splitlines()
+    lines = [ef.index.tpid_line] + _raw_lines(raw)
     lines += [_control_line(entry.mat, 0, 0), _control_line(0, 0, 0), TEND_LINE]
     return "\n".join(lines)
 
@@ -82,3 +94,30 @@ def test_sections_and_export_unchanged(parser, ending, tmp_path):
     expected = "\n".join(parser.write(ref)) + "\n"
     ef = EndfFile(path, parser=parser)
     assert ef.to_string() == expected
+
+
+def _with_text_chars(lines):
+    # FF, NEL, VT and a lone CR in TEXT lines of the MF1/MT451 description
+    lines = list(lines)
+    for i, (pos, char) in enumerate([(5, "\x0c"), (8, "\x85"), (3, "\x0b")]):
+        k = 10 + i
+        assert lines[k][70:75] == " 1451"
+        lines[k] = lines[k][:pos] + char + lines[k][pos + 1 :]
+    lines[13] = lines[13][:4] + "\r" + lines[13][5:]
+    return lines
+
+
+@pytest.mark.parametrize("ending", ["\n", "\r\n"])
+def test_line_break_characters_inside_lines(parser, ending, tmp_path):
+    lines = _with_text_chars(CU.read_bytes().decode("latin-1").splitlines())
+    path = tmp_path / "tape.endf"
+    path.write_bytes((ending.join(lines) + ending).encode("latin-1"))
+    ef = EndfFile(path, parser=parser)
+    # parsed as by the parser itself
+    ref = parser.parse("\n".join(lines))
+    assert ef[0][1, 451] == ref[1][451]
+    # an untouched section is written back with these characters
+    written = ef.to_string().split("\n")
+    for k in range(10, 14):
+        assert written[k][:75] == lines[k][:75]
+    assert ef.to_string() == "\n".join(parser.write(ref)) + "\n"

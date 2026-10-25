@@ -896,6 +896,47 @@ inline std::string cpp_prepare_send(
 }
 
 
+// The output of the writing functions. The lines are appended to one
+// growing buffer, which becomes the string returned by the writing
+// function (see str), or which is written to a file. For a file, the
+// buffer is written to it whenever its size exceeds flush_size and when
+// the object is destroyed, also during the stack unwinding after an
+// exception. As with output written directly to the file stream, the
+// file then contains all lines written before the exception.
+class CppWriteOutput {
+public:
+  CppWriteOutput() : file_(nullptr) {}
+  explicit CppWriteOutput(std::ostream& file) : file_(&file) {}
+  ~CppWriteOutput() { flush(); }
+  CppWriteOutput(const CppWriteOutput&) = delete;
+  CppWriteOutput& operator=(const CppWriteOutput&) = delete;
+
+  CppWriteOutput& operator<<(const std::string& text) {
+    buf_.append(text);
+    if (file_ != nullptr && buf_.size() >= flush_size) {
+      flush();
+    }
+    return *this;
+  }
+
+  // writes the buffer to the file (if any) and empties it
+  void flush() {
+    if (file_ != nullptr && ! buf_.empty()) {
+      file_->write(buf_.data(), static_cast<std::streamsize>(buf_.size()));
+      buf_.clear();
+    }
+  }
+
+  // the output (without a file)
+  const std::string& str() const { return buf_; }
+
+private:
+  static const std::size_t flush_size = 1 << 20;
+  std::string buf_;
+  std::ostream* file_;
+};
+
+
 // The bytes of a line of a section given as a list of strings (see
 // cpp_text_from_pyobj); lineno counts from 1, mf and mt are the keys of
 // the section in the dictionary.
@@ -943,7 +984,7 @@ inline int get_mat_from_mfmt_section(py::object mfmt_section, int mf, int mt) {
 
 
 inline void write_section_verbatim(
-  std::ostream& oss, py::list mfmt_section, WritingOptions &write_opts,
+  CppWriteOutput& oss, py::list mfmt_section, WritingOptions &write_opts,
   int dict_mf, int dict_mt
 ) {
   if (mfmt_section.size() == 0) {

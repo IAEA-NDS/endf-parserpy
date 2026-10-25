@@ -109,7 +109,7 @@ def _split_wrapper_names(entry):
 
 def _writefun_forward_decl(ostream_name):
     return cpp.line(
-        f"void {ostream_name}(std::ostream& cont, py::dict endf_dict, "
+        f"void {ostream_name}(CppWriteOutput& cont, py::dict endf_dict, "
         "WritingOptions& write_opts);"
     )
 
@@ -624,7 +624,7 @@ def generate_master_writefun(name, recipefuns):
     body += cpp.statement("cont << cpp_prepare_send(-1, 0, write_opts, false)")
 
     args = (
-        ("std::ostream&", "cont"),
+        ("CppWriteOutput&", "cont"),
         ("py::dict", "endf_dict"),
         ("py::object", "exclude"),
         ("py::object", "include"),
@@ -657,12 +657,12 @@ def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
     for entry in writefuns:
         outer, inner = _split_wrapper_names(entry)
         code += cpp.line(f"py::str {outer}(py::dict endf_dict{args_str}) {{")
-        code += cpp.statement("std::ostringstream oss", cpp.INDENT)
+        code += cpp.statement("CppWriteOutput cont", cpp.INDENT)
         code += cpp.indent_code(
-            _call_writefun(f"{inner}_ostream(oss, endf_dict{args_str2})"), cpp.INDENT
+            _call_writefun(f"{inner}_ostream(cont, endf_dict{args_str2})"), cpp.INDENT
         )
         # each byte becomes the character with the same code
-        code += cpp.statement("return cpp_bytes_to_pystr(oss.str())", cpp.INDENT)
+        code += cpp.statement("return cpp_bytes_to_pystr(cont.str())", cpp.INDENT)
         code += cpp.close_block()
         code += cpp.line("")
     return code
@@ -692,10 +692,14 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
             ),
             cpp.INDENT,
         )
+        # destroyed before outfile, also after an exception, so that the
+        # lines written before are in the file (see CppWriteOutput)
+        code += cpp.statement("CppWriteOutput cont(outfile)", cpp.INDENT)
         code += cpp.indent_code(
-            _call_writefun(f"{inner}_ostream(outfile, endf_dict{args_str2})"),
+            _call_writefun(f"{inner}_ostream(cont, endf_dict{args_str2})"),
             cpp.INDENT,
         )
+        code += cpp.statement("cont.flush()", cpp.INDENT)
         code += cpp.statement("outfile.close()", cpp.INDENT)
         code += cpp.close_block()
         code += cpp.line("")

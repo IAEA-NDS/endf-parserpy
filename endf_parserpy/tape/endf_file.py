@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -35,6 +35,7 @@ from collections.abc import Mapping
 
 from ..endf_parser_factory import EndfParserFactory
 from ..endf_parser_base import EndfParserBase
+from ..utils.accessories import is_numpy_array, recursive_equality_check
 from .address import (
     EndfMaterialPath,
     parse_index_spec,
@@ -61,7 +62,9 @@ from .views import (
     _LiveSequence,
     _SectionView,
     _navigate,
+    _own_value,
     _plain,
+    _readonly,
 )
 
 
@@ -77,6 +80,9 @@ _UNSET = object()
 def _value_match(field, value, tol):
     if tol and isinstance(field, (int, float)) and isinstance(value, (int, float)):
         return abs(field - value) <= tol
+    if is_numpy_array(field) or is_numpy_array(value):
+        # element-wise; ``==`` on an array has no single truth value
+        return recursive_equality_check(field, value, set())
     return field == value
 
 
@@ -703,7 +709,9 @@ class EndfFile:
             if not found:
                 continue
             if predicate is not None:
-                matched = bool(predicate(field))
+                # a numpy array is passed read-only, as a section view
+                # hands it out, so the predicate cannot alter the cache
+                matched = bool(predicate(_readonly(field)))
             else:
                 matched = _value_match(field, value, tol)
             if matched:
@@ -801,8 +809,7 @@ class EndfFile:
         ``"deferred"`` the canonical section is edited in place and
         marked dirty.
         """
-        if isinstance(value, _SectionView):
-            value = value.detach()
+        value = _own_value(value)
         section = self._get_slot_section(slot, mf, mt)
         self._require_mapping_section(section, mf, mt)
         if self._check_edits == "eager":

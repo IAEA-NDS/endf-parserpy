@@ -430,6 +430,33 @@ key is read as an :class:`~endf_parserpy.EndfPath` relative to
 the view, so ``relaxed['#0/3/2']['xstable/E']`` and
 ``relaxed['#0/3/2/xstable/E']`` reach the same data.
 
+With a parser created with ``array_type='numpy'``, the arrays of a
+section are numpy arrays. A view, frozen or live, returns such an
+array as a *read-only* numpy array that shares its data with the
+tape's copy of the section (no data is copied). Changing it in
+place, e.g. ``section['xstable/xs'][0] = 1.5`` or
+``section['xstable/xs'] *= 2``, therefore raises numpy's
+``ValueError: assignment destination is read-only`` in both modes,
+rather than silently changing data that would not be written out.
+To change an array, use one of the following:
+
+.. code:: Python
+
+   # a path ending at the element (2-D blocks: one index per dimension)
+   relaxed['#0/3/2']['xstable/xs/0'] = 1.5
+   strict['#0/3/2/xstable/xs/0'] = 1.5            # rendered and checked
+   # assignment of a whole array
+   section = relaxed['#0/3/2']
+   section['xstable/xs'] = section['xstable/xs'] * 2
+   # a detached copy, whose arrays are ordinary writable copies
+   section = strict['#0/3/2'].detach()
+   section['xstable']['xs'][0] = 1.5
+   strict['#0/3/2'] = section
+
+A read-only array obtained from a view is copied when it is assigned
+into a section. Views compare element by element with dictionaries,
+other views and data parsed with ``array_type='list'``.
+
 Bounded memory and parallel processing
 --------------------------------------
 

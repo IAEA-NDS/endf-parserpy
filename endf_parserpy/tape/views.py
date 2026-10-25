@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/16
-# Last modified:   2026/05/17
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -30,7 +30,17 @@ A view key may be a plain leaf key *or* an :class:`EndfPath` string, so a
 view is path-addressable just like an :class:`~endf_parserpy.EndfDict`
 (decision P4). :meth:`_SectionView.detach` returns a standalone, plain,
 mutable deep copy disconnected from the file.
+
+A numpy array in a section (``array_type="numpy"``) is returned, by
+either view kind, as a *read-only* numpy view of the canonical array --
+no data is copied. An in-place change of that array therefore raises
+numpy's own :class:`ValueError` instead of silently corrupting a frozen
+section or bypassing the ``_touch`` callback of a live one. A live view
+writes into an array through a path ending at an element
+(``view['xstable/xs/0'] = 1.5``) or by assigning a whole new array.
 """
+
+import sys
 
 from collections.abc import (
     Mapping,
@@ -39,7 +49,7 @@ from collections.abc import (
     Sequence,
 )
 
-from ..utils.accessories import EndfPath
+from ..utils.accessories import EndfPath, recursive_equality_check
 
 
 _FROZEN_WRITE_MSG = (
@@ -55,12 +65,50 @@ _FROZEN_DELETE_MSG = (
 )
 
 
+def _is_ndarray(obj):
+    """Whether ``obj`` is a numpy array (of any dimension).
+
+    numpy is optional and is not imported here: if it has not been
+    imported, there can be no numpy arrays.
+    """
+    numpy = sys.modules.get("numpy")
+    return numpy is not None and isinstance(obj, numpy.ndarray)
+
+
+def _readonly(value):
+    """Return a numpy array as a read-only view, anything else unchanged.
+
+    The view shares the data of the canonical array (no copy) but
+    cannot be written to, so an in-place change raises numpy's
+    :class:`ValueError` rather than bypassing the view.
+    """
+    if _is_ndarray(value):
+        value = value.view()
+        value.flags.writeable = False
+    return value
+
+
+def _own_value(value):
+    """Prepare a value assigned into a section.
+
+    A section view is detached into a plain copy, and a read-only numpy
+    array -- as handed out by a view -- is copied, so that the section
+    does not end up sharing (read-only) data with another section.
+    """
+    if isinstance(value, _SectionView):
+        return value.detach()
+    if _is_ndarray(value) and not value.flags.writeable:
+        return value.copy()
+    return value
+
+
 def _plain(obj):
     """Return ``obj`` as plain, copied ``dict`` / ``list`` / scalars.
 
     Unwraps any :class:`_SectionView`, recursively rebuilds mappings as
-    ordinary ``dict`` and lists as ordinary ``list``, and leaves scalars
-    (which are immutable) untouched. This is the deep copy taken by
+    ordinary ``dict`` and lists as ordinary ``list``, copies numpy
+    arrays (same dtype and shape) and leaves scalars (which are
+    immutable) untouched. This is the deep copy taken by
     :meth:`_SectionView.detach`.
     """
     if isinstance(obj, _SectionView):
@@ -69,6 +117,8 @@ def _plain(obj):
         return {k: _plain(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [_plain(v) for v in obj]
+    if _is_ndarray(obj):
+        return obj.copy()
     return obj
 
 
@@ -118,29 +168,36 @@ class _SectionView:
         self._touch = touch
 
     def _wrap(self, value):
-        """Wrap a nested container in a view of this view's own kind."""
+        """Wrap a nested container in a view of this view's own kind.
+
+        A numpy array is returned as a read-only view (see
+        :func:`_readonly`) and a scalar as is.
+        """
         if isinstance(value, Mapping):
             cls = _FrozenMapping if self._frozen else _LiveMapping
             return cls(value, self._touch)
         if isinstance(value, list):
             cls = _FrozenSequence if self._frozen else _LiveSequence
             return cls(value, self._touch)
-        return value
+        return _readonly(value)
 
     def detach(self):
         """Return a standalone, plain, mutable deep copy of this view.
 
         The result is built from ordinary ``dict`` and ``list`` objects
         and is disconnected from the :class:`~endf_parserpy.EndfFile`:
-        editing it never writes through to the tape. It is the only
-        operation that takes a deep copy.
+        editing it never writes through to the tape. A numpy array is
+        copied too, so the result shares no data with the file. It is
+        the only operation that takes a deep copy.
         """
         return _plain(self._target)
 
     def __eq__(self, other):
+        # element-wise comparison of numpy arrays (also with lists), as
+        # for an EndfDict; ``==`` on an array has no single truth value
         if isinstance(other, _SectionView):
             other = other._target
-        return self._target == other
+        return recursive_equality_check(self._target, other, set())
 
     def __ne__(self, other):
         result = self.__eq__(other)
@@ -214,8 +271,7 @@ class _LiveMapping(_SectionView, MutableMapping):
         return self._wrap(cur[last])
 
     def __setitem__(self, key, value):
-        if isinstance(value, _SectionView):
-            value = value.detach()
+        value = _own_value(value)
         cur, last = _navigate(self._target, key)
         cur[last] = value
         self._touch()
@@ -248,8 +304,7 @@ class _LiveSequence(_SectionView, MutableSequence):
         return self._wrap(cur[last])
 
     def __setitem__(self, key, value):
-        if isinstance(value, _SectionView):
-            value = value.detach()
+        value = _own_value(value)
         cur, last = _navigate(self._target, key)
         cur[last] = value
         self._touch()
@@ -263,7 +318,6 @@ class _LiveSequence(_SectionView, MutableSequence):
         return len(self._target)
 
     def insert(self, index, value):
-        if isinstance(value, _SectionView):
-            value = value.detach()
+        value = _own_value(value)
         self._target.insert(index, value)
         self._touch()

@@ -82,7 +82,7 @@ def test_round_trip_keeps_data_records(name, select, tmp_path):
     assert data_records(ef.to_string()) == data_records(original)
 
 
-@pytest.mark.parametrize("atype", ["dict", "list"])
+@pytest.mark.parametrize("atype", ATYPES)
 @pytest.mark.parametrize("select", ["python", "cpp"])
 @pytest.mark.parametrize("check_edits", ["eager", "deferred"])
 def test_edit_and_export_with_blank_mat_tpid(atype, select, check_edits, tmp_path):

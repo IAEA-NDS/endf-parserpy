@@ -43,7 +43,7 @@ settles two further questions: *when* an edit's recipe-conformity is checked
 |---|----------|
 | P1 | **`__getitem__`, `__setitem__`, `__delitem__` and `__contains__` are polymorphic.** They accept an integer material position *or* an `EndfMaterialPath` (string or object). No separate `set`/`exists`/`remove` method trio is introduced; `[]`, `[]=`, `del` and `in` carry those roles. The integer form is sugar for the `#k` material selector. |
 | P2 | **The recipe-conformity of an edited section is checked by rendering it through the parser's writer** — the engine's only validation mechanism. A `check_edits` constructor argument selects *when* the check runs: `"eager"` (the default) renders on every write and raises at the offending statement; `"deferred"` defers the check to `save()` or `verify()`. |
-| P3 | **A retrieved section is a recursive *view* over the canonical cached section, never a defensive copy.** Its mutability follows `check_edits`: `"eager"` yields a recursively read-only (frozen) view; `"deferred"` yields a live write-through view that edits the material's overlay directly. `.detach()` produces a standalone plain mutable copy on demand. |
+| P3 | **A retrieved section is a recursive *view* over the canonical cached section, never a defensive copy.** Its mutability follows `check_edits`: `"eager"` yields a recursively read-only (frozen) view; `"deferred"` yields a live write-through view that edits the material's overlay directly. `.detach()` produces a standalone plain mutable copy on demand. numpy arrays are handed out by either view as read-only views of the canonical array (§5.5). |
 | P4 | **A section or field view accepts an `EndfPath` string as a key**, not only a plain leaf key. `view["xstable/E"]` reads, and on a live view `view["xstable/E"] = [...]` writes, the same as the chained-`[]` spelling. This mirrors `EndfDict`, so a retrieved view is path-addressable all the way down. Resolution and write-through follow the view's mode (P3); the `EndfPath` reach is *within* a section, the leading material/MF/MT selector stays the job of `EndfMaterialPath`. |
 
 P1 mirrors `EndfDict`, where `d[path]` yields a sub-view or a leaf depending on
@@ -134,8 +134,9 @@ cached section: a `Mapping` / `Sequence` wrapper that, on `__getitem__`,
 returns a wrapper of the same kind for a nested `dict` / `list` and the bare
 value for a scalar. The cost is one small wrapper allocation per *container*
 crossed during navigation — never an upfront copy, and scalars (including
-`EndfFloat`) are never wrapped. Parsed sections contain only nested `dict`s,
-`list`s and scalars, so these two wrapper kinds suffice.
+`EndfFloat`) are never wrapped. Parsed sections contain nested `dict`s,
+`list`s and scalars, so these two wrapper kinds suffice, plus, with
+`array_type="numpy"`, numpy arrays, which follow the rule of §5.5.
 
 The kind of view follows `check_edits`.
 
@@ -193,6 +194,9 @@ caller intent.
 * On a live view it yields a detached snapshot whose edits do **not** write
   through — useful to experiment without touching the tape.
 
+numpy arrays are deep-copied as well (`a.copy()`, same dtype and shape), so a
+detached section shares no data with the cache.
+
 ### 5.4 Type
 
 A view is a `Mapping` / `Sequence`, not a `dict` / `list`, so
@@ -200,6 +204,41 @@ A view is a `Mapping` / `Sequence`, not a `dict` / `list`, so
 tape API is unreleased, so this breaks nothing; internal code and the
 parser's writer only ever see the canonical section or a caller-supplied
 mapping, never a view.
+
+### 5.5 numpy arrays
+
+A section parsed with `array_type="numpy"` holds numpy arrays, which are
+mutable in place without going through any wrapper. A bare array handed out
+by a view would break both modes: in a frozen view an in-place edit would
+corrupt the cached section, and in a live view it would change the cache
+without `_touch()`, so `save()` would emit the untouched disk text and the
+edit would be lost silently. Wrapping arrays in a third view kind would hide
+the numpy API, and copying them would contradict "never a defensive copy".
+
+* **Read.** Both view kinds return a numpy array as a *read-only view of the
+  canonical array*: `a.view()` with `flags.writeable = False`. No data is
+  copied, and the result is a real `ndarray` (slicing, arithmetic, ufuncs all
+  work). An in-place change (`arr[0] = x`, `arr *= 2`) raises numpy's own
+  `ValueError: assignment destination is read-only`; its message cannot be
+  customised, which is accepted. Nothing therefore looks writable whose write
+  would be lost, and a read still never touches the overlay.
+* **Write, live view.** A write goes through the view, so `_touch()` fires:
+  either a path ending at an element (`view['xstable/xs/0'] = 1.5`, or
+  `view['b/2/1/1'] = 0.5` for an element of a 2-D block, resolved to the
+  canonical array by `_navigate`) or the assignment of a whole array
+  (`view['xstable/xs'] = new_array`). An assigned read-only array — as handed
+  out by a view — is copied, like an assigned view is detached, so a section
+  never holds read-only data shared with another section.
+* **Write, frozen view.** As for any field: `endf_file[path] = value` with a
+  path to an element or to the whole array, rendered and checked (§7).
+* **Detach** copies the arrays (§5.3).
+* **Equality.** `==` / `!=` on views use the numpy-aware
+  `recursive_equality_check` of `utils.accessories` (the comparison of
+  `EndfDict`), so views of numpy sections compare element by element with
+  dicts, views and list-mode data.
+
+numpy stays optional: the views detect arrays through `sys.modules` and never
+import numpy.
 
 ---
 
@@ -358,7 +397,9 @@ and the render-check.
   mode's view type. It is applied by the public accessors
   (`EndfFile.__getitem__`, `MaterialView.__getitem__`, `get`) and **skipped**
   by the internal read-and-discard paths (`query`, `build_index`), which
-  operate on the canonical section directly and pay no wrapping cost.
+  operate on the canonical section directly and pay no wrapping cost; only a
+  numpy field handed to a user `predicate` of `query` is passed read-only
+  (§5.5), and `query(..., value)` compares numpy fields element by element.
 * `__getitem__` — dispatch on depth: material → `MaterialView`; section →
   `_view(...)`; field → `_view(...)` of, or the bare value at,
   `walk_section`. A `FailedSection` raises `SectionParseError`.

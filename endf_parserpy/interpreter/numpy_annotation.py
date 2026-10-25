@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -198,6 +198,18 @@ def _simple_index(indexquant):
     if node.data == "inconsistent_varspec":
         node = _child(node, "extvarname")
     return node.data == "extvarname" and Var(node).nidx == 0
+
+
+def _index_varname(indexquant):
+    # the name of a variable without indices given as index, or None
+    node = _simplified(indexquant.children[0])
+    if isinstance(node, Token):
+        return str(node) if node.type == "VARNAME" else None
+    if node.data == "inconsistent_varspec":
+        node = _child(node, "extvarname")
+    if node.data == "extvarname" and Var(node).nidx == 0:
+        return Var(node).name
+    return None
 
 
 def _loopvar(loop):
@@ -518,6 +530,13 @@ class _Walker:
             if dest is not expr:
                 self.prepare(dest, var.name, indexquants[: i + 1], kind, scope)
                 self.preparations.append((var, i, dest, expr))
+            # the element is also created before the loop of the next index
+            # if the preparation stays inside it, see _creation_loop in the
+            # code generator
+            loop = self.creation_loop(var, i, expr, dest)
+            if loop is not None:
+                self.prepare(loop, var.name, indexquants[: i + 1], kind, scope)
+                self.preparations.append((var, i, loop, expr))
         if block:
             self.add_block(var, expr, kind, block, scope)
 
@@ -531,6 +550,35 @@ class _Walker:
             limit = self.moveup(var, indexquants[i].children[0], expr, limit)
             dests.append(limit)
         return dests
+
+    def creation_loop(self, var, level, expr, dest):
+        # the loop before which the element of the leading level `level`
+        # is created, see _creation_loop in cpp_type_nested_array/assign.py
+        names = [_index_varname(iq) for iq in var.indexquants()[: level + 2]]
+        target = None
+        pos = level + 1
+        cur = expr
+        while self.parent(cur) is not None and pos >= 0:
+            parent = self.parent(cur)
+            if _is_scope_node(parent):
+                break
+            if target is None and parent.data == "if_clause":
+                return None
+            if parent.data in ("for_loop", "list_loop") and (
+                _loopvar(parent) == names[pos]
+            ):
+                if target is None:
+                    target = parent
+                pos -= 1
+            cur = parent
+        if target is None or pos >= 0:
+            return None
+        cur = target
+        while cur is not None:
+            if cur is dest:
+                return None
+            cur = self.parent(cur)
+        return target
 
     def add_block(self, var, expr, kind, block, scope):
         # the regular block of the trailing indices is created before

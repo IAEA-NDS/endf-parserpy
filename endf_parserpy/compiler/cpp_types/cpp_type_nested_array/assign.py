@@ -337,6 +337,54 @@ def _prepared_per_iteration(vartok, node, num_leading):
     return True
 
 
+def _is_named_list_body(node, parent):
+    return (
+        is_list(parent)
+        and node.data == "list_body"
+        and get_child(parent, "list_name", nofail=True) is not None
+    )
+
+
+def _creation_loop(vartok, level, node, ptr_dest):
+    # The loop before which the element of the leading level `level` of a
+    # nested array is created, so that it exists (possibly empty) also if
+    # the loop of the next index has no iterations: the loop of the index
+    # level+1, if the indices up to level+1 are the variables of enclosing
+    # for or LIST loops, the loop of each index enclosing that of the next
+    # one, and no if-clause lies between that loop and the assignment.
+    # None if no such loop exists, or if the element is already prepared
+    # in that loop or further out (ptr_dest, see moveup_ptrassign), i.e.
+    # once in each of its iterations. The search stops at a section or a
+    # named LIST record, which have their own variables.
+    names = [str(idx) for idx in vartok.indices[: level + 2]]
+    target = None
+    pos = level + 1
+    cur = node
+    while cur.parent is not None and pos >= 0:
+        parent = cur.parent
+        if is_section(parent) or _is_named_list_body(cur, parent):
+            break
+        if target is None and is_if_clause(parent):
+            return None
+        if (is_for_loop(parent) or parent.data == "list_loop") and str(
+            get_loopvar(parent)
+        ) == names[pos]:
+            if target is None:
+                target = parent
+            pos -= 1
+        cur = parent
+    if target is None or pos >= 0:
+        return None
+    # skip if the element is already prepared in the target loop or a loop
+    # around it
+    cur = target
+    while cur is not None:
+        if cur is ptr_dest:
+            return None
+        cur = cur.parent
+    return target
+
+
 class Assign:
 
     def define_var(vartok, vardict, save_state=False):
@@ -407,6 +455,27 @@ class Assign:
                         )
                 else:
                     code += new_code
+                # the element is created (empty) before the loop of the
+                # next index if the preparation above stays inside it,
+                # e.g. because the variable occurs elsewhere in that loop,
+                # so that a loop without iterations leaves no gap
+                creation = _creation_loop(vartok, i, node, destnode)
+                if creation is not None:
+                    create_code = ""
+                    if not unused:
+                        chain = "".join(
+                            f"{'.' if k == 0 else '->'}prepare({indices[k]})"
+                            for k in range(i + 1)
+                        )
+                        create_code = cpp.statement(f"{cpp_varname}{chain}")
+                    if nested_element_hook is not None:
+                        create_code += nested_element_hook(vartok, indices[: i + 1])
+                    creation.check_my_identity()
+                    creation.append_precode(create_code)
+                    if layout_recorder is not None:
+                        layout_recorder.record_pointer_preparation(
+                            vartok, i, creation, node
+                        )
             else:
                 code += new_code
             ptrvar_old = ptrvar_new

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -35,6 +35,7 @@ from .expr_utils.equation_utils import (
 )
 from . import cpp_primitives as cpp
 from .cpp_types import cpp_varops_assign
+from .cpp_types.cpp_vartype_handling import remove_redundant_type_checks
 from .cpp_types.cpp_type_scalar.auxiliary import init_readflag
 from .lookahead_management import (
     init_lookahead_counter,
@@ -151,6 +152,7 @@ def generate_cpp_parse_or_write_fun(
     fun_body += code
     fun_body += get_finalize_line_tape_func(vardict)()
     fun_body += get_finalize_section_func(vardict)(None, vardict)
+    fun_body = remove_redundant_type_checks(fun_body)
     fun_body = cpp.indent_code(fun_body, cpp.INDENT)
 
     code = fun_header + fun_body + fun_footer

@@ -859,7 +859,11 @@ inline int get_mat_from_mfmt_section(py::object mfmt_section, int mf, int mt) {
     throw std::runtime_error("list representing section is empty");
   }
   std::string first_line = cpp_verbatim_line_from_pyobj(mfmt_section_list[0], 1, mf, mt);
-  std::string matstr = first_line.substr(66, 4);
+  std::string matstr = (first_line.size() > 66) ? first_line.substr(66, 4) : "";
+  // a blank MAT field (e.g. of a TPID record) reads as zero, as in EndfParserPy
+  if (matstr.find_first_not_of(" \r\n") == std::string::npos) {
+    return 0;
+  }
   mat = std::stoi(matstr);
   return mat;
 }

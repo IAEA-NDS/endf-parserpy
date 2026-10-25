@@ -35,6 +35,7 @@ def writefun_header(fun_name):
           int cpp_np_val;
           Tab1Body tab1_body;
           Tab2Body tab2_body;
+          CppLineStamp cpp_line_stamp;
           bool list_mode = write_opts.array_type != "dict";
         """,
         -8,

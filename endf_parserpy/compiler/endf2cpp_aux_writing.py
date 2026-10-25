@@ -17,9 +17,11 @@ from .cpp_types.cpp_varaux import check_variable
 
 
 def prepare_line(linevar, mat, mf, mt, linenum, write_opts):
-    # the line variable is refilled in place, reusing its memory
+    # the line variable is refilled in place, reusing its memory, with
+    # the control numbers formatted once (see writefun_header)
     code = cpp.statement(
-        f"cpp_prepare_line({linevar}, {mat}, {mf}, {mt}, {linenum}, {write_opts})"
+        f"cpp_prepare_line({linevar}, cpp_line_stamp, {mat}, {mf}, {mt}, "
+        f"{linenum}, {write_opts})"
     )
     return code
 

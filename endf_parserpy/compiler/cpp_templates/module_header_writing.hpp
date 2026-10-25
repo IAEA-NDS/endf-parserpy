@@ -222,37 +222,83 @@ inline void cpp_write_line_number(std::string& str, int value) {
 }
 
 
+// The characters of the MAT, MF and MT numbers (columns 67 to 75) of the
+// lines prepared with it, formatted once for each combination of the
+// numbers instead of for every line.
+struct CppLineStamp {
+  CppLineStamp() : valid(false), mat(0), mf(0), mt(0) {}
+  bool valid;
+  int mat;
+  int mf;
+  int mt;
+  char chars[9];
+};
+
+
+// Writes the MAT, MF and MT numbers into the columns 67 to 75 of the line
+// starting at position start of str, with the characters of stamp if it
+// holds these numbers; otherwise they are formatted (raising the error of
+// a number that does not fit) and stored in stamp.
+inline void cpp_stamp_control_numbers(
+  std::string& str, std::size_t start, CppLineStamp& stamp, int mat, int mf, int mt
+) {
+  if (stamp.valid && stamp.mat == mat && stamp.mf == mf && stamp.mt == mt) {
+    std::memcpy(&str[start + 66], stamp.chars, 9);
+    return;
+  }
+  cpp_write_custom_int_field(str, start + 66, 4, mat);
+  cpp_write_custom_int_field(str, start + 70, 2, mf);
+  cpp_write_custom_int_field(str, start + 72, 3, mt);
+  std::memcpy(stamp.chars, &str[start + 66], 9);
+  stamp.mat = mat;
+  stamp.mf = mf;
+  stamp.mt = mt;
+  stamp.valid = true;
+}
+
+
 // Fills line with a blank line carrying the MAT, MF and MT numbers and the
 // line number (if include_linenum) and a line ending. The memory of line
 // is reused, so that a line variable refilled for each line of a record
-// is not allocated anew.
+// is not allocated anew, and each column is written once: the blanks of
+// the columns 1 to 66, the control numbers (see CppLineStamp), the line
+// number and the line ending.
 inline void cpp_prepare_line(
-  std::string& line, int mat, int mf, int mt, int &linenum, WritingOptions &write_opts
+  std::string& line, CppLineStamp& stamp, int mat, int mf, int mt, int &linenum,
+  WritingOptions &write_opts
 ) {
-  int line_width = (write_opts.include_linenum) ? 80 : 75;
-  line.assign(line_width, ' ');
-  line += '\n';
-  cpp_write_mat_number(line, mat);
-  cpp_write_mf_number(line, mf);
-  cpp_write_mt_number(line, mt);
+  std::size_t line_width = (write_opts.include_linenum) ? 80 : 75;
+  if (line.size() != line_width + 1) {
+    line.assign(line_width + 1, ' ');
+  }
+  std::memset(&line[0], ' ', 66);
+  cpp_stamp_control_numbers(line, 0, stamp, mat, mf, mt);
   if (write_opts.include_linenum) {
     cpp_write_line_number(line, (linenum % 99999)+1);
   }
+  line[line_width] = '\n';
   linenum++;
+}
+
+
+inline void cpp_prepare_line(
+  std::string& line, int mat, int mf, int mt, int &linenum, WritingOptions &write_opts
+) {
+  CppLineStamp stamp;
+  cpp_prepare_line(line, stamp, mat, mf, mt, linenum, write_opts);
 }
 
 
 // Appends a line prepared as by cpp_prepare_line to out.
 inline void cpp_append_line(
-  std::string& out, int mat, int mf, int mt, int &linenum, WritingOptions &write_opts
+  std::string& out, CppLineStamp& stamp, int mat, int mf, int mt, int &linenum,
+  WritingOptions &write_opts
 ) {
   std::size_t start = out.size();
   int line_width = (write_opts.include_linenum) ? 80 : 75;
   out.append(line_width, ' ');
   out += '\n';
-  cpp_write_custom_int_field(out, start + 66, 4, mat);
-  cpp_write_custom_int_field(out, start + 70, 2, mf);
-  cpp_write_custom_int_field(out, start + 72, 3, mt);
+  cpp_stamp_control_numbers(out, start, stamp, mat, mf, mt);
   if (write_opts.include_linenum) {
     cpp_write_custom_int_field(out, start + 75, 5, (linenum % 99999)+1);
   }
@@ -927,15 +973,16 @@ inline void cpp_write_pairs(
   int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
 ) {
   if (n == 0) return;
+  CppLineStamp stamp;
   std::size_t linestart = out.size();
-  cpp_append_line(out, mat, mf, mt, linenum, write_opts);
+  cpp_append_line(out, stamp, mat, mf, mt, linenum, write_opts);
   int j = 0;
   for (int i=0; i < n; i++) {
     cpp_write_field_at(out, linestart + 11*(j++), first[i], write_opts);
     cpp_write_field_at(out, linestart + 11*(j++), second[i], write_opts);
     if (j > 5 && i+1 < n) {
       linestart = out.size();
-      cpp_append_line(out, mat, mf, mt, linenum, write_opts);
+      cpp_append_line(out, stamp, mat, mf, mt, linenum, write_opts);
       j = 0;
     }
   }

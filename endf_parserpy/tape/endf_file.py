@@ -76,6 +76,13 @@ _VALID_CHECK_EDITS = ("eager", "deferred")
 # sentinel distinguishing "no value given" from an explicit value of None
 _UNSET = object()
 
+# the characters other than "\n" at which str.splitlines() divides a
+# Latin-1 decoded text (the raw text of a section is divided into lines
+# by str.splitlines() where lines are needed, see EndfFile._mini_tape)
+# (a search for each character is several times faster than a regular
+# expression with a character class)
+_OTHER_LINE_BREAKS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85")
+
 
 def _value_match(field, value, tol):
     if tol and isinstance(field, (int, float)) and isinstance(value, (int, float)):
@@ -123,7 +130,7 @@ class FailedSection(_FailedUnit):
     exception : Exception
         The exception raised while parsing the section.
     raw_lines : list[str]
-        The raw text of the section.
+        The raw lines of the section.
     position : int
         Position of the material the section belongs to.
     mf, mt : int
@@ -977,19 +984,32 @@ class EndfFile:
         self._section_cache.put(key, section, sec_entry.length)
         return section
 
-    def _parse_section(self, entry, mf, mt, raw_lines):
-        # wrap the section in a minimal single-material tape so the
-        # ordinary parser can be used unchanged
-        mini_tape = (
-            [self._index.tpid_line]
-            + list(raw_lines)
-            + [
-                _control_line(entry.mat, 0, 0),  # FEND
-                _control_line(0, 0, 0),  # MEND
-                TEND_LINE,  # TEND
-            ]
+    def _mini_tape(self, entry, raw):
+        """Wrap the raw text of a section in a minimal single-material tape.
+
+        The result is a single string, the form in which both parsers
+        take a tape, so the ordinary parser can be used unchanged. It is
+        the text of the lines ``raw.splitlines()`` between the TPID and
+        the FEND/MEND/TEND records, joined by ``"\n"``. For the usual
+        text, whose only line break is ``"\n"``, this is the text itself,
+        which is therefore not divided into lines and joined again.
+        """
+        tail = (
+            _control_line(entry.mat, 0, 0)  # FEND
+            + "\n"
+            + _control_line(0, 0, 0)  # MEND
+            + "\n"
+            + TEND_LINE  # TEND
         )
+        if any(c in raw for c in _OTHER_LINE_BREAKS):
+            lines = raw.splitlines()
+            return "\n".join([self._index.tpid_line] + lines + [tail])
+        sep = "\n" if raw and not raw.endswith("\n") else ""
+        return "".join((self._index.tpid_line, "\n", raw, sep, tail))
+
+    def _parse_section(self, entry, mf, mt, raw):
         try:
+            mini_tape = self._mini_tape(entry, raw)
             result = self._parser.parse(mini_tape)
             section = result[mf][mt]
         except Exception as exc:
@@ -998,7 +1018,7 @@ class EndfFile:
                     f"failed to parse MF={mf}/MT={mt} of the material at "
                     f"position {entry.position} (MAT={entry.mat})"
                 ) from exc
-            return FailedSection(exc, raw_lines, entry.position, mf, mt)
+            return FailedSection(exc, raw.splitlines(), entry.position, mf, mt)
         if isinstance(section, Mapping):
             return _Section(section)
         return section  # a section without a recipe stays a list of strings
@@ -1031,7 +1051,9 @@ class EndfFile:
         else:
             fh.seek(offset)
             data = fh.read(length)
-        return data.decode("latin-1").splitlines()
+        # the raw text is kept as a single string; it is divided into
+        # lines only where lines are needed (see _assemble)
+        return data.decode("latin-1")
 
     def _check_source(self):
         stat = os.stat(self._path)
@@ -1063,7 +1085,7 @@ class EndfFile:
             else:
                 sec_entry = self._index[slot.original_position].sections[(mf, mt)]
                 raw = self._get_raw(slot.original_position, mf, mt, sec_entry)
-                section = _strip_send(raw)
+                section = _strip_send(raw.splitlines())
             material.setdefault(mf, {})[mt] = section
         return material
 

@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EndfParserPy` resolves array indices given by loop variables, control record specifications and lookahead wrappers with shortcuts. Results are identical
 - `EndfParserPy` splits files into sections and numbers lines faster, which reduces the fixed cost of every parse, also with `include`/`exclude`. Results are identical
 - `EndfParserCpp` writes TAB1/TAB2 records with fewer copies: the tables read from the Python dictionary are moved to the variables of the record instead of copied. The output is identical; the effect on writing time is small (below about 2%, within measurement noise)
+- `EndfFile` passes a section to the parser as a single string: the raw text of the section, read from the file, is kept as one string (also in the raw cache) and wrapped in the TPID and FEND/MEND/TEND records, instead of being divided into a list of lines that the parser joins again (`EndfParserCpp`) or divides again (`EndfParserPy`). A text with line breaks other than LF (e.g. CRLF) is still divided into lines first, so the parsers receive the same tape as before and the results and the output of `export` and `to_string` are identical. Building the tape of a section takes less than half the time (e.g. 18 ms instead of 42 ms for the 11.4 MB of the MF1 and MF3 sections of 56 files of ENDF/B-VIII.1, a few percent of the parse time), and the raw cache needs about 40% less memory for the same text
 
 ### Removed
 

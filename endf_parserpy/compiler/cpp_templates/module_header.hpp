@@ -396,6 +396,15 @@ inline py::object cpp_text_encoding_function(const char* name) {
 // U+00FF is stored by Python with one byte per character, which is used
 // directly; data and size refer to the memory of the string.
 inline bool cpp_pystr_bytes(PyObject* obj, const char*& data, std::size_t& size) {
+#if PY_VERSION_HEX < 0x030C0000
+  // Before Python 3.12, a string created with a deprecated C API may not
+  // yet have its canonical representation, which the macros below read.
+  // If it cannot be created, the callers' fallback reports the error.
+  if (PyUnicode_READY(obj) != 0) {
+    PyErr_Clear();
+    return false;
+  }
+#endif
   if (PyUnicode_KIND(obj) == PyUnicode_1BYTE_KIND) {
     data = reinterpret_cast<const char*>(PyUnicode_1BYTE_DATA(obj));
     size = static_cast<std::size_t>(PyUnicode_GET_LENGTH(obj));

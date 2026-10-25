@@ -239,6 +239,35 @@ def _generate_code_for_varassign(
     return code
 
 
+def _in_loop_of_scope(vardict):
+    """Whether the code is inside a loop of the current variable scope.
+
+    The variable of a loop is registered in the scope in which the loop
+    occurs while its body is generated; a section opens a new scope, so
+    a loop outside of the section does not count.
+    """
+    for key, vartypes in vardict.items():
+        if key.startswith("__"):
+            continue
+        if any(vartype[0] == "loopvartype" for vartype in vartypes):
+            return True
+    return False
+
+
+def _is_scalar_first_read_in_loop(vartok, vardict):
+    """Whether a scalar variable is read for the first time in a loop.
+
+    The variable then belongs to the scope of the loop, and the code
+    that reads it is executed in every iteration.
+    """
+    return (
+        len(vartok.indices) == 0
+        and not vartok.cpp_namespace
+        and find_parent_dict(vartok, vardict) is None
+        and _in_loop_of_scope(vardict)
+    )
+
+
 def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
     code = ""
     node = transform_nodes_inplace(node, expand_abbreviation, vardict)
@@ -274,6 +303,20 @@ def generate_code_for_varassign(node, vardict, valcode, dtype, throw_cpp=False):
             assigncode = _generate_code_for_varassign(
                 v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
             )
+            validation_code = get_generate_expr_validation_func(vardict)(
+                valcode, node, vardict
+            )
+            code += cpp.ifelse(
+                condition=did_not_read_cond, code=assigncode, other_code=validation_code
+            )
+        elif _is_scalar_first_read_in_loop(v, vardict):
+            # the first occurrence of a scalar variable in a loop of its
+            # scope is executed again in the following iterations, which
+            # check the value read before, as in EndfParserPy
+            assigncode = _generate_code_for_varassign(
+                v, node, vardict, valcode, dtype, throw_cpp=throw_cpp
+            )
+            did_not_read_cond = aux.did_not_read_var(v, vardict, v.indices)
             validation_code = get_generate_expr_validation_func(vardict)(
                 valcode, node, vardict
             )

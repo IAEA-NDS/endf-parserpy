@@ -61,10 +61,10 @@ from .views import (
     _LiveMapping,
     _LiveSequence,
     _SectionView,
+    _frozen,
     _navigate,
     _own_value,
     _plain,
-    _readonly,
 )
 
 
@@ -704,6 +704,10 @@ class EndfFile:
 
         Pass exactly one of ``value`` (equality, within ``tol`` for
         numbers) or ``predicate`` (a callable applied to the field).
+        The predicate receives the field as a section view in
+        ``check_edits="eager"`` mode hands it out: a nested ``dict`` or
+        ``list`` as a read-only view, a numpy array read-only and a
+        scalar as is, so that it cannot change the tape.
         Returns a list of :class:`MaterialView`.
         """
         self._ensure_valid()
@@ -716,9 +720,10 @@ class EndfFile:
             if not found:
                 continue
             if predicate is not None:
-                # a numpy array is passed read-only, as a section view
-                # hands it out, so the predicate cannot alter the cache
-                matched = bool(predicate(_readonly(field)))
+                # the field is passed as a frozen view hands it out (a
+                # dict or list as a frozen view, a numpy array read-only),
+                # so the predicate cannot alter the cached section
+                matched = bool(predicate(_frozen(field)))
             else:
                 matched = _value_match(field, value, tol)
             if matched:
@@ -1067,11 +1072,14 @@ class EndfFile:
 
     # -- write-back ----------------------------------------------------
 
-    def _assemble(self, slot):
+    def _assemble(self, slot, detach=False):
         """Build a ``{MF: {MT: section}}`` dict ready for the writer.
 
         Untouched sections are taken verbatim from disk; edited or added
-        sections come from the overlay.
+        sections come from the overlay. These are the canonical objects
+        of the overlay unless ``detach`` is true, which copies them (see
+        :meth:`MaterialView.to_tape_dict`); the lists of lines of the
+        untouched sections are new lists in either case.
         """
         material = {0: {0: [self._index.tpid_line]}}
         for mf, mt in self._slot_section_keys(slot):
@@ -1082,6 +1090,8 @@ class EndfFile:
                 # SEND so the writer can re-emit it
                 if isinstance(section, list):
                     section = _strip_send(section)
+                if detach:
+                    section = _plain(section)
             else:
                 sec_entry = self._index[slot.original_position].sections[(mf, mt)]
                 raw = self._get_raw(slot.original_position, mf, mt, sec_entry)

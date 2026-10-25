@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/05/17
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -131,9 +131,15 @@ class MaterialView:
 
         Untouched sections appear as their raw ENDF-6 lines and edited
         or added ones as parsed mappings; the writer accepts both.
+
+        The result is a standalone copy, like the result of
+        ``detach()`` of a section view: it consists of ordinary
+        ``dict`` and ``list`` objects (numpy arrays are copied), and
+        changing it does not change the tape. To apply a change, assign
+        the changed section back, e.g. ``view[mf, mt] = tape_dict[mf][mt]``.
         """
         self._check_live()
-        return self._file._assemble(self._slot)
+        return self._file._assemble(self._slot, detach=True)
 
     def __getitem__(self, key):
         self._check_live()

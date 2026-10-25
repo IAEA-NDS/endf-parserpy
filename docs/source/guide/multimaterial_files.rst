@@ -172,6 +172,8 @@ the parser's writer or to :func:`~endf_parserpy.write_tape`:
    material_dict = endf_file[0].to_tape_dict()   # one material as a tape dict
    text = parser.write(material_dict)            # render it on its own
 
+The result is a copy: changing it does not change the tape.
+
 Because the same material number (``MAT``) may occur several
 times on a tape (a PENDF tape repeats it for every
 temperature), materials are identified by position rather
@@ -302,6 +304,11 @@ be supplied to match on an arbitrary condition:
 .. code:: Python
 
    hot = endf_file.query('1/451/TEMP', predicate=lambda t: t > 1000.0)
+
+The predicate receives the field read-only, as a section
+retrieved with ``check_edits="eager"``: a nested dictionary
+or list as a read-only view and a numpy array as a read-only
+array.
 
 If the same lookup is needed repeatedly, the
 :meth:`~endf_parserpy.EndfFile.build_index` method parses the

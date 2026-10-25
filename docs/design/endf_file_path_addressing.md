@@ -197,6 +197,14 @@ caller intent.
 numpy arrays are deep-copied as well (`a.copy()`, same dtype and shape), so a
 detached section shares no data with the cache.
 
+`MaterialView.to_tape_dict()` returns a whole material in the same detached
+form: an ordinary `{MF: {MT: section}}` dict for the parser's writer, whose
+edited sections are copies of the overlay (untouched sections are the raw
+lines read from disk, new lists in any case). A view would not do here, as
+the writer takes `dict`s and `list`s; and since a change to the result would
+not reach the tape, the result must not share containers with it ("nothing
+looks writable whose write would be lost").
+
 ### 5.4 Type
 
 A view is a `Mapping` / `Sequence`, not a `dict` / `list`, so
@@ -398,8 +406,9 @@ and the render-check.
   (`EndfFile.__getitem__`, `MaterialView.__getitem__`, `get`) and **skipped**
   by the internal read-and-discard paths (`query`, `build_index`), which
   operate on the canonical section directly and pay no wrapping cost; only a
-  numpy field handed to a user `predicate` of `query` is passed read-only
-  (§5.5), and `query(..., value)` compares numpy fields element by element.
+  field handed to a user `predicate` of `query` is wrapped as a frozen view
+  hands it out (a `dict` / `list` as a frozen view, a numpy array read-only,
+  §5.5), and `query(..., value)` compares numpy fields element by element.
 * `__getitem__` — dispatch on depth: material → `MaterialView`; section →
   `_view(...)`; field → `_view(...)` of, or the bare value at,
   `walk_section`. A `FailedSection` raises `SectionParseError`.

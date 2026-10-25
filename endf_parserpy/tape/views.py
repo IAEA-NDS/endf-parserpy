@@ -210,6 +210,21 @@ class _SectionView:
         return f"<{kind} section view {self._target!r}>"
 
 
+def _frozen(value):
+    """Return ``value`` as a frozen view hands it out.
+
+    A ``dict`` or ``list`` is wrapped in a frozen view, a numpy array is
+    returned read-only (see :func:`_readonly`) and a scalar as is. Used
+    where a part of a canonical section is handed to user code that
+    only reads it, e.g. the ``predicate`` of ``EndfFile.query``.
+    """
+    if isinstance(value, Mapping):
+        return _FrozenMapping(value)
+    if isinstance(value, list):
+        return _FrozenSequence(value)
+    return _readonly(value)
+
+
 class _FrozenMapping(_SectionView, Mapping):
     """Recursively read-only mapping view of a parsed section."""
 

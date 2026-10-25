@@ -1242,16 +1242,25 @@ cpp_validate_field(
 
 // we are done with the cpp_validate_field related functionality
 
+// The integer in the field of the given length starting at start_pos,
+// converted by std::atoi, or 0 if the field is blank. The field is
+// copied into a terminated buffer for std::atoi; the fields read with
+// this function (MAT/MF/MT numbers and the fields of INTG records) are
+// short, so the buffer is on the stack and only longer fields need a
+// heap allocation.
 inline int cpp_read_custom_int_field(const char *str, int start_pos, int length) {
-  std::vector<char> strzero(length+1);
-  std::memcpy(strzero.data(), str+start_pos, length);
-  strzero[length] = '\0';
-  for (int i=0; i < length; i++) {
-    if (strzero[i] != ' ') {
-      return std::atoi(strzero.data());
-    }
+  const char* field = str + start_pos;
+  int i = 0;
+  while (i < length && field[i] == ' ') i++;
+  if (i >= length) return 0;
+  char buf[32];
+  if (length < static_cast<int>(sizeof(buf))) {
+    std::memcpy(buf, field, length);
+    buf[length] = '\0';
+    return std::atoi(buf);
   }
-  return 0;
+  std::string longfield(field, static_cast<std::size_t>(length));
+  return std::atoi(longfield.c_str());
 }
 
 

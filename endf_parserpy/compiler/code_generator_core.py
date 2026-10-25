@@ -644,6 +644,7 @@ def generate_code_for_intg(node, vardict):
         "int cpp_end = cpp_start + cpp_intg_num_values(cpp_ndigit) * cpp_step"
     )
     code += cpp.statement("std::vector<int> cpp_intvec")
+    code += cpp.statement("cpp_intvec.reserve(cpp_intg_num_values(cpp_ndigit))")
     code += cpp.statement("int elpos = 0")
     # If available (writing), the values of the row are retrieved once
     # before the loop over the fields rather than once per field

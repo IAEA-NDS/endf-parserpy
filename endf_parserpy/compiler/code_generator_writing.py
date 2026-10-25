@@ -783,7 +783,7 @@ def generate_all_cpp_writefuns_code(recipes, module_name, shared_registry=None):
         'py::arg("endf_dict")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
-        'py::arg("WritingOptions") = false',
+        'py::arg("write_opts") = default_writing_options()',
     )
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
         ["write_endf_file"],

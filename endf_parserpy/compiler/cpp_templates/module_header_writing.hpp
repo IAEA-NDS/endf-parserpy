@@ -151,7 +151,12 @@ inline void cpp_write_custom_int_field(std::string &str, int start, int length, 
       + std::to_string(length)
     );
   }
-  str.replace(start, length, buf, n);
+  // n == length, as the number is padded to the width of the field
+  if (start >= 0 && static_cast<std::size_t>(start) + n <= str.size()) {
+    std::memcpy(&str[start], buf, n);
+  } else {
+    str.replace(start, length, buf, n);
+  }
 }
 
 
@@ -217,11 +222,15 @@ inline void cpp_write_line_number(std::string& str, int value) {
 }
 
 
-inline std::string cpp_prepare_line(
-  int mat, int mf, int mt, int &linenum, WritingOptions &write_opts
+// Fills line with a blank line carrying the MAT, MF and MT numbers and the
+// line number (if include_linenum) and a line ending. The memory of line
+// is reused, so that a line variable refilled for each line of a record
+// is not allocated anew.
+inline void cpp_prepare_line(
+  std::string& line, int mat, int mf, int mt, int &linenum, WritingOptions &write_opts
 ) {
   int line_width = (write_opts.include_linenum) ? 80 : 75;
-  std::string line(line_width, ' ');
+  line.assign(line_width, ' ');
   line += '\n';
   cpp_write_mat_number(line, mat);
   cpp_write_mf_number(line, mf);
@@ -230,6 +239,32 @@ inline std::string cpp_prepare_line(
     cpp_write_line_number(line, (linenum % 99999)+1);
   }
   linenum++;
+}
+
+
+// Appends a line prepared as by cpp_prepare_line to out.
+inline void cpp_append_line(
+  std::string& out, int mat, int mf, int mt, int &linenum, WritingOptions &write_opts
+) {
+  std::size_t start = out.size();
+  int line_width = (write_opts.include_linenum) ? 80 : 75;
+  out.append(line_width, ' ');
+  out += '\n';
+  cpp_write_custom_int_field(out, start + 66, 4, mat);
+  cpp_write_custom_int_field(out, start + 70, 2, mf);
+  cpp_write_custom_int_field(out, start + 72, 3, mt);
+  if (write_opts.include_linenum) {
+    cpp_write_custom_int_field(out, start + 75, 5, (linenum % 99999)+1);
+  }
+  linenum++;
+}
+
+
+inline std::string cpp_prepare_line(
+  int mat, int mf, int mt, int &linenum, WritingOptions &write_opts
+) {
+  std::string line;
+  cpp_prepare_line(line, mat, mf, mt, linenum, write_opts);
   return line;
 }
 
@@ -665,9 +700,9 @@ inline void field_size_check(const std::string& field) {
 }
 
 
-// value is float case
-inline void cpp_write_field_double(
-  std::string& line, const char fieldnum, const double& value,
+// value is float case; the field starts at position pos of line
+inline void cpp_write_field_double_at(
+  std::string& line, std::size_t pos, const double& value,
   WritingOptions& write_opts
 ) {
   char buf[64];
@@ -675,36 +710,81 @@ inline void cpp_write_field_double(
   if (n != 11) {
     field_size_check(float2endfstr(value, write_opts));
   }
-  line.replace(fieldnum*11, 11, buf, 11);
+  line.replace(pos, 11, buf, 11);
 }
 
 
 // value is EndfFloatCpp case
-inline void cpp_write_field_EndfFloatCpp(
-  std::string& line, const char fieldnum, const EndfFloatCpp& value,
+inline void cpp_write_field_EndfFloatCpp_at(
+  std::string& line, std::size_t pos, const EndfFloatCpp& value,
   WritingOptions& write_opts
 ) {
   // the original string of a value (an EndfFloat in the dictionary) is
   // written verbatim whenever it is available, irrespective of the
   // preserve_value_strings option, which only controls parsing
   if (!value.has_original_string()) {
-    cpp_write_field_double(line, fieldnum, static_cast<double>(value), write_opts);
+    cpp_write_field_double_at(line, pos, static_cast<double>(value), write_opts);
     return;
   }
   const std::string& fieldstr = value.original_string_ref();
   field_size_check(fieldstr);
-  line.replace(fieldnum*11, 11, fieldstr);
+  line.replace(pos, 11, fieldstr);
 }
 
 
 // value is int case
-inline void cpp_write_field_int(
-  std::string& line, const char fieldnum, const int& value,
+inline void cpp_write_field_int_at(
+  std::string& line, std::size_t pos, const int& value,
   WritingOptions& write_opts
 ) {
   char buf[32];
   int n = cpp_int_to_padded_chars(buf, 11, value);
-  line.replace(fieldnum*11, 11, buf, n);
+  line.replace(pos, 11, buf, n);
+}
+
+
+inline void cpp_write_field_at(
+  std::string& line, std::size_t pos, const double& value, WritingOptions& write_opts
+) {
+  cpp_write_field_double_at(line, pos, value, write_opts);
+}
+
+
+inline void cpp_write_field_at(
+  std::string& line, std::size_t pos, const EndfFloatCpp& value, WritingOptions& write_opts
+) {
+  cpp_write_field_EndfFloatCpp_at(line, pos, value, write_opts);
+}
+
+
+inline void cpp_write_field_at(
+  std::string& line, std::size_t pos, const int& value, WritingOptions& write_opts
+) {
+  cpp_write_field_int_at(line, pos, value, write_opts);
+}
+
+
+inline void cpp_write_field_double(
+  std::string& line, const char fieldnum, const double& value,
+  WritingOptions& write_opts
+) {
+  cpp_write_field_double_at(line, fieldnum*11, value, write_opts);
+}
+
+
+inline void cpp_write_field_EndfFloatCpp(
+  std::string& line, const char fieldnum, const EndfFloatCpp& value,
+  WritingOptions& write_opts
+) {
+  cpp_write_field_EndfFloatCpp_at(line, fieldnum*11, value, write_opts);
+}
+
+
+inline void cpp_write_field_int(
+  std::string& line, const char fieldnum, const int& value,
+  WritingOptions& write_opts
+) {
+  cpp_write_field_int_at(line, fieldnum*11, value, write_opts);
 }
 
 
@@ -720,13 +800,7 @@ template<typename T>
     || std::is_same<T, int>::value
     , "T must be int, double or EndfFloatCpp"
   );
-  if (std::is_same<T, double>::value) {
-    return cpp_write_field_double(line, fieldnum, value, write_opts);
-  } else if (std::is_same<T, EndfFloatCpp>::value) {
-    return cpp_write_field_EndfFloatCpp(line, fieldnum, value, write_opts);
-  } else {
-    return cpp_write_field_int(line, fieldnum, value, write_opts);
-  }
+  cpp_write_field_at(line, fieldnum*11, value, write_opts);
 }
 
 
@@ -745,26 +819,27 @@ inline void cpp_check_same_size(
 }
 
 
-// lines with the n pairs (first[i], second[i]), three pairs per line;
-// no line for n=0, as the parsers read ceil(2n/6) lines
+// Appends the lines with the n pairs (first[i], second[i]) to out, three
+// pairs per line; no line for n=0, as the parsers read ceil(2n/6) lines.
+// The fields are written in place into the lines appended to out.
 template<typename T1, typename T2>
 inline void cpp_write_pairs(
-  std::ostringstream& oss, const std::vector<T1>& first, const std::vector<T2>& second, int n,
+  std::string& out, const std::vector<T1>& first, const std::vector<T2>& second, int n,
   int mat, int mf, int mt, int& linenum, WritingOptions &write_opts
 ) {
   if (n == 0) return;
-  std::string curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
+  std::size_t linestart = out.size();
+  cpp_append_line(out, mat, mf, mt, linenum, write_opts);
   int j = 0;
   for (int i=0; i < n; i++) {
-    cpp_write_field(curline, j++, first[i], write_opts);
-    cpp_write_field(curline, j++, second[i], write_opts);
+    cpp_write_field_at(out, linestart + 11*(j++), first[i], write_opts);
+    cpp_write_field_at(out, linestart + 11*(j++), second[i], write_opts);
     if (j > 5 && i+1 < n) {
-      oss << curline;
-      curline = cpp_prepare_line(mat, mf, mt, linenum, write_opts);
+      linestart = out.size();
+      cpp_append_line(out, mat, mf, mt, linenum, write_opts);
       j = 0;
     }
   }
-  oss << curline;
 }
 
 
@@ -777,10 +852,9 @@ inline void write_tab1_body(
   cpp_check_same_size(tab_body.X.size(), tab_body.Y.size(), "x", "y", "TAB1");
   int nr = tab_body.INT.size();
   int np = tab_body.X.size();
-  std::ostringstream oss;
-  cpp_write_pairs(oss, tab_body.NBT, tab_body.INT, nr, mat, mf, mt, linenum, write_opts);
-  cpp_write_pairs(oss, tab_body.X, tab_body.Y, np, mat, mf, mt, linenum, write_opts);
-  line = oss.str();
+  line.clear();
+  cpp_write_pairs(line, tab_body.NBT, tab_body.INT, nr, mat, mf, mt, linenum, write_opts);
+  cpp_write_pairs(line, tab_body.X, tab_body.Y, np, mat, mf, mt, linenum, write_opts);
 }
 
 
@@ -789,9 +863,8 @@ inline void write_tab2_body(
 ) {
   cpp_check_same_size(tab_body.NBT.size(), tab_body.INT.size(), "NBT", "INT", "TAB2");
   int nr = tab_body.INT.size();
-  std::ostringstream oss;
-  cpp_write_pairs(oss, tab_body.NBT, tab_body.INT, nr, mat, mf, mt, linenum, write_opts);
-  line = oss.str();
+  line.clear();
+  cpp_write_pairs(line, tab_body.NBT, tab_body.INT, nr, mat, mf, mt, linenum, write_opts);
 }
 
 

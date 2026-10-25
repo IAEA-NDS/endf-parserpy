@@ -17,8 +17,9 @@ from .cpp_types.cpp_varaux import check_variable
 
 
 def prepare_line(linevar, mat, mf, mt, linenum, write_opts):
+    # the line variable is refilled in place, reusing its memory
     code = cpp.statement(
-        f"{linevar} = cpp_prepare_line({mat}, {mf}, {mt}, {linenum}, {write_opts})"
+        f"cpp_prepare_line({linevar}, {mat}, {mf}, {mt}, {linenum}, {write_opts})"
     )
     return code
 

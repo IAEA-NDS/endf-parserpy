@@ -305,7 +305,14 @@ inline py::list index_shifter_as<py::list>(const py::object& obj) {
 }
 
 
+template <int N>
+class CppArrayAccessor;
+
+
 class IndexShifter {
+
+    template <int N>
+    friend class CppArrayAccessor;
 
 private:
     int start_index;
@@ -576,6 +583,28 @@ public:
         it->second.register_element(indices);
     }
 
+    bool is_list_mode() const {
+        return list_mode;
+    }
+
+    // object of the variable in the dictionary and its index bookkeeping,
+    // as retrieved by lookup (for CppArrayAccessor); false if the
+    // dictionary is not an exact dict or does not contain the variable,
+    // then the generic access is to be used (which raises the error)
+    bool find_array(const char* varname, py::object& obj, IndexShifter*& shifter) {
+        if (! PyDict_CheckExact(refdict.ptr())) return false;
+        PyObject* item = PyDict_GetItemString(refdict.ptr(), varname);
+        if (item == nullptr) return false;
+        obj = py::reinterpret_borrow<py::object>(item);
+        std::string name(varname);
+        IndexShifterMap::iterator it = index_shifter_map.find(name);
+        if (it == index_shifter_map.end()) {
+            it = index_shifter_map.insert(std::make_pair(name, IndexShifter(list_mode))).first;
+        }
+        shifter = &it->second;
+        return true;
+    }
+
     bool has_value(const std::string& varname) {
         return refdict.contains(varname);
     }
@@ -586,6 +615,214 @@ public:
             return defval;
         }
         return lookup(varname, key, indices);
+    }
+
+};
+
+
+// ---------------------------------------------------------------------
+// Elements of an array variable in a loop (writing)
+//
+// get<T>({i1, ..., iN}) returns the element of the variable with N
+// indices, equivalent to py::cast<T>(store.get_value(varname, {i1, ...}))
+// for T = EndfFloatCpp or int, without the overhead of the generic access
+// per element (std::string and std::vector arguments, lookup of the
+// variable in the dictionary and of its index bookkeeping, creation of a
+// Python object for an element of a numpy array). The accessor is
+// declared before a loop and does nothing before its first use, so that
+// a loop without iterations behaves as before. On each use, the index
+// bookkeeping of the IndexShifter of the variable is updated level by
+// level as by the generic access; only the containers of the levels are
+// kept for the next use, which is valid as the dictionary is not modified
+// while writing. Exact dicts (dict mode), exact lists and numpy arrays
+// readable by the fast path (list mode) are indexed directly. An element
+// of a list or dict that is not an exact float (or exact int for
+// T = int), e.g. an EndfFloat object with its original string, is
+// converted with py::cast<T> as by the generic access. In all other cases
+// (other containers, missing elements, numpy elements requiring a numpy
+// scalar or not convertible to T) the generic access is used for the
+// element, which leads to the same result or exception: it repeats the
+// steps of the index bookkeeping already done, which have no effect the
+// second time.
+// ---------------------------------------------------------------------
+
+template <int N>
+class CppArrayAccessor {
+
+public:
+    CppArrayAccessor(IndexShifterStore& store, const char* varname)
+        : store(store), varname(varname), shifter(nullptr), num_levels(0) {}
+
+    template <typename T>
+    T get(const int (&indices)[N]) {
+        T value;
+        if (! get_fast(indices, value)) {
+            value = py::cast<T>(store.get_value(
+                varname, std::vector<int>(indices, indices + N), py::none()));
+        }
+        return value;
+    }
+
+private:
+    enum Kind { KIND_OTHER, KIND_DICT, KIND_LIST, KIND_NDARRAY };
+
+    IndexShifterStore& store;
+    const char* varname;
+    // index bookkeeping of the variable (element of a std::map, so the
+    // pointer remains valid); nullptr before the first use
+    IndexShifter* shifter;
+    // containers of the levels 0 to num_levels-1 (level 0: the variable),
+    // each one with the position in the container of the level above
+    int num_levels;
+    py::object cont[N];
+    int kind[N];
+    int pos_above[N];
+    CppNdarrayView view[N];
+
+    void set_level(int d, PyObject* obj, int pos) {
+        cont[d] = py::reinterpret_borrow<py::object>(obj);
+        pos_above[d] = pos;
+        if (store.is_list_mode()) {
+            if (PyList_CheckExact(obj)) {
+                kind[d] = KIND_LIST;
+            } else if (cpp_ndarray_view(obj, view[d])) {
+                kind[d] = KIND_NDARRAY;
+            } else {
+                kind[d] = KIND_OTHER;
+            }
+        } else {
+            kind[d] = PyDict_CheckExact(obj) ? KIND_DICT : KIND_OTHER;
+        }
+        num_levels = d + 1;
+    }
+
+    // element at position pos of the container of level d (borrowed
+    // reference), nullptr if missing
+    PyObject* get_item(int d, int pos) {
+        PyObject* obj = cont[d].ptr();
+        if (kind[d] == KIND_LIST) {
+            if (pos < 0 || pos >= PyList_GET_SIZE(obj)) return nullptr;
+            return PyList_GET_ITEM(obj, pos);
+        }
+        PyObject* key = PyLong_FromLong(pos);
+        if (key == nullptr) throw py::error_already_set();
+        PyObject* item = PyDict_GetItemWithError(obj, key);
+        Py_DECREF(key);
+        if (item == nullptr && PyErr_Occurred()) PyErr_Clear();
+        return item;
+    }
+
+    static void convert(PyObject* item, EndfFloatCpp& value) {
+        if (PyFloat_CheckExact(item)) {
+            value = EndfFloatCpp(PyFloat_AS_DOUBLE(item));
+        } else {
+            value = py::cast<EndfFloatCpp>(py::handle(item));
+        }
+    }
+
+    static void convert(PyObject* item, int& value) {
+        if (PyLong_CheckExact(item)) {
+            int overflow;
+            long v = PyLong_AsLongAndOverflow(item, &overflow);
+            if (overflow == 0 && v >= INT_MIN && v <= INT_MAX && ! (v == -1 && PyErr_Occurred())) {
+                value = static_cast<int>(v);
+                return;
+            }
+            if (PyErr_Occurred()) PyErr_Clear();
+        }
+        value = py::cast<int>(py::handle(item));
+    }
+
+    // integer element of a numpy array in the range of int
+    static bool read_int(const CppNdarrayView& v, const char* ptr, int& value) {
+        if (v.kind == NDKIND_SIGNED) {
+            long long x = cpp_ndarray_read_signed(ptr, v.itemsize);
+            if (x < INT_MIN || x > INT_MAX) return false;
+            value = static_cast<int>(x);
+            return true;
+        }
+        if (v.kind == NDKIND_UNSIGNED) {
+            unsigned long long x = cpp_ndarray_read_unsigned(ptr, v.itemsize);
+            if (x > static_cast<unsigned long long>(INT_MAX)) return false;
+            value = static_cast<int>(x);
+            return true;
+        }
+        return false;
+    }
+
+    // as the conversion of the Python float or int of cpp_ndarray_element
+    static bool read_element(const CppNdarrayView& v, const char* ptr, EndfFloatCpp& value) {
+        if (v.kind == NDKIND_FLOAT64) {
+            double x;
+            std::memcpy(&x, ptr, sizeof(double));
+            value = EndfFloatCpp(x);
+            return true;
+        }
+        int x;
+        if (! read_int(v, ptr, x)) return false;
+        value = EndfFloatCpp(static_cast<double>(x));
+        return true;
+    }
+
+    static bool read_element(const CppNdarrayView& v, const char* ptr, int& value) {
+        return read_int(v, ptr, value);
+    }
+
+    // element of a numpy array of level d with one dimension per remaining
+    // index, with the index bookkeeping of IndexShifter::setdefault_i and
+    // IndexShifter::get_item_nd (pos and index_value: of level d)
+    template <typename T>
+    bool get_ndarray(
+        int d, IndexShifter* level, int pos, int index_value, const int (&indices)[N], T& value
+    ) {
+        const CppNdarrayView& v = view[d];
+        const int ndim = N - d;
+        if (v.ndim != ndim) return false;
+        if (ndim > 1) level = &level->get_next_level(index_value);
+        if (pos < 0 || pos >= v.dims[0]) return false;
+        const char* ptr = v.data + pos * v.strides[0];
+        for (int e = 1; e < ndim; e++) {
+            int iv;
+            int p = level->shift_index(indices[d+e], iv);
+            if (p < 0 || p >= v.dims[e]) return false;
+            ptr += p * v.strides[e];
+            if (e + 1 < ndim) level = &level->get_next_level(iv);
+        }
+        return read_element(v, ptr, value);
+    }
+
+    template <typename T>
+    bool get_fast(const int (&indices)[N], T& value) {
+        if (shifter == nullptr) {
+            py::object obj;
+            IndexShifter* sh;
+            if (! store.find_array(varname, obj, sh)) return false;
+            set_level(0, obj.ptr(), 0);
+            shifter = sh;
+        }
+        IndexShifter* level = shifter;
+        for (int d = 0; d < N; d++) {
+            if (kind[d] == KIND_OTHER) return false;
+            int index_value;
+            int pos = level->shift_index(indices[d], index_value);
+            if (kind[d] == KIND_NDARRAY) {
+                return get_ndarray(d, level, pos, index_value, indices, value);
+            }
+            if (d + 1 == N) {
+                PyObject* item = get_item(d, pos);
+                if (item == nullptr) return false;
+                convert(item, value);
+                return true;
+            }
+            // get_next_level only changes the levels below `level`
+            level = &level->get_next_level(index_value);
+            if (num_levels <= d + 1 || pos_above[d+1] != pos) {
+                PyObject* item = get_item(d, pos);
+                if (item == nullptr) return false;
+                set_level(d + 1, item, pos);
+            }
+        }
+        return false;
     }
 
 };

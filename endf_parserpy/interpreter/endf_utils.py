@@ -509,12 +509,26 @@ def skip_blank_lines(lines, ofs):
     return ofs
 
 
+def _line_columns(line, ncols):
+    # the first ncols columns of a line without its line ending; the
+    # columns missing from a short line are blanks, as when it is read
+    if line.endswith("\n"):
+        line = line[:-1]
+    if line.endswith("\r"):
+        line = line[:-1]
+    return line[:ncols].ljust(ncols)
+
+
 def add_linenumbers_to_section(lines, write_opts=None):
     width = write_opts.get("width", 11)
     mfdict = read_ctrl(lines[0], read_opts={"width": width})
     linenum_field_start = width * 6 + 9  # mat + mf + mt field width = 9
+    n = linenum_field_start
+    lines = [
+        t if len(t) == n and t[-1] not in "\r\n" else _line_columns(t, n) for t in lines
+    ]
     if not write_opts["include_linenum"]:
-        return [t[:linenum_field_start] for t in lines]
+        return lines
     ofs = 1 if mfdict["MF"] != 0 else 0
     linenum_width = 5
     linenum_max = 10**linenum_width - 1

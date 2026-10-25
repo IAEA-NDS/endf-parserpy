@@ -1158,16 +1158,21 @@ inline void write_section_verbatim(
         throw std::logic_error("unexpected return from check_verbatim_line");
       }
     }
+    // the columns of the line without its line ending; the columns
+    // missing from a short line are written as blanks, as they are read
+    // as blanks (resize would otherwise pad with NUL characters)
+    std::size_t size = linestr.size();
+    if (size > 0 && linestr[size-1] == '\n') size--;
+    if (size > 0 && linestr[size-1] == '\r') size--;
+    linestr.resize(size);
     if (write_opts.include_linenum) {
-      linestr.resize(80);
+      linestr.resize(80, ' ');
       cpp_write_line_number(linestr, (linenum % 99999) + 1);
       linenum++;
     } else {
-      linestr.erase(75, std::string::npos);
+      linestr.resize(75, ' ');
     }
-    if (linestr.back() != '\n') {
-      linestr.push_back('\n');
-    }
+    linestr.push_back('\n');
     oss << linestr;
   }
   if (mf != 0) {

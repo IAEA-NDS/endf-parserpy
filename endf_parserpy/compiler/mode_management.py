@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/23
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -296,4 +296,24 @@ def get_layout_recorder(vardict):
             return basic_ops["layout_recorder"]
         if "__up" not in curdict:
             return None
+        curdict = curdict["__up"]
+
+
+def register_unused_arrays(names, vardict):
+    """Register the names of variables with indices whose values need not
+    be stored in the C++ variables (writing), see
+    :mod:`endf_parserpy.compiler.unused_arrays`."""
+    basic_ops = vardict.setdefault("__basic_ops", {})
+    basic_ops["unused_arrays"] = frozenset(names)
+
+
+def get_unused_arrays(vardict):
+    """Return the registered names of unused arrays (empty if none)."""
+    curdict = vardict
+    while True:
+        basic_ops = curdict.get("__basic_ops", {})
+        if "unused_arrays" in basic_ops:
+            return basic_ops["unused_arrays"]
+        if "__up" not in curdict:
+            return frozenset()
         curdict = curdict["__up"]

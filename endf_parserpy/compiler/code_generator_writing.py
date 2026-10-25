@@ -59,7 +59,9 @@ from .mode_management import (
     register_generate_expr_validation_func,
     register_lookahead_presence_check,
     register_lookahead_catch_clause,
+    register_unused_arrays,
 )
+from .unused_arrays import find_unused_arrays
 from .endf2cpp_aux import (
     get_numeric_field,
     get_text_field,
@@ -487,7 +489,13 @@ def generate_cpp_writefun(name, endf_recipe, mat=None, mf=None, mt=None, parser=
         fun_header=fun_header,
         fun_footer=fun_footer,
         fun_setup=ctrl_code,
+        tree_analysis=_register_unused_arrays,
     )
+
+
+def _register_unused_arrays(parsetree, vardict):
+    # the values of these variables are not stored when writing
+    register_unused_arrays(find_unused_arrays(parsetree), vardict)
 
 
 def generate_master_writefun(name, recipefuns):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2026/10/23
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -11,6 +11,7 @@
 
 from ..variable_management import should_track_read
 from ..mode_management import get_layout_recorder
+from ..unused_arrays import UnstoredAssignment
 from .. import cpp_primitives as cpp
 from .cpp_vartype_handling import (
     has_loopvartype,
@@ -54,7 +55,9 @@ def assign_exprstr_to_var(vartok, exprstr, dtype, vardict, node=None):
         if new_code is not False:
             code += new_code
             track_read = should_track_read(vartok, vardict)
-            if track_read:
+            # the value of an unused array is not stored (writing), so
+            # that the type of the variable needs no check either
+            if track_read and not isinstance(new_code, UnstoredAssignment):
                 specialtype = m.query.get_specialtype_name()
                 code += type_change_check(vartok, dtype, specialtype)
                 code += update_last_type_var(

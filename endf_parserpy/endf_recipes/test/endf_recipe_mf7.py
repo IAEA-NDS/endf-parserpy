@@ -16,7 +16,10 @@
 # except for an additional record in an if-clause that is never executed
 # (NI is not negative), which contains the variables again, so that no
 # accessor is used. The output and the errors of writing must be the same.
-# MT5 has accessors for the elements of LIST records.
+# MT5 has accessors for the elements of LIST records. The values of A, K,
+# C, L, B, E, Ep and b in MT1, MT3 and MT5 are not stored in the C++
+# variables when writing, as they are not used (see unused_arrays.py in
+# endf_parserpy/compiler), whereas MT2 and MT4 store all values.
 
 # A[i] and K[i]: one index, starting at I0; T[i,j]: accessed with the
 # first index in the inner loop

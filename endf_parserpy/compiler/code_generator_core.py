@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -122,6 +122,7 @@ def generate_cpp_parse_or_write_fun(
     fun_header=None,
     fun_footer=None,
     fun_setup=None,
+    tree_analysis=None,
 ):
     if vardict is None:
         raise TypeError("dictionary `vardict` must be provided")
@@ -136,6 +137,8 @@ def generate_cpp_parse_or_write_fun(
     parsetree = parser.parse(endf_recipe)
     parsetree = transform_nodes(parsetree, simplify_expr_node)
     parsetree = transform_nodes_inplace(parsetree, node_and_kids_to_ParseNode)
+    if tree_analysis is not None:
+        tree_analysis(parsetree, vardict)
 
     code = generate_code_from_parsetree(parsetree, vardict)
 

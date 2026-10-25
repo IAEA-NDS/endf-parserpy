@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -41,12 +41,14 @@ from endf_parserpy.compiler.node_aux import (
 from endf_parserpy.compiler.mode_management import (
     get_layout_recorder,
     get_nested_element_hook,
+    get_unused_arrays,
 )
 from ..cpp_vartype_handling import has_loopvartype
 from ..cpp_varaux import init_local_var_from_global_var
 from ..cpp_dtype_aux import map_dtype
 from .query import Query
 from .auxiliary import get_ptr_varname, moveup_ptrassign
+from endf_parserpy.compiler.unused_arrays import UnstoredAssignment
 
 
 def _cpp_type(dtype, num_indices):
@@ -320,6 +322,21 @@ def _pointer_levels(vardict):
     return curdict["__basic_ops"].setdefault("nested_array_pointer_levels", {})
 
 
+def _prepared_per_iteration(vartok, node, num_leading):
+    # Whether the element of each leading level i is prepared before the
+    # loop of the index i+1, i.e. once in each iteration of the loop of
+    # the index i, also if the loop of the index i+1 has no iterations.
+    # Then the elements are prepared in the order of their indices without
+    # gaps, so that prepare cannot fail (see unused_arrays).
+    limit_node = None
+    for i in range(num_leading):
+        dest = moveup_ptrassign(vartok, i, node, limit_node)
+        limit_node = dest
+        if not is_loop(dest) or str(get_loopvar(dest)) != str(vartok.indices[i + 1]):
+            return False
+    return True
+
+
 class Assign:
 
     def define_var(vartok, vardict, save_state=False):
@@ -358,15 +375,24 @@ class Assign:
         if levels is not None:
             key = (str(vartok), num_indices)
             levels[key] = max(levels.get(key, 0), num_leading)
+        # the values of an unused array are not stored (writing), only the
+        # elements are registered with the index bookkeeping as before
+        unused = (
+            node is not None
+            and str(vartok) in get_unused_arrays(vardict)
+            and _prepared_per_iteration(vartok, node, num_leading)
+        )
         code = ""
         ptrvar_old = cpp_varname
         limit_node = None
         for i in range(num_leading):
             ptrvar_new = get_ptr_varname(vartok, i)
             dot = "." if i == 0 else "->"
-            new_code = cpp.statement(
-                f"{ptrvar_new} = {ptrvar_old}{dot}prepare({indices[i]})"
-            )
+            new_code = ""
+            if not unused:
+                new_code = cpp.statement(
+                    f"{ptrvar_new} = {ptrvar_old}{dot}prepare({indices[i]})"
+                )
             if nested_element_hook is not None:
                 new_code += nested_element_hook(vartok, indices[: i + 1])
             if node is not None:
@@ -384,6 +410,8 @@ class Assign:
             else:
                 code += new_code
             ptrvar_old = ptrvar_new
+        if unused:
+            return UnstoredAssignment(code)
         dot = "." if num_leading == 0 else "->"
         if block is None:
             code += cpp.statement(f"{ptrvar_old}{dot}set({indices[-1]}, {exprstr})")

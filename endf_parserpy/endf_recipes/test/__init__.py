@@ -46,6 +46,13 @@ from .endf_recipe_mf6 import ENDF_RECIPE_MF6_MT3
 # abbreviations defined in a branch of an if-clause
 from .endf_recipe_mf5 import ENDF_RECIPE_MF5_MT1
 
+# elements of array variables in loops (accessors of the C++ writer)
+from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT1
+from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT2
+from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT3
+from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT4
+from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT5
+
 endf_recipe_dictionary = {}
 defdic(endf_recipe_dictionary, (2, 1), ENDF_RECIPE_MF2_MT1)
 defdic(endf_recipe_dictionary, (2, 2), ENDF_RECIPE_MF2_MT2)
@@ -81,3 +88,8 @@ defdic(endf_recipe_dictionary, (6, 1), ENDF_RECIPE_MF6_MT1)
 defdic(endf_recipe_dictionary, (6, 2), ENDF_RECIPE_MF6_MT2)
 defdic(endf_recipe_dictionary, (6, 3), ENDF_RECIPE_MF6_MT3)
 defdic(endf_recipe_dictionary, (5, 1), ENDF_RECIPE_MF5_MT1)
+defdic(endf_recipe_dictionary, (7, 1), ENDF_RECIPE_MF7_MT1)
+defdic(endf_recipe_dictionary, (7, 2), ENDF_RECIPE_MF7_MT2)
+defdic(endf_recipe_dictionary, (7, 3), ENDF_RECIPE_MF7_MT3)
+defdic(endf_recipe_dictionary, (7, 4), ENDF_RECIPE_MF7_MT4)
+defdic(endf_recipe_dictionary, (7, 5), ENDF_RECIPE_MF7_MT5)

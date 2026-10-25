@@ -130,7 +130,7 @@ def _bind_field_value(valcode):
     # the assignment to the C++ variable(s) in the field. If it is retrieved
     # from the Python dictionary, it is retrieved once and stored in a local
     # variable whose name is returned (as the same str subclass as valcode).
-    if "get_value(" not in valcode:
+    if "get_value(" not in valcode and "cpp_wacc_" not in valcode:
         return valcode, ""
     _field_value_counter[0] += 1
     name = f"cpp_wval_{_field_value_counter[0]}"
@@ -141,8 +141,9 @@ def _bind_field_value(valcode):
 def _get_numeric_field_wrapper(node, idx, dtype, vardict):
     code = ""
     if not in_lookahead(vardict):
+        # elements of arrays in loops with an accessor, see get_array_accessor
         valcode = get_expr_value_using_endf_dict(
-            node, "cpp_index_shifter_store", dtype, vardict
+            node, "cpp_index_shifter_store", dtype, vardict, site=node
         )
         valcode = _convert_field_value(node, valcode, dtype, lenient=False)
         valcode, code = _bind_field_value(valcode)

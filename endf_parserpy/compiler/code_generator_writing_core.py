@@ -3,19 +3,28 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2026/10/24
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from lark.tree import Tree
+from lark.lexer import Token
+from endf_parserpy.utils.tree_utils import get_child, get_name
 from .expr_utils.equation_utils import get_variables_in_expr
 from .expr_utils.custom_nodes import VariableToken
 from .expr_utils.tree_walkers import transform_nodes
 from .expr_utils.node_trafos import node2cppstr, CppFloatValue
 from .expr_utils.conversion import convert_to_exprtree
-from .node_checks import is_extvar
+from .node_checks import (
+    is_extvar,
+    is_loop,
+    is_section,
+    is_list,
+    is_abbreviation,
+)
+from .lookahead_management import in_lookahead
 from . import endf2cpp_aux as aux
 from .endf2cpp_aux_writing import write_section_verbatim
 from .cpp_types import cpp_varaux
@@ -42,6 +51,114 @@ def _own_dtype(node, vardict, dtype):
     return dtype
 
 
+def _count_name(node, name, abbrevs, depth=0):
+    # occurrences of a variable name in node (with any number of indices),
+    # also in the indices of variables and in the expressions of the
+    # abbreviations used in node
+    if isinstance(node, Token):
+        count = 0
+        if node.type in ("VARNAME", "VARIABLE"):
+            count += 1 if str(node) == name else 0
+            if str(node) in abbrevs and depth < 20:
+                count += _count_name(abbrevs[str(node)], name, abbrevs, depth + 1)
+        for idx in getattr(node, "indices", ()):
+            count += _count_name(idx, name, abbrevs, depth)
+        return count
+    return sum(_count_name(c, name, abbrevs, depth) for c in node.children)
+
+
+def _abbreviations(node, abbrevs):
+    # the abbreviations defined in node added to abbrevs (by name)
+    if isinstance(node, Token):
+        return
+    if is_abbreviation(node):
+        abbrevs[str(get_child(node, "VARNAME"))] = get_child(node, "expr")
+    for c in node.children:
+        _abbreviations(c, abbrevs)
+
+
+def _contains_lookahead(node):
+    if isinstance(node, Token):
+        return False
+    if node.data == "lookahead_option":
+        return True
+    return any(_contains_lookahead(c) for c in node.children)
+
+
+def _hoisting_loop(vartok, site, vardict):
+    # The outermost loop around the field `site` (in the same scope) in
+    # which the variable occurs only in this field (as any variable with
+    # this name, in any expression, condition, loop bound, index or
+    # abbreviation), or None. The loop must not contain a lookahead, whose
+    # records are generated twice.
+    name = str(vartok)
+    abbrevs = {str(k): v for k, v in vardict.get("__abbrevs", {}).items()}
+    loop = None
+    curnode = site
+    while getattr(curnode, "parent", None) is not None:
+        parent = curnode.parent
+        # sections and the bodies of named LIST records have their own
+        # IndexShifterStore
+        if is_section(parent):
+            break
+        if is_list(parent) and get_name(curnode) == "list_body":
+            if get_child(parent, "list_name", nofail=True) is not None:
+                break
+        if is_loop(parent):
+            if _contains_lookahead(parent):
+                break
+            _abbreviations(parent, abbrevs)
+            if _count_name(parent, name, abbrevs) != 1:
+                break
+            loop = parent
+        curnode = parent
+    return loop
+
+
+def _accessor_registry(vardict):
+    # accessors of a generated function by loop and variable name, shared
+    # by all scopes of the function (stored with its basic operations)
+    curdict = vardict
+    while "__basic_ops" not in curdict:
+        if "__up" not in curdict:
+            return None
+        curdict = curdict["__up"]
+    return curdict["__basic_ops"].setdefault("array_accessors", {})
+
+
+def get_array_accessor(vartok, site, vardict):
+    """Name of a CppArrayAccessor of an array variable in a loop.
+
+    If the value of an indexed variable in the field ``site`` of a record
+    in a loop is retrieved from the dictionary, and the variable occurs
+    nowhere else in the loop, an accessor of the variable is declared
+    before the outermost such loop (see :func:`_hoisting_loop`), whose
+    ``get`` retrieves an element with less overhead than ``get_value``
+    with the same result. The accessor does nothing before its first use,
+    so that a loop without iterations is not affected. ``None`` if this
+    is not applicable.
+    """
+    if site is None or len(vartok.indices) == 0 or in_lookahead(vardict):
+        return None
+    registry = _accessor_registry(vardict)
+    if registry is None:
+        return None
+    loop = _hoisting_loop(vartok, site, vardict)
+    if loop is None:
+        return None
+    key = (id(loop), str(vartok))
+    if key not in registry:
+        accname = f"cpp_wacc_{len(registry) + 1}"
+        registry[key] = accname
+        loop.append_precode(
+            cpp.statement(
+                f"CppArrayAccessor<{len(vartok.indices)}> {accname}"
+                + f'(cpp_index_shifter_store, "{vartok}")'
+            )
+        )
+    return registry[key]
+
+
 def get_node_value_using_endf_dict(
     node,
     index_shifter_store,
@@ -50,6 +167,7 @@ def get_node_value_using_endf_dict(
     defaults=None,
     idx=None,
     in_arithmetic=False,
+    site=None,
 ):
     defaults = {} if defaults is None else defaults
     if not isinstance(node, VariableToken):
@@ -69,6 +187,13 @@ def get_node_value_using_endf_dict(
     for i, idxtok in enumerate(node.indices):
         curidxstr = get_idxstr(node, i, vardict)
         idxstrs.append(curidxstr)
+
+    if dtype in (int, float) and dtype not in defaults and idx is None:
+        accname = get_array_accessor(node, site, vardict)
+        if accname is not None:
+            idcs = ", ".join(idxstrs)
+            valcode = f"{accname}.get<{map_dtype(dtype)}>({{{idcs}}})"
+            return CppFloatValue(valcode) if dtype == float else valcode
 
     idcsarg = "std::vector<int>({" + ", ".join(idxstrs) + "})"
     defval = "py::none()" if dtype not in defaults else f"py::cast({defaults[dtype]})"
@@ -96,7 +221,7 @@ def get_node_value_using_endf_dict(
 
 
 def get_expr_value_using_endf_dict(
-    node, index_shifter_store, dtype, vardict, defaults=None, idx=None
+    node, index_shifter_store, dtype, vardict, defaults=None, idx=None, site=None
 ):
     node = convert_to_exprtree(node)
     node = transform_nodes(node, expand_abbreviation, vardict)
@@ -109,6 +234,7 @@ def get_expr_value_using_endf_dict(
         defaults,
         idx=idx,
         in_arithmetic=contains_arithmetic(node),
+        site=site,
     )
     return valcode
 

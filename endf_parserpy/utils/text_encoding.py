@@ -249,8 +249,12 @@ def check_verbatim_line(line, lineno, mf, mt, accept_non_ascii=True):
     Characters above U+00FF are rejected and, if ``accept_non_ascii`` is
     ``False``, characters outside printable ASCII in the columns that are
     written, i.e. the first 75 columns without the line ending.
-    ``lineno`` counts from 1. Also called by the C++ parser.
+    ``lineno`` counts from 1. A line given as ``bytes`` is checked as
+    its characters with the same codes (Latin-1), as which it is
+    written. Also called by the C++ parser.
     """
+    if isinstance(line, bytes):
+        line = line.decode(ENDF_ENCODING)
     what = verbatim_line_name(lineno, mf, mt)
     check_text_value(line, what)
     if not accept_non_ascii:

@@ -1305,8 +1305,16 @@ class EndfParserPy(EndfParserBase):
                     # if no recipe is available to parse a
                     # MF/MT section, it will be preserved as a
                     # list of strings in the parse step
-                    # and we output that unchanged
-                    curlines = endf_dic[mf][mt].copy()
+                    # and we output that unchanged; a line given as bytes
+                    # is written as these bytes, as by EndfParserCpp
+                    curlines = [
+                        (
+                            line.decode(ENDF_ENCODING)
+                            if isinstance(line, bytes)
+                            else line
+                        )
+                        for line in endf_dic[mf][mt]
+                    ]
                     accept_non_ascii = self.write_opts["accept_non_ascii"]
                     for i, curline in enumerate(curlines):
                         if not accept_non_ascii or not curline.isascii():

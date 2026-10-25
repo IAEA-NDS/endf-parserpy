@@ -1,6 +1,6 @@
 import pytest
 from endf_parserpy import EndfParser
-from endf_parserpy.utils.matching import eval_expr
+from endf_parserpy.utils.matching import eval_expr, endf_path_generator
 
 
 RELATIONS = ("==", ">", ">=", "<", "<=", "!=")
@@ -93,6 +93,14 @@ def test_relation_with_starred_path(relation):
     expr5 = "/*/c == 5"
     assert eval_expr(expr4, d)
     assert not eval_expr(expr5, d)
+
+
+def test_nested_starred_paths():
+    d = {"a": {1: {"b": [1, 2]}, 2: {"b": [3, 4]}}}
+    paths = [str(p) for p in endf_path_generator("a/*/b/*", d)]
+    assert paths == ["a/1/b/0", "a/1/b/1", "a/2/b/0", "a/2/b/1"]
+    assert eval_expr("/a/*/b/* == 4", d)
+    assert not eval_expr("/a/*/b/* == 5", d)
 
 
 @pytest.mark.parametrize("lop", UNARY_LOGICAL_OPS)

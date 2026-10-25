@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/12/07
-# Last modified:   2024/12/07
+# Last modified:   2026/10/25
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -54,10 +54,10 @@ def endf_path_generator(endf_path, trail_dict, lead_path=EndfPath()):
         else:
             it = range(len(curdict))
 
+        full_lead_path = lead_path + new_lead_path
         for k in it:
             trail_path = k + endf_path[first_star_pos + 1 :]
-            new_lead_path = lead_path + new_lead_path
-            yield from endf_path_generator(trail_path, curdict, new_lead_path)
+            yield from endf_path_generator(trail_path, curdict, full_lead_path)
     else:
         curpath = lead_path + endf_path
         yield lead_path + endf_path

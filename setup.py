@@ -4,7 +4,6 @@ import logging
 import sys
 import os
 import platform
-from setuptools.command.build_py import build_py as _build_py
 from pybind11.setup_helpers import (
     Pybind11Extension,
     build_ext as pybind11_build_ext,
@@ -46,23 +45,11 @@ def get_package_version():
 
 
 def get_packages():
-    packages = setuptools.find_packages(include=["endf_parserpy*"])
-    dynamic_subpackage = "endf_parserpy.endf_recipes.recipe_cache"
-    if dynamic_subpackage not in packages:
-        packages.append(dynamic_subpackage)
-    return packages
+    return setuptools.find_packages(include=["endf_parserpy*"])
 
 
 def add_project_dir_to_syspath():
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-
-
-def populate_endf_recipe_cache():
-    add_project_dir_to_syspath()
-    from endf_parserpy.endf_recipes.utils import _populate_recipe_cache
-
-    logger.info("Populate ENDF recipe cache directory within package directory")
-    _populate_recipe_cache(clear_dir=True)
 
 
 def determine_optimization_flags(optim_flag):
@@ -84,12 +71,6 @@ def determine_optimization_flags(optim_flag):
         "ignore optimization level in envvar INSTALL_ENDF_PARSERPY_CPP_OPTIM"
     )
     return []
-
-
-class CustomBuildPy(_build_py):
-    def run(self):
-        populate_endf_recipe_cache()
-        super().run()
 
 
 class CustomBuildExt(pybind11_build_ext):
@@ -308,19 +289,19 @@ def main():
         version=get_package_version(),
         packages=get_packages(),
         cmdclass={
-            "build_py": CustomBuildPy,
             "build_ext": custom_build_ext,
         },
         ext_modules=ext_modules,
         zip_safe=False,
         include_package_data=True,
-        install_requires=[
-            "lark>=1.0.0",
-            "platformdirs>=4.3.6",
-        ],
+        install_requires=[],
         extras_require={
             # optional accelerator: enables the vectorized TapeIndex scan
             "fast": ["numpy>=1.20"],
+            # logical expressions of `endf-cli match`
+            "cli": ["lark>=1.0.0"],
+            # the tests compare the recipe parser with lark
+            "test": ["pytest", "lark>=1.1"],
         },
     )
 

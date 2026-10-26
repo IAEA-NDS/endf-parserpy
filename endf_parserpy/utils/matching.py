@@ -3,13 +3,12 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/12/07
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
-from lark import Lark, Tree, Token
 from endf_parserpy import EndfPath, EndfDict
 from endf_parserpy.utils.math_utils import EndfFloat
 from itertools import product
@@ -107,7 +106,34 @@ logical_expr_grammar = """
 """
 
 
-expr_parser = Lark(logical_expr_grammar, parser="lalr")
+def _import_lark():
+    # lark is an optional dependency, only needed for logical expressions
+    try:
+        import lark
+    except ImportError as exc:
+        raise ImportError(
+            "Logical expressions with EndfPath wildcards, e.g. the queries "
+            "of `endf-cli match`, require the lark package, which could not "
+            "be imported. Install it with `pip install endf-parserpy[cli]` "
+            "or `pip install lark`."
+        ) from exc
+    return lark
+
+
+class _LazyExprParser:
+    """Parser of logical expressions, created with lark on first use."""
+
+    def __init__(self):
+        self._parser = None
+
+    def parse(self, expr):
+        if self._parser is None:
+            lark = _import_lark()
+            self._parser = lark.Lark(logical_expr_grammar, parser="lalr")
+        return self._parser.parse(expr)
+
+
+expr_parser = _LazyExprParser()
 
 
 def make_robust_relation(func):
@@ -184,7 +210,8 @@ def eval_prefixed_logical_expr_tree(node, endf_dict, opts):
 
 
 def eval_tree(node, endf_dict, opts):
-    if isinstance(node, Tree):
+    # the nodes are lark.Tree or lark.Token (a str) instances
+    if not isinstance(node, str):
         name = node.data
         if name in special_tree_handlers:
             yield from special_tree_handlers[name](node, endf_dict, opts)

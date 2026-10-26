@@ -174,7 +174,7 @@ class EndfParserPy(EndfParserBase):
         array_type="dict",
         explain_missing_variable=True,
         cache_dir=None,
-        print_cache_info=True,
+        print_cache_info=None,
         endf_format="endf6-ext",
         recipes=None,
         parsing_funs=None,
@@ -338,13 +338,15 @@ class EndfParserPy(EndfParserBase):
             fail because a variable is missing in the dictionary,
             print available explanation if this argument is ``True``.
         cache_dir
-            Deprecated and ignored. ENDF recipes were previously
+            Deprecated and ignored; providing it emits a
+            ``DeprecationWarning``. ENDF recipes were previously
             converted into parse trees with the Lark package and cached
             in this directory; they are now parsed by
             :mod:`endf_parserpy.recipe_parser` whenever this class is
             instantiated, which takes a fraction of a second.
         print_cache_info : bool
-            Deprecated and ignored (see ``cache_dir``).
+            Deprecated and ignored (see ``cache_dir``); providing it
+            emits a ``DeprecationWarning``.
         endf_format : str
             Allow the user to pick specific ENDF format flavors.
             The default `endf6-ext` tolerates deviations from the
@@ -373,11 +375,19 @@ class EndfParserPy(EndfParserBase):
                     "array_type `numpy` requires the numpy package, "
                     "which could not be imported"
                 ) from exc
+        if cache_dir is not None or print_cache_info is not None:
+            warnings.warn(
+                "the arguments `cache_dir` and `print_cache_info` are "
+                "deprecated and have no effect: ENDF recipes are parsed "
+                "whenever this class is instantiated and not cached anymore",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
         if recipes is None:
             recipes = get_recipe_dict(endf_format)
-        self.tree_dic = get_recipe_parsetree_dic(recipes, cache_dir, print_cache_info)
+        self.tree_dic = get_recipe_parsetree_dic(recipes)
         self.parsing_funs = parsing_funs if parsing_funs is not None else {}
         # array_type="numpy": kinds of the variables recorded while parsing
         self._numpy_forms = None

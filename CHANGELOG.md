@@ -57,7 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
-- Parameters `cache_dir` and `print_cache_info` of `EndfParserPy` and `EndfParserFactory.create` (and the `--print_cache_info` flag of `endf-cli`): they are accepted but have no effect, as there is no recipe cache anymore
+- Parameters `cache_dir` and `print_cache_info` of `EndfParserPy` and `EndfParserFactory.create` (and the `--print_cache_info` flag of `endf-cli`): they are accepted but have no effect, as there is no recipe cache anymore; providing them emits a `DeprecationWarning`
+- The legacy arguments of the functions of `endf_parserpy.interpreter.endf_recipe_utils` (`recipe_grammar` of `get_recipe_parser`; `grammar_hash`, `cache_dir` and `print_cache_info` of `get_recipe_parsetree` and `get_recipe_parsetree_dic`) are now optional, have no effect and emit a `DeprecationWarning` when provided
 
 ### Removed
 

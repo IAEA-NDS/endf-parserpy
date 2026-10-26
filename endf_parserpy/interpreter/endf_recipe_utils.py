@@ -9,8 +9,9 @@
 #
 ############################################################
 
+import warnings
+
 from endf_parserpy.recipe_parser import get_recipe_parser as _get_parser
-from endf_parserpy.endf_recipes.endf_lark_ebnf import endf_recipe_grammar
 from endf_parserpy.utils.tree_utils import is_tree
 from hashlib import md5
 
@@ -19,36 +20,71 @@ def get_string_hash(inpstr):
     return md5(inpstr.encode()).hexdigest()
 
 
-def get_recipe_parser(recipe_grammar):
+def _warn_deprecated_cache_args(names):
+    warnings.warn(
+        f"the argument(s) {', '.join(f'`{n}`' for n in names)} are "
+        "deprecated and have no effect: ENDF recipes are parsed when "
+        "needed and not cached anymore",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+def get_recipe_parser(recipe_grammar=None):
     """Return the parser for ENDF recipes.
 
-    The argument ``recipe_grammar`` is ignored; it is kept for
-    compatibility. The returned object has a ``parse`` method that
-    converts a recipe into a parse tree (see
+    The argument ``recipe_grammar`` is deprecated and ignored; providing
+    it emits a ``DeprecationWarning``. The returned object has a
+    ``parse`` method that converts a recipe into a parse tree (see
     :mod:`endf_parserpy.recipe_parser`).
     """
+    if recipe_grammar is not None:
+        _warn_deprecated_cache_args(["recipe_grammar"])
     return _get_parser()
 
 
 def get_recipe_parsetree(
-    recipe, recipe_parser, grammar_hash, cache_dir, print_cache_info
+    recipe, recipe_parser, grammar_hash=None, cache_dir=None, print_cache_info=None
 ):
     """Return the parse tree of an ENDF recipe.
 
     The arguments ``grammar_hash``, ``cache_dir`` and ``print_cache_info``
-    are ignored. Parse trees were cached in previous versions because
-    parsing recipes was slow; they are now parsed when needed.
+    are deprecated and ignored; providing them emits a
+    ``DeprecationWarning``. Parse trees were cached in previous versions
+    because parsing recipes was slow; they are now parsed when needed.
     """
+    legacy = [
+        name
+        for name, value in [
+            ("grammar_hash", grammar_hash),
+            ("cache_dir", cache_dir),
+            ("print_cache_info", print_cache_info),
+        ]
+        if value is not None
+    ]
+    if legacy:
+        _warn_deprecated_cache_args(legacy)
     return recipe_parser.parse(recipe)
 
 
-def get_recipe_parsetree_dic(recipe_dic, cache_dir, print_cache_info):
+def get_recipe_parsetree_dic(recipe_dic, cache_dir=None, print_cache_info=None):
     """Return the parse trees of a (nested) dictionary of recipes.
 
-    The arguments ``cache_dir`` and ``print_cache_info`` are ignored
-    (see :func:`get_recipe_parsetree`).
+    The arguments ``cache_dir`` and ``print_cache_info`` are deprecated
+    and ignored; providing them emits a ``DeprecationWarning`` (see
+    :func:`get_recipe_parsetree`).
     """
-    parser = get_recipe_parser(endf_recipe_grammar)
+    legacy = [
+        name
+        for name, value in [
+            ("cache_dir", cache_dir),
+            ("print_cache_info", print_cache_info),
+        ]
+        if value is not None
+    ]
+    if legacy:
+        _warn_deprecated_cache_args(legacy)
+    parser = _get_parser()
     tree_dic = {}
     for mf in recipe_dic:
         tree_dic.setdefault(mf, {})

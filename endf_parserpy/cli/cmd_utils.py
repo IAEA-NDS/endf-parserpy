@@ -45,7 +45,7 @@ ENDF_PARSER_ARGS = (
     ("accept_nan_inf", bool, True, None, True, True, True),
     ("accept_d_exponent", bool, True, None, True, True, True),
     ("accept_non_ascii", bool, True, None, True, True, True),
-    ("print_cache_info", bool, True, False, False, True, False),
+    ("print_cache_info", bool, True, None, False, True, False),
     ("endf_format", str, None, None, True, True, True),
     ("loglevel", int, None, None, False, True, True),
     ("preserve_value_strings", bool, True, False, True, True, True),

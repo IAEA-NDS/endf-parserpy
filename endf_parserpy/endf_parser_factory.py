@@ -194,7 +194,6 @@ class EndfParserFactory:
             {
                 "check_arrays": True,
                 "explain_missing_variable": True,
-                "print_cache_info": True,
                 "loglevel": logging.WARNING,
             },
         )

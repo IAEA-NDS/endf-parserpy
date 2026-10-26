@@ -22,6 +22,7 @@ from .code_generator_parsing_core import (
     generate_endf_dict_assignments,
 )
 from .code_generator_writing_core import (
+    get_array_accessor,
     get_expr_value_using_endf_dict,
     contains_arithmetic,
     get_mat_from_mfmt_section,
@@ -37,6 +38,7 @@ from .expr_utils.tree_walkers import (
 from . import cpp_primitives as cpp
 from .cpp_types import cpp_varops_assign
 from .cpp_types import cpp_varaux
+from .cpp_types.cpp_varops_query import get_idxstr
 from . import endf2cpp_aux as aux
 from .mode_management import (
     register_numeric_field_getter,
@@ -275,7 +277,10 @@ def _custom_int_row_binder(node, count, vardict):
     # row of integers. The first `count` elements of the row are retrieved
     # once and stored in a local std::vector<int> whose name is returned,
     # so that the row is not retrieved from the Python dictionary again
-    # for each field. None is returned if this is not applicable.
+    # for each field. In a loop, the row is retrieved with an accessor
+    # (see get_array_accessor), which reads a row of a numpy array with a
+    # row per record (e.g. KIJ with array_type="numpy") directly. None is
+    # returned if this is not applicable.
     if in_lookahead(vardict):
         return None, ""
     exprtree = transform_nodes(convert_to_exprtree(node), expand_abbreviation, vardict)
@@ -288,9 +293,15 @@ def _custom_int_row_binder(node, count, vardict):
         return None, ""
     _field_value_counter[0] += 1
     name = f"cpp_wrow_{_field_value_counter[0]}"
-    code = cpp.statement(
-        f"std::vector<int> {name} = cpp_intg_row_values({rowobj}, {count})"
-    )
+    accname = get_array_accessor(exprtree, node, vardict)
+    if accname is not None:
+        idcs = ", ".join(
+            get_idxstr(exprtree, i, vardict) for i in range(len(exprtree.indices))
+        )
+        rowcode = f"{accname}.get_int_row({{{idcs}}}, {count})"
+    else:
+        rowcode = f"cpp_intg_row_values({rowobj}, {count})"
+    code = cpp.statement(f"std::vector<int> {name} = {rowcode}")
     return name, code
 
 

@@ -646,6 +646,8 @@ public:
 // second time.
 // ---------------------------------------------------------------------
 
+inline std::vector<int> cpp_intg_row_values(const py::object& row, int n);
+
 template <int N>
 class CppArrayAccessor {
 
@@ -661,6 +663,22 @@ public:
                 varname, std::vector<int>(indices, indices + N), py::none()));
         }
         return value;
+    }
+
+    // The first n values of the row of integers of an INTG record, the
+    // element of the variable with N indices, equivalent to
+    // cpp_intg_row_values(store.get_value(varname, {i1, ...}), n). A row
+    // in a list or dict is read by cpp_intg_row_values; a row of a numpy
+    // array with one dimension more than indices (e.g. the values KIJ of
+    // the INTG records of a loop, one row per record) is read directly
+    // from memory, without the creation of a numpy array for the row.
+    std::vector<int> get_int_row(const int (&indices)[N], int n) {
+        std::vector<int> vals;
+        if (get_int_row_fast(indices, n, vals)) {
+            return vals;
+        }
+        return cpp_intg_row_values(store.get_value(
+            varname, std::vector<int>(indices, indices + N), py::none()), n);
     }
 
 private:
@@ -789,6 +807,71 @@ private:
             if (e + 1 < ndim) level = &level->get_next_level(iv);
         }
         return read_element(v, ptr, value);
+    }
+
+    // the row of a numpy array of level d with one dimension per
+    // remaining index and one for the values, with the index bookkeeping
+    // of get_ndarray
+    bool get_ndarray_row(
+        int d, IndexShifter* level, int pos, int index_value, const int (&indices)[N],
+        int n, std::vector<int>& vals
+    ) {
+        const CppNdarrayView& v = view[d];
+        const int ndim = N - d;
+        if (v.ndim != ndim + 1) return false;
+        if (v.kind != NDKIND_SIGNED && v.kind != NDKIND_UNSIGNED) return false;
+        if (ndim > 1) level = &level->get_next_level(index_value);
+        if (pos < 0 || pos >= v.dims[0]) return false;
+        const char* ptr = v.data + pos * v.strides[0];
+        for (int e = 1; e < ndim; e++) {
+            int iv;
+            int p = level->shift_index(indices[d+e], iv);
+            if (p < 0 || p >= v.dims[e]) return false;
+            ptr += p * v.strides[e];
+            if (e + 1 < ndim) level = &level->get_next_level(iv);
+        }
+        if (v.dims[ndim] < n) return false;
+        vals.reserve(n);
+        for (int i = 0; i < n; i++) {
+            int x;
+            if (! read_int(v, ptr + i * v.strides[ndim], x)) return false;
+            vals.push_back(x);
+        }
+        return true;
+    }
+
+    // the levels as in get_fast, the row as in get_int_row
+    bool get_int_row_fast(const int (&indices)[N], int n, std::vector<int>& vals) {
+        if (shifter == nullptr) {
+            py::object obj;
+            IndexShifter* sh;
+            if (! store.find_array(varname, obj, sh)) return false;
+            set_level(0, obj.ptr(), 0);
+            shifter = sh;
+        }
+        IndexShifter* level = shifter;
+        for (int d = 0; d < N; d++) {
+            if (kind[d] == KIND_OTHER) return false;
+            int index_value;
+            int pos = level->shift_index(indices[d], index_value);
+            if (kind[d] == KIND_NDARRAY) {
+                return get_ndarray_row(d, level, pos, index_value, indices, n, vals);
+            }
+            if (d + 1 == N) {
+                PyObject* item = get_item(d, pos);
+                if (item == nullptr) return false;
+                vals = cpp_intg_row_values(py::reinterpret_borrow<py::object>(item), n);
+                return true;
+            }
+            // get_next_level only changes the levels below `level`
+            level = &level->get_next_level(index_value);
+            if (num_levels <= d + 1 || pos_above[d+1] != pos) {
+                PyObject* item = get_item(d, pos);
+                if (item == nullptr) return false;
+                set_level(d + 1, item, pos);
+            }
+        }
+        return false;
     }
 
     template <typename T>

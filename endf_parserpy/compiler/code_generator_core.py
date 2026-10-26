@@ -687,7 +687,10 @@ def generate_code_for_intg(node, vardict):
     code += cpp.statement(
         "int cpp_end = cpp_start + cpp_intg_num_values(cpp_ndigit) * cpp_step"
     )
-    code += cpp.statement("std::vector<int> cpp_intvec")
+    # the vector cpp_intvec of the function is reused for each record, so
+    # that its memory is only allocated again after the values were moved
+    # to a variable (rows of a regular block are copied)
+    code += cpp.statement("cpp_intvec.clear()")
     code += cpp.statement("cpp_intvec.reserve(cpp_intg_num_values(cpp_ndigit))")
     code += cpp.statement("int elpos = 0")
     # If available (writing), the values of the row are retrieved once

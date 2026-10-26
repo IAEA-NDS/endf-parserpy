@@ -107,9 +107,7 @@ def test_mf7_mt451_single_element_roundtrip(ParserCls):
     assert lines[: len(data_lines)] == data_lines
 
 
-@pytest.mark.parametrize(
-    "endf_text", [MF7_MT451_SIO2, MF7_MT451_SINGLE_ELEMENT]
-)
+@pytest.mark.parametrize("endf_text", [MF7_MT451_SIO2, MF7_MT451_SINGLE_ELEMENT])
 def test_mf7_mt451_python_and_cpp_parser_agree(endf_text):
     dict_py = _make_parser(EndfParserPy).parse(endf_text)
     dict_cpp = _make_parser(EndfParserCpp).parse(endf_text)

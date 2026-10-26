@@ -141,7 +141,8 @@ def _finalize_line_func_wrapper(vardict):
 
 
 def _prepare_line_tape_func_wrapper():
-    code = cpp.statement("std::string cpp_line")
+    # a view into the input if it is held in memory (see CppLine)
+    code = cpp.statement("CppLine cpp_line(cont)")
     return code
 
 
@@ -221,7 +222,7 @@ def generate_cpp_parsefun(
 
     ctrl_code = ""
     ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
-    ctrl_code += cpp.statement("std::string cpp_temp_line")
+    ctrl_code += cpp.statement("CppLine cpp_temp_line(cont)")
     ctrl_code += read_raw_line("cpp_temp_line")
     matval = aux.get_mat_number("cpp_temp_line") if mat is None else str(mat)
     mfval = aux.get_mf_number("cpp_temp_line") if mf is None else str(mf)
@@ -322,7 +323,7 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("int last_mat")
     body += cpp.statement("int last_mf")
     body += cpp.statement("int last_mt")
-    body += cpp.statement("std::string cpp_line")
+    body += cpp.statement("CppLine cpp_line(cont)")
     body += cpp.statement("py::list verbatim_section")
     body += cpp.statement("bool found_tpid = false")
     body += cpp.statement("bool after_fend = false")
@@ -447,7 +448,7 @@ def generate_master_parsefun(name, recipefuns):
         r'std::string("Invalid line encountered! This line is outside any MF/MT section.\n")',
         cpp.INDENT,
     )
-    errmsg += cpp.line(r'+ "Line: " + cpp_line', cpp.INDENT)
+    errmsg += cpp.line(r'+ "Line: " + cpp_line.str()', cpp.INDENT)
     default_code = cpp.throw_runtime_error(errmsg, quote=False)
 
     body += cpp.indent_code(

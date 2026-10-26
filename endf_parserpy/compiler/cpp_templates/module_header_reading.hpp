@@ -1186,6 +1186,11 @@ inline bool cpp_values_equal(const EndfRational& x, int y) { return x == y; }
 inline bool cpp_values_equal(int x, const EndfRational& y) { return x == y; }
 
 
+// a line read from the input (defined below)
+class CppLine;
+inline std::string cpp_line_str(const CppLine& line);
+
+
 template<typename U, typename V>
 typename std::enable_if<
   !is_validation_scalar<U>::value || !is_validation_scalar<V>::value, void
@@ -1198,7 +1203,7 @@ cpp_validate_field(
   bool contains_inconsistent_varspec,
   std::string exprstr,
   std::string &line_template,
-  std::string &line,
+  const CppLine &line,
   ParsingOptions &parse_opts
 ) {
   std::stringstream errmsg;
@@ -1220,7 +1225,7 @@ cpp_validate_field(
   bool contains_inconsistent_varspec,
   std::string exprstr,
   std::string &line_template,
-  std::string &line,
+  const CppLine &line,
   ParsingOptions &parse_opts
 ) {
   if (cpp_values_equal(expected_value, actual_value)) return;
@@ -1231,11 +1236,11 @@ cpp_validate_field(
     // ignore zero mismatch only active for scalar data types
     if (is_zero_check(expected_value) && parse_opts.ignore_zero_mismatch) return;
     if (contains_desired_number && parse_opts.ignore_number_mismatch) return;
-    throw_number_mismatch_error(expected_value, actual_value, line, line_template);
+    throw_number_mismatch_error(expected_value, actual_value, cpp_line_str(line), line_template);
   } else {
     // dealing with an expression with variables
     if (contains_inconsistent_varspec && parse_opts.ignore_varspec_mismatch) return;
-    throw_mismatch_error(exprstr, expected_value, actual_value, line, line_template);
+    throw_mismatch_error(exprstr, expected_value, actual_value, cpp_line_str(line), line_template);
   }
 }
 
@@ -1278,10 +1283,10 @@ inline int cpp_read_mt_number(const char *str) {
 }
 
 
-inline bool cpp_is_blank_line(const std::string& line) {
+inline bool cpp_is_blank_line(const char* line, std::size_t size) {
   // scanning from the end exits early for regular lines, which end
   // with the MAT/MF/MT numbers (and possibly a line number)
-  for (std::size_t i = line.size(); i > 0; i--) {
+  for (std::size_t i = size; i > 0; i--) {
     if (line[i-1] != ' ' && line[i-1] != '\t') return false;
   }
   return true;
@@ -1428,12 +1433,24 @@ private:
 // Read-only stream buffer over a block of memory (the content of a file
 // or string). Repositioning (tellg/seekg) only moves the read pointer,
 // whereas a file stream discards its buffered data on every seekg.
-class cpp_memory_streambuf : public std::streambuf {
+// The get area always spans the whole memory, which is not changed while
+// the stream buffer exists, so that the lines read from it can be views
+// into the memory (see CppLine).
+class cpp_memory_streambuf final : public std::streambuf {
 public:
   cpp_memory_streambuf(const char* data, std::size_t size) {
     // the get area is only read from, never written to
     char* begin = const_cast<char*>(data);
     setg(begin, begin, begin + size);
+  }
+
+  // the read position and the end of the memory
+  const char* current() const { return gptr(); }
+  const char* end() const { return egptr(); }
+
+  // move the read position to pos (between current() and end())
+  void move_to(const char* pos) {
+    setg(eback(), const_cast<char*>(pos), egptr());
   }
 
 protected:
@@ -1511,20 +1528,139 @@ class cpp_file_content {
 };
 
 
-// The functions reading a line into an existing string reuse its
-// allocated memory; the line is cleared first so that a failed read
-// leaves an empty line.
-// The fields and the MAT/MF/MT numbers are read at fixed columns up to
-// column 75. Columns missing from a shorter line are blanks (as for
-// EndfParserPy, which reads the columns of a line by slicing), so that the
-// readers never read past the end of the line.
-// Returns the length of the line content before the padding.
-inline std::size_t cpp_pad_short_line(std::string& line) {
-  const std::size_t min_size = 75;
-  if (line.size() >= min_size) return line.size();
-  std::size_t content_size = line.size();
-  line.append(min_size - content_size, ' ');
-  return content_size;
+// A line read from the input, without the line ending (see cpp_getline).
+// If the input is held in memory by a cpp_memory_streambuf (`parse` and
+// `parsefile` with load_file_into_memory=true), the line is a view into
+// that memory, which is neither changed nor moved while it is parsed
+// (repositioning the stream only moves the read pointer), so that the
+// line is not copied. Otherwise the line is read into a string held by
+// the object, whose memory is reused for the next line. A line to be
+// modified, i.e. a short line padded with blanks (see pad_short), is
+// also copied into this string.
+// Unlike std::string::c_str, data() is not terminated by a NUL
+// character; the readers only access the columns before size(), which
+// is at least 75 after pad_short.
+class CppLine {
+  public:
+    CppLine() : data_(""), size_(0), owned_(false), membuf_(nullptr) {}
+
+    // a line to be read from cont, as a view if cont reads from memory
+    explicit CppLine(std::istream& cont)
+      : data_(""), size_(0), owned_(false),
+        membuf_(dynamic_cast<cpp_memory_streambuf*>(cont.rdbuf())) {}
+
+    const char* data() const { return data_; }
+    std::size_t size() const { return size_; }
+    bool empty() const { return size_ == 0; }
+    char operator[](std::size_t i) const { return data_[i]; }
+    std::string str() const { return std::string(data_, size_); }
+
+    // as std::string::substr
+    std::string substr(std::size_t pos, std::size_t len = std::string::npos) const {
+      if (pos > size_) throw std::out_of_range("CppLine::substr");
+      std::size_t n = size_ - pos;
+      if (len < n) n = len;
+      return std::string(data_ + pos, n);
+    }
+
+    void clear() {
+      own_.clear();
+      set_owned();
+    }
+
+    // Equivalent of cpp_getline(is, line) for a std::string line,
+    // including the state flags set on the stream and an unchanged
+    // line if the stream is not good before the read.
+    std::istream& getline(std::istream& is) {
+      if (membuf_ == nullptr || is.rdbuf() != membuf_) {
+        cpp_getline(is, own_);
+        set_owned();
+        return is;
+      }
+      if (! is.good()) {
+        // as std::istream::sentry
+        is.setstate(std::ios_base::failbit);
+        return is;
+      }
+      const char* p = membuf_->current();
+      const char* e = membuf_->end();
+      if (p == e) {
+        clear();
+        is.setstate(std::ios_base::eofbit | std::ios_base::failbit);
+        return is;
+      }
+      const char* nl = static_cast<const char*>(std::memchr(p, '\n', e - p));
+      std::size_t len;
+      if (nl != nullptr) {
+        len = nl - p;
+        membuf_->move_to(nl + 1);
+      } else {
+        len = e - p;
+        membuf_->move_to(e);
+        is.setstate(std::ios_base::eofbit);
+      }
+      // the carriage return of a CRLF line ending
+      if (len > 0 && p[len-1] == '\r') len--;
+      data_ = p;
+      size_ = len;
+      owned_ = false;
+      return is;
+    }
+
+    // The fields and the MAT/MF/MT numbers are read at fixed columns up
+    // to column 75. Columns missing from a shorter line are blanks (as
+    // for EndfParserPy, which reads the columns of a line by slicing), so
+    // that the readers never read past the end of the line.
+    // Returns the length of the line content before the padding.
+    std::size_t pad_short() {
+      const std::size_t min_size = 75;
+      std::size_t content_size = size_;
+      if (content_size >= min_size) return content_size;
+      if (! owned_) own_.assign(data_, size_);
+      own_.append(min_size - content_size, ' ');
+      set_owned();
+      return content_size;
+    }
+
+  private:
+    void set_owned() {
+      data_ = own_.data();
+      size_ = own_.size();
+      owned_ = true;
+    }
+
+    const char* data_;
+    std::size_t size_;
+    // whether data_ is the content of own_
+    bool owned_;
+    std::string own_;
+    // the stream buffer the line is a view into, if any
+    cpp_memory_streambuf* membuf_;
+
+    // a view must not outlive the input, and copies are not needed
+    CppLine(const CppLine&) = delete;
+    CppLine& operator=(const CppLine&) = delete;
+};
+
+
+inline std::string cpp_line_str(const CppLine& line) {
+  return line.str();
+}
+
+
+inline std::istream& cpp_getline(std::istream& is, CppLine& line) {
+  return line.getline(is);
+}
+
+
+inline bool cpp_is_blank_line(const CppLine& line) {
+  return cpp_is_blank_line(line.data(), line.size());
+}
+
+
+// See CppLine::pad_short.
+inline std::size_t cpp_pad_short_line(CppLine& line) {
+  return line.pad_short();
 }
 
 
@@ -1596,7 +1732,7 @@ inline std::string cpp_long_line_hint(std::istream& cont) {
 // read from cont. The error is raised by the Python function shared
 // with EndfParserPy, so that both parsers give the same message.
 inline void cpp_check_line_ascii(
-  const std::string& line, std::size_t size, std::istream& cont, ParsingOptions &parse_opts
+  const CppLine& line, std::size_t size, std::istream& cont, ParsingOptions &parse_opts
 ) {
   if (parse_opts.accept_non_ascii) return;
   for (std::size_t i = 0; i < size; i++) {
@@ -1606,9 +1742,9 @@ inline void cpp_check_line_ascii(
     std::size_t length;
     cpp_last_line_info(cont, lineno, length);
     // the MAT/MF/MT columns (the line is at least 75 characters long)
-    int mat = cpp_read_custom_int_field(line.c_str(), 66, 4);
-    int mf = cpp_read_custom_int_field(line.c_str(), 70, 2);
-    int mt = cpp_read_custom_int_field(line.c_str(), 72, 3);
+    int mat = cpp_read_custom_int_field(line.data(), 66, 4);
+    int mf = cpp_read_custom_int_field(line.data(), 70, 2);
+    int mt = cpp_read_custom_int_field(line.data(), 72, 3);
     cpp_text_encoding_function("raise_non_ascii_line_error")(
       lineno, i + 1, mat, mf, mt, static_cast<int>(c)
     );
@@ -1617,7 +1753,8 @@ inline void cpp_check_line_ascii(
 }
 
 
-inline void cpp_read_raw_line(std::string& line, std::istream& cont) {
+// The line is cleared first so that a failed read leaves an empty line.
+inline void cpp_read_raw_line(CppLine& line, std::istream& cont) {
   line.clear();
   cpp_getline(cont, line);
   cpp_pad_short_line(line);
@@ -1625,9 +1762,9 @@ inline void cpp_read_raw_line(std::string& line, std::istream& cont) {
 
 
 inline std::string cpp_read_raw_line(std::istream& cont) {
-  std::string line;
+  CppLine line(cont);
   cpp_read_raw_line(line, cont);
-  return line;
+  return line.str();
 }
 
 
@@ -1640,7 +1777,7 @@ inline std::string cpp_read_raw_line(std::istream& cont) {
 // shifts the MAT/MF/MT columns, which EndfParserPy, which divides a file
 // into sections by these columns, also detects.
 inline void cpp_read_line(
-  std::string& line, std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts,
+  CppLine& line, std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts,
   std::size_t* content_size = nullptr, bool check_long_line = true
 ) {
   line.clear();
@@ -1660,15 +1797,15 @@ inline void cpp_read_line(
   cpp_check_line_ascii(line, size, cont, parse_opts);
 
   if (parse_opts.validate_control_records || (check_long_line && size > 80)) {
-    int curmat = cpp_read_mat_number(line.c_str());
-    int curmf = cpp_read_mf_number(line.c_str());
-    int curmt = cpp_read_mt_number(line.c_str());
+    int curmat = cpp_read_mat_number(line.data());
+    int curmf = cpp_read_mf_number(line.data());
+    int curmt = cpp_read_mt_number(line.data());
     if (curmat != mat)
-      throw_mismatch_error("MAT", mat, curmat, line, "");
+      throw_mismatch_error("MAT", mat, curmat, line.str(), "");
     if (curmf != mf)
-      throw_mismatch_error("MF", mf, curmf, line, "");
+      throw_mismatch_error("MF", mf, curmf, line.str(), "");
     if (curmt != mt)
-      throw_mismatch_error("MT", mt, curmt, line, "");
+      throw_mismatch_error("MT", mt, curmt, line.str(), "");
   }
 }
 
@@ -1676,69 +1813,69 @@ inline void cpp_read_line(
 inline std::string cpp_read_line(
   std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts
 ) {
-  std::string line;
+  CppLine line(cont);
   cpp_read_line(line, cont, mat, mf, mt, parse_opts);
-  return line;
+  return line.str();
 }
 
 
-inline std::string cpp_read_send(std::istream& cont, int mat, int mf, ParsingOptions &parse_opts) {
-  std::string line = cpp_read_line(cont, mat, mf, 0, parse_opts);
-  int mtnum = cpp_read_mt_number(line.c_str());
-  if (cpp_read_field<DOUBLE_TYPE>(line.c_str(), 0, parse_opts) != 0.0 ||
-    cpp_read_field<DOUBLE_TYPE>(line.c_str(), 1, parse_opts) != 0.0 ||
-    cpp_read_field<int>(line.c_str(), 2, parse_opts) != 0 ||
-    cpp_read_field<int>(line.c_str(), 3, parse_opts) != 0 ||
-    cpp_read_field<int>(line.c_str(), 4, parse_opts) != 0 ||
-    cpp_read_field<int>(line.c_str(), 5, parse_opts) != 0 ||
+inline void cpp_read_send(std::istream& cont, int mat, int mf, ParsingOptions &parse_opts) {
+  CppLine line(cont);
+  cpp_read_line(line, cont, mat, mf, 0, parse_opts);
+  int mtnum = cpp_read_mt_number(line.data());
+  if (cpp_read_field<DOUBLE_TYPE>(line.data(), 0, parse_opts) != 0.0 ||
+    cpp_read_field<DOUBLE_TYPE>(line.data(), 1, parse_opts) != 0.0 ||
+    cpp_read_field<int>(line.data(), 2, parse_opts) != 0 ||
+    cpp_read_field<int>(line.data(), 3, parse_opts) != 0 ||
+    cpp_read_field<int>(line.data(), 4, parse_opts) != 0 ||
+    cpp_read_field<int>(line.data(), 5, parse_opts) != 0 ||
     mtnum != 0) {
 
     std::stringstream errmsg;
     errmsg << "Expected SEND record does not contain one!" << std::endl
-           << "Line: " << line << std::endl;
+           << "Line: " << line.str() << std::endl;
     throw std::runtime_error(errmsg.str());
   }
   if (parse_opts.validate_control_records) {
-    int curmat = cpp_read_mat_number(line.c_str());
-    int curmf = cpp_read_mf_number(line.c_str());
+    int curmat = cpp_read_mat_number(line.data());
+    int curmf = cpp_read_mf_number(line.data());
     if (curmat != mat)
-      throw_mismatch_error("MAT", mat, curmat, line, "");
+      throw_mismatch_error("MAT", mat, curmat, line.str(), "");
     if (curmf != mf)
-      throw_mismatch_error("MF", mf, curmf, line, "");
+      throw_mismatch_error("MF", mf, curmf, line.str(), "");
   }
-  return line;
 }
 
 
-inline bool cpp_is_fend_record(std::string line, int mat, ParsingOptions &parse_opts) {
-  int curmat = cpp_read_mat_number(line.c_str());
+inline bool cpp_is_fend_record(const CppLine& line, int mat, ParsingOptions &parse_opts) {
+  int curmat = cpp_read_mat_number(line.data());
   if (mat != curmat && parse_opts.validate_control_records) {
-      throw_mismatch_error("MAT", mat, curmat, line, "");
+      throw_mismatch_error("MAT", mat, curmat, line.str(), "");
   }
-  int mf = cpp_read_mf_number(line.c_str());
-  int mt = cpp_read_mt_number(line.c_str());
-  double c1 = cpp_read_field<DOUBLE_TYPE>(line.c_str(), 0, parse_opts);
-  double c2 = cpp_read_field<DOUBLE_TYPE>(line.c_str(), 1, parse_opts);
-  int n1 = cpp_read_field<int>(line.c_str(), 2, parse_opts);
-  int n2 = cpp_read_field<int>(line.c_str(), 3, parse_opts);
-  int l1 = cpp_read_field<int>(line.c_str(), 4, parse_opts);
-  int l2 = cpp_read_field<int>(line.c_str(), 5, parse_opts);
+  int mf = cpp_read_mf_number(line.data());
+  int mt = cpp_read_mt_number(line.data());
+  double c1 = cpp_read_field<DOUBLE_TYPE>(line.data(), 0, parse_opts);
+  double c2 = cpp_read_field<DOUBLE_TYPE>(line.data(), 1, parse_opts);
+  int n1 = cpp_read_field<int>(line.data(), 2, parse_opts);
+  int n2 = cpp_read_field<int>(line.data(), 3, parse_opts);
+  int l1 = cpp_read_field<int>(line.data(), 4, parse_opts);
+  int l2 = cpp_read_field<int>(line.data(), 5, parse_opts);
   bool cond = (c1 == 0.0 && c2 == 0.0 && n1 == 0 && n2 == 0);
   cond &= (l1 == 0 && l2 == 0 && mf == 0 && mt == 0);
   return cond;
 }
 
 
-inline bool cpp_is_mend_record(std::string line, ParsingOptions &parse_opts) {
-  int mat = cpp_read_mat_number(line.c_str());
+inline bool cpp_is_mend_record(const CppLine& line, ParsingOptions &parse_opts) {
+  int mat = cpp_read_mat_number(line.data());
   bool cond = cpp_is_fend_record(line, 0, parse_opts);
   cond &= (mat == 0);
   return cond;
 }
 
 
-inline bool cpp_is_tend_record(std::string line, ParsingOptions &parse_opts) {
-  int mat = cpp_read_mat_number(line.c_str());
+inline bool cpp_is_tend_record(const CppLine& line, ParsingOptions &parse_opts) {
+  int mat = cpp_read_mat_number(line.data());
   bool cond = cpp_is_fend_record(line, -1, parse_opts);
   cond &= (mat == -1);
   return cond;
@@ -1766,11 +1903,11 @@ inline void cpp_read_pairs(
   a.reserve(cpp_reserve_size(n));
   b.reserve(cpp_reserve_size(n));
   int j = 0;
-  std::string line;
+  CppLine line(cont);
   cpp_read_line(line, cont, mat, mf, mt, parse_opts);
   for (int i=0; i < numel; i += 2) {
-    a.push_back(cpp_read_field<T>(line.c_str(), j++, parse_opts));
-    b.push_back(cpp_read_field<T>(line.c_str(), j++, parse_opts));
+    a.push_back(cpp_read_field<T>(line.data(), j++, parse_opts));
+    b.push_back(cpp_read_field<T>(line.data(), j++, parse_opts));
     if (j > 5 && i+2 < numel) {
       cpp_read_line(line, cont, mat, mf, mt, parse_opts);
       j = 0;
@@ -1790,10 +1927,10 @@ inline std::vector<T> cpp_read_vec(
   if (numel <= 0) return res;
   res.reserve(cpp_reserve_size(numel));
   int j = 0;
-  std::string line;
+  CppLine line(cont);
   cpp_read_line(line, cont, mat, mf, mt, parse_opts);
   for (int i=0; i < numel; i++) {
-    res.push_back(cpp_read_field<T>(line.c_str(), j++, parse_opts));
+    res.push_back(cpp_read_field<T>(line.data(), j++, parse_opts));
     if (j > 5 && i+1 < numel) {
       cpp_read_line(line, cont, mat, mf, mt, parse_opts);
       j = 0;
@@ -1899,7 +2036,8 @@ inline py::list read_section_verbatim(
     int mat, int mf, int mt, std::istream& cont, bool is_first, ParsingOptions &parse_opts
 ) {
   std::streampos curpos;
-  std::string line;
+  CppLine line(cont);
+  std::string verbatim_line;
   py::list secvec;
   int curmf;
   int curmt;
@@ -1912,9 +2050,9 @@ inline py::list read_section_verbatim(
     if (curmf != mf || curmt != mt) break;
     // the line as read (without the blanks added to a short line), with
     // the newline for compatibility with the Python parser
-    line.resize(content_size);
-    line.push_back('\n');
-    secvec.append(cpp_bytes_to_pystr(line));
+    verbatim_line.assign(line.data(), content_size);
+    verbatim_line.push_back('\n');
+    secvec.append(cpp_bytes_to_pystr(verbatim_line));
     curpos = cont.tellg();
   }
   if (! is_first && (curmf != mf || curmt != 0)) {

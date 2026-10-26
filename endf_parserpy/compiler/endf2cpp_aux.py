@@ -76,28 +76,28 @@ def read_line_la(linevar, mat, mf, mt, parse_opts, lookahead):
 
 
 def get_mat_number(linevar):
-    code = f"cpp_read_mat_number({linevar}.c_str())"
+    code = f"cpp_read_mat_number({linevar}.data())"
     return code
 
 
 def get_mf_number(linevar):
-    code = f"cpp_read_mf_number({linevar}.c_str())"
+    code = f"cpp_read_mf_number({linevar}.data())"
     return code
 
 
 def get_mt_number(linevar):
-    code = f"cpp_read_mt_number({linevar}.c_str())"
+    code = f"cpp_read_mt_number({linevar}.data())"
     return code
 
 
 def get_int_field(idx, parse_opts):
     cpp_dtype = map_dtype(int)
-    code = f"cpp_read_field<{cpp_dtype}>(cpp_line.c_str(), {idx}, {parse_opts})"
+    code = f"cpp_read_field<{cpp_dtype}>(cpp_line.data(), {idx}, {parse_opts})"
     return code
 
 
 def get_custom_int_field(start_pos, length):
-    code = f"cpp_read_custom_int_field(cpp_line.c_str(), {start_pos}, {length})"
+    code = f"cpp_read_custom_int_field(cpp_line.data(), {start_pos}, {length})"
     return code
 
 
@@ -115,7 +115,7 @@ def get_float_vec(nume, parse_opts):
 
 def get_numeric_field(fieldpos, dtype, parse_opts):
     cpp_dtype = map_dtype(dtype)
-    code = f"cpp_read_field<{cpp_dtype}>(cpp_line.c_str(), {fieldpos}, {parse_opts})"
+    code = f"cpp_read_field<{cpp_dtype}>(cpp_line.data(), {fieldpos}, {parse_opts})"
     return code
 
 

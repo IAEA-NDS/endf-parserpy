@@ -13,6 +13,9 @@
 #endif
 
 
+class cpp_memory_streambuf;
+
+
 struct ParsingOptions {
   bool ignore_number_mismatch;
   bool ignore_zero_mismatch;
@@ -28,6 +31,10 @@ struct ParsingOptions {
   bool validate_control_records;
   bool load_file_into_memory;
   std::string array_type;
+  // Not an option: the stream buffer holding the data in memory if the
+  // data is parsed from memory (set by the functions called from
+  // Python, see CppLine), otherwise nullptr.
+  cpp_memory_streambuf* memory_input;
 };
 
 
@@ -46,7 +53,8 @@ inline ParsingOptions default_parsing_options() {
     false,  // preserve_value_strings
     false,  // validate_control_records
     true,   // load_file_into_memory
-    "dict"  // array_type
+    "dict",  // array_type
+    nullptr  // memory_input
   };
 }
 
@@ -98,6 +106,7 @@ namespace pybind11 { namespace detail {
 
       // use default values for missing options
       ParsingOptions default_opts = default_parsing_options();
+      value.memory_input = nullptr;
 
       if (! d.contains("ignore_number_mismatch")) {
         value.ignore_number_mismatch = default_opts.ignore_number_mismatch;
@@ -1528,13 +1537,29 @@ class cpp_file_content {
 };
 
 
+// Numbers of lines read as views and as copies (see CppLine), only for
+// tests checking that lines are read as views where intended.
+struct cpp_line_read_counts {
+  unsigned long long views;
+  unsigned long long copies;
+};
+
+inline cpp_line_read_counts& cpp_line_read_counter() {
+  static cpp_line_read_counts counts = {0, 0};
+  return counts;
+}
+
+
 // A line read from the input, without the line ending (see cpp_getline).
 // If the input is held in memory by a cpp_memory_streambuf (`parse` and
 // `parsefile` with load_file_into_memory=true), the line is a view into
 // that memory, which is neither changed nor moved while it is parsed
 // (repositioning the stream only moves the read pointer), so that the
-// line is not copied. Otherwise the line is read into a string held by
-// the object, whose memory is reused for the next line. A line to be
+// line is not copied. The stream buffer is given explicitly by the
+// function that creates it (parse_opts.memory_input), and a line is only
+// read as a view if the stream reads from that stream buffer. Otherwise
+// the line is read into a string held by the object, whose memory is
+// reused for the next line. A line to be
 // modified, i.e. a short line padded with blanks (see pad_short), is
 // also copied into this string.
 // Unlike std::string::c_str, data() is not terminated by a NUL
@@ -1544,10 +1569,11 @@ class CppLine {
   public:
     CppLine() : data_(""), size_(0), owned_(false), membuf_(nullptr) {}
 
-    // a line to be read from cont, as a view if cont reads from memory
-    explicit CppLine(std::istream& cont)
+    // a line read as a view from the stream buffer parse_opts.memory_input
+    // (if not nullptr) and as a copy from any other stream buffer
+    explicit CppLine(const ParsingOptions& parse_opts)
       : data_(""), size_(0), owned_(false),
-        membuf_(dynamic_cast<cpp_memory_streambuf*>(cont.rdbuf())) {}
+        membuf_(parse_opts.memory_input) {}
 
     const char* data() const { return data_; }
     std::size_t size() const { return size_; }
@@ -1575,6 +1601,7 @@ class CppLine {
       if (membuf_ == nullptr || is.rdbuf() != membuf_) {
         cpp_getline(is, own_);
         set_owned();
+        cpp_line_read_counter().copies++;
         return is;
       }
       if (! is.good()) {
@@ -1604,6 +1631,7 @@ class CppLine {
       data_ = p;
       size_ = len;
       owned_ = false;
+      cpp_line_read_counter().views++;
       return is;
     }
 
@@ -1762,7 +1790,7 @@ inline void cpp_read_raw_line(CppLine& line, std::istream& cont) {
 
 
 inline std::string cpp_read_raw_line(std::istream& cont) {
-  CppLine line(cont);
+  CppLine line;
   cpp_read_raw_line(line, cont);
   return line.str();
 }
@@ -1813,14 +1841,14 @@ inline void cpp_read_line(
 inline std::string cpp_read_line(
   std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts
 ) {
-  CppLine line(cont);
+  CppLine line(parse_opts);
   cpp_read_line(line, cont, mat, mf, mt, parse_opts);
   return line.str();
 }
 
 
 inline void cpp_read_send(std::istream& cont, int mat, int mf, ParsingOptions &parse_opts) {
-  CppLine line(cont);
+  CppLine line(parse_opts);
   cpp_read_line(line, cont, mat, mf, 0, parse_opts);
   int mtnum = cpp_read_mt_number(line.data());
   if (cpp_read_field<DOUBLE_TYPE>(line.data(), 0, parse_opts) != 0.0 ||
@@ -1903,7 +1931,7 @@ inline void cpp_read_pairs(
   a.reserve(cpp_reserve_size(n));
   b.reserve(cpp_reserve_size(n));
   int j = 0;
-  CppLine line(cont);
+  CppLine line(parse_opts);
   cpp_read_line(line, cont, mat, mf, mt, parse_opts);
   for (int i=0; i < numel; i += 2) {
     a.push_back(cpp_read_field<T>(line.data(), j++, parse_opts));
@@ -1927,7 +1955,7 @@ inline std::vector<T> cpp_read_vec(
   if (numel <= 0) return res;
   res.reserve(cpp_reserve_size(numel));
   int j = 0;
-  CppLine line(cont);
+  CppLine line(parse_opts);
   cpp_read_line(line, cont, mat, mf, mt, parse_opts);
   for (int i=0; i < numel; i++) {
     res.push_back(cpp_read_field<T>(line.data(), j++, parse_opts));
@@ -2036,7 +2064,7 @@ inline py::list read_section_verbatim(
     int mat, int mf, int mt, std::istream& cont, bool is_first, ParsingOptions &parse_opts
 ) {
   std::streampos curpos;
-  CppLine line(cont);
+  CppLine line(parse_opts);
   std::string verbatim_line;
   py::list secvec;
   int curmf;

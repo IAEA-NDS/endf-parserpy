@@ -19,16 +19,21 @@ with blanks, is still copied, and lines read through a file stream
 messages must be the same in all cases, including line endings, blank
 lines, short and long lines, non-ASCII characters, NUL characters,
 truncated data, lookaheads and sections read verbatim.
+
+The C++ module counts the lines read as views and as copies, so that the
+tests can check that the lines are read as views where intended.
 """
 
+import importlib
 from pathlib import Path
 import pytest
-from endf_parserpy import EndfParserCpp
+from endf_parserpy import EndfParserCpp, parse_tape
 
 
 TESTDATA = Path(__file__).parent / "testdata"
 DECAY = TESTDATA / "dec-094_Pu_244.endf"
 TSL = TESTDATA / "tsl_Al.endf"
+NEUTRON = TESTDATA / "n_2925_29-Cu-63.endf"
 
 
 def _outcome(func):
@@ -224,3 +229,61 @@ def test_error_message_contains_line_as_read(tmp_path):
         _assert_same(results)
         exc_type, message = results["in_memory"]
         assert "Line: " + expected in message
+
+
+def _line_read_counts(parser, func):
+    # numbers of lines read as views and as copies by func
+    module = importlib.import_module(parser._parse_endf.__module__)
+    module._line_read_counts(reset=True)
+    func()
+    return module._line_read_counts(reset=True)
+
+
+@pytest.mark.parametrize("testfile", [DECAY, TSL, NEUTRON], ids=lambda p: p.stem)
+@pytest.mark.parametrize(
+    "selection",
+    [{}, {"exclude": (3,)}, {"include": ((1, 451), 4)}],
+    ids=["all", "exclude", "include"],
+)
+def test_lines_read_as_views_from_memory(testfile, selection):
+    # in memory, every line is read as a view, also with lookaheads,
+    # sections read verbatim and short lines (padded after reading)
+    data = testfile.read_bytes()
+    lines = data.decode("latin-1").splitlines()
+    nlines = len(lines)
+    parser = EndfParserCpp()
+    funcs = [
+        lambda: parser.parsefile(str(testfile), **selection),
+        lambda: parser.parse(data.decode("latin-1"), **selection),
+        lambda: parser.parse(data, **selection),
+        lambda: parser.parse(_join(lines, "\r\n"), **selection),
+    ]
+    if not selection:
+        # short end records (sections read verbatim stop at them)
+        short = _join([_shorten(l) for l in lines])
+        funcs.append(lambda: parser.parse(short))
+    for func in funcs:
+        views, copies = _line_read_counts(parser, func)
+        assert copies == 0
+        assert views >= nlines
+
+
+@pytest.mark.parametrize("testfile", [DECAY, NEUTRON], ids=lambda p: p.stem)
+def test_lines_copied_from_file_stream(testfile):
+    parser = EndfParserCpp(load_file_into_memory=False)
+    views, copies = _line_read_counts(parser, lambda: parser.parsefile(str(testfile)))
+    assert views == 0
+    assert copies >= len(testfile.read_bytes().splitlines())
+
+
+def test_lines_read_as_views_in_multimaterial_tape():
+    # the materials of a tape are parsed from strings (see parse_tape)
+    first = DECAY.read_bytes().decode("latin-1").splitlines()
+    second = TSL.read_bytes().decode("latin-1").splitlines()
+    text = "\n".join(first[:-1] + second[1:]) + "\n"
+    parser = EndfParserCpp()
+    views, copies = _line_read_counts(
+        parser, lambda: parse_tape(text, parser=parser, on_error="raise")
+    )
+    assert copies == 0
+    assert views >= len(first) + len(second) - 2

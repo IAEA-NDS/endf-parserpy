@@ -142,7 +142,7 @@ def _finalize_line_func_wrapper(vardict):
 
 def _prepare_line_tape_func_wrapper():
     # a view into the input if it is held in memory (see CppLine)
-    code = cpp.statement("CppLine cpp_line(cont)")
+    code = cpp.statement("CppLine cpp_line(parse_opts)")
     return code
 
 
@@ -222,7 +222,7 @@ def generate_cpp_parsefun(
 
     ctrl_code = ""
     ctrl_code += cpp.statement("std::streampos cpp_startpos = cont.tellg()")
-    ctrl_code += cpp.statement("CppLine cpp_temp_line(cont)")
+    ctrl_code += cpp.statement("CppLine cpp_temp_line(parse_opts)")
     ctrl_code += read_raw_line("cpp_temp_line")
     matval = aux.get_mat_number("cpp_temp_line") if mat is None else str(mat)
     mfval = aux.get_mf_number("cpp_temp_line") if mf is None else str(mf)
@@ -323,7 +323,7 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("int last_mat")
     body += cpp.statement("int last_mf")
     body += cpp.statement("int last_mt")
-    body += cpp.statement("CppLine cpp_line(cont)")
+    body += cpp.statement("CppLine cpp_line(parse_opts)")
     body += cpp.statement("py::list verbatim_section")
     body += cpp.statement("bool found_tpid = false")
     body += cpp.statement("bool after_fend = false")
@@ -527,6 +527,8 @@ def _return_parsed(callcode, stream):
 
 
 def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
+    # the parsing options (set below) must be among the arguments
+    assert any(arg[1] == "parse_opts" for arg in extra_args)
     args_str = ", ".join(arg[0] + " " + arg[1] for arg in extra_args)
     args_str = ", " + args_str if args_str != "" else args_str
     args_str2 = ", ".join(arg[1] for arg in extra_args)
@@ -550,6 +552,8 @@ def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
             cpp.INDENT,
         )
         code += cpp.statement("std::istream cpp_instream(&cpp_membuf)", cpp.INDENT)
+        # lines are read as views into the data (see CppLine)
+        code += cpp.statement("parse_opts.memory_input = &cpp_membuf", cpp.INDENT)
         code += cpp.indent_code(
             _return_parsed(f"{inner}_istream(cpp_instream{args_str2})", "cpp_instream"),
             cpp.INDENT,
@@ -575,7 +579,10 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
         # repositioning in the stream (at section starts and in lookaheads)
         # cheap; with load_file_into_memory=false, the file is read through
         # the file stream, which needs less memory
-        stream_code = cpp.statement("std::ifstream inpfile(filename, std::ios::binary)")
+        stream_code = cpp.statement("parse_opts.memory_input = nullptr")
+        stream_code += cpp.statement(
+            "std::ifstream inpfile(filename, std::ios::binary)"
+        )
         stream_code += cpp.pureif(
             cpp.logical_not("inpfile.is_open()"),
             cpp.statement(
@@ -595,6 +602,8 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
             cpp.INDENT,
         )
         code += cpp.statement("std::istream cpp_instream(&cpp_membuf)", cpp.INDENT)
+        # lines are read as views into the data (see CppLine)
+        code += cpp.statement("parse_opts.memory_input = &cpp_membuf", cpp.INDENT)
         code += cpp.indent_code(
             _return_parsed(f"{inner}_istream(cpp_instream{args_str2})", "cpp_instream"),
             cpp.INDENT,

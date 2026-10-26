@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2026/10/21
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -38,6 +38,18 @@ def register_reading_options():
     //     .def_readwrite("validate_control_records", &ParsingOptions::validate_control_records);
     //   parsing_options_registered = true;
     // }
+
+    // numbers of lines read as views and as copies (see CppLine) since
+    // the module was loaded or the last reset, for tests
+    m.def("_line_read_counts", [](bool reset) {
+      cpp_line_read_counts& counts = cpp_line_read_counter();
+      py::tuple res = py::make_tuple(counts.views, counts.copies);
+      if (reset) {
+        counts.views = 0;
+        counts.copies = 0;
+      }
+      return res;
+    }, py::arg("reset") = false);
     """
     return cpp.indent_code(code, -4)
 

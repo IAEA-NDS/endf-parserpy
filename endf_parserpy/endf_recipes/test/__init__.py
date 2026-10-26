@@ -52,6 +52,7 @@ from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT2
 from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT3
 from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT4
 from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT5
+from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT6
 
 # variables assigned values of different types (type checks)
 from .endf_recipe_mf8 import ENDF_RECIPE_MF8_MT1
@@ -105,6 +106,7 @@ defdic(endf_recipe_dictionary, (7, 2), ENDF_RECIPE_MF7_MT2)
 defdic(endf_recipe_dictionary, (7, 3), ENDF_RECIPE_MF7_MT3)
 defdic(endf_recipe_dictionary, (7, 4), ENDF_RECIPE_MF7_MT4)
 defdic(endf_recipe_dictionary, (7, 5), ENDF_RECIPE_MF7_MT5)
+defdic(endf_recipe_dictionary, (7, 6), ENDF_RECIPE_MF7_MT6)
 defdic(endf_recipe_dictionary, (8, 1), ENDF_RECIPE_MF8_MT1)
 defdic(endf_recipe_dictionary, (8, 2), ENDF_RECIPE_MF8_MT2)
 defdic(endf_recipe_dictionary, (8, 3), ENDF_RECIPE_MF8_MT3)

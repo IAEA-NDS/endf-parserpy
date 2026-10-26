@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/25
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -97,6 +97,23 @@ ENDF_RECIPE_MF7_MT5 = """
 for j=1 to NE:
     [MAT,MF,MT/ 0.0, E[j], 0, NA[j], NEP[j]*(NA[j]+2), NEP[j]/
         {Ep[j,k], {b[j,k,m]}{m=0 to NA[j]}}{k=1 to NEP[j]} ] LIST
+endfor
+SEND
+"""
+
+# MT6 has the structure of the table S[q,i,j] of MF7/MT4 of ENDF-6 with
+# other names: the first index of V[r,g,c] is that of the innermost loop,
+# so that the elements V[r] and V[r,g] are created in that loop while
+# the loops of g and c around it set their elements. The column V of the
+# named TAB1 record V_table[g] is a variable of the scope of the record,
+# not the array V[r,g,c].
+ENDF_RECIPE_MF7_MT6 = """
+[MAT,MF,MT/ 0.0, 0.0, 0, 0, 0, NG] HEAD
+for g=1 to NG:
+    [MAT,MF,MT/ W0, Y[g], NC[g], 0, NR, NP/ X / V ] TAB1 (V_table[g])
+    for c=1 to NC[g]:
+        [MAT,MF,MT/ Z[c], Y[g], M[c], 0, NK, 0/ {V[r,g,c]}{r=1 to NK} ] LIST
+    endfor
 endfor
 SEND
 """

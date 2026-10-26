@@ -417,14 +417,14 @@ def _creation_loop(vartok, level, node, ptr_dest):
     return target
 
 
-def _filling_loop(vartok, node):
-    # The loop that sets the elements of the innermost level of a nested
-    # array (in the list form) in the order of their indices: the loop
-    # enclosing the assignment without an if-clause, another loop, a
-    # section or a named LIST record in between, whose variable is the
-    # last index. None if there is no such loop.
-    lastidx = vartok.indices[-1]
-    if not is_variable(lastidx) or len(lastidx.indices) != 0:
+def _index_loop(vartok, pos, node):
+    # The loop whose variable is the index pos of the variable and that
+    # encloses the assignment (node) without an if-clause, a repeat loop,
+    # a section or a named LIST record in between; other loops may lie in
+    # between. None if the index is not a variable without indices or
+    # there is no such loop.
+    idx = vartok.indices[pos]
+    if not is_variable(idx) or len(idx.indices) != 0:
         return None
     cur = node
     while cur.parent is not None:
@@ -436,15 +436,94 @@ def _filling_loop(vartok, node):
             or is_repeat_loop(parent)
         ):
             return None
-        if is_for_loop(parent) or parent.data == "list_loop":
-            break
+        if (is_for_loop(parent) or parent.data == "list_loop") and str(
+            get_loopvar(parent)
+        ) == str(idx):
+            return parent
         cur = parent
-    else:
+    return None
+
+
+def _loops_between(node, loop):
+    # the loops enclosing node up to and including loop
+    ret = []
+    cur = node.parent
+    while cur is not None:
+        if is_loop(cur):
+            ret.append(cur)
+        if cur is loop:
+            break
+        cur = cur.parent
+    return ret
+
+
+def _scope_of(node):
+    scope = node
+    while scope.parent is not None and not _is_scope_node(scope):
+        scope = scope.parent
+    return scope
+
+
+def _limits_invariant(loop, loopvars, vardict):
+    # whether the bounds of the loop do not change while it is executed
+    return all(
+        _is_invariant_limit(lim, loopvars, loop, vardict)
+        for lim in (get_loop_start(loop), get_loop_stop(loop))
+    )
+
+
+def _filled_in_one_execution(vartok, level, node, loop, loopvars, vardict):
+    # Whether the children of an element of the level `level` created in
+    # the loop are all set in the execution of the loop in which it is
+    # created: each loop around the loop (up to the scope) has a leading
+    # index of the element as variable, so that another execution of the
+    # loop belongs to another element, and the leading indices do not
+    # change in the loop except with the loops inside it.
+    leading = vartok.indices[: level + 1]
+    names = {str(idx) for idx in leading if is_variable(idx) and len(idx.indices) == 0}
+    scope = _scope_of(node)
+    cur = loop.parent
+    while cur is not None and cur is not scope:
+        if is_repeat_loop(cur):
+            return False
+        if is_loop(cur) and str(get_loopvar(cur)) not in names:
+            return False
+        cur = cur.parent
+    loopvar = get_loopvar(loop)
+    inner = {str(v) for v in loopvars if str(v) != str(loopvar)}
+    for idx in leading:
+        for v in _all_variables(idx):
+            if str(v) in inner:
+                continue
+            if not _is_invariant_limit(v, {loopvar}, loop, vardict):
+                return False
+    return True
+
+
+def _reservation_loop(vartok, level, node, vardict):
+    # The loop that sets the children of the elements of the level `level`
+    # of a nested array (the variable itself for level -1), whose number
+    # is reserved (see _reserve_code): the loop of the index level+1 (see
+    # _index_loop) whose bounds do not change while it is executed. None
+    # if there is no such loop.
+    loop = _index_loop(vartok, level + 1, node)
+    if loop is None or loop.loop_bounds is None:
         return None
-    loop = parent
-    if str(get_loopvar(loop)) != str(lastidx) or loop.loop_bounds is None:
+    loopvars = {get_loopvar(lp) for lp in _loops_between(node, loop)}
+    if not _limits_invariant(loop, loopvars, vardict):
         return None
-    return loop
+    return loop, loopvars
+
+
+def _created_in_loop_reservable(vartok, level, node, loop, loopvars, vardict):
+    # An element created inside the loop that sets its children gets the
+    # reservation when it is created if it is created only at this
+    # assignment (the variable occurs nowhere else in its scope) and all
+    # its children are set in the same execution of the loop.
+    scope = _scope_of(node)
+    if _occurs_elsewhere(scope, vartok, node, _branches(node, scope)):
+        return False
+    return _filled_in_one_execution(vartok, level, node, loop, loopvars, vardict)
 
 
 def _encloses(outer, node):
@@ -457,13 +536,27 @@ def _encloses(outer, node):
 
 
 def _reserve_code(arrname, loop):
-    # The capacity of the innermost level of an array filled by the loop
-    # is reserved before the loop; the bounds are evaluated in the same
-    # order as by the loop. The reservation does not change the elements.
+    # The capacity of the list arrname (ending with . or ->) for the
+    # children set by the loop, reserved before the loop; the bounds are
+    # evaluated in the same order as by the loop. The reservation does not
+    # change the elements.
     start, stop = loop.loop_bounds
     return cpp.block(
         cpp.statement(f"int cpp_first = {start}")
         + cpp.statement(f"{arrname}reserve(cpp_first, {stop})")
+    )
+
+
+def _reserve_at_creation_code(ptrname, loop):
+    # The capacity of the element just prepared (ptrname) for the children
+    # set by the loop, which encloses the preparation, reserved if the
+    # element is new (empty); the bounds have the values with which the
+    # loop started (see _limits_invariant).
+    start, stop = loop.loop_bounds
+    return cpp.pureif(
+        f"{ptrname}->empty()",
+        cpp.statement(f"int cpp_first = {start}")
+        + cpp.statement(f"{ptrname}->reserve(cpp_first, {stop})"),
     )
 
 
@@ -517,9 +610,9 @@ class Assign:
         code = ""
         ptrvar_old = cpp_varname
         limit_node = None
-        # the expression of the innermost list if it is created before
-        # the loop of the last index (see _creation_loop)
-        created_list = None
+        # the levels whose elements are lists (not blocks) of children
+        # set by the loop of the next index, see _reservation_loop
+        num_lists = num_leading if block is None else num_leading - 1
         for i in range(num_leading):
             ptrvar_new = get_ptr_varname(vartok, i)
             dot = "." if i == 0 else "->"
@@ -528,11 +621,26 @@ class Assign:
                 new_code = cpp.statement(
                     f"{ptrvar_new} = {ptrvar_old}{dot}prepare({indices[i]})"
                 )
-            if nested_element_hook is not None:
-                new_code += nested_element_hook(vartok, indices[: i + 1])
             if node is not None:
                 destnode = moveup_ptrassign(vartok, i, node, limit_node)
                 limit_node = destnode
+                creation = _creation_loop(vartok, i, node, destnode)
+                reservation = None
+                if not unused and i < num_lists:
+                    reservation = _reservation_loop(vartok, i, node, vardict)
+                if reservation is not None:
+                    loop, loopvars = reservation
+                    loop.check_my_identity()
+                    if _encloses(destnode, loop):
+                        # the element is known before the loop
+                        loop.append_loop_setup(_reserve_code(f"{ptrvar_new}->", loop))
+                    elif creation is not loop and _created_in_loop_reservable(
+                        vartok, i, node, loop, loopvars, vardict
+                    ):
+                        new_code += _reserve_at_creation_code(ptrvar_new, loop)
+            if nested_element_hook is not None:
+                new_code += nested_element_hook(vartok, indices[: i + 1])
+            if node is not None:
                 if destnode is not node:
                     destnode.check_my_identity()
                     destnode.append_precode(new_code)
@@ -546,7 +654,6 @@ class Assign:
                 # next index if the preparation above stays inside it,
                 # e.g. because the variable occurs elsewhere in that loop,
                 # so that a loop without iterations leaves no gap
-                creation = _creation_loop(vartok, i, node, destnode)
                 if creation is not None:
                     create_code = ""
                     if not unused:
@@ -559,8 +666,15 @@ class Assign:
                         create_code += nested_element_hook(vartok, indices[: i + 1])
                     creation.check_my_identity()
                     creation.append_precode(create_code)
-                    if i == num_leading - 1 and not unused:
-                        created_list = (creation, f"{cpp_varname}{chain}->")
+                    if (
+                        reservation is not None
+                        and reservation[0] is creation
+                        and not _encloses(destnode, creation)
+                    ):
+                        # the element is created right before the loop
+                        creation.append_loop_setup(
+                            _reserve_code(f"{cpp_varname}{chain}->", creation)
+                        )
                     if layout_recorder is not None:
                         layout_recorder.record_pointer_preparation(
                             vartok, i, creation, node
@@ -571,20 +685,15 @@ class Assign:
         if unused:
             return UnstoredAssignment(code)
         dot = "." if num_leading == 0 else "->"
+        if node is not None and num_lists >= 0:
+            # the variable itself (level -1) is the list of the children
+            # set by the loop of its first index
+            reservation = _reservation_loop(vartok, -1, node, vardict)
+            if reservation is not None:
+                loop = reservation[0]
+                loop.check_my_identity()
+                loop.append_loop_setup(_reserve_code(f"{cpp_varname}.", loop))
         if block is None:
-            filling = None if node is None else _filling_loop(vartok, node)
-            if filling is not None:
-                # the innermost list is the one of the pointer variable if
-                # it is assigned before the loop (or a variable with one
-                # index), otherwise the one created before the loop
-                arrname = None
-                if num_leading == 0 or _encloses(limit_node, filling):
-                    arrname = f"{ptrvar_old}{dot}"
-                elif created_list is not None and created_list[0] is filling:
-                    arrname = created_list[1]
-                if arrname is not None:
-                    filling.check_my_identity()
-                    filling.append_loop_setup(_reserve_code(arrname, filling))
             setter = "set_row" if rows else "set"
             code += cpp.statement(
                 f"{ptrvar_old}{dot}{setter}({indices[-1]}, {exprstr})"

@@ -19,9 +19,11 @@ definition_code = """
 // with the elements in row-major order. A list starts at the index of
 // its first element and grows by appending elements (prepare); a
 // NestedArray<T, 1> is a list of values (set). The capacity of a list
-// of values filled by a loop is reserved before the loop (reserve) if
-// the code generator can determine the list and the loop (see
-// _filling_loop in assign.py). The code generator creates
+// whose elements are set by a loop over their index is reserved
+// (reserve), before the loop if the list is known there, otherwise when
+// the list is created in the loop, if the code generator can determine
+// the list and the loop (see _reservation_loop in assign.py). The code
+// generator creates
 // a block for the trailing indices of a variable if it can prove that
 // they form a rectangular array that no other code of the recipe writes
 // to and that is created only once (see find_block in assign.py); the

@@ -1,2 +1,3 @@
 include endf_parserpy/endf_recipes/recipe_cache/*.pkl
 include endf_parserpy/compiler/cpp_templates/*.hpp
+include THIRD_PARTY_NOTICES.md

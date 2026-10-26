@@ -7,6 +7,11 @@
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
+# The Tree and Token classes in this module are adapted from the
+# Lark parsing library (https://github.com/lark-parser/lark),
+# Copyright (c) 2017 Erez Shinan, released under the MIT license.
+# See THIRD_PARTY_NOTICES.md in the repository root.
+#
 ############################################################
 
 """Node classes of ENDF recipe parse trees.
@@ -26,7 +31,13 @@ previously produced by Lark:
   ``repr``, ``copy``, ``set``, ``pretty`` and ``iter_subtrees``
   (including its traversal order) as ``lark.Tree``.
 
-There is no dependency on Lark.
+To keep the behavior identical, the implementations of several methods
+(among them ``Tree._pretty``, ``Tree.iter_subtrees``,
+``Tree.iter_subtrees_topdown`` and most of :class:`Token`) are adapted
+from Lark, Copyright (c) 2017 Erez Shinan, released under the MIT
+license (see ``THIRD_PARTY_NOTICES.md`` in the repository root).
+
+There is no runtime dependency on Lark.
 """
 
 from copy import deepcopy

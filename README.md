@@ -35,6 +35,9 @@ Files that bundle several materials — including PENDF tapes
 that repeat the same material at different temperatures — are
 supported both as plain lists of materials and through a lazy,
 memory-bounded `EndfFile` interface for large files.
+Parsing and writing have been extensively optimized; the C++ backend
+processes ENDF-6 data at rates of up to several hundred megabytes per
+second.
 
 
 ## Install endf-parserpy
@@ -67,6 +70,8 @@ ENDF-6 file:
 ```python
 from endf_parserpy import EndfParserFactory
 parser = EndfParserFactory.create()
+# fastest variant, returning arrays of numbers as numpy arrays:
+# parser = EndfParserFactory.create(array_type="numpy")
 endf_dict = parser.parsefile('input.endf')
 endf_dict[3][1]['AWR'] = 99.99
 parser.writefile('output.endf', endf_dict)

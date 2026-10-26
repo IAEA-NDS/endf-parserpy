@@ -112,6 +112,15 @@ never on the numerical values:
   and ``b`` of an MF6 subsection with ``LAW=1`` is a list with one
   two-dimensional array of shape ``(NEP[j], NA[j]+1)`` per incident
   energy ``j``.
+- The values of a record whose number is known before the record is
+  read count as an innermost index of such a block. For example, the
+  correlation coefficients ``KIJ[k]`` of the INTG records of an MF32
+  subsection with ``LCOMP=2``, read in a loop over ``k`` from 1 to
+  ``NM``, are one ``int64`` array of shape ``(NM, n)``, where ``n`` is
+  the number of values per INTG record given by ``NDIGIT`` (e.g. 18 for
+  ``NDIGIT=2``). Row ``k-1`` holds the values of the record with the
+  positions ``II[k]`` and ``JJ[k]``; the array is not the dense
+  correlation matrix.
 - A triangular matrix, e.g. ``F`` with ``LB=5`` and ``LS=1``, is a list
   of one-dimensional arrays, one per row. Likewise, other arrays of
   arrays whose inner arrays may differ in length, e.g. the Legendre
@@ -168,3 +177,16 @@ loops have no iterations is an empty array of the shape given by the
 loop limits, e.g. of shape ``(0, NA[j]+1)`` if ``NEP[j]=0``. If all
 indices of a variable belong to the block, e.g. the matrix ``F`` above,
 the variable is only present if the block has elements.
+
+A record whose field yields a vector of values whose length is
+determined before the block and does not change within it adds an
+innermost dimension to the block, as a loop over its values would. Of
+the record types, only INTG records qualify: the number of values is a
+fixed function of ``NDIGIT``, so ``NDIGIT`` must be known before the
+block, e.g. read in a record before the loop, and not change within it.
+Then a single loop around the INTG record suffices for a block, as for
+``KIJ`` above. The columns of TAB1 and TAB2 records do not qualify, as
+their length ``NP`` is given by each record. If the conditions are not
+met, e.g. if ``NDIGIT`` is read in the loop or if an ``if`` statement
+lies between the loop and the INTG record, ``KIJ`` is a list of
+one-dimensional arrays, one per record.

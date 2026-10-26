@@ -9,7 +9,7 @@
 #
 ############################################################
 
-from lark.lexer import Token
+from endf_parserpy.recipe_parser.tree import Token
 from endf_parserpy.utils.tree_utils import get_child
 import endf_parserpy.compiler.cpp_primitives as cpp
 from endf_parserpy.compiler.expr_utils.custom_nodes import VariableToken

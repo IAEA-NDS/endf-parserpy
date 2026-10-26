@@ -3,15 +3,15 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/21
-# Last modified:   2026/10/13
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 import re
-from lark.lexer import Token
-from lark.tree import Tree
+from endf_parserpy.recipe_parser.tree import Token
+from endf_parserpy.recipe_parser.tree import Tree
 from endf_parserpy.compiler.expr_utils.custom_nodes import VariableToken
 from endf_parserpy.compiler.expr_utils.node_trafos import (
     node2cppstr,

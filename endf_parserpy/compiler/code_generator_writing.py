@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -27,7 +27,7 @@ from .code_generator_writing_core import (
     get_mat_from_mfmt_section,
     generate_section_writing_code,
 )
-from lark.lexer import Token
+from endf_parserpy.recipe_parser.tree import Token
 from .expr_utils.conversion import convert_to_exprtree
 from .expr_utils.custom_nodes import VariableToken
 from .expr_utils.tree_walkers import (

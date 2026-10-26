@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/21
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
-from lark.tree import Tree
-from lark.lexer import Token
+from endf_parserpy.recipe_parser.tree import Tree
+from endf_parserpy.recipe_parser.tree import Token
 
 
 def is_token(tree):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/23
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -156,19 +156,10 @@ class LayoutRecorder:
         }
 
 
-_RECIPE_PARSER = None
-
-
 def _get_recipe_parser():
-    global _RECIPE_PARSER
-    if _RECIPE_PARSER is None:
-        from lark import Lark
-        from endf_parserpy.endf_recipes.endf_lark_ebnf import endf_recipe_grammar
+    from endf_parserpy.recipe_parser import get_recipe_parser
 
-        _RECIPE_PARSER = Lark(
-            endf_recipe_grammar, start="endf_recipe", keep_all_tokens=True
-        )
-    return _RECIPE_PARSER
+    return get_recipe_parser()
 
 
 def get_recipe_layout(recipe, parser=None):
@@ -178,9 +169,10 @@ def get_recipe_layout(recipe, parser=None):
     ----------
     recipe : str
         The ENDF recipe.
-    parser : lark.Lark
-        Parser for the recipe language; if ``None``, one is created
-        (and reused in subsequent calls).
+    parser : object
+        Parser for the recipe language, an object with a ``parse``
+        method; if ``None``, the parser of
+        :mod:`endf_parserpy.recipe_parser` is used.
 
     Returns
     -------

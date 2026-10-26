@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -14,7 +14,6 @@ import logging
 import warnings
 import re
 from .logging_utils import setup_logger, write_info, RingBuffer
-from platformdirs import user_cache_dir
 from os.path import exists as file_exists
 from endf_parserpy.utils.tree_utils import (
     is_tree,
@@ -339,15 +338,13 @@ class EndfParserPy(EndfParserBase):
             fail because a variable is missing in the dictionary,
             print available explanation if this argument is ``True``.
         cache_dir
-            Directory to store the parsing trees associated with ENDF-6 recipes
-            If `None`, the directory will be automatically determined
-            relying on the `appdirs` package. If `false`, no cache directory
-            will be used and ENDF-6 recipes will be compiled on the fly
-            whenever this class is instantiated. Finally, the user can
-            provide a custom directory as a string.
+            Deprecated and ignored. ENDF recipes were previously
+            converted into parse trees with the Lark package and cached
+            in this directory; they are now parsed by
+            :mod:`endf_parserpy.recipe_parser` whenever this class is
+            instantiated, which takes a fraction of a second.
         print_cache_info : bool
-            If ``True``, print out a message regarding the location of the
-            cache directory if it was automatically determined.
+            Deprecated and ignored (see ``cache_dir``).
         endf_format : str
             Allow the user to pick specific ENDF format flavors.
             The default `endf6-ext` tolerates deviations from the

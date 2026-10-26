@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -59,8 +59,8 @@ compares the result with the decisions reported by the code generator
 for all recipes of the package.
 """
 
-from lark.tree import Tree
-from lark.lexer import Token
+from endf_parserpy.recipe_parser.tree import Tree
+from endf_parserpy.recipe_parser.tree import Token
 from ..utils.tree_utils import get_child
 from .custom_exceptions import RecipeAnnotationError
 

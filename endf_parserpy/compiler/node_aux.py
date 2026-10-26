@@ -10,9 +10,9 @@
 ############################################################
 
 from typing import Optional, Union
-from lark.tree import Tree
-from lark.tree import _Leaf_T, Branch, Meta  # for type checking
-from lark.lexer import Token
+from endf_parserpy.recipe_parser.tree import Tree
+from endf_parserpy.recipe_parser.tree import _Leaf_T, Branch, Meta  # for type checking
+from endf_parserpy.recipe_parser.tree import Token
 from endf_parserpy.utils.tree_utils import get_name, get_child
 from .expr_utils.conversion import convert_to_exprtree
 from .expr_utils.custom_nodes import VariableToken

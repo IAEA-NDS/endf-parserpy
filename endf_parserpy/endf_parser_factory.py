@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -82,8 +82,8 @@ class EndfParserFactory:
         strict_datatypes=False,
         array_type="dict",
         explain_missing_variable=None,  # Python only
-        cache_dir=None,  # Python only
-        print_cache_info=None,  # Python only
+        cache_dir=None,  # Python only, deprecated (ignored)
+        print_cache_info=None,  # Python only, deprecated (ignored)
         endf_format="endf6-ext",
         recipes=None,  # Python only
         parsing_funs=None,  # Python only

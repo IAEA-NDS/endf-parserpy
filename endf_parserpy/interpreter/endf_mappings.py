@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/21
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 import logging
-from lark.lexer import Token
+from endf_parserpy.recipe_parser.tree import Token
 from endf_parserpy.utils.tree_utils import is_tree, get_name, get_child, get_child_value
 from .logging_utils import write_info
 from .meta_control_utils import cycle_for_loop

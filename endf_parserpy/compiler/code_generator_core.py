@@ -9,10 +9,9 @@
 #
 ############################################################
 
-from lark import Lark
-from lark.tree import Tree
-from lark.lexer import Token
-from endf_parserpy.endf_recipes.endf_lark_ebnf import endf_recipe_grammar
+from endf_parserpy.recipe_parser import get_recipe_parser
+from endf_parserpy.recipe_parser.tree import Tree
+from endf_parserpy.recipe_parser.tree import Token
 from endf_parserpy.utils.tree_utils import get_child, get_name
 from .expr_utils.custom_nodes import VariableToken
 from .expr_utils.tree_walkers import (
@@ -128,7 +127,7 @@ def generate_cpp_parse_or_write_fun(
     if vardict is None:
         raise TypeError("dictionary `vardict` must be provided")
     if parser is None:
-        parser = Lark(endf_recipe_grammar, start="endf_recipe", keep_all_tokens=True)
+        parser = get_recipe_parser()
     if fun_header is None:
         raise TypeError("must provide `fun_header` argument")
     if fun_footer is None:

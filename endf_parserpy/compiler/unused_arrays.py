@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/25
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -48,7 +48,7 @@ elements with the index bookkeeping of the writer (``register_element``),
 which determines the positions of the elements in lists, is not affected.
 """
 
-from lark.lexer import Token
+from endf_parserpy.recipe_parser.tree import Token
 from endf_parserpy.utils.tree_utils import get_child
 from .expr_utils.custom_nodes import VariableToken
 from .node_checks import is_loop, is_if_clause, is_section, is_list

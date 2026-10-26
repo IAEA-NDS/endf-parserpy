@@ -23,8 +23,7 @@ values, and the recipes of the package.
 
 import re
 import pytest
-from lark import Lark
-from endf_parserpy.endf_recipes.endf_lark_ebnf import endf_recipe_grammar
+from endf_parserpy.recipe_parser import get_recipe_parser
 from endf_parserpy.compiler.expr_utils.tree_walkers import (
     transform_nodes,
     transform_nodes_inplace,
@@ -39,7 +38,7 @@ from endf_parserpy.compiler.code_generator_parsing import generate_cpp_parsefun
 from endf_parserpy.endf_recipes.test import endf_recipe_mf7 as mf7
 
 
-_PARSER = Lark(endf_recipe_grammar, start="endf_recipe", keep_all_tokens=True)
+_PARSER = get_recipe_parser()
 _HEAD = "[MAT,MF,MT/ 0.0, 0.0, N, M, L, 0] HEAD\n"
 
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/21
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -14,7 +14,7 @@
 # on the tree node, and recipe trees are never modified, so each result
 # is computed once and stored in the tree node.
 
-from lark.tree import Tree
+from endf_parserpy.recipe_parser.tree import Tree
 from endf_parserpy.utils.tree_utils import (
     reconstruct_tree_str as _reconstruct_tree_str_uncached,
     get_name,

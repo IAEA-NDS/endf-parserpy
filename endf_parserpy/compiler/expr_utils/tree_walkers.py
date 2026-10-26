@@ -3,13 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2024/04/20
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
-from lark.tree import Tree
+from endf_parserpy.recipe_parser.tree import Tree
 
 
 def _transform_nodes(node, func, inplace, *args, **kwargs):

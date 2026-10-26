@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -16,6 +16,9 @@ from .fortran_utils import (
     write_fort_floats,
     read_fort_int,
 )
+
+# number of correlation values KIJ per INTG record for each NDIGIT
+from endf_parserpy.utils.record_vectors import INTG_NUM_VALUES
 from endf_parserpy.utils.text_encoding import (
     line_content,
     check_line_ascii,
@@ -146,12 +149,6 @@ def write_dir(dic, with_ctrl=True, write_opts=None):
         check_int_fields([dic[k] for k in ("L1", "L2", "N1", "N2")], [width] * 4)
     CTRL = write_ctrl(dic) if with_ctrl else ""
     return [C1 + C2 + L1 + L2 + N1 + N2 + CTRL]
-
-
-# number of correlation values KIJ per INTG record for each NDIGIT, from the
-# formats 2I5,1X,18I3,1X / 2I5,1X,13I4,3X / 2I5,1X,11I5 / 2I5,1X,9I6,1X /
-# 2I5,8I7 of ENDF-102 (Section 0.6.4.9)
-INTG_NUM_VALUES = {2: 18, 3: 13, 4: 11, 5: 9, 6: 8}
 
 
 def intg_field_starts(ndigit):

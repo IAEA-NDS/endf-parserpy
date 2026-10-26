@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/24
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -283,4 +283,144 @@ def test_blocks_of_custom_recipes(case, recipe_parser):
     walker = annotate_recipe_tree(recipe_parser.parse(recipe))
     assert {
         kind[3] for var, _, kind, _, _ in walker.assignments if var.name == "M"
+    } == ranks
+
+
+# The values KIJ of INTG records: the number of values per record is a
+# fixed function of NDIGIT, so that the values add an innermost dimension
+# to a block (rank: the number of dimensions of the block, 0: no block)
+# if NDIGIT is known before the block and does not change in it
+INTG_BLOCK_RECIPES = {
+    "one loop": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, NDIGIT, 0, NM, 0]HEAD
+        for k=1 to NM:
+            [MAT, 1, MT/ II[k], JJ[k], KIJ[k]{NDIGIT} ]INTG
+        endfor
+        SEND
+        """,
+        {2},
+    ),
+    "two loops": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, NDIGIT, 0, N, M]HEAD
+        for i=1 to N:
+            for k=1 to M:
+                [MAT, 1, MT/ II[i,k], JJ[i,k], KIJ[i,k]{NDIGIT} ]INTG
+            endfor
+        endfor
+        SEND
+        """,
+        {3},
+    ),
+    "inner limit read in the outer loop": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, NDIGIT, 0, N, 0]HEAD
+        for i=1 to N:
+            [MAT, 1, MT/ 0.0, 0.0, 0, 0, NM[i], 0]CONT
+            for k=1 to NM[i]:
+                [MAT, 1, MT/ II[i,k], JJ[i,k], KIJ[i,k]{NDIGIT} ]INTG
+            endfor
+        endfor
+        SEND
+        """,
+        {2},
+    ),
+    "no loop": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, NDIGIT, 0, 0, 0]HEAD
+        [MAT, 1, MT/ II, JJ, KIJ{NDIGIT} ]INTG
+        SEND
+        """,
+        set(),
+    ),
+    "NDIGIT read in the loop": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, NM, 0]HEAD
+        for k=1 to NM:
+            [MAT, 1, MT/ 0.0, 0.0, NDIGIT, 0, 0, 0]CONT
+            [MAT, 1, MT/ II[k], JJ[k], KIJ[k]{NDIGIT} ]INTG
+        endfor
+        SEND
+        """,
+        {0},
+    ),
+    "NDIGIT with the loop index": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, 0, 0, NM, 0]HEAD
+        for k=1 to NM:
+            [MAT, 1, MT/ 0.0, 0.0, ND[k], 0, 0, 0]CONT
+            [MAT, 1, MT/ II[k], JJ[k], KIJ[k]{ND[k]} ]INTG
+        endfor
+        SEND
+        """,
+        {0},
+    ),
+    "NDIGIT read before and checked in the loop": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, NDIGIT, 0, NM, 0]HEAD
+        for k=1 to NM:
+            [MAT, 1, MT/ 0.0, 0.0, NDIGIT, 0, 0, 0]CONT
+            [MAT, 1, MT/ II[k], JJ[k], KIJ[k]{NDIGIT} ]INTG
+        endfor
+        SEND
+        """,
+        {2},
+    ),
+    "if-clause between loop and record": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, NDIGIT, 0, NM, 0]HEAD
+        for k=1 to NM:
+            if NDIGIT > 0:
+                [MAT, 1, MT/ II[k], JJ[k], KIJ[k]{NDIGIT} ]INTG
+            endif
+        endfor
+        SEND
+        """,
+        {0},
+    ),
+    "later write": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, NDIGIT, 0, NM, 0]HEAD
+        for k=1 to NM:
+            [MAT, 1, MT/ II[k], JJ[k], KIJ[k]{NDIGIT} ]INTG
+        endfor
+        [MAT, 1, MT/ II[NM+1], JJ[NM+1], KIJ[NM+1]{NDIGIT} ]INTG
+        SEND
+        """,
+        {0},
+    ),
+    "mutually exclusive branches": (
+        """
+        [MAT, 1, MT/ 0.0, 0.0, NDIGIT, L, NM, 0]HEAD
+        if L == 1:
+            for k=1 to NM:
+                [MAT, 1, MT/ II[k], JJ[k], KIJ[k]{NDIGIT} ]INTG
+            endfor
+        else:
+            for k=1 to NM:
+                if NDIGIT > 0:
+                    [MAT, 1, MT/ II[k], JJ[k], KIJ[k]{NDIGIT} ]INTG
+                endif
+            endfor
+        endif
+        SEND
+        """,
+        {0, 2},
+    ),
+}
+
+
+@pytest.mark.parametrize("case", list(INTG_BLOCK_RECIPES))
+def test_intg_blocks_of_custom_recipes(case, recipe_parser):
+    recipe, ranks = INTG_BLOCK_RECIPES[case]
+    layout = get_recipe_layout(recipe)
+    assert {
+        a[3][3] for a in layout["assignments"] if a[2] == "KIJ" and a[3][2] > 0
+    } == ranks
+    walker = annotate_recipe_tree(recipe_parser.parse(recipe))
+    assert {
+        kind[3]
+        for var, _, kind, _, _ in walker.assignments
+        if var.name == "KIJ" and var.nidx > 0
     } == ranks

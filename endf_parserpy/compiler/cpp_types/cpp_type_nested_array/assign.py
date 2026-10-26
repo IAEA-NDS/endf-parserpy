@@ -49,9 +49,14 @@ from ..cpp_dtype_aux import map_dtype
 from .query import Query
 from .auxiliary import get_ptr_varname, moveup_ptrassign
 from endf_parserpy.compiler.unused_arrays import UnstoredAssignment
+from endf_parserpy.utils.record_vectors import fixed_length_vector_arg
 
 
 def _cpp_type(dtype, num_indices):
+    if dtype == "intvec":
+        # the values of an INTG record are the innermost level (rows),
+        # see set_row and make_row_block of NestedArray
+        return f"NestedArray<int, {num_indices + 1}>"
     return f"NestedArray<{map_dtype(dtype)}, {num_indices}>"
 
 
@@ -220,7 +225,23 @@ def _is_checked_only(vartok, loop):
     )
 
 
-def _is_block(vartok, node, block, outer, vardict):
+def _is_invariant_limit(lim, loopvars, outer, vardict):
+    # whether the value of the expression lim, evaluated before the loop
+    # outer, does not change in outer (see condition 5 of find_block)
+    abbrevs = vardict.get("__abbrevs", {})
+    for v in _all_variables(lim):
+        if v in loopvars or v in abbrevs:
+            return False
+        if has_loopvartype(v, vardict):
+            continue
+        if not contains_variable(outer, v, filters=[is_loop_head]):
+            continue
+        if not _is_checked_only(v, outer):
+            return False
+    return True
+
+
+def _is_block(vartok, node, block, outer, vardict, vector_arg=None):
     num_leading = len(vartok.indices) - len(block)
     loopvars = {get_loopvar(loop) for loop in block}
     # variables compared by name and number of indices (loop variables
@@ -244,18 +265,15 @@ def _is_block(vartok, node, block, outer, vardict):
         if is_loop(curnode) and str(get_loopvar(curnode)) not in leading:
             return False
         curnode = curnode.parent
-    abbrevs = vardict.get("__abbrevs", {})
-    for loop in block:
-        for lim in (get_loop_start(loop), get_loop_stop(loop)):
-            for v in _all_variables(lim):
-                if v in loopvars or v in abbrevs:
-                    return False
-                if has_loopvartype(v, vardict):
-                    continue
-                if not contains_variable(outer, v, filters=[is_loop_head]):
-                    continue
-                if not _is_checked_only(v, outer):
-                    return False
+    limits = [
+        lim for loop in block for lim in (get_loop_start(loop), get_loop_stop(loop))
+    ]
+    if vector_arg is not None:
+        # the length of the vector is a further limit of the block
+        limits.append(vector_arg)
+    for lim in limits:
+        if not _is_invariant_limit(lim, loopvars, outer, vardict):
+            return False
     if num_leading > 0:
         if _prepare_dests(vartok, node, num_leading)[-1] is not outer:
             return False
@@ -266,12 +284,21 @@ def find_block(vartok, node, vardict):
     """Loops of the largest regular block of trailing indices.
 
     Returns the loops of the trailing indices (in the order of the
-    indices) and the outermost of them, or ``None``. The rule is the
-    same as that of ``find_block`` in
+    indices), the outermost of them and, if the field is a vector of a
+    length fixed before the record (see
+    :mod:`endf_parserpy.utils.record_vectors`), which adds an innermost
+    dimension to the block, the expression that determines the length
+    (otherwise ``None``); or ``None`` if there is no block. The rule is
+    the same as that of ``find_block`` in
     ``endf_parserpy.interpreter.numpy_annotation``, which explains it.
     """
+    if node is None:
+        return None
+    vector_arg = fixed_length_vector_arg(node, lambda n: getattr(n, "parent", None))
+    # a block has at least two dimensions
+    min_loops = 2 if vector_arg is None else 1
     num_indices = len(vartok.indices)
-    if num_indices < 2 or node is None or get_var_types(vartok, vardict) is not None:
+    if num_indices < min_loops or get_var_types(vartok, vardict) is not None:
         return None
     names = [
         idx if is_variable(idx) and len(idx.indices) == 0 else None
@@ -287,26 +314,31 @@ def find_block(vartok, node, vardict):
         if is_for_loop(curnode) or curnode.data == "list_loop":
             loops.append(curnode)
         curnode = curnode.parent
-    for rank in range(len(loops), 1, -1):
+    for rank in range(len(loops), min_loops - 1, -1):
         byvar = {str(get_loopvar(loop)): loop for loop in loops[:rank]}
         trailing = names[-rank:]
         if None in trailing or {str(v) for v in trailing} != set(byvar):
             continue
         block = tuple(byvar[str(v)] for v in trailing)
-        if _is_block(vartok, node, block, loops[rank - 1], vardict):
-            return block, loops[rank - 1]
+        if _is_block(vartok, node, block, loops[rank - 1], vardict, vector_arg):
+            return block, loops[rank - 1], vector_arg
     return None
 
 
-def _block_limits_code(block, vardict):
+def _block_limits_code(block, vardict, vector_arg=None):
     # must be here to avoid a circular import error
     from endf_parserpy.compiler.code_generator_core import _loop_bound_code
+    from ..cpp_varops_query import expr2str_shiftidx
 
     limits = []
     for loop in block:
         for lim in (get_loop_start(loop), get_loop_stop(loop)):
             lim = transform_nodes(lim.children[0], expand_abbreviation, vardict)
             limits.append(_loop_bound_code(lim, vardict))
+    if vector_arg is not None:
+        # the values of an INTG record, evaluated as by generate_code_for_intg
+        ndigit = transform_nodes(vector_arg, expr2str_shiftidx, vardict)
+        limits += ["0", f"cpp_intg_block_length({ndigit}) - 1"]
     return limits
 
 
@@ -467,6 +499,8 @@ class Assign:
         cpp_varname = Query.get_cpp_varname(vartok, vardict, dtype=dtype)
         num_indices = len(indices)
         num_leading = num_indices - 1 if block is None else num_indices - len(block[0])
+        # the values of an INTG record are a row, an innermost level
+        rows = dtype == "intvec"
         layout_recorder = get_layout_recorder(vardict)
         nested_element_hook = get_nested_element_hook(vardict)
         levels = _pointer_levels(vardict)
@@ -551,16 +585,24 @@ class Assign:
                 if arrname is not None:
                     filling.check_my_identity()
                     filling.append_loop_setup(_reserve_code(arrname, filling))
-            code += cpp.statement(f"{ptrvar_old}{dot}set({indices[-1]}, {exprstr})")
+            setter = "set_row" if rows else "set"
+            code += cpp.statement(
+                f"{ptrvar_old}{dot}{setter}({indices[-1]}, {exprstr})"
+            )
             return code
-        loops, outer = block
-        limits = ", ".join(_block_limits_code(loops, vardict))
-        outer.append_precode(cpp.statement(f"{ptrvar_old}{dot}make_block({limits})"))
+        loops, outer, vector_arg = block
+        limits = ", ".join(_block_limits_code(loops, vardict, vector_arg))
+        maker = "make_block" if vector_arg is None else "make_row_block"
+        outer.append_precode(cpp.statement(f"{ptrvar_old}{dot}{maker}({limits})"))
         if layout_recorder is not None:
-            layout_recorder.record_block(vartok, num_leading, outer, node)
+            rank = len(loops) + (0 if vector_arg is None else 1)
+            layout_recorder.record_block(vartok, num_leading, outer, node, rank)
         trailing = ", ".join(indices[num_leading:])
         deref = cpp_varname if num_leading == 0 else f"(*{ptrvar_old})"
-        code += cpp.statement(f"{deref}({trailing}) = {exprstr}")
+        if rows:
+            code += cpp.statement(f"{deref}.set_block_row({exprstr}, {trailing})")
+        else:
+            code += cpp.statement(f"{deref}({trailing}) = {exprstr}")
         return code
 
     def get_layout(vartok, vardict):

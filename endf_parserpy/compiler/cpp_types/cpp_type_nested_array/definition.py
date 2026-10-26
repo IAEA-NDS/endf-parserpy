@@ -32,9 +32,40 @@ definition_code = """
 // numpy array and the other lists Python lists; with array_type="list"
 // and "dict", a block gives the same nested lists or dictionaries as the
 // list form with the same elements.
+//
+// The values of an INTG record are a row: the variable of the values
+// with N indices is a NestedArray<int, N+1> whose innermost level holds
+// the rows. A row is a list of values set at once (set_row) or, in a
+// block created with make_row_block, the last dimension of the block
+// (set_block_row), whose length is fixed before the records are read.
+// With array_type="dict", a row is exported as a list, not as a
+// dictionary.
 
 template<typename T, int N>
 class NestedArray;
+
+// whether the row with the given indices exists and its values, for an
+// array of rows (see set_row); the indices of the rows of a
+// NestedArray<T, N> are its first N-1 indices
+template<typename T>
+inline bool cpp_has_row(const NestedArray<T, 1>&) {
+  return true;
+}
+
+template<typename T, int M, typename... I>
+inline bool cpp_has_row(const NestedArray<T, M>& arr, I... indices) {
+  return arr.contains(indices...);
+}
+
+template<typename T>
+inline std::vector<T> cpp_get_row(const NestedArray<T, 1>& arr) {
+  return arr.values();
+}
+
+template<typename T, int M, typename... I>
+inline std::vector<T> cpp_get_row(const NestedArray<T, M>& arr, I... indices) {
+  return arr(indices...);
+}
 
 // upper limit of the number of elements reserved by NestedArray::reserve
 const long long cpp_max_reserved_elements = 65536;
@@ -79,6 +110,8 @@ class NestedArray<T, 1> {
   private:
     int start = 0;
     std::vector<T> items;
+    // the values of a record set at once (see set_row)
+    bool row = false;
 
   public:
     bool empty() const {
@@ -130,8 +163,19 @@ class NestedArray<T, 1> {
       }
     }
 
+    const std::vector<T>& values() const {
+      return items;
+    }
+
+    // the values of a record as a row
+    void assign_row(std::vector<T> values) {
+      items = std::move(values);
+      start = 0;
+      row = true;
+    }
+
     py::object to_pyobj(bool list_mode, bool numpy_ints, bool numpy_floats) const {
-      return cpp_values_to_pyobj(items.data(), items.size(), start, list_mode, numpy_ints, numpy_floats);
+      return cpp_values_to_pyobj(items.data(), items.size(), start, list_mode || row, numpy_ints, numpy_floats);
     }
 };
 
@@ -144,6 +188,8 @@ class NestedArray {
     std::vector<NestedArray<T, N-1>> items;
     // block form
     bool is_block = false;
+    // the last dimension of the block holds rows (see make_row_block)
+    bool row_block = false;
     int first[N];
     int dims[N];
     std::vector<T> data;
@@ -175,7 +221,7 @@ class NestedArray {
     py::object block_to_pyobj(int d, const T* ptr, std::size_t stride, bool list_mode, bool numpy_ints, bool numpy_floats) const {
       std::size_t substride = stride / (dims[d] > 0 ? dims[d] : 1);
       if (d == N - 1) {
-        return cpp_values_to_pyobj(ptr, dims[d], first[d], list_mode, false, false);
+        return cpp_values_to_pyobj(ptr, dims[d], first[d], list_mode || row_block, false, false);
       }
       if (list_mode) {
         py::list ret = cpp_new_pylist(dims[d]);
@@ -214,6 +260,61 @@ class NestedArray {
       return &items[pos];
     }
 
+    // capacity of the list form for the elements with the indices up to
+    // last, see NestedArray<T, 1>::reserve
+    void reserve(int first, int last) {
+      if (is_block) return;
+      long long begin = items.empty() ? first : start;
+      long long num = (long long)last - begin + 1;
+      if (num > cpp_max_reserved_elements) {
+        num = cpp_max_reserved_elements;
+      }
+      if (num > (long long)items.capacity()) {
+        items.reserve((std::size_t)num);
+      }
+    }
+
+    // row of values of the list form with the given index, set as
+    // NestedArray<T, 1>::set sets a value
+    void set_row(int index, std::vector<T> values) {
+      static_assert(N == 2, "rows are the elements of an array with two levels");
+      if (is_block) {
+        throw std::logic_error("row of a regular block set as element");
+      }
+      if (items.empty()) {
+        start = index;
+      }
+      int pos = index - start;
+      if (pos == (int)items.size()) {
+        items.emplace_back();
+      } else if (pos < 0 || pos > (int)items.size()) {
+        throw std::out_of_range("index out of range");
+      }
+      items[pos].assign_row(std::move(values));
+    }
+
+    // turn the array into a regular block whose last dimension holds
+    // rows (see set_block_row), with the limits of make_block
+    template<typename... L>
+    void make_row_block(L... limits) {
+      make_block(limits...);
+      row_block = true;
+    }
+
+    // the values of the row of a block with the given leading indices
+    template<typename... I>
+    void set_block_row(const std::vector<T>& values, I... indices) {
+      static_assert(sizeof...(I) == N - 1, "wrong number of indices");
+      if (! is_block) {
+        throw std::logic_error("row of a list set as row of a regular block");
+      }
+      if ((int)values.size() != dims[N-1]) {
+        throw std::runtime_error("number of values differs from the length of the rows of the block");
+      }
+      std::size_t pos = offset(0, 0, indices..., first[N-1]);
+      std::copy(values.begin(), values.end(), data.begin() + pos);
+    }
+
     // turn the array into a regular block whose indices range from
     // limits[2*d] to limits[2*d+1] (both inclusive) in dimension d
     template<typename... L>
@@ -237,9 +338,8 @@ class NestedArray {
       data.resize(size);
     }
 
-    template<typename... I>
+    template<typename... I, typename std::enable_if<sizeof...(I) == N - 1, int>::type = 0>
     bool contains(int index, I... rest) const {
-      static_assert(sizeof...(I) == N - 1, "wrong number of indices");
       if (is_block) {
         return in_block(0, index, rest...);
       }
@@ -247,9 +347,8 @@ class NestedArray {
       return pos >= 0 && pos < (int)items.size() && items[pos].contains(rest...);
     }
 
-    template<typename... I>
+    template<typename... I, typename std::enable_if<sizeof...(I) == N - 1, int>::type = 0>
     T& operator()(int index, I... rest) {
-      static_assert(sizeof...(I) == N - 1, "wrong number of indices");
       if (is_block) {
         return data[offset(0, 0, index, rest...)];
       }
@@ -258,6 +357,30 @@ class NestedArray {
         throw std::out_of_range("index out of range");
       }
       return items[pos](rest...);
+    }
+
+    // an array of rows (see set_row and set_block_row) indexed by the
+    // indices of its rows: whether the row exists, and a copy of its values
+    template<typename... I, typename std::enable_if<sizeof...(I) == N - 2, int>::type = 0>
+    bool contains(int index, I... rest) const {
+      if (is_block) {
+        return in_block(0, index, rest...);
+      }
+      int pos = index - start;
+      return pos >= 0 && pos < (int)items.size() && cpp_has_row(items[pos], rest...);
+    }
+
+    template<typename... I, typename std::enable_if<sizeof...(I) == N - 2, int>::type = 0>
+    std::vector<T> operator()(int index, I... rest) const {
+      if (is_block) {
+        std::size_t pos = offset(0, 0, index, rest..., first[N-1]);
+        return std::vector<T>(data.begin() + pos, data.begin() + pos + dims[N-1]);
+      }
+      int pos = index - start;
+      if (pos < 0 || pos >= (int)items.size()) {
+        throw std::out_of_range("index out of range");
+      }
+      return cpp_get_row(items[pos], rest...);
     }
 
     py::object to_pyobj(bool list_mode, bool numpy_ints, bool numpy_floats) const {

@@ -42,8 +42,11 @@ The layout is a dictionary with the following items:
     the assignment, or ``None`` if the assignment has no such node
     (columns of TAB1 and TAB2 records, TEXT fields). ``kind`` is a tuple
     ``(container, dtype, num_indices, block_rank)``; ``block_rank`` is
-    the number of trailing indices that form a regular block (an
-    n-dimensional array) or 0 if there is no such block. The data types are
+    the number of dimensions of the regular block of trailing indices (an
+    n-dimensional array), i.e. the number of these indices plus one for
+    the values of an INTG record (see
+    :mod:`endf_parserpy.utils.record_vectors`), or 0 if there is no such
+    block. The data types are
     ``"float"``, ``"int"``, ``"str"``, ``"floatvec"`` and ``"intvec"``
     (the latter two for the columns of TAB1/TAB2 records and the
     integers of INTG records).
@@ -124,9 +127,9 @@ class LayoutRecorder:
             if layout is not None:
                 scope.setdefault(str(vartok), set()).add(_canonical_store(layout))
 
-    def record_block(self, vartok, num_leading, loop_node, node):
-        # reported before the assignment of the same variable and node
-        rank = len(vartok.indices) - num_leading
+    def record_block(self, vartok, num_leading, loop_node, node, rank):
+        # reported before the assignment of the same variable and node;
+        # rank: number of dimensions of the block
         self._ranks[(id(node), str(vartok))] = rank
         entry = (_node_path(loop_node), _node_path(node), str(vartok), num_leading)
         self._blocks.add(entry)

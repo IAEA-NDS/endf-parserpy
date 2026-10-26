@@ -710,7 +710,10 @@ def generate_code_for_intg(node, vardict):
     code += cpp.statement(f"cpp_intvec.push_back({valcode})", cpp.INDENT)
     code += cpp.statement("elpos++", cpp.INDENT)
     code += cpp.close_block()
-    code += generate_code_for_varassign(kij_expr, vardict, "cpp_intvec", "intvec")
+    # the values are moved to the variable (rows of a block are copied)
+    code += generate_code_for_varassign(
+        kij_expr, vardict, "std::move(cpp_intvec)", "intvec"
+    )
     code += get_finalize_line_func(vardict)(vardict)
     return cpp.open_block() + cpp.indent_code(code, cpp.INDENT) + cpp.close_block()
 

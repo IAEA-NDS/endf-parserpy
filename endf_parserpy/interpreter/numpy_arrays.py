@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/23
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -44,6 +44,7 @@ receive the numpy module as argument.
 import sys
 from endf_parserpy.utils.tree_utils import get_child
 from collections.abc import Mapping
+from endf_parserpy.utils.record_vectors import fixed_vector_length
 from .endf_mapping_utils import get_indexvalue, eval_expr_without_unknown_var
 from .helpers import shift_indices, list_setdefault
 
@@ -159,12 +160,14 @@ def create_blocks(datadic, loop_vars, parse_opts, blocks):
     for the shape ``(2, 0)``) or, if it is converted to a numpy array, an
     :class:`EmptyBlock`. A block without leading indices is the whole
     variable, which only exists if the block has elements (as in the C++
-    code), so nothing needs to be done.
+    code), so nothing needs to be done. The values of an INTG record are
+    the innermost dimension of a block, whose length is determined by
+    ``NDIGIT``.
     """
     if "array_write" in parse_opts:
         return
     keep_floats = parse_opts.get("numpy_keep_floats")
-    for varname, indexspecs, loops, kind in blocks:
+    for varname, indexspecs, loops, kind, vector_arg in blocks:
         if len(indexspecs) == 0:
             continue
         shape = tuple(
@@ -173,6 +176,11 @@ def create_blocks(datadic, loop_vars, parse_opts, blocks):
                 loop_limits(loop, datadic, loop_vars, parse_opts) for loop in loops
             )
         )
+        if vector_arg is not None:
+            arg = eval_expr_without_unknown_var(
+                vector_arg, datadic, loop_vars, parse_opts
+            )
+            shape += (fixed_vector_length(arg),)
         if all(shape):
             continue
         idcs = _index_values(indexspecs, datadic, loop_vars, parse_opts)
@@ -180,7 +188,8 @@ def create_blocks(datadic, loop_vars, parse_opts, blocks):
         if created is None:
             continue
         block, parent, key = created
-        is_numeric = kind[1] == "int" or (kind[1] == "float" and not keep_floats)
+        dtype = _VEC_DTYPES.get(kind[1], kind[1])
+        is_numeric = dtype == "int" or (dtype == "float" and not keep_floats)
         if keep_floats is not None and is_numeric:
             if type(block) is dict and len(block) == 0:
                 parent[key] = EmptyBlock()
@@ -270,7 +279,9 @@ class _Converter:
                 return value
             return self.to_nested(value, npdtype, 1, 1)
         if dtype in _VEC_DTYPES:
-            return self.to_nested(value, npdtype, nidx + 1, 1)
+            # the values of INTG records may be the innermost dimension of
+            # a regular block (rank >= 2)
+            return self.to_nested(value, npdtype, nidx + 1, max(rank, 1))
         # the trailing `rank` indices of a regular block form one array
         if rank < 2 or npdtype is None:
             rank = 1

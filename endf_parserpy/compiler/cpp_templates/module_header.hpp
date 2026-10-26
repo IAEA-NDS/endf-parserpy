@@ -95,6 +95,13 @@ inline int cpp_intg_num_values(int ndigit) {
   return num_values[ndigit - 2];
 }
 
+// the same for the regular block of the values of INTG records created
+// before the records are read (see make_row_block of NestedArray), 0 for an
+// invalid NDIGIT, for which reading an INTG record raises an error
+inline int cpp_intg_block_length(int ndigit) {
+  return (ndigit < 2 || ndigit > 6) ? 0 : cpp_intg_num_values(ndigit);
+}
+
 
 inline int cpp_mod(int x, int y) {
   if (y == 0) {

@@ -34,19 +34,27 @@ named TAB1, TAB2 and LIST records, ``list_loop`` nodes)
     the code generator). An index is given by the name of a loop
     variable or by its ``indexquant`` node.
 ``_np_blocks`` (loop nodes)
-    A tuple of ``(varname, indexspecs, loops, kind)``: the C++ code
-    creates the regular block of the trailing indices of ``varname``
-    with the leading indices ``indexspecs`` each time it reaches the
-    loop, the outermost loop of the block; ``loops`` are the loops of
-    the indices of the block, whose limits give its shape (see
-    :meth:`_Walker.find_block`).
+    A tuple of ``(varname, indexspecs, loops, kind, vector_arg)``: the
+    C++ code creates the regular block of the trailing indices of
+    ``varname`` with the leading indices ``indexspecs`` each time it
+    reaches the loop, the outermost loop of the block; ``loops`` are the
+    loops of the indices of the block, whose limits give its shape (see
+    :meth:`_Walker.find_block`). If the variable is a vector of a length
+    fixed before its record (the values of an INTG record), its values
+    are the innermost dimension of the block, whose length is given by
+    the expression ``vector_arg`` (see
+    :mod:`endf_parserpy.utils.record_vectors`); otherwise
+    ``vector_arg`` is ``None``.
 
 A kind is a tuple ``(container, dtype, num_indices, block_rank)`` with
 ``container`` one of ``"Scalar"`` and ``"NestedArray"``, ``dtype`` one
 of ``"float"``, ``"int"``, ``"str"``, ``"floatvec"`` (TAB1 columns) and
 ``"intvec"`` (TAB1/TAB2 interpolation tables, integers of INTG
-records), and ``block_rank`` the number of trailing indices that form a
-regular block, i.e. a numpy array with as many dimensions, or 0.
+records), and ``block_rank`` the number of dimensions of the regular
+block of the trailing indices, i.e. of the numpy array, or 0. The
+dimensions of a block are those of the trailing indices that form it
+and, for the values of an INTG record, the innermost dimension of the
+values.
 
 The rules replicate those of the code generator for parsing
 (``endf_parserpy.compiler``): which variables of a field are assigned
@@ -62,6 +70,7 @@ for all recipes of the package.
 from endf_parserpy.recipe_parser.tree import Tree
 from endf_parserpy.recipe_parser.tree import Token
 from ..utils.tree_utils import get_child
+from ..utils.record_vectors import fixed_length_vector_arg
 from .custom_exceptions import RecipeAnnotationError
 
 
@@ -516,14 +525,16 @@ class _Walker:
             block = None
         else:
             block = None if expr is None else self.find_block(var, expr, scope)
-            rank = 0 if block is None else len(block[0])
+            rank = 0
+            if block is not None:
+                rank = len(block[0]) + (0 if block[2] is None else 1)
             kind = ("NestedArray", dtype, var.nidx, rank)
         scope.vars.setdefault(key, False)
         self.mark(anchor, var.name, kind)
         self.assignments.append((var, expr, kind, anchor, scope.path()))
         if expr is None:
             return
-        num_leading = var.nidx - kind[3] if block else var.nidx - 1
+        num_leading = var.nidx - len(block[0]) if block else var.nidx - 1
         dests = self.prepare_dests(var, expr, num_leading)
         indexquants = var.indexquants()
         for i, dest in enumerate(dests):
@@ -583,10 +594,10 @@ class _Walker:
     def add_block(self, var, expr, kind, block, scope):
         # the regular block of the trailing indices is created before
         # its outermost loop, see the regularity rule in find_block
-        block, outer = block
+        block, outer, vector_arg = block
         num_leading = var.nidx - len(block)
         specs = self.index_specs(var.indexquants()[:num_leading], scope)
-        entry = (var.name, specs, block, kind)
+        entry = (var.name, specs, block, kind, vector_arg)
         blocks = getattr(outer, "_np_blocks", ())
         if not any(b[0] == var.name for b in blocks):
             outer._np_blocks = blocks + (entry,)
@@ -618,8 +629,19 @@ class _Walker:
         Returns the loops of the trailing indices ``i_{k+1}, ..., i_n``
         of ``var`` (in the order of the indices) that form a regular
         block, i.e. a rectangular array whose shape is known before its
-        outermost loop starts, together with the outermost loop, or
-        ``None`` if there is no such block with at least two indices.
+        outermost loop starts, together with the outermost loop and the
+        expression ``vector_arg`` described below, or ``None`` if there
+        is no such block with at least two dimensions.
+
+        If ``expr`` is a field that yields a vector whose length is fixed
+        before its record is read (the values of an INTG record, see
+        :mod:`endf_parserpy.utils.record_vectors`), the values add an
+        innermost dimension to the block, as a loop over them would:
+        ``vector_arg`` is then the expression that determines the length,
+        which is subject to the conditions of the limits in item 5, and
+        one loop suffices for a block; otherwise ``vector_arg`` is
+        ``None``.
+
         The block has the largest number of indices for which:
 
         1. the variable is assigned here for the first time, and the
@@ -646,7 +668,10 @@ class _Walker:
            is created before the outermost loop of the block (by the
            rule for the creation of elements of nested arrays).
         """
-        if var.nidx < 2 or scope.find(var.key) is not None:
+        vector_arg = fixed_length_vector_arg(expr, self.parent)
+        # a block has at least two dimensions
+        min_loops = 2 if vector_arg is None else 1
+        if var.nidx < min_loops or scope.find(var.key) is not None:
             return None
         idxexprs = [q.children[0] for q in var.indexquants()]
         names = [_bare_varname(e) for e in idxexprs]
@@ -660,15 +685,16 @@ class _Walker:
             if cur.data in ("for_loop", "list_loop"):
                 loops.append(cur)
             cur = self.parent(cur)
-        for rank in range(len(loops), 1, -1):
+        for rank in range(len(loops), min_loops - 1, -1):
             # the loops of the trailing indices, in the order of the indices
             byvar = {_loopvar(loop): loop for loop in loops[:rank]}
             trailing = names[-rank:]
             if None in trailing or set(trailing) != set(byvar):
                 continue
             block = tuple(byvar[name] for name in trailing)
-            if self.is_block(var, expr, idxexprs, block, loops[rank - 1], scope):
-                return block, loops[rank - 1]
+            outer = loops[rank - 1]
+            if self.is_block(var, expr, idxexprs, block, outer, scope, vector_arg):
+                return block, outer, vector_arg
         return None
 
     def occurs_elsewhere(self, key, expr):
@@ -706,7 +732,23 @@ class _Walker:
             and _only_in_expressions(loop, key[0])
         )
 
-    def is_block(self, var, expr, idxexprs, block, outer, scope):
+    def is_invariant_limit(self, lim, loopvars, outer, scope):
+        # whether the value of the expression lim, evaluated before the
+        # loop outer, does not change in it (see condition 5 of find_block)
+        for key in _all_vars(lim):
+            if key in loopvars:
+                return False
+            if key[1] == 0 and scope.abbrevs and key[0] in scope.abbrevs:
+                return False
+            if scope.is_loopvar(key):
+                continue
+            if not contains_var(outer, key[0], skip_loop_heads=True):
+                continue
+            if not self.is_checked_only(key, outer):
+                return False
+        return True
+
+    def is_block(self, var, expr, idxexprs, block, outer, scope, vector_arg=None):
         num_leading = var.nidx - len(block)
         loopvars = {(_loopvar(loop), 0) for loop in block}
         if any(_all_vars(e) & loopvars for e in idxexprs[:num_leading]):
@@ -719,19 +761,13 @@ class _Walker:
             if cur.data in LOOP_NODES and _loopvar(cur) not in leading:
                 return False
             cur = self.parent(cur)
-        for loop in block:
-            for lim in _loop_limits(loop):
-                for key in _all_vars(lim):
-                    if key in loopvars:
-                        return False
-                    if key[1] == 0 and scope.abbrevs and key[0] in scope.abbrevs:
-                        return False
-                    if scope.is_loopvar(key):
-                        continue
-                    if not contains_var(outer, key[0], skip_loop_heads=True):
-                        continue
-                    if not self.is_checked_only(key, outer):
-                        return False
+        limits = [lim for loop in block for lim in _loop_limits(loop)]
+        if vector_arg is not None:
+            # the length of the vector is a further limit of the block
+            limits.append(vector_arg)
+        for lim in limits:
+            if not self.is_invariant_limit(lim, loopvars, outer, scope):
+                return False
         if num_leading > 0:
             dests = self.prepare_dests(var, expr, num_leading)
             if dests[-1] is not outer:

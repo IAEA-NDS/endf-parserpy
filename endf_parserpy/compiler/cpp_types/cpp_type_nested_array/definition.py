@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -18,7 +18,10 @@ definition_code = """
 // array whose index ranges are fixed when it is created (make_block),
 // with the elements in row-major order. A list starts at the index of
 // its first element and grows by appending elements (prepare); a
-// NestedArray<T, 1> is a list of values (set). The code generator creates
+// NestedArray<T, 1> is a list of values (set). The capacity of a list
+// of values filled by a loop is reserved before the loop (reserve) if
+// the code generator can determine the list and the loop (see
+// _filling_loop in assign.py). The code generator creates
 // a block for the trailing indices of a variable if it can prove that
 // they form a rectangular array that no other code of the recipe writes
 // to and that is created only once (see find_block in assign.py); the
@@ -32,6 +35,12 @@ definition_code = """
 
 template<typename T, int N>
 class NestedArray;
+
+// upper limit of the number of elements reserved by NestedArray::reserve
+const long long cpp_max_reserved_elements = 65536;
+// capacity of a list of values without reserved capacity when its first
+// element is set
+const std::size_t cpp_initial_list_capacity = 4;
 
 
 // export of a sequence of values
@@ -87,9 +96,30 @@ class NestedArray<T, 1> {
       return items[index - start];
     }
 
+    // capacity for the elements with the indices up to last, if they are
+    // set in the order of their indices from first on, so that the
+    // elements are not moved while they are added; at most
+    // cpp_max_reserved_elements elements are reserved (the loop bounds
+    // of a damaged file may be huge). The elements are not changed.
+    void reserve(int first, int last) {
+      long long begin = items.empty() ? first : start;
+      long long num = (long long)last - begin + 1;
+      if (num > cpp_max_reserved_elements) {
+        num = cpp_max_reserved_elements;
+      }
+      if (num > (long long)items.capacity()) {
+        items.reserve((std::size_t)num);
+      }
+    }
+
     void set(int index, const T& value) {
       if (items.empty()) {
         start = index;
+        // a list without reserved capacity starts with room for a few
+        // elements, which saves the first reallocations of short lists
+        if (items.capacity() == 0) {
+          items.reserve(cpp_initial_list_capacity);
+        }
       }
       if (index == start + (int)items.size()) {
         items.push_back(value);

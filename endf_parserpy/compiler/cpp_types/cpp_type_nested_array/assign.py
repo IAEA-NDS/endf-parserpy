@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/25
+# Last modified:   2026/10/26
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -385,6 +385,56 @@ def _creation_loop(vartok, level, node, ptr_dest):
     return target
 
 
+def _filling_loop(vartok, node):
+    # The loop that sets the elements of the innermost level of a nested
+    # array (in the list form) in the order of their indices: the loop
+    # enclosing the assignment without an if-clause, another loop, a
+    # section or a named LIST record in between, whose variable is the
+    # last index. None if there is no such loop.
+    lastidx = vartok.indices[-1]
+    if not is_variable(lastidx) or len(lastidx.indices) != 0:
+        return None
+    cur = node
+    while cur.parent is not None:
+        parent = cur.parent
+        if (
+            is_section(parent)
+            or _is_named_list_body(cur, parent)
+            or is_if_clause(parent)
+            or is_repeat_loop(parent)
+        ):
+            return None
+        if is_for_loop(parent) or parent.data == "list_loop":
+            break
+        cur = parent
+    else:
+        return None
+    loop = parent
+    if str(get_loopvar(loop)) != str(lastidx) or loop.loop_bounds is None:
+        return None
+    return loop
+
+
+def _encloses(outer, node):
+    # whether node is outer or inside it
+    while node is not None:
+        if node is outer:
+            return True
+        node = node.parent
+    return False
+
+
+def _reserve_code(arrname, loop):
+    # The capacity of the innermost level of an array filled by the loop
+    # is reserved before the loop; the bounds are evaluated in the same
+    # order as by the loop. The reservation does not change the elements.
+    start, stop = loop.loop_bounds
+    return cpp.block(
+        cpp.statement(f"int cpp_first = {start}")
+        + cpp.statement(f"{arrname}reserve(cpp_first, {stop})")
+    )
+
+
 class Assign:
 
     def define_var(vartok, vardict, save_state=False):
@@ -433,6 +483,9 @@ class Assign:
         code = ""
         ptrvar_old = cpp_varname
         limit_node = None
+        # the expression of the innermost list if it is created before
+        # the loop of the last index (see _creation_loop)
+        created_list = None
         for i in range(num_leading):
             ptrvar_new = get_ptr_varname(vartok, i)
             dot = "." if i == 0 else "->"
@@ -472,6 +525,8 @@ class Assign:
                         create_code += nested_element_hook(vartok, indices[: i + 1])
                     creation.check_my_identity()
                     creation.append_precode(create_code)
+                    if i == num_leading - 1 and not unused:
+                        created_list = (creation, f"{cpp_varname}{chain}->")
                     if layout_recorder is not None:
                         layout_recorder.record_pointer_preparation(
                             vartok, i, creation, node
@@ -483,6 +538,19 @@ class Assign:
             return UnstoredAssignment(code)
         dot = "." if num_leading == 0 else "->"
         if block is None:
+            filling = None if node is None else _filling_loop(vartok, node)
+            if filling is not None:
+                # the innermost list is the one of the pointer variable if
+                # it is assigned before the loop (or a variable with one
+                # index), otherwise the one created before the loop
+                arrname = None
+                if num_leading == 0 or _encloses(limit_node, filling):
+                    arrname = f"{ptrvar_old}{dot}"
+                elif created_list is not None and created_list[0] is filling:
+                    arrname = created_list[1]
+                if arrname is not None:
+                    filling.check_my_identity()
+                    filling.append_loop_setup(_reserve_code(arrname, filling))
             code += cpp.statement(f"{ptrvar_old}{dot}set({indices[-1]}, {exprstr})")
             return code
         loops, outer = block

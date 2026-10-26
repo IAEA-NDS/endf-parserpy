@@ -995,12 +995,17 @@ def _generate_code_for_loop(
         -4,
     )
     code += cpp.indent_code(init_readflag(loopvar, val=True))
+    # the bounds as evaluated by the loop, for the setup code of the loop
+    # (e.g. the reservation of arrays filled in the loop)
+    node.loop_bounds = (start_expr_str, stop_expr_str)
     body_code = parsefun(for_body, vardict)
     code += cpp.indent_code(body_code)
     code += cpp.close_block()
     unregister_var(loopvar, vardict)
-    # add code propagated upward from downstream nodes
-    code = node.precode + code
+    # add code propagated upward from downstream nodes; the setup code
+    # follows all other code before the loop, so that it is executed
+    # right before the bounds are evaluated by the loop
+    code = node.precode + node.loop_setup + code
     return code
 
 

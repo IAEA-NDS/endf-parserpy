@@ -58,6 +58,7 @@ from .endf_recipe_mf7 import ENDF_RECIPE_MF7_MT6
 from .endf_recipe_mf8 import ENDF_RECIPE_MF8_MT1
 from .endf_recipe_mf8 import ENDF_RECIPE_MF8_MT2
 from .endf_recipe_mf8 import ENDF_RECIPE_MF8_MT3
+from .endf_recipe_mf8 import ENDF_RECIPE_MF8_MT4
 
 # values of INTG records in loops (array_type="numpy")
 from .endf_recipe_mf9 import ENDF_RECIPE_MF9_MT1
@@ -110,6 +111,7 @@ defdic(endf_recipe_dictionary, (7, 6), ENDF_RECIPE_MF7_MT6)
 defdic(endf_recipe_dictionary, (8, 1), ENDF_RECIPE_MF8_MT1)
 defdic(endf_recipe_dictionary, (8, 2), ENDF_RECIPE_MF8_MT2)
 defdic(endf_recipe_dictionary, (8, 3), ENDF_RECIPE_MF8_MT3)
+defdic(endf_recipe_dictionary, (8, 4), ENDF_RECIPE_MF8_MT4)
 defdic(endf_recipe_dictionary, (9, 1), ENDF_RECIPE_MF9_MT1)
 defdic(endf_recipe_dictionary, (9, 2), ENDF_RECIPE_MF9_MT2)
 defdic(endf_recipe_dictionary, (9, 3), ENDF_RECIPE_MF9_MT3)

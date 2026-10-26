@@ -208,3 +208,109 @@ def test_remove_redundant_type_checks():
         "}\n"
     )
     assert remove_redundant_type_checks(code) == expected
+
+
+# The analysis follows the scopes of the variables: a section and a named
+# TAB1, TAB2 or LIST record have their own variables, declared in the
+# block of the scope, so that the same name in another scope is another
+# variable whose types are not compared.
+
+
+def _mt4_section(s, n, xvals=()):
+    lines = [
+        _record(4, 1, ints=(s, n, 0, 0)),
+        _record(4, 2, floats=(5.0, 0.0)),
+        _record(4, 3, ints=(s, n, 0, 0)),
+    ]
+    seq = 4
+    if s == 1:
+        lines.append(_record(4, seq, floats=(9.0, 0.0)))
+        seq += 1
+    for x in xvals:
+        lines.append(_record(4, seq, floats=(x, 0.0)))
+        seq += 1
+    lines.append(_record(0, 99999))
+    return "\n".join(lines)
+
+
+@pytest.mark.parametrize("genfun", [generate_cpp_parsefun, generate_cpp_writefun])
+def test_checks_per_scope(genfun):
+    # X outside of the section part is a scalar only (no check), X in the
+    # section is a scalar and an array (checks kept)
+    code = genfun("f", mf8.ENDF_RECIPE_MF8_MT4)
+    assert _checks(code) == [("X", "NESTEDARRAY_DOUBLE"), ("X", "SCALAR_DOUBLE")]
+    pos_section = code.index('"part"')
+    assert all(m.start() > pos_section for m in _CHECK_RE.finditer(code))
+
+
+def test_conflicting_types_in_section_raise():
+    message = _parse_error_message(_mt4_section(1, 2, (1.0, 2.0)))
+    assert message is not None
+    assert _type_error_message("X", "NESTEDARRAY_DOUBLE", "SCALAR_DOUBLE") in message
+
+
+@pytest.mark.parametrize("s, n", [(1, 0), (0, 2)])
+def test_single_type_in_section(s, n):
+    res = _make_parser().parse(_mt4_section(s, n, (1.0, 2.0)[:n]))
+    assert res[8][4]["X"] == 5.0
+    if s == 1:
+        assert res[8][4]["part"]["X"] == 9.0
+    else:
+        assert list(res[8][4]["part"]["X"].values()) == [1.0, 2.0]
+
+
+@pytest.mark.parametrize("genfun", [generate_cpp_parsefun, generate_cpp_writefun])
+@pytest.mark.parametrize(
+    "recipe",
+    [
+        get_recipe_dict("endf6")[7][4],
+        get_recipe_dict("endf6")[7][2],
+        get_recipe_dict("test")[7][6],
+    ],
+    ids=["endf6_mf7_mt4", "endf6_mf7_mt2", "test_mf7_mt6"],
+)
+def test_column_of_named_record_and_array(genfun, recipe):
+    # the column S of the named TAB1 record S_table[i] (S_T0_table in
+    # MT2) is a variable of the record, not the array S[q,i,j] (S[q,i]);
+    # the same for V and V[r,g,c] of MF7/MT6 of the test flavor
+    assert _checks(genfun("f", recipe)) == []
+
+
+def test_remove_redundant_type_checks_per_block():
+    code = (
+        "vartype aux_last_type_read_for_A = UNKNOWN;\n"
+        "aux_last_type_read_for_A = NESTEDARRAY_DOUBLE;\n"
+        'validate_vartype_consistency("A", NESTEDARRAY_DOUBLE, aux_last_type_read_for_A);\n'
+        'cpp_template = "[ A } { ]";\n'
+        "{\n"
+        "  // a block with its own variable A }\n"
+        "  vartype aux_last_type_read_for_A = UNKNOWN;\n"
+        "  aux_last_type_read_for_A = SCALAR_FLOATVEC;\n"
+        '  validate_vartype_consistency("A", SCALAR_FLOATVEC, aux_last_type_read_for_A);\n'
+        "}\n"
+        'validate_vartype_consistency("A", NESTEDARRAY_DOUBLE, aux_last_type_read_for_A);\n'
+        "{\n"
+        "  aux_last_type_read_for_A = SCALAR_DOUBLE;\n"
+        "}\n"
+    )
+    # the second block assigns another type to the A of the function, so
+    # that its checks are kept; the check of the first block is removed
+    expected = code.replace(
+        '  validate_vartype_consistency("A", SCALAR_FLOATVEC, aux_last_type_read_for_A);\n',
+        "",
+    )
+    assert remove_redundant_type_checks(code) == expected
+    # without the second block, all checks are removed
+    code = code[: code.rindex("{\n")]
+    assert _checks(remove_redundant_type_checks(code)) == []
+
+
+def test_remove_redundant_type_checks_other_statements():
+    # a variable that occurs in another statement keeps its checks
+    code = (
+        "vartype aux_last_type_read_for_A = UNKNOWN;\n"
+        "aux_last_type_read_for_A = SCALAR_INT;\n"
+        'validate_vartype_consistency("A", SCALAR_INT, aux_last_type_read_for_A);\n'
+        "aux_last_type_read_for_A = cpp_some_type;\n"
+    )
+    assert remove_redundant_type_checks(code) == code

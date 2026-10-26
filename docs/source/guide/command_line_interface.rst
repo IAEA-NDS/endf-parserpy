@@ -457,6 +457,17 @@ Wildcards in file names are supported, e.g. ``*.endf``.
 The exit code follows the ``grep`` convention: ``0`` if at least one
 material matched, ``1`` if none did, and ``2`` if a file or material
 could not be parsed -- so ``match`` can be used as a test in a script.
+
+.. note::
+
+   The ``match`` command needs the `Lark <https://github.com/lark-parser/lark>`_
+   package to interpret ``<MATCH-EXPR>``. It is an optional dependency
+   that can be installed with the ``cli`` extra:
+
+   .. code:: bash
+
+      python -m pip install "endf-parserpy[cli]"
+
 The ``<MATCH-EXPR>`` is composed of order relations between
 symbol names (provided as EndfPath) and numbers, e.g.
 ``/3/1/ZA >= 26056`` that are potentially connected by logical

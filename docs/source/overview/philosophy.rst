@@ -118,9 +118,11 @@ implemented by updating the formal ENDF-6 descriptions.
 The design of the formal ENDF format specification
 language is explained in an `arxiv preprint
 <https://arxiv.org/abs/2312.08249>`_.
-Endf-parserpy leverages the parsing package
-`Lark`_ for the interpretation of the formal ENDF-6 format
-description.
+The language is specified by a grammar in the notation of the
+parsing package `Lark`_. Endf-parserpy interprets the formal ENDF-6
+format description with its own parser for this language, which
+produces the same parse trees as Lark and has no third-party
+dependencies.
 
 
 3. No classes to encapsulate ENDF-6 data

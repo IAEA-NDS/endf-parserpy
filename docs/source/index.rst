@@ -110,12 +110,21 @@ Install endf-parserpy
    you can set the environment variable ``INSTALL_ENDF_PARSERPY_CPP``
    to ``no`` before executing the ``pip install`` command.
 
+   Two further variables tune the compilation itself:
+   ``INSTALL_ENDF_PARSERPY_NUM_BUILD_JOBS`` sets the number of parallel
+   compile jobs (default: all CPU cores; ``1`` disables parallel
+   compilation), and ``INSTALL_ENDF_PARSERPY_NUM_SHARED_CHUNKS`` sets
+   how many translation units the C++ code shared between the format
+   flavors is split into for faster parallel builds (default: up to 8;
+   ``1`` emits the single ``_shared.cpp`` as found in the repository).
+
 
 .. note::
 
    The :doc:`multi-material file interface <guide/multimaterial_files>`
    indexes tapes with a structural scan that is faster when
-   `NumPy <https://numpy.org/>`_ is available. To install this
+   `NumPy <https://numpy.org/>`_ is available, and NumPy also enables
+   ``array_type="numpy"``, the fastest parsing mode. To install this
    optional dependency, add the ``fast`` extra:
 
    .. code:: bash

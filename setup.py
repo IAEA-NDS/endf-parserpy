@@ -294,15 +294,6 @@ def main():
         ext_modules=ext_modules,
         zip_safe=False,
         include_package_data=True,
-        install_requires=[],
-        extras_require={
-            # optional accelerator: enables the vectorized TapeIndex scan
-            "fast": ["numpy>=1.20"],
-            # logical expressions of `endf-cli match`
-            "cli": ["lark>=1.0.0"],
-            # the tests compare the recipe parser with lark
-            "test": ["pytest", "lark>=1.1"],
-        },
     )
 
 

@@ -9,7 +9,8 @@ build-backend = "setuptools.build_meta"
 name = "endf-parserpy"
 description = "A Python package for reading, writing, verifying and translating ENDF-6 files"
 authors = [{ name = "Georg Schnabel" }]
-dynamic = ["version", "dependencies"]
+dynamic = ["version"]
+dependencies = []
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.8"
@@ -29,7 +30,17 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
+
+[project.optional-dependencies]
+# numpy enables array_type="numpy" (the fastest parsing mode) and the
+# vectorized TapeIndex scan
+fast = ["numpy>=1.20"]
+# lark is needed for the logical expressions of `endf-cli match`
+cli = ["lark>=1.0.0"]
+# the tests compare the recipe parser with lark
+test = ["pytest", "lark>=1.1"]
 
 [project.urls]
 Repository = "https://github.com/iaea-nds/endf-parserpy"

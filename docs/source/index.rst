@@ -73,6 +73,10 @@ and `JENDL <https://wwwndc.jaea.go.jp/jendl/jendl.html>`_.
 Files that bundle several materials, including PENDF
 tapes, are supported as well; see the guide on
 :doc:`multi-material files <guide/multimaterial_files>`.
+Parsing and writing have been extensively optimized; the C++
+backend processes ENDF-6 data at rates of up to several hundred
+megabytes per second (see
+:ref:`accelerated parsing and writing <accelerated_parsing_and_writing_sec>`).
 
 
 Install endf-parserpy

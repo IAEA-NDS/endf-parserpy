@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/10/25
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -116,8 +116,13 @@ def _map_cmd_args_to_endf_parser_args(args, cpp):
     return kwargs
 
 
-def get_endf_parser(args, args_override=None, allow_cpp=True):
-    """Return ENDF parser object."""
+def get_endf_parser(args, args_override=None, allow_cpp=True, cpp_only_args=None):
+    """Return ENDF parser object.
+
+    ``cpp_only_args`` holds constructor arguments that only the C++
+    parser accepts (e.g. ``validate_control_records``); they are passed
+    if the C++ parser is chosen and do not influence that choice.
+    """
     args_override = {} if args_override is None else args_override
     parser_args = {**args, **args_override}
     no_cpp = parser_args["no_cpp"] or (not allow_cpp)
@@ -138,7 +143,7 @@ def get_endf_parser(args, args_override=None, allow_cpp=True):
         )
     )
     if can_use_cpp:
-        parser = EndfParserCpp(**cpp_parser_args)
+        parser = EndfParserCpp(**cpp_parser_args, **(cpp_only_args or {}))
     else:
         parser = EndfParserPy(**py_parser_args)
     return parser

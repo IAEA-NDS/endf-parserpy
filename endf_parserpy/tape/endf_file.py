@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/10/25
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -1022,6 +1022,41 @@ class EndfFile:
             return "\n".join([self._index.tpid_line] + lines + [tail])
         sep = "\n" if raw and not raw.endswith("\n") else ""
         return "".join((self._index.tpid_line, "\n", raw, sep, tail))
+
+    def _sections_tape(self, position, keys):
+        """Return one single-material tape holding several sections.
+
+        ``keys`` lists ``(MF, MT)`` sections of the material at
+        ``position``, sorted in ascending order. Each section is given
+        exactly the text that :meth:`_mini_tape` hands to the parser for
+        it alone: its raw text from disk, divided into lines as by
+        :func:`_split_lines` if it contains CR characters. The sections
+        follow the TPID of the file in the given order, with a FEND
+        record after the last section of each MF and the MEND/TEND
+        records at the end -- the framing is generated as for
+        :meth:`_mini_tape`, the framing records of the file are not
+        used. The raw text is read from disk without being cached.
+        """
+        entry = self._index[position]
+        fend = _control_line(entry.mat, 0, 0) + "\n"
+        parts = [self._index.tpid_line, "\n"]
+        prev_mf = None
+        with self._read_session():
+            for mf, mt in keys:
+                if prev_mf is not None and mf != prev_mf:
+                    parts.append(fend)
+                prev_mf = mf
+                sec_entry = entry.sections[(mf, mt)]
+                raw = self._read_span(sec_entry.offset, sec_entry.length)
+                if "\r" in raw:
+                    lines = _split_lines(raw)
+                    parts.append("".join(line + "\n" for line in lines))
+                else:
+                    parts.append(raw)
+                    if raw and not raw.endswith("\n"):
+                        parts.append("\n")
+        parts.append(fend + _control_line(0, 0, 0) + "\n" + TEND_LINE)
+        return "".join(parts)
 
     def _parse_section(self, entry, mf, mt, raw):
         try:

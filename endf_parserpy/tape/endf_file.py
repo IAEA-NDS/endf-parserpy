@@ -30,6 +30,7 @@ guarantee the ordinary writer gives.
 """
 
 import os
+import re
 from contextlib import contextmanager
 from collections.abc import Mapping
 
@@ -93,6 +94,82 @@ def _split_lines(raw):
     if "\r" in raw:
         lines = [line[:-1] if line.endswith("\r") else line for line in lines]
     return lines
+
+
+# Line numbers in the messages of the parsers (see _message_in_file_lines):
+# the pattern (the line number is its second group), the number of the
+# first line (1 or 0) and the replacement of the match for a line of the
+# end records added to the section ({record} is FEND, MEND or TEND), or
+# None if the message cannot refer to these records
+_INPUT_LINE_PATTERNS = (
+    (
+        re.compile(r"\b(line )(\d+)(, column \d+ (?:\(MAT/MF/MT|of the input))"),
+        1,
+        None,
+    ),
+    (
+        re.compile(r"^(Line )(\d+)(: )", re.MULTILINE),
+        1,
+        "Line after the section ({record} record added to parse it alone): ",
+    ),
+    (re.compile(r"(Hint: line )(\d+)( is longer than 80 columns)"), 1, None),
+    (
+        re.compile(r"(End of the data reached after line )(\d+)()"),
+        1,
+        "End of the data reached after the section and the end records added "
+        "to parse it alone",
+    ),
+    (
+        re.compile(r"(in control record of line )(\d+)(\.)"),
+        0,
+        "in control record of the {record} record added after the section.",
+    ),
+    (re.compile(r"^(Line )(\d+)( is a blank line\.)", re.MULTILINE), 0, None),
+)
+_SECTION_LINE0_PATTERN = re.compile(
+    r"^(-------- Line )(\d+)( -----------)$", re.MULTILINE
+)
+_ADDED_END_RECORDS = ("FEND", "MEND", "TEND")
+
+
+def _message_in_file_lines(message, first_line, lines):
+    """Translate the line numbers in a message of a parser to file lines.
+
+    The message is that of an error raised while parsing the tape built
+    by :meth:`EndfFile._mini_tape` for a section, which starts at line
+    ``first_line`` (counting from 1) of the file and has the raw lines
+    ``lines`` (see :func:`_split_lines`). The tape is the TPID line
+    followed by these lines and the added FEND, MEND and TEND records,
+    so that line ``n`` of the tape (counting from 1) is line
+    ``first_line + n - 2`` of the file for ``2 <= n <= len(lines) + 1``;
+    the line of an added end record is named as such. The numbers of the
+    record log of EndfParserPy count the lines of the section without
+    blank lines (dropped with ``ignore_blank_lines``) from 0. Only the
+    line numbers of the messages known to give them are translated.
+    """
+
+    def replace(match, first, beyond):
+        n = int(match.group(2)) + 1 - first
+        if n < 2:
+            # the TPID record, the first line of the file and of the tape
+            return match.group(0)
+        if n <= len(lines) + 1:
+            return match.group(1) + str(first_line + n - 2) + match.group(3)
+        k = n - len(lines) - 2
+        if beyond is None or k >= len(_ADDED_END_RECORDS):
+            return match.group(0)
+        return beyond.format(record=_ADDED_END_RECORDS[k])
+
+    def section_line(match):
+        k = int(match.group(2))
+        nonblank = [i for i, line in enumerate(lines) if line.strip() != ""]
+        if k >= len(nonblank):
+            return match.group(0)
+        return match.group(1) + str(first_line + nonblank[k]) + match.group(3)
+
+    for pattern, first, beyond in _INPUT_LINE_PATTERNS:
+        message = pattern.sub(lambda m: replace(m, first, beyond), message)
+    return _SECTION_LINE0_PATTERN.sub(section_line, message)
 
 
 def _value_match(field, value, tol):
@@ -258,6 +335,8 @@ class EndfFile:
         self._material_views = {}
         self._secondary_indexes = {}
         self._read_fh = None
+        # line numbers of the section starts (see _section_first_line)
+        self._section_lines = None
         self._invalidated = False
         if mode == "load_raw":
             self._preload(parse=False)
@@ -875,9 +954,14 @@ class EndfFile:
     def _require_mapping_section(self, section, mf, mt):
         """Raise unless ``section`` is a parsed (mapping) section."""
         if isinstance(section, FailedSection):
-            raise SectionParseError(
+            raise self._section_parse_error(
                 f"MF={mf}/MT={mt} of the material at position "
-                f"{section.position} failed to parse"
+                f"{section.position} failed to parse",
+                section.position,
+                mf,
+                mt,
+                section.exception,
+                section.raw_lines,
             ) from section.exception
         if not isinstance(section, Mapping):
             raise TypeError(
@@ -905,9 +989,14 @@ class EndfFile:
         nested view or a bare scalar.
         """
         if isinstance(section, FailedSection):
-            raise SectionParseError(
+            raise self._section_parse_error(
                 f"MF={mf}/MT={mt} of the material at position "
-                f"{section.position} failed to parse"
+                f"{section.position} failed to parse",
+                section.position,
+                mf,
+                mt,
+                section.exception,
+                section.raw_lines,
             ) from section.exception
         if self._check_edits == "deferred":
 
@@ -1065,14 +1154,75 @@ class EndfFile:
             section = result[mf][mt]
         except Exception as exc:
             if self._on_error == "raise":
-                raise SectionParseError(
+                raise self._section_parse_error(
                     f"failed to parse MF={mf}/MT={mt} of the material at "
-                    f"position {entry.position} (MAT={entry.mat})"
+                    f"position {entry.position} (MAT={entry.mat})",
+                    entry.position,
+                    mf,
+                    mt,
+                    exc,
+                    _split_lines(raw),
                 ) from exc
             return FailedSection(exc, _split_lines(raw), entry.position, mf, mt)
         if isinstance(section, Mapping):
             return _Section(section)
         return section  # a section without a recipe stays a list of strings
+
+    def _section_parse_error(self, message, position, mf, mt, exc, lines):
+        """Return the :class:`SectionParseError` for a section of the file.
+
+        ``exc`` is the exception raised by the parser for the section of
+        the material at ``position`` (of the index) with the raw lines
+        ``lines``; the line of the file at which the section starts and
+        the message of ``exc`` with file line numbers (see
+        :func:`_message_in_file_lines`) are attached.
+        """
+        line = self._section_first_line(position, mf, mt)
+        detail = str(exc)
+        if line is not None:
+            detail = _message_in_file_lines(detail, line, lines)
+        return SectionParseError(
+            message,
+            position=position,
+            mat=self._index[position].mat,
+            mf=mf,
+            mt=mt,
+            line=line,
+            detail=detail,
+        )
+
+    def _section_first_line(self, position, mf, mt):
+        """Number (counting from 1) of the line of the file at which a
+        section of the index starts, or ``None`` if not known.
+
+        On first use, the lines before every section of the index are
+        counted in one pass over the file; this is only done for error
+        messages.
+        """
+        sec_entry = self._index[position].sections.get((mf, mt))
+        if sec_entry is None:
+            return None
+        if self._section_lines is None:
+            offsets = sorted(
+                s.offset for entry in self._index for s in entry.sections.values()
+            )
+            section_lines = {}
+            count = 0
+            pos = 0
+            try:
+                with open(self._path, "rb") as fh:
+                    for offset in offsets:
+                        while pos < offset:
+                            chunk = fh.read(min(offset - pos, 1 << 24))
+                            if not chunk:
+                                break
+                            count += chunk.count(b"\n")
+                            pos += len(chunk)
+                        section_lines[offset] = count + 1
+            except OSError:
+                return None
+            self._section_lines = section_lines
+        return self._section_lines.get(sec_entry.offset)
 
     @contextmanager
     def _read_session(self):
@@ -1374,3 +1524,5 @@ class EndfFile:
         self._material_views = {}
         self._secondary_indexes = {}
         self._read_fh = None
+        # line numbers of the section starts (see _section_first_line)
+        self._section_lines = None

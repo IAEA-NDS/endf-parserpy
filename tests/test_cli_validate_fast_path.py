@@ -141,7 +141,10 @@ def test_failure_report_identical(parsers, tmp_path):
     new = validate._validate_file(parser, str(bad), fast)
     assert new == old
     assert new[0] is False
-    assert new[1].startswith("section MF=3/MT=1:\nfailed to parse MF=3/MT=1 ")
+    assert new[1].startswith(
+        "section MF=3/MT=1:\nThe section starts at line 866 of the file.\n"
+        'malformed number field: "BADBADBAD!!" (field 1, columns 1-11, variable ZA)'
+    )
 
 
 @pytest.mark.parametrize("bad_position", [0, 1])
@@ -185,7 +188,7 @@ def test_failing_mf_falls_back_alone(parsers, tmp_path, per_section_parsing):
     bad = _write(tmp_path / "bad.endf", _corrupt_first(_lines(CU), 2925, 4))
     old = validate._validate_file(parser, str(bad))
     assert old[0] is False
-    assert old[1].startswith("section MF=4/MT=2:\nfailed to parse MF=4/MT=2 ")
+    assert old[1].startswith("section MF=4/MT=2:\nThe section starts at line ")
     per_section_parsing.clear()
     assert validate._validate_file(parser, str(bad), fast) == old
     # the per-section validation stops at the first failing section
@@ -283,7 +286,7 @@ def test_validate_without_numpy_uses_list_mode(tmp_path):
     assert result.returncode == 1
     assert f"ok - {PU}" in result.stdout
     assert f"failed - {bad}" in result.stdout
-    assert "section MF=8/MT=457:\nfailed to parse MF=8/MT=457" in result.stdout
+    assert "section MF=8/MT=457:\nThe section starts at line 47 " in result.stdout
 
 
 def test_no_fast_path_with_python_parser():

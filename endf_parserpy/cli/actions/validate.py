@@ -15,6 +15,7 @@ from ..cmd_utils import (
     open_endf_file,
 )
 from endf_parserpy import EndfParserCpp
+from endf_parserpy.tape import SectionParseError
 from glob import glob
 from itertools import groupby
 import sys
@@ -152,8 +153,34 @@ def _validate_file(parser, file, fast_parser=None):
                         if multi
                         else ""
                     )
-                    return False, f"{prefix}section MF={mf}/MT={mt}:\n{exc}"
+                    detail = _failure_detail(exc)
+                    return False, f"{prefix}section MF={mf}/MT={mt}:\n{detail}"
     return True, None
+
+
+def _failure_detail(exc):
+    """Describe why a section failed to parse.
+
+    For a :class:`SectionParseError`, this is the line of the file at
+    which the section starts and the message of the error raised by the
+    parser (its cause), with the line numbers it gives counted in the
+    file (see :attr:`SectionParseError.detail`). The name of the error is
+    added for a built-in exception other than ``RuntimeError`` (the
+    errors of the C++ parser), whose message may not say what failed,
+    e.g. ``IndexError: list index out of range``.
+    """
+    if not isinstance(exc, SectionParseError) or exc.__cause__ is None:
+        return str(exc)
+    parts = []
+    if exc.line is not None:
+        parts.append(f"The section starts at line {exc.line} of the file.")
+    cause = exc.__cause__
+    message = exc.detail if exc.detail is not None else str(cause)
+    message = message.strip("\n")
+    if type(cause).__module__ == "builtins" and not isinstance(cause, RuntimeError):
+        message = f"{type(cause).__name__}: {message}"
+    parts.append(message)
+    return "\n".join(parts)
 
 
 def _validate_endf_files(parser, files, fast_parser=None):

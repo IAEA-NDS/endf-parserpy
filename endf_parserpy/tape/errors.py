@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/05/18
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -41,7 +41,47 @@ class AmbiguousMaterialError(TapeError, LookupError):
 
 
 class SectionParseError(TapeError):
-    """Raised when a section fails to parse and ``on_error="raise"``."""
+    """Raised when a section fails to parse and ``on_error="raise"``.
+
+    The exception raised by the parser is kept as the cause
+    (``__cause__``). The section is parsed on its own, as a short tape
+    made of the tape head (TPID) record of the file, the lines of the
+    section and the end records, so that the line numbers in the message
+    of the cause count the lines of this tape; :attr:`detail` gives them
+    as lines of the file.
+
+    Attributes
+    ----------
+    position : int or None
+        Position of the material the section belongs to.
+    mat, mf, mt : int or None
+        The MAT, MF and MT numbers of the section.
+    line : int or None
+        Number (counting from 1) of the line of the file at which the
+        section starts.
+    detail : str or None
+        The message of the cause with the line numbers it gives
+        counted in the file, or ``None`` if there is no cause.
+    """
+
+    def __init__(
+        self,
+        message,
+        *,
+        position=None,
+        mat=None,
+        mf=None,
+        mt=None,
+        line=None,
+        detail=None,
+    ):
+        super().__init__(message)
+        self.position = position
+        self.mat = mat
+        self.mf = mf
+        self.mt = mt
+        self.line = line
+        self.detail = detail
 
 
 class SectionRenderError(TapeError):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2024/05/26
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -74,7 +74,6 @@ def generate_expr_validation(actual_value, node, vardict):
     cont_vars = contains_variables(node)
     cont_des_num = contains_desired_number(node)
     cont_incons_var = contains_potentially_inconsistent_variable(node)
-    current_template = aux.get_current_template()
 
     # using sorted to have a stable ordering across distinct program runs
     variables = sorted(get_variables_in_expr(node))
@@ -100,7 +99,6 @@ def generate_expr_validation(actual_value, node, vardict):
             contains_desired_number=cont_des_num,
             contains_inconsistent_varspec=cont_incons_var,
             exprstr=quoted_exprstr,
-            line_template=current_template,
             parse_opts="parse_opts",
         )
         validation_codes.append(validation_code)

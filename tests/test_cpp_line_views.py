@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/26
-# Last modified:   2026/10/26
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -217,18 +217,19 @@ def test_sections_read_verbatim(tmp_path, selection):
 
 
 def test_error_message_contains_line_as_read(tmp_path):
-    # a full line is reported as read; a short line with the blanks added
+    # the line is reported with its number as read from the input, a
+    # short line without the blanks added
     lines = _lines(DECAY)
     mid = len(lines) // 2
     full = _replace(lines[mid], 72, "777")
     cut = lines[mid][:60]
-    for line, expected in ((full, full), (cut, cut.ljust(75))):
+    for line in (full, cut):
         data = _join(lines[:mid] + [line] + lines[mid + 1 :])
         kwargs = {"validate_control_records": True}
         results = _all_ways(tmp_path / "data.endf", data, kwargs, {})
         _assert_same(results)
         exc_type, message = results["in_memory"]
-        assert "Line: " + expected in message
+        assert f'\nLine {mid + 1}: "{line}"' in message
 
 
 def _line_read_counts(parser, func):

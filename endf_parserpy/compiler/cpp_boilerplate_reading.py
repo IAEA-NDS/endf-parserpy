@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2026/10/26
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -62,7 +62,8 @@ def parsefun_header(fun_name):
         ) {{
           std::vector<int> cpp_intvec;
           std::vector<double> cpp_floatvec;
-          std::string cpp_template;
+          // the template of the current record for error messages
+          const char*& cpp_template = parse_opts.current_template;
           int cpp_nr_val;
           int cpp_np_val;
           bool list_mode = parse_opts.array_type != "dict";

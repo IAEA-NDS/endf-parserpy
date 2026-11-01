@@ -19,6 +19,7 @@
 #include <cstdlib>    // for std::strtod / std::strtol
 #include <cstdio>     // for std::snprintf
 #include <cstring>    // for std::memcpy / std::memchr
+#include <cctype>     // for std::isalpha / std::isdigit
 #include <cmath>      // for std::isfinite
 #include <cerrno>     // for errno (ERANGE)
 #include <climits>    // for INT_MIN / INT_MAX

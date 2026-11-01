@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/25
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -63,6 +63,17 @@ def register_custom_int_field_getter(func, vardict):
 
 def get_custom_int_field_getter(vardict):
     return _get_getter("custom_int_field_getter", vardict)
+
+
+def register_record_body_func(func, vardict):
+    _register_getter(func, vardict, "record_body_func", ("template", "vardict"))
+
+
+def get_record_body_func(vardict):
+    # optional, None if not registered: code to be executed before the
+    # body of a TAB1, TAB2 or LIST record is read
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    return pardict["__basic_ops"].get("record_body_func")
 
 
 def register_custom_int_row_binder(func, vardict):

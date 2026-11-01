@@ -3,12 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2026/10/26
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+import re
 from endf_parserpy.recipe_parser.tree import Token
 from .expr_utils.equation_utils import get_variables_in_expr
 from .expr_utils.custom_nodes import VariableToken
@@ -24,14 +25,24 @@ from .mode_management import (
 )
 
 
+def _template_literal(template):
+    return template.replace("\n", r"\n")
+
+
 def define_current_template(template):
-    tmpl = template.replace("\n", r"\n")
+    # when reading, cpp_template is ParsingOptions::current_template,
+    # the template shown in error messages
+    tmpl = _template_literal(template)
     code = cpp.statement(f'cpp_template = "{tmpl}"')
     return code
 
 
-def get_current_template():
-    return "cpp_template"
+def define_record_body_template(template):
+    # the template preceded by CPP_BODY_MARK (octal 001): the lines of the
+    # body of a TAB1, TAB2 or LIST record are read (see ParsingOptions)
+    tmpl = _template_literal(template)
+    code = cpp.statement(f'cpp_template = "\\001{tmpl}"')
+    return code
 
 
 def read_raw_line(linevar):
@@ -119,6 +130,16 @@ def get_numeric_field(fieldpos, dtype, parse_opts):
     return code
 
 
+_NUMERIC_FIELD_RE = re.compile(r"cpp_read_field<\w+>\(cpp_line\.data\(\), (\d+), \w+\)")
+
+
+def get_numeric_field_position(valcode):
+    """Return the field position of code returned by
+    :func:`get_numeric_field`, or -1 for any other code."""
+    m = _NUMERIC_FIELD_RE.fullmatch(valcode)
+    return int(m.group(1)) if m else -1
+
+
 def get_text_field(start, length):
     code = f"cpp_line.substr({start}, {length})"
     return code
@@ -135,18 +156,20 @@ def validate_field(
     contains_desired_number,
     contains_inconsistent_varspec,
     exprstr,
-    line_template,
     parse_opts,
 ):
     cont_var = _map_bool(contains_variable)
     cont_des_num = _map_bool(contains_desired_number)
     cont_incons_var = _map_bool(contains_inconsistent_varspec)
+    # the field of the value for error messages (-1 if not a single field)
+    fieldnum = get_numeric_field_position(actual_value)
     code = cpp.statement(
         f"cpp_validate_field({expected_value}, {actual_value}, "
         + f" {cont_var}, {cont_des_num}, {cont_incons_var}, "
         + f"{exprstr},"
-        + ("\n" + " " * cpp.INDENT if line_template else " ")
-        + f"{line_template}, cpp_line, {parse_opts})"
+        + "\n"
+        + " " * cpp.INDENT
+        + f"{fieldnum}, {parse_opts})"
     )
     return code
 

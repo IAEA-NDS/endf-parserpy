@@ -35,6 +35,13 @@ struct ParsingOptions {
   // data is parsed from memory (set by the functions called from
   // Python, see CppLine), otherwise nullptr.
   cpp_memory_streambuf* memory_input;
+  // Not an option: the template of the record being read, a string
+  // literal of the generated code, or nullptr outside a record. It is
+  // set at the start of every record (one pointer store) and only read
+  // for error messages (see cpp_rethrow_parse_error). While the lines of
+  // the body of a TAB1, TAB2 or LIST record are read, it points to the
+  // template preceded by CPP_BODY_MARK (see cpp_template_text).
+  const char* current_template;
 };
 
 
@@ -54,7 +61,8 @@ inline ParsingOptions default_parsing_options() {
     false,  // validate_control_records
     true,   // load_file_into_memory
     "dict",  // array_type
-    nullptr  // memory_input
+    nullptr,  // memory_input
+    nullptr  // current_template
   };
 }
 
@@ -107,6 +115,7 @@ namespace pybind11 { namespace detail {
       // use default values for missing options
       ParsingOptions default_opts = default_parsing_options();
       value.memory_input = nullptr;
+      value.current_template = nullptr;
 
       if (! d.contains("ignore_number_mismatch")) {
         value.ignore_number_mismatch = default_opts.ignore_number_mismatch;
@@ -217,6 +226,106 @@ inline py::object py_append_container(py::object pyobj, int key, bool list_mode,
 }
 
 
+// The first character of ParsingOptions::current_template while the
+// lines of the body of a TAB1, TAB2 or LIST record are read; the
+// generated code stores a second string literal, the template preceded
+// by this character, after the first line of such a record has been read.
+#define CPP_BODY_MARK '\001'
+
+
+// The text of a template stored in ParsingOptions::current_template
+// (without CPP_BODY_MARK), or nullptr.
+inline const char* cpp_template_text(const char* tmpl) {
+  if (tmpl != nullptr && tmpl[0] == CPP_BODY_MARK) return tmpl + 1;
+  return tmpl;
+}
+
+
+inline std::string cpp_trim_blanks(const std::string& str) {
+  std::size_t start = str.find_first_not_of(" \n");
+  if (start == std::string::npos) return "";
+  std::size_t end = str.find_last_not_of(" \n");
+  return str.substr(start, end - start + 1);
+}
+
+
+// The name of the record type of a template, e.g. TAB1 for
+// "[ MAT , 3 , MT / ... ] TAB1 ( xstable )", or an empty string.
+inline std::string cpp_template_record_type(const char* tmpl) {
+  std::string text(cpp_template_text(tmpl));
+  std::size_t pos = text.rfind(']');
+  if (pos == std::string::npos) return "";
+  pos = text.find_first_not_of(' ', pos + 1);
+  if (pos == std::string::npos) return "";
+  std::size_t end = text.find_first_of(" (", pos);
+  return text.substr(pos, end == std::string::npos ? end : end - pos);
+}
+
+
+// The expression of field fieldnum (counting from 0) of the first line
+// of a record in its template, i.e. the six expressions separated by
+// commas after the first slash, e.g. AWR for field 1 of
+// "[ MAT , 3 , MT / ZA , AWR , 0 , 0 , 0 , 0 ] HEAD". An empty string if
+// the template does not list six expressions there.
+inline std::string cpp_template_field(const char* tmpl, int fieldnum) {
+  const char* p = std::strchr(cpp_template_text(tmpl), '/');
+  if (p == nullptr || fieldnum < 0 || fieldnum > 5) return "";
+  std::vector<std::string> fields;
+  std::string cur;
+  int depth = 0;
+  for (p++; *p != '\0'; p++) {
+    char c = *p;
+    if (depth == 0 && (c == '/' || c == ']')) break;
+    if (c == '(' || c == '{' || c == '[') depth++;
+    if (c == ')' || c == '}' || c == ']') depth--;
+    if (depth == 0 && c == ',') {
+      fields.push_back(cpp_trim_blanks(cur));
+      cur.clear();
+    } else {
+      cur.push_back(c);
+    }
+  }
+  fields.push_back(cpp_trim_blanks(cur));
+  if (fields.size() != 6) return "";
+  return fields[fieldnum];
+}
+
+
+// A description of field fieldnum (counting from 0) of the line being
+// read for an error message, e.g. "field 2, columns 12-22, variable AWR".
+// The variable (or expression) is taken from the template of the record
+// if the field belongs to its first line; for a line of the body of a
+// TAB1, TAB2 or LIST record, only the record type is given. Only called
+// to build error messages.
+inline std::string cpp_field_description(int fieldnum, const ParsingOptions& parse_opts) {
+  std::ostringstream oss;
+  oss << "field " << fieldnum + 1 << ", columns " << 11*fieldnum + 1
+      << "-" << 11*fieldnum + 11;
+  const char* tmpl = parse_opts.current_template;
+  if (tmpl == nullptr) return oss.str();
+  if (tmpl[0] == CPP_BODY_MARK) {
+    std::string rectype = cpp_template_record_type(tmpl);
+    oss << ", in the body of the " << (rectype.empty() ? "" : rectype + " ") << "record";
+    return oss.str();
+  }
+  std::string expr = cpp_template_field(tmpl, fieldnum);
+  if (expr.empty()) return oss.str();
+  bool is_name = std::isalpha(static_cast<unsigned char>(expr[0])) || expr[0] == '_';
+  bool is_number = true;
+  for (char c : expr) {
+    unsigned char uc = static_cast<unsigned char>(c);
+    if (! (std::isalnum(uc) || c == '_')) is_name = false;
+    if (! (std::isdigit(uc) || c == '.' || c == '-' || c == '+')) is_number = false;
+  }
+  if (is_name) {
+    oss << ", variable " << expr;
+  } else if (! is_number) {
+    oss << ", expression " << expr;
+  }
+  return oss.str();
+}
+
+
 // Format a value for inclusion in an error message. For floating-point
 // values this prints numeric_limits<double>::digits10 significant digits
 // instead of the stream default of 6, so that a small difference between
@@ -231,39 +340,32 @@ inline std::string format_mismatch_value(const T &value) {
 }
 
 
+// The template of the record and the line are added to the message by
+// cpp_rethrow_parse_error.
 template<typename U, typename V, typename W>
-inline void throw_mismatch_error(
-  U quantity, V expected_value, W actual_value,
-  std::string line, std::string template_line
-) {
+inline void throw_mismatch_error(U quantity, V expected_value, W actual_value) {
   std::stringstream errmsg;
   errmsg << "Invalid " << quantity << " encountered! "
          << "Expected " << quantity << "=" << format_mismatch_value(expected_value)
          << " but found " << quantity <<"=" << format_mismatch_value(actual_value) << std::endl;
-  if (template_line.size() > 0) {
-    errmsg << "Template: " << template_line << std::endl;
-  }
-  if (line.size() > 0) {
-    errmsg << "Line: " << line << std::endl;
-  }
   throw std::runtime_error(errmsg.str());
 }
 
 
+// fieldnum (counting from 0) is the field of the line holding the value,
+// or -1 if unknown. The template of the record and the line are added
+// to the message by cpp_rethrow_parse_error.
 template<typename V, typename W>
 inline void throw_number_mismatch_error(
-  V expected_value, W actual_value,
-  std::string line, std::string template_line
+  V expected_value, W actual_value, int fieldnum, const ParsingOptions& parse_opts
 ) {
   std::stringstream errmsg;
   errmsg << "Expected a field to contain the value " << format_mismatch_value(expected_value)
-         << " but found instead the value " << format_mismatch_value(actual_value) << "." << std::endl;
-  if (template_line.size() > 0) {
-    errmsg << "Template: " << template_line << std::endl;
+         << " but found instead the value " << format_mismatch_value(actual_value);
+  if (fieldnum >= 0) {
+    errmsg << " (" << cpp_field_description(fieldnum, parse_opts) << ")";
   }
-  if (line.size() > 0) {
-    errmsg << "Line: " << line << std::endl;
-  }
+  errmsg << "." << std::endl;
   throw std::runtime_error(errmsg.str());
 }
 
@@ -1008,7 +1110,28 @@ inline bool cpp_fast_field_to_int(const char* str, int &result) {
 }
 
 
-inline double endfstr2float(const char* str, ParsingOptions &parse_opts) {
+// Raise the error for an invalid number field: the message is
+// what + the field in quotes + a description of the field (see
+// cpp_field_description) if fieldnum (counting from 0) is not negative
+// + after. Kept out of line, so that the error path does not add code
+// to the conversion functions.
+[[noreturn]] CPP_DECIMAL_NOINLINE inline void cpp_throw_field_error(
+  const char* what, const char* str, int fieldnum, const ParsingOptions& parse_opts,
+  const char* after = ""
+) {
+  std::stringstream errmsg;
+  errmsg << what << "\"" << std::string(str, 11) << "\"";
+  if (fieldnum >= 0) {
+    errmsg << " (" << cpp_field_description(fieldnum, parse_opts) << ")";
+  }
+  errmsg << after << std::endl;
+  throw std::runtime_error(errmsg.str());
+}
+
+
+// str points to the field, fieldnum (counting from 0) is its position
+// in the line, which is only used for error messages (-1 if unknown).
+inline double endfstr2float(const char* str, ParsingOptions &parse_opts, int fieldnum = -1) {
   double fast_value;
   if (cpp_fast_field_to_double(str, parse_opts.accept_d_exponent, fast_value)) {
     return fast_value;
@@ -1033,10 +1156,7 @@ inline double endfstr2float(const char* str, ParsingOptions &parse_opts) {
       if (parse_opts.accept_spaces || ! in_number) {
         continue;
       } else {
-        std::stringstream errmsg;
-        errmsg << "encountered number with spaces: \""
-               << std::string(str, 11) << "\"" << std::endl;
-        throw std::runtime_error(errmsg.str());
+        cpp_throw_field_error("encountered number with spaces: ", str, fieldnum, parse_opts);
       }
     }
     if (in_number) {
@@ -1076,23 +1196,20 @@ inline double endfstr2float(const char* str, ParsingOptions &parse_opts) {
   char* end = nullptr;
   v = std::strtod(tbuf, &end);
   if (end == tbuf || *end != '\0') {
-    std::stringstream errmsg;
-    errmsg << "malformed number field: \""
-           << std::string(str, 11) << "\"" << std::endl;
-    throw std::runtime_error(errmsg.str());
+    cpp_throw_field_error("malformed number field: ", str, fieldnum, parse_opts);
   }
   if (!parse_opts.accept_nan_inf && !std::isfinite(v)) {
-    std::stringstream errmsg;
-    errmsg << "non-finite value (overflow / inf / NaN) in field: \""
-           << std::string(str, 11) << "\". "
-           << "Set `accept_nan_inf=true` to allow non-finite values." << std::endl;
-    throw std::runtime_error(errmsg.str());
+    cpp_throw_field_error(
+      "non-finite value (overflow / inf / NaN) in field: ", str, fieldnum, parse_opts,
+      ". Set `accept_nan_inf=true` to allow non-finite values."
+    );
   }
   return v;
 }
 
 
-inline int endfstr2int(const char* str, ParsingOptions &parse_opts) {
+// See endfstr2float for the arguments.
+inline int endfstr2int(const char* str, ParsingOptions &parse_opts, int fieldnum = -1) {
   int fast_value;
   if (cpp_fast_field_to_int(str, fast_value)) {
     return fast_value;
@@ -1117,10 +1234,7 @@ inline int endfstr2int(const char* str, ParsingOptions &parse_opts) {
   long val = std::strtol(buf, &endptr, 10);
   if (endptr == buf || *endptr != '\0' || errno == ERANGE
       || val < INT_MIN || val > INT_MAX) {
-    std::stringstream errmsg;
-    errmsg << "invalid integer in field: \""
-           << std::string(str, 11) << "\".";
-    throw std::runtime_error(errmsg.str());
+    cpp_throw_field_error("invalid integer in field: ", str, fieldnum, parse_opts, ".");
   }
   return static_cast<int>(val);
 }
@@ -1129,7 +1243,7 @@ inline int endfstr2int(const char* str, ParsingOptions &parse_opts) {
 inline EndfFloatCpp cpp_read_field_EndfFloatCpp(
   const char *str, const char fieldnum, ParsingOptions &parse_opts
 ) {
-  double float_value = endfstr2float(str+fieldnum*11, parse_opts);
+  double float_value = endfstr2float(str+fieldnum*11, parse_opts, fieldnum);
   if (parse_opts.preserve_value_strings) {
     return EndfFloatCpp(float_value, str+fieldnum*11, 11);
   } else {
@@ -1147,11 +1261,11 @@ inline T cpp_read_field(const char *str, const char fieldnum, ParsingOptions &pa
     , "T must be int or double"
   );
   if (std::is_same<T, double>::value) {
-    return endfstr2float(str+fieldnum*11, parse_opts);
+    return endfstr2float(str+fieldnum*11, parse_opts, fieldnum);
   } if (std::is_same<T, EndfFloatCpp>::value) {
     return cpp_read_field_EndfFloatCpp(str, fieldnum, parse_opts);
   } else {
-    return endfstr2int(str+fieldnum*11, parse_opts);
+    return endfstr2int(str+fieldnum*11, parse_opts, fieldnum);
   }
 }
 
@@ -1195,11 +1309,6 @@ inline bool cpp_values_equal(const EndfRational& x, int y) { return x == y; }
 inline bool cpp_values_equal(int x, const EndfRational& y) { return x == y; }
 
 
-// a line read from the input (defined below)
-class CppLine;
-inline std::string cpp_line_str(const CppLine& line);
-
-
 template<typename U, typename V>
 typename std::enable_if<
   !is_validation_scalar<U>::value || !is_validation_scalar<V>::value, void
@@ -1210,9 +1319,8 @@ cpp_validate_field(
   bool contains_variable,
   bool contains_desired_number,
   bool contains_inconsistent_varspec,
-  std::string exprstr,
-  std::string &line_template,
-  const CppLine &line,
+  const char* exprstr,
+  int fieldnum,
   ParsingOptions &parse_opts
 ) {
   std::stringstream errmsg;
@@ -1232,9 +1340,8 @@ cpp_validate_field(
   bool contains_variable,
   bool contains_desired_number,
   bool contains_inconsistent_varspec,
-  std::string exprstr,
-  std::string &line_template,
-  const CppLine &line,
+  const char* exprstr,
+  int fieldnum,
   ParsingOptions &parse_opts
 ) {
   if (cpp_values_equal(expected_value, actual_value)) return;
@@ -1245,11 +1352,11 @@ cpp_validate_field(
     // ignore zero mismatch only active for scalar data types
     if (is_zero_check(expected_value) && parse_opts.ignore_zero_mismatch) return;
     if (contains_desired_number && parse_opts.ignore_number_mismatch) return;
-    throw_number_mismatch_error(expected_value, actual_value, cpp_line_str(line), line_template);
+    throw_number_mismatch_error(expected_value, actual_value, fieldnum, parse_opts);
   } else {
     // dealing with an expression with variables
     if (contains_inconsistent_varspec && parse_opts.ignore_varspec_mismatch) return;
-    throw_mismatch_error(exprstr, expected_value, actual_value, cpp_line_str(line), line_template);
+    throw_mismatch_error(exprstr, expected_value, actual_value);
   }
 }
 
@@ -1692,12 +1799,15 @@ inline std::size_t cpp_pad_short_line(CppLine& line) {
 }
 
 
-// The number (counting from 1) and the length (without the line
-// ending) of the last line read from a stream, i.e. of the line that ends
-// before the current position. The stream is read again from its
-// beginning, which is only done for error messages; the position is
-// restored. Returns false if the stream cannot be repositioned.
-inline bool cpp_last_line_info(std::istream& cont, long& lineno, std::size_t& length) {
+// The number (counting from 1), the length and the content (both
+// without the line ending) of the last line read from a stream, i.e. of
+// the line that ends before the current position. The stream is read
+// again from its beginning, which is only done for error messages; the
+// position is restored. Returns false if the stream cannot be
+// repositioned.
+inline bool cpp_last_line_info(
+  std::istream& cont, long& lineno, std::size_t& length, std::string* content = nullptr
+) {
   cont.clear();
   std::streampos pos = cont.tellg();
   if (pos == std::streampos(-1)) return false;
@@ -1716,6 +1826,7 @@ inline bool cpp_last_line_info(std::istream& cont, long& lineno, std::size_t& le
     if (! cpp_getline(cont, line)) break;
     lineno++;
     length = line.size();
+    if (content != nullptr) content->swap(line);
   }
   cont.clear();
   cont.seekg(pos);
@@ -1723,12 +1834,10 @@ inline bool cpp_last_line_info(std::istream& cont, long& lineno, std::size_t& le
 }
 
 
-// A hint for an error message if the last line read from the stream
-// (see cpp_last_line_info) is longer than 80 columns, otherwise empty.
-inline std::string cpp_long_line_hint(std::istream& cont) {
-  long lineno;
-  std::size_t length;
-  if (! cpp_last_line_info(cont, lineno, length) || length <= 80) return "";
+// A hint for an error message if a line (the line number lineno counting
+// from 1) is longer than 80 columns (length), otherwise empty.
+inline std::string cpp_long_line_hint(long lineno, std::size_t length) {
+  if (length <= 80) return "";
   std::ostringstream oss;
   oss << "Hint: line " << lineno << " is longer than 80 columns (" << length
       << " columns; non-ASCII multi-byte characters or text beyond column 80?)";
@@ -1737,19 +1846,43 @@ inline std::string cpp_long_line_hint(std::istream& cont) {
 
 
 // To be called in a catch block for a std::runtime_error raised while
-// parsing the data in cont: rethrows it with the message escaped (see
-// cpp_escape_message) and with a hint if the last line read is longer
-// than 80 columns. Exceptions of derived classes, e.g. failures to open
-// a file, are rethrown unchanged.
-[[noreturn]] inline void cpp_rethrow_parse_error(const std::runtime_error& e, std::istream& cont) {
+// parsing the data in cont: rethrows it with the context of the error
+// added to the message, i.e. the template of the record being read (see
+// ParsingOptions::current_template), the number and the content of the
+// last line read (see cpp_last_line_info) and a hint if this line is
+// longer than 80 columns. The message is escaped (see
+// cpp_escape_message). Exceptions of derived classes, e.g. failures to
+// open a file, are rethrown unchanged.
+[[noreturn]] inline void cpp_rethrow_parse_error(
+  const std::runtime_error& e, std::istream& cont, const ParsingOptions& parse_opts
+) {
   if (typeid(e) != typeid(std::runtime_error)) throw;
-  std::string msg = cpp_escape_message(e.what());
-  std::string hint = cpp_long_line_hint(cont);
-  if (! hint.empty()) {
-    if (msg.empty() || msg[msg.size()-1] != '\n') msg += "\n";
-    msg += hint;
+  // a failed read at the end of the data (e.g. of a truncated file)
+  bool past_end = cont.eof() && cont.fail();
+  std::string msg = e.what();
+  if (! msg.empty() && msg[msg.size()-1] != '\n') msg += "\n";
+  const char* tmpl = cpp_template_text(parse_opts.current_template);
+  if (tmpl != nullptr) {
+    msg += "Template: ";
+    msg += tmpl;
+    msg += "\n";
   }
-  throw std::runtime_error(msg);
+  long lineno;
+  std::size_t length;
+  std::string content;
+  if (cpp_last_line_info(cont, lineno, length, &content)) {
+    std::ostringstream oss;
+    if (past_end) {
+      oss << "End of the data reached after line " << lineno << "\n";
+    } else {
+      oss << "Line " << lineno << ": \"" << content << "\"\n";
+      std::string hint = cpp_long_line_hint(lineno, length);
+      if (! hint.empty()) oss << hint << "\n";
+    }
+    msg += oss.str();
+  }
+  if (! msg.empty() && msg[msg.size()-1] == '\n') msg.erase(msg.size()-1);
+  throw std::runtime_error(cpp_escape_message(msg.c_str()));
 }
 
 
@@ -1829,11 +1962,11 @@ inline void cpp_read_line(
     int curmf = cpp_read_mf_number(line.data());
     int curmt = cpp_read_mt_number(line.data());
     if (curmat != mat)
-      throw_mismatch_error("MAT", mat, curmat, line.str(), "");
+      throw_mismatch_error("MAT", mat, curmat);
     if (curmf != mf)
-      throw_mismatch_error("MF", mf, curmf, line.str(), "");
+      throw_mismatch_error("MF", mf, curmf);
     if (curmt != mt)
-      throw_mismatch_error("MT", mt, curmt, line.str(), "");
+      throw_mismatch_error("MT", mt, curmt);
   }
 }
 
@@ -1859,18 +1992,16 @@ inline void cpp_read_send(std::istream& cont, int mat, int mf, ParsingOptions &p
     cpp_read_field<int>(line.data(), 5, parse_opts) != 0 ||
     mtnum != 0) {
 
-    std::stringstream errmsg;
-    errmsg << "Expected SEND record does not contain one!" << std::endl
-           << "Line: " << line.str() << std::endl;
-    throw std::runtime_error(errmsg.str());
+    // the line is added by cpp_rethrow_parse_error
+    throw std::runtime_error("Expected SEND record does not contain one!\n");
   }
   if (parse_opts.validate_control_records) {
     int curmat = cpp_read_mat_number(line.data());
     int curmf = cpp_read_mf_number(line.data());
     if (curmat != mat)
-      throw_mismatch_error("MAT", mat, curmat, line.str(), "");
+      throw_mismatch_error("MAT", mat, curmat);
     if (curmf != mf)
-      throw_mismatch_error("MF", mf, curmf, line.str(), "");
+      throw_mismatch_error("MF", mf, curmf);
   }
 }
 
@@ -1878,7 +2009,7 @@ inline void cpp_read_send(std::istream& cont, int mat, int mf, ParsingOptions &p
 inline bool cpp_is_fend_record(const CppLine& line, int mat, ParsingOptions &parse_opts) {
   int curmat = cpp_read_mat_number(line.data());
   if (mat != curmat && parse_opts.validate_control_records) {
-      throw_mismatch_error("MAT", mat, curmat, line.str(), "");
+      throw_mismatch_error("MAT", mat, curmat);
   }
   int mf = cpp_read_mf_number(line.data());
   int mt = cpp_read_mt_number(line.data());

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/26
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -51,6 +51,7 @@ from .mode_management import (
     register_lookahead_seekg_statement,
     register_generate_expr_validation_func,
     register_layout_recorder,
+    register_record_body_func,
     get_layout_recorder,
 )
 from .endf2cpp_aux import (
@@ -125,8 +126,14 @@ def _get_counter_field_wrapper(node, idx, vardict):
 
 
 def _read_send_line_func_wrapper(vardict):
-    code = aux.read_send("mat", "mf", "parse_opts")
+    code = aux.define_current_template("SEND")
+    code += aux.read_send("mat", "mf", "parse_opts")
     return code
+
+
+def _record_body_func_wrapper(template, vardict):
+    # error messages for the lines of the body name the record type only
+    return aux.define_record_body_template(template)
 
 
 def _prepare_line_func_wrapper(vardict):
@@ -209,6 +216,7 @@ def generate_cpp_parsefun(
     register_prepare_section_func(_prepare_section_func_wrapper, vardict)
     register_finalize_section_func(_finalize_section_func_wrapper, vardict)
     register_generate_expr_validation_func(_generate_expr_validation_wrapper, vardict)
+    register_record_body_func(_record_body_func_wrapper, vardict)
     register_lookahead_tellg_statement(
         cpp.statement("std::streampos cpp_old_streampos = cont.tellg()"), vardict
     )
@@ -331,6 +339,8 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("bool after_tend = false")
     body += cpp.statement("curpos = cont.tellg()")
     body += cpp.line("while (cpp_getline(cont, cpp_line)) {")
+    # no record template in error messages outside the sections
+    body += cpp.statement("parse_opts.current_template = nullptr", cpp.INDENT)
 
     # blank line treatment
     body += cpp.indent_code(
@@ -442,14 +452,10 @@ def generate_master_parsefun(name, recipefuns):
     conditions.append(curcond)
     statements.append(curstat)
 
-    # default branch
-    errmsg = cpp.line("")
-    errmsg += cpp.line(
-        r'std::string("Invalid line encountered! This line is outside any MF/MT section.\n")',
-        cpp.INDENT,
+    # default branch (the line is added by cpp_rethrow_parse_error)
+    default_code = cpp.throw_runtime_error(
+        "Invalid line encountered! This line is outside any MF/MT section."
     )
-    errmsg += cpp.line(r'+ "Line: " + cpp_line.str()', cpp.INDENT)
-    default_code = cpp.throw_runtime_error(errmsg, quote=False)
 
     body += cpp.indent_code(
         cpp.conditional_branches(conditions, statements, default=default_code)
@@ -495,7 +501,9 @@ def generate_master_parsefun(name, recipefuns):
         ("std::istream&", "cont"),
         ("py::object", "exclude"),
         ("py::object", "include"),
-        ("ParsingOptions", f"parse_opts=default_parsing_options()"),
+        # the template of the record being read is stored in the parsing
+        # options of the caller (see cpp_rethrow_parse_error)
+        ("ParsingOptions&", "parse_opts"),
     )
     code += cpp.function(name, body, "py::dict", *args)
     code += cpp.line("")
@@ -513,15 +521,17 @@ def _split_wrapper_names(entry):
 
 
 def _return_parsed(callcode, stream):
-    """Return the result of a parse function; an error message is escaped
-    and gets a hint if the last line read is too long (see
+    """Return the result of a parse function; an error message gets the
+    template of the record and the line being read and is escaped (see
     cpp_rethrow_parse_error)."""
     code = cpp.line("try {")
     code += cpp.statement(f"return {callcode}", cpp.INDENT)
     code += cpp.line("} catch (const py::error_already_set&) {")
     code += cpp.statement("throw", cpp.INDENT)
     code += cpp.line("} catch (const std::runtime_error& cpp_exc) {")
-    code += cpp.statement(f"cpp_rethrow_parse_error(cpp_exc, {stream})", cpp.INDENT)
+    code += cpp.statement(
+        f"cpp_rethrow_parse_error(cpp_exc, {stream}, parse_opts)", cpp.INDENT
+    )
     code += cpp.close_block()
     return code
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/26
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -95,6 +95,7 @@ from .mode_management import (
     get_tab2_body_getter,
     get_custom_int_field_getter,
     get_custom_int_row_binder,
+    get_record_body_func,
     get_counter_field_getter,
     get_send_line_func,
     get_prepare_line_func,
@@ -721,6 +722,13 @@ def generate_code_for_intg(node, vardict):
     return cpp.open_block() + cpp.indent_code(code, cpp.INDENT) + cpp.close_block()
 
 
+def _record_body_code(template, vardict):
+    body_func = get_record_body_func(vardict)
+    if body_func is None:
+        return ""
+    return body_func(template, vardict)
+
+
 def generate_code_for_send(node, vardict):
     code = get_send_line_func(vardict)(vardict)
     code += get_finalize_line_func(vardict)(vardict)
@@ -794,6 +802,7 @@ def generate_code_for_tab1(node, vardict):
 
     # we are done with the first control record line of the tab1 record
     inner_code += get_finalize_line_func(vardict)(vardict)
+    inner_code += _record_body_code(template, vardict)
 
     # NOTE: the prepare line call is/should be handled by the code returned by get_tab1_body_getter
     tabdata, addcode = get_tab1_body_getter(vardict)(
@@ -867,6 +876,7 @@ def generate_code_for_tab2(node, vardict):
 
     # we are done with the first control record line of the tab2 record
     inner_code += get_finalize_line_func(vardict)(vardict)
+    inner_code += _record_body_code(template, vardict)
 
     # NOTE: the prepare line call is/should be handled by the code returned by get_tab1_body_getter
     tabdata, addcode = get_tab2_body_getter(vardict)(nr_vartok, vardict)
@@ -923,7 +933,8 @@ def generate_code_for_list(node, vardict):
         vardict = new_section_scope(sectok, vardict)
 
     lbr = aux.ListBodyRecorder
-    icode = lbr.start_list_body_loop(npl_val, vardict)
+    icode = _record_body_code(template, vardict)
+    icode += lbr.start_list_body_loop(npl_val, vardict)
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
     icode += lbr.indent(list_body_code)
     icode += lbr.finish_list_body_loop(vardict)

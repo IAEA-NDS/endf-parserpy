@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/25
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -30,6 +30,18 @@ def setup_logger(logger_name, log_level, log_format=None):
     if not logger.hasHandlers():
         logger.addHandler(ch)
     return logger
+
+
+def release_logger(logger_name):
+    """Remove a logger set up by :func:`setup_logger` from the registry.
+
+    The logging module keeps every logger obtained with
+    ``logging.getLogger`` (and thus its handlers) until the end of the
+    process; this function lets an object with a logger of its own
+    release it when the object is freed. The logger and its handlers
+    are freed once they are no longer referenced elsewhere.
+    """
+    logging.Logger.manager.loggerDict.pop(logger_name, None)
 
 
 def write_info(logger, message, ofs=None):

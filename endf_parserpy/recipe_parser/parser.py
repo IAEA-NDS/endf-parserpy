@@ -906,7 +906,11 @@ def parse_recipe(recipe):
     try:
         return parser.parse()
     except _Backtrack:
-        parser._raise_error()
+        pass
+    # raised outside of the except clause, so that the error is not
+    # chained to the internal exception (whose traceback references the
+    # frames of the parser and of its callers)
+    parser._raise_error()
 
 
 class RecipeParser:

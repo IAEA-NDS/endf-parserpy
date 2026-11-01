@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Memory leak in the recipe parser of `endf_parserpy.recipe_parser` (since 0.18.0): it signalled backtracking by raising one shared exception object, whose traceback grew with every raise and kept all frames it passed through alive, together with the objects referenced by their callers, so that no `EndfParserPy` object was ever freed. Each `EndfParserPy` object created kept about 13 MB of memory. A new exception object is now raised each time; creating an `EndfParserPy` object is also slightly faster. The parse trees are unchanged
+- `EndfParserPy` objects left their logger (`EndfParserPyInstance<n>`, with its handler) registered with the `logging` module when they were freed, about 1 kB per object. The logger is now removed from the registry when the object is freed; logging is otherwise unchanged
 
 ## [0.18.0] - 2026-10-27
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/26
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -12,8 +12,9 @@
 from collections.abc import Mapping
 import logging
 import warnings
+import weakref
 import re
-from .logging_utils import setup_logger, write_info, RingBuffer
+from .logging_utils import setup_logger, release_logger, write_info, RingBuffer
 from os.path import exists as file_exists
 from endf_parserpy.utils.tree_utils import (
     is_tree,
@@ -455,6 +456,8 @@ class EndfParserPy(EndfParserBase):
         EndfParserPy.instance_counter += 1
         self.name = f"EndfParserPyInstance{EndfParserPy.instance_counter}"
         self.logger = setup_logger(self.name, loglevel)
+        # the logging module would otherwise keep the logger forever
+        weakref.finalize(self, release_logger, self.name)
 
     def explain(self, varpath, stdout=True):
         """Explain the meaning of a variable.

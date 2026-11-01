@@ -1,9 +1,9 @@
 """Tests for the fast path of ``endf-cli validate``.
 
-``validate`` first parses all sections of a material in a single call
-(numpy or list mode) and only if that fails falls back to parsing the
-sections one by one in dict mode, which then decides the verdict and
-describes the failure. These tests check that the fast path is used for
+``validate`` first parses all sections of an MF of a material in a
+single call (numpy or list mode) and only if that fails falls back to
+parsing the sections of this MF one by one in dict mode, which then
+decides the verdict and describes the failure. These tests check that the fast path is used for
 valid data and that verdicts and failure reports are those of the
 per-section validation.
 """
@@ -78,6 +78,20 @@ def no_per_section_parsing(monkeypatch):
         raise AssertionError("per-section parsing was used")
 
     monkeypatch.setattr(EndfFile, "_parse_section", fail)
+
+
+@pytest.fixture
+def per_section_parsing(monkeypatch):
+    """Record the ``(MF, MT)`` of every per-section parse."""
+    seen = []
+    orig = EndfFile._parse_section
+
+    def spy(self, entry, mf, mt, raw):
+        seen.append((mf, mt))
+        return orig(self, entry, mf, mt, raw)
+
+    monkeypatch.setattr(EndfFile, "_parse_section", spy)
+    return seen
 
 
 class _FailingParser:
@@ -162,6 +176,52 @@ def test_fallback_decides_when_fast_path_fails(parsers, tmp_path):
     assert validate._validate_file(
         parser, str(bad), _FailingParser()
     ) == validate._validate_file(parser, str(bad))
+
+
+def test_failing_mf_falls_back_alone(parsers, tmp_path, per_section_parsing):
+    """Only the sections of the MF rejected by the fast path are parsed
+    one by one; the report is that of the per-section validation."""
+    parser, fast = parsers
+    bad = _write(tmp_path / "bad.endf", _corrupt_first(_lines(CU), 2925, 4))
+    old = validate._validate_file(parser, str(bad))
+    assert old[0] is False
+    assert old[1].startswith("section MF=4/MT=2:\nfailed to parse MF=4/MT=2 ")
+    per_section_parsing.clear()
+    assert validate._validate_file(parser, str(bad), fast) == old
+    # the per-section validation stops at the first failing section
+    assert per_section_parsing == [(4, 2)]
+
+
+def test_rejected_mf_falls_back_alone(parsers, tmp_path, per_section_parsing):
+    """An MF rejected by the fast path although all of its sections
+    parse alone is validated per section; the other MFs of the
+    material (and of the other materials of a tape) are not."""
+    parser, fast = parsers
+
+    class RejectMF3:
+        def parse(self, text):
+            if any(line[70:72] == " 3" for line in text.split("\n")):
+                raise RuntimeError("rejected by the fast path")
+            return fast.parse(text)
+
+    tape = _tape(tmp_path / "tape.endf", [CU, ZN])
+    assert validate._validate_file(parser, str(tape), RejectMF3()) == (True, None)
+    endf_file = EndfFile(tape, parser=parser)
+    expected = [
+        key
+        for entry in endf_file.index
+        for key in sorted(entry.sections)
+        if key[0] == 3
+    ]
+    assert per_section_parsing == expected
+
+    bad = _write(tmp_path / "bad.endf", _corrupt_first(_lines(tape), 3025, 6))
+    per_section_parsing.clear()
+    old = validate._validate_file(parser, str(bad))
+    assert old[1].startswith("material #1 (MAT 3025), section MF=6/")
+    per_section_parsing.clear()
+    assert validate._validate_file(parser, str(bad), RejectMF3()) == old
+    assert {mf for mf, _ in per_section_parsing} == {3, 6}
 
 
 def test_file_framing_not_checked(parsers, tmp_path, no_per_section_parsing):

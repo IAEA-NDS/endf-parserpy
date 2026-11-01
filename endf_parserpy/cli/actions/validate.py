@@ -16,6 +16,7 @@ from ..cmd_utils import (
 )
 from endf_parserpy import EndfParserCpp
 from glob import glob
+from itertools import groupby
 import sys
 
 
@@ -64,7 +65,7 @@ def get_fast_parser(args):
     nested dictionaries are not needed to decide whether data parse.
     It also checks the MAT/MF/MT numbers of every line, so that the
     parsing of a section cannot extend into the next one (see
-    :func:`_material_parses_at_once`).
+    :func:`_sections_parse_at_once`).
 
     ``None`` is returned if the Python parser is used (e.g. with
     ``--no-cpp``), which validates section by section as before: it is
@@ -92,8 +93,8 @@ def _numpy_available():
     return True
 
 
-def _material_parses_at_once(endf_file, material, fast_parser):
-    """Return whether all sections of ``material`` parse in one call.
+def _sections_parse_at_once(endf_file, material, keys, fast_parser):
+    """Return whether the sections ``keys`` of ``material`` parse in one call.
 
     The sections are parsed as one tape built by
     :meth:`EndfFile._sections_tape`: every section has exactly the text
@@ -104,7 +105,6 @@ def _material_parses_at_once(endf_file, material, fast_parser):
     section cannot read the lines of another one; all sections must be
     present in the result.
     """
-    keys = material.sections()
     try:
         text = endf_file._sections_tape(material.position, keys)
         result = fast_parser.parse(text)
@@ -122,11 +122,14 @@ def _validate_file(parser, file, fast_parser=None):
     validated the same way -- a tape is valid only if every section of
     every material parses.
 
-    If ``fast_parser`` is given, all sections of a material are first
-    parsed by it in a single call (see :func:`_material_parses_at_once`).
-    Only if that fails, the sections of the material are parsed one by
-    one with ``parser`` as without ``fast_parser``, which then decides
-    whether the material is valid and describes the failure.
+    If ``fast_parser`` is given, all sections of an MF of a material are
+    first parsed by it in a single call (see
+    :func:`_sections_parse_at_once`). Only if that fails, the sections of
+    this MF are parsed one by one with ``parser`` as without
+    ``fast_parser``, which then decides whether they are valid and
+    describes the failure. As the sections are visited in the same
+    order as without ``fast_parser``, the first failing section is the
+    same.
     """
     try:
         endf_file = open_endf_file(file, parser, on_error="raise")
@@ -134,20 +137,22 @@ def _validate_file(parser, file, fast_parser=None):
         return False, str(exc)
     multi = len(endf_file) > 1
     for material in endf_file:
-        if fast_parser is not None and _material_parses_at_once(
-            endf_file, material, fast_parser
-        ):
-            continue
-        for mf, mt in material.sections():
-            try:
-                material[mf, mt]
-            except Exception as exc:  # noqa: BLE001
-                prefix = (
-                    f"material #{material.position} (MAT {material.mat}), "
-                    if multi
-                    else ""
-                )
-                return False, f"{prefix}section MF={mf}/MT={mt}:\n{exc}"
+        for _, mf_keys in groupby(material.sections(), key=lambda key: key[0]):
+            mf_keys = list(mf_keys)
+            if fast_parser is not None and _sections_parse_at_once(
+                endf_file, material, mf_keys, fast_parser
+            ):
+                continue
+            for mf, mt in mf_keys:
+                try:
+                    material[mf, mt]
+                except Exception as exc:  # noqa: BLE001
+                    prefix = (
+                        f"material #{material.position} (MAT {material.mat}), "
+                        if multi
+                        else ""
+                    )
+                    return False, f"{prefix}section MF={mf}/MT={mt}:\n{exc}"
     return True, None
 
 

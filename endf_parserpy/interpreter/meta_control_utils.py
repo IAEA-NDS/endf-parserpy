@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/24
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -27,6 +27,7 @@ from .endf_mapping_utils import (
 )
 from .lookahead_management import (
     perform_lookahead,
+    restore_after_failed_lookahead,
     undo_lookahead_changes,
 )
 from .logging_utils import write_info
@@ -502,9 +503,16 @@ def evaluate_if_statement(
     if logger.isEnabledFor(logging.INFO):
         write_info(logger, "Evaluate if head " + reconstruct_tree_str(if_head))
     disj = get_child(if_head, "disjunction")
-    truthval = determine_truthvalue(
-        disj, datadic, loop_vars, parse_opts, missing_as_false=True, logger=logger
-    )
+    try:
+        truthval = determine_truthvalue(
+            disj, datadic, loop_vars, parse_opts, missing_as_false=True, logger=logger
+        )
+    except BaseException:
+        if should_perform_lookahead:
+            restore_after_failed_lookahead(
+                orig_parser_state, set_parser_state, get_parser_state
+            )
+        raise
     if should_perform_lookahead:
         datadic, loop_vars = undo_lookahead_changes(
             datadic, loop_vars, orig_parser_state, set_parser_state

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/05/25
-# Last modified:   2026/10/21
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -91,6 +91,11 @@ def perform_lookahead(
         tree_handler(if_body)
     except UnexpectedControlRecordError:
         pass
+    except BaseException:
+        restore_after_failed_lookahead(
+            orig_parser_state, set_parser_state, get_parser_state
+        )
+        raise
 
     del loop_vars["__lookahead"]
     return datadic, loop_vars, orig_parser_state
@@ -102,6 +107,24 @@ def undo_lookahead_changes(datadic, loop_vars, orig_parser_state, set_parser_sta
         datadic = orig_parser_state["datadic"]
         loop_vars = orig_parser_state["loop_vars"]
     return datadic, loop_vars
+
+
+def restore_after_failed_lookahead(
+    orig_parser_state, set_parser_state, get_parser_state
+):
+    """Restore the parser state if an error ends a lookahead.
+
+    Otherwise the state of the lookahead, including its less strict
+    parsing options, would remain in effect for later sections and
+    later calls of the parser. The record log of the lookahead is kept,
+    as the error message is composed from it, but its buffer is turned
+    into a plain list, which can be sliced as needed for the message.
+    """
+    logbuffer_state = dict(get_parser_state()["logbuffer_state"])
+    logbuffer_state["buffer"] = list(logbuffer_state["buffer"])
+    parser_state = dict(orig_parser_state)
+    parser_state["logbuffer_state"] = logbuffer_state
+    set_parser_state(parser_state)
 
 
 class LookaheadObject:

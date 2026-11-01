@@ -766,11 +766,24 @@ inline int cpp_exponent_ndigits(int e) {
 // (the estimate may be one too small); if nd of the computed exponent
 // differs from the estimate, the digits are computed once more with the
 // corrected precision.
+//
+// The characters are composed in 32-bit arithmetic, two digits at a time
+// from a table of the 100 digit pairs. The mantissa has prec + 1 digits:
+// m < 10^(prec + 1) <= 10^8 < 2^32, as prec = width - nsign - 4 - nd <= 7
+// (width <= 12, nsign >= 0, nd >= 1; cpp_round_decimal_digits returns
+// m < 10^nsig, or 10^(nsig - 1) for a carry, which is rejected here; and
+// m = 0 for zero). The decimal exponent has at most two digits, as
+// cpp_round_decimal_digits scales the value by at most 10^44, so that
+// |E| <= 52; the case of three digits is handled for completeness.
 inline bool cpp_float_field_fast(char* dst, double value, bool abuse_signpos, bool keep_E) {
   static const unsigned long long p10[] = {
     1ULL, 10ULL, 100ULL, 1000ULL, 10000ULL, 100000ULL, 1000000ULL,
     10000000ULL, 100000000ULL, 1000000000ULL
   };
+  static const char digit_pairs[201] =
+    "00010203040506070809101112131415161718192021222324252627282930313233343536373839"
+    "40414243444546474849505152535455565758596061626364656667686970717273747576777879"
+    "8081828384858687888990919293949596979899";
   const bool neg = value < 0;  // false for negative zero, written as zero
   const double a = neg ? -value : value;
   const int width = keep_E ? 11 : 12;  // including the character e
@@ -783,8 +796,14 @@ inline bool cpp_float_field_fast(char* dst, double value, bool abuse_signpos, bo
   if (a == 0.0) {
     prec = width - nsign - 5;
   } else {
-    int bexp;
-    std::frexp(a, &bexp);
+    // the binary exponent as given by std::frexp, read from the bits; a
+    // subnormal number (biased exponent 0) is below the range accepted by
+    // cpp_round_decimal_digits
+    std::uint64_t bits;
+    std::memcpy(&bits, &a, sizeof(bits));
+    const int biased = static_cast<int>((bits >> 52) & 0x7ff);
+    if (biased == 0) return false;
+    const int bexp = biased - 1022;
     nd = cpp_exponent_ndigits(
       static_cast<int>(std::floor((bexp - 1) * 0.30102999566398120))
     );
@@ -802,20 +821,34 @@ inline bool cpp_float_field_fast(char* dst, double value, bool abuse_signpos, bo
   char* p = dst;
   if (lead) *p++ = ' ';
   if (neg) *p++ = '-';
-  // prec + 1 digits, the first one before the decimal point
-  for (int i = prec + 1; i >= 2; i--) {
-    p[i] = static_cast<char>('0' + m % 10);
-    m /= 10;
+  // prec + 1 digits, the first one before the decimal point and the
+  // others at p[2] to p[prec + 1], from the last one backwards
+  std::uint32_t m32 = static_cast<std::uint32_t>(m);
+  int i = prec + 1;
+  for (; i >= 3; i -= 2) {
+    const std::uint32_t q = m32 / 100;
+    std::memcpy(p + i - 1, digit_pairs + 2 * (m32 - 100 * q), 2);
+    m32 = q;
+  }
+  if (i == 2) {
+    const std::uint32_t q = m32 / 10;
+    p[2] = static_cast<char>('0' + (m32 - 10 * q));
+    m32 = q;
   }
   p[1] = '.';
-  p[0] = static_cast<char>('0' + m);
+  p[0] = static_cast<char>('0' + m32);
   p += prec + 2;
   if (keep_E) *p++ = 'e';
   *p++ = (E < 0) ? '-' : '+';
-  int ae = (E < 0) ? -E : E;
-  for (int i = nd - 1; i >= 0; i--) {
-    p[i] = static_cast<char>('0' + ae % 10);
-    ae /= 10;
+  const std::uint32_t ae = static_cast<std::uint32_t>((E < 0) ? -E : E);
+  if (nd == 1) {
+    p[0] = static_cast<char>('0' + ae);
+  } else if (nd == 2) {
+    std::memcpy(p, digit_pairs + 2 * ae, 2);
+  } else {
+    const std::uint32_t q = ae / 100;
+    p[0] = static_cast<char>('0' + q);
+    std::memcpy(p + 1, digit_pairs + 2 * (ae - 100 * q), 2);
   }
   return true;
 }

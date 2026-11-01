@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/25
-# Last modified:   2026/10/25
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -48,6 +48,7 @@ TEMPLATE = Path(cpp_templates.__file__).parent / "module_header_writing.hpp"
 
 INCLUDES = """#include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <iomanip>
 #include <sstream>

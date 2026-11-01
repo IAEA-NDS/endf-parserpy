@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/26
-# Last modified:   2026/10/26
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -145,10 +145,14 @@ class RecipeSyntaxError(ValueError):
 
 
 class _Backtrack(Exception):
-    """Internal signal: the current alternative does not match."""
+    """Internal signal: the current alternative does not match.
 
-
-_BACKTRACK = _Backtrack()
+    A new instance is raised each time. A raised exception keeps the
+    frames it passes through in its ``__traceback__``, and raising the
+    same instance again extends that traceback, so a shared instance
+    would keep all parser states (and the objects referenced by the
+    callers' frames) alive indefinitely.
+    """
 
 
 class _Parser:
@@ -225,14 +229,14 @@ class _Parser:
             self.pos = end
             return self._tok(ttype, lit, p, end)
         self._expect(p, repr(lit))
-        raise _BACKTRACK
+        raise _Backtrack()
 
     def _re(self, ttype, noskip=False):
         p = self.pos if noskip else self._skip(self.pos)
         m = _REGEX_TERMINALS[ttype].match(self.text, p)
         if m is None:
             self._expect(p, ttype)
-            raise _BACKTRACK
+            raise _Backtrack()
         end = m.end()
         self.pos = end
         return self._tok(ttype, m.group(), p, end)
@@ -250,7 +254,7 @@ class _Parser:
     def _newline(self):
         tok = self._opt_newline()
         if tok is None:
-            raise _BACKTRACK
+            raise _Backtrack()
         return tok
 
     # ---------------------------------------------------------------
@@ -333,7 +337,7 @@ class _Parser:
             return self._section()
         for what in ("'['", "'for'", "'if'", "'repeat'", "'stop'", "'SEND'", "'('"):
             self._expect(p, what)
-        raise _BACKTRACK
+        raise _Backtrack()
 
     def _abbreviation(self):
         var = self._re("VARNAME")
@@ -537,7 +541,7 @@ class _Parser:
             m = _DESIRED_NUMBER_RE.match(text, p) or _NUMBER_RE.match(text, p)
             if m is None:
                 self._expect(p, "NUMBER")
-                raise _BACKTRACK
+                raise _Backtrack()
             end = m.end()
             ttype = "DESIRED_NUMBER" if text[end - 1] == "?" else "NUMBER"
             self.pos = end
@@ -550,7 +554,7 @@ class _Parser:
         else:
             for what in ("NUMBER", "VARNAME", "'-'", "'('"):
                 self._expect(p, what)
-            raise _BACKTRACK
+            raise _Backtrack()
         return Tree(_R.mulpart, [node])
 
     def _extvarname(self):
@@ -611,7 +615,7 @@ class _Parser:
                 return alternative(prefix)
             except _Backtrack:
                 pass
-        raise _BACKTRACK
+        raise _Backtrack()
 
     def _record_fields(self, limit=None):
         # memoized, as the alternatives of _record_line parse the same

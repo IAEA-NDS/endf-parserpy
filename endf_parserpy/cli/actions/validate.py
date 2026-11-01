@@ -14,6 +14,7 @@ from ..cmd_utils import (
     get_endf_parser,
     open_endf_file,
 )
+from endf_parserpy import EndfParserCpp
 from glob import glob
 import sys
 
@@ -55,22 +56,32 @@ def perform_action(args):
 
 
 def get_fast_parser(args):
-    """Return the parser of the fast validation path.
+    """Return the parser of the fast validation path, or ``None``.
 
     It has the options of the parser of the per-section validation,
     except that it produces numpy arrays if numpy is available and
     lists otherwise, unless an array type is requested explicitly; the
     nested dictionaries are not needed to decide whether data parse.
-    The C++ parser also checks the MAT/MF/MT numbers of every line, as
-    the Python parser always does, so that the parsing of a section
-    cannot extend into the next one (see :func:`_validate_material`).
+    It also checks the MAT/MF/MT numbers of every line, so that the
+    parsing of a section cannot extend into the next one (see
+    :func:`_material_parses_at_once`).
+
+    ``None`` is returned if the Python parser is used (e.g. with
+    ``--no-cpp``), which validates section by section as before: it is
+    chosen for its detailed log messages, which a failed attempt of the
+    fast path would add to, and an instance of it can be left in a
+    different state by a failed parse, so that its verdicts are only
+    reproduced if it parses exactly the same sequence of sections.
     """
     override = {}
     if args.get("array_type") is None:
         override["array_type"] = "numpy" if _numpy_available() else "list"
-    return get_endf_parser(
+    parser = get_endf_parser(
         args, override, cpp_only_args={"validate_control_records": True}
     )
+    if not isinstance(parser, EndfParserCpp):
+        return None
+    return parser
 
 
 def _numpy_available():

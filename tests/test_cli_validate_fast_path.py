@@ -224,3 +224,9 @@ def test_validate_without_numpy_uses_list_mode(tmp_path):
     assert f"ok - {PU}" in result.stdout
     assert f"failed - {bad}" in result.stdout
     assert "section MF=8/MT=457:\nfailed to parse MF=8/MT=457" in result.stdout
+
+
+def test_no_fast_path_with_python_parser():
+    """With the Python parser, validate parses section by section only."""
+    assert validate.get_fast_parser(_args("--no-cpp")) is None
+    assert validate.get_fast_parser(_args("--loglevel", "30")) is None

@@ -396,6 +396,23 @@ inline int cpp_sci_numstr_snprintf(char* buf, double value, int precision, bool 
 }
 
 
+// Estimate of floor(log10(a)) for a positive normal double a, which is
+// exact or one too small: floor((b - 1) * log10(2)), where b is the binary
+// exponent of a as given by std::frexp (a = f * 2^b, 0.5 <= f < 1), i.e.
+// b - 1 is the biased exponent minus 1023. It is computed in integer
+// arithmetic as floor(k * 78913 / 2^18) with k = b - 1, which is the same
+// as floor(k * 0.30102999566398120) in double arithmetic for all
+// exponents of normal doubles (-1022 <= k <= 1023; checked for all of them
+// by tests/cpp/float_field_writing_equivalence.cpp).
+inline int cpp_decimal_exponent_estimate(double a) {
+  std::uint64_t bits;
+  std::memcpy(&bits, &a, sizeof(bits));
+  const int k = static_cast<int>((bits >> 52) & 0x7ff) - 1023;
+  // rounded down also for k < 0, without a right shift of a negative number
+  return (k >= 0) ? ((k * 78913) >> 18) : -((-k * 78913 + 262143) >> 18);
+}
+
+
 // Determine the correctly rounded nsig-digit decimal representation
 // a = m * 10^(E-nsig+1) of a finite double a > 0. Returns false if this
 // cannot be decided reliably with double arithmetic.
@@ -407,9 +424,8 @@ inline bool cpp_round_decimal_digits(double a, int nsig, unsigned long long &m, 
   if (nsig < 1 || nsig > 9) return false;
   if (! (a >= 1e-280 && a <= 1e280)) return false;
   // estimate of floor(log10(a)), may be one too small; corrected below
-  int bexp;
-  std::frexp(a, &bexp);
-  int e10 = static_cast<int>(std::floor((bexp - 1) * 0.30102999566398120));
+  // (a is a normal number here)
+  int e10 = cpp_decimal_exponent_estimate(a);
   for (int attempt = 0; attempt < 4; attempt++) {
     // scaled = a / 10^s is computed with at most two roundings, hence
     // with a relative error below 3e-16
@@ -796,17 +812,12 @@ inline bool cpp_float_field_fast(char* dst, double value, bool abuse_signpos, bo
   if (a == 0.0) {
     prec = width - nsign - 5;
   } else {
-    // the binary exponent as given by std::frexp, read from the bits; a
-    // subnormal number (biased exponent 0) is below the range accepted by
-    // cpp_round_decimal_digits
+    // a subnormal number (biased exponent 0) is below the range accepted
+    // by cpp_round_decimal_digits
     std::uint64_t bits;
     std::memcpy(&bits, &a, sizeof(bits));
-    const int biased = static_cast<int>((bits >> 52) & 0x7ff);
-    if (biased == 0) return false;
-    const int bexp = biased - 1022;
-    nd = cpp_exponent_ndigits(
-      static_cast<int>(std::floor((bexp - 1) * 0.30102999566398120))
-    );
+    if (((bits >> 52) & 0x7ff) == 0) return false;
+    nd = cpp_exponent_ndigits(cpp_decimal_exponent_estimate(a));
     for (int attempt = 0; ; attempt++) {
       prec = width - nsign - 4 - nd;
       if (! cpp_round_decimal_digits(a, prec + 1, m, E)) return false;

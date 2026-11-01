@@ -319,7 +319,30 @@ static void special_values(std::vector<double>& out, int emin, int emax) {
   }
 }
 
+// cpp_decimal_exponent_estimate computes floor((b - 1) * log10(2)) in
+// integer arithmetic; it must agree with the double expression it
+// replaced for the binary exponent of every normal double
+static void check_exponent_estimate() {
+  for (int biased = 1; biased <= 2046; biased++) {
+    int k = biased - 1023;
+    int expected = static_cast<int>(std::floor(k * 0.30102999566398120));
+    for (uint64_t mant : {0ULL, 1ULL, 0xFFFFFFFFFFFFFULL}) {
+      double a = from_bits((static_cast<uint64_t>(biased) << 52) | mant);
+      int got = cpp_decimal_exponent_estimate(a);
+      nchk++;
+      if (got != expected) {
+        if (nfail < 20) {
+          std::printf("MISMATCH exponent estimate a=%.17g k=%d expected=%d got=%d\n",
+                      a, k, expected, got);
+        }
+        nfail++;
+      }
+    }
+  }
+}
+
 static void run_sampled() {
+  check_exponent_estimate();
   std::vector<double> vals;
   vals.push_back(0.0);
   vals.push_back(-0.0);

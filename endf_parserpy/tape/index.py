@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/10/10
+# Last modified:   2026/11/01
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -24,15 +24,20 @@ index is cheap to build and completely independent of the parsing
 engine.
 
 The scan is memory-bounded: :meth:`TapeIndex.from_file` reads the file
-in chunks and never holds it wholly in memory. When ``numpy`` is
-installed and the tape is a uniform array of fixed-width records (the
-common case), a vectorized fast path extracts every record's control
-field in one bulk operation per chunk; it produces an index identical
-to the streaming line-by-line scan it falls back to for any tape that
-is not uniform-width.
+in chunks and never holds it wholly in memory. Within a chunk, the
+records are taken in windows of consecutive records of equal byte
+width, and the control fields of all records of a window are compared
+in one bulk operation -- with ``numpy`` if it is installed, otherwise
+with Python big-integer arithmetic -- so the per-record work runs in C.
+A record of another width (e.g. a CRLF line among LF lines, or a line
+with sequence numbers) merely starts the next window. The result is
+identical to that of the record-by-record scan used by
+:meth:`TapeIndex.from_lines`, for well-formed and malformed tapes
+alike.
 """
 
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
@@ -143,22 +148,6 @@ class MaterialIndexEntry:
     sections: Dict[Tuple[int, int], SectionIndexEntry] = field(default_factory=dict)
 
 
-def _iter_file_records(fh):
-    """Yield ``(byte_length, line)`` for each record of a binary file.
-
-    Records are delimited by ``"\\n"`` only, matching binary-mode file
-    iteration. ``byte_length`` includes the terminator; ``line`` has a
-    trailing ``"\\n"`` removed (a preceding ``"\\r"`` is kept, since the
-    scanner reads only the control columns and strips it itself where
-    text is needed). Iterating the handle keeps memory O(1).
-    """
-    for raw in fh:
-        if raw.endswith(b"\n"):
-            yield len(raw), raw[:-1]
-        else:
-            yield len(raw), raw
-
-
 def _iter_line_records(lines):
     """Yield ``(byte_length, line)`` for an iterable of text lines.
 
@@ -174,12 +163,12 @@ def _iter_line_records(lines):
 class _ScanState:
     """Carried state of a structural tape scan.
 
-    Holds the progress of the MAT/MF/MT state machine -- the material
-    under construction, the section under construction and the list of
-    finished materials. The same state is driven record by record by
-    the streaming :func:`_scan` and run by run, across block
-    boundaries, by the vectorized :func:`_scan_chunk_runs`; both feed it
-    through the shared :func:`_consume_run`.
+    Holds the tape head once found and the progress of the MAT/MF/MT
+    state machine -- the material under construction, the section under
+    construction and the list of finished materials. The same state is
+    driven record by record by :func:`_scan_record` and run by run by
+    the bulk scan of :func:`_scan_rows`; both feed it through the shared
+    :func:`_consume_run`, and it is carried across the blocks of a file.
     """
 
     __slots__ = (
@@ -189,8 +178,9 @@ class _ScanState:
         "sec_offset",
         "sec_length",
         "sec_lines",
+        "prev_ctrl",
+        "tpid",
         "done",
-        "uniform",
     )
 
     def __init__(self):
@@ -200,8 +190,11 @@ class _ScanState:
         self.sec_offset = 0
         self.sec_length = 0
         self.sec_lines = 0
+        # the control field of the previous record if a record with an
+        # equal control field continues the section under construction
+        self.prev_ctrl = None
+        self.tpid = None  # (line, offset, length) of the tape head, once found
         self.done = False  # a TEND record has been seen
-        self.uniform = True  # cleared if the tape proves not uniform-width
 
     def flush_section(self):
         # store a section that was left open (e.g. a missing SEND record)
@@ -211,14 +204,25 @@ class _ScanState:
             )
         self.sec_key = None
 
+    def result(self):
+        """Return ``(materials, tpid)`` of a finished scan."""
+        if self.tpid is None:
+            raise TapeStructureError("the tape does not contain any records")
+        if self.cur is not None:
+            raise TapeStructureError(
+                "the tape ends in the middle of a material; the final MEND or "
+                "TEND record is missing"
+            )
+        return self.materials, self.tpid
+
 
 def _consume_run(st, mat, mf, mt, offset, length, line_count, head_line):
     """Apply one record, or one run of identical-control records, to ``st``.
 
     This is the single classification of a record by its MAT/MF/MT
-    control field, shared by the streaming :func:`_scan` and the
-    vectorized :func:`_scan_chunk_runs` so the structural state machine
-    lives in exactly one place.
+    control field, shared by the record-wise :func:`_scan_record` and
+    the bulk :func:`_scan_rows` so the structural state machine lives in
+    exactly one place.
 
     ``offset``, ``length`` and ``line_count`` describe the record or run
     being consumed; ``head_line`` is the decoded text of its first
@@ -267,230 +271,296 @@ def _consume_run(st, mat, mf, mt, offset, length, line_count, head_line):
         st.flush_section()
 
 
+def _scan_tpid(st, part, offset, byte_length):
+    """Examine one record that precedes the tape head.
+
+    Blank records are skipped; the first non-blank record must be the
+    tape head (TPID), which is stored in ``st.tpid``.
+    """
+    if part.strip():
+        mat = _control_int(part[_MAT_COLS])
+        mf = _control_int(part[_MF_COLS])
+        mt = _control_int(part[_MT_COLS])
+        if mat < 0 or mf != 0 or mt != 0:
+            raise TapeStructureError(
+                "the tape does not begin with a tape head (TPID) "
+                f"record (found MAT={mat}, MF={mf}, MT={mt})"
+            )
+        st.tpid = (part.rstrip(b"\r").decode("latin-1"), offset, byte_length)
+
+
+def _scan_record(st, part, offset, byte_length):
+    """Apply one record that follows the tape head to ``st``.
+
+    ``part`` is the record without its ``"\\n"`` terminator and
+    ``byte_length`` its byte length including the terminator. Only the
+    structural fields are read. The MAT/MF/MT control fields occupy the
+    fixed byte slice ``[66:75]`` of every record; since all records of a
+    section share that slice, a record whose slice equals that of its
+    predecessor continues the current section and is accumulated without
+    parsing any integer. A blank record is skipped; any other record is
+    classified by the shared :func:`_consume_run`.
+    """
+    ctrl = part[_CTRL_COLS]
+    if ctrl == st.prev_ctrl:
+        st.sec_length += byte_length
+        st.sec_lines += 1
+        return
+    if not part.strip():  # blank padding record
+        return
+    mat = _control_int(ctrl[0:4])
+    mf = _control_int(ctrl[4:6])
+    mt = _control_int(ctrl[6:9])
+    _consume_run(st, mat, mf, mt, offset, byte_length, 1, part.decode("latin-1"))
+    # only a run of regular section records can be continued; after
+    # any framing record the next record restarts
+    st.prev_ctrl = ctrl if (mat > 0 and mf > 0 and mt > 0) else None
+
+
 def _scan(records):
     """Scan an iterator of ``(byte_length, line)`` records.
 
     Return ``(materials, (tpid_line, offset, length))``. The iterator is
-    consumed lazily, so a streaming source (see :func:`_iter_file_records`)
-    keeps peak memory independent of the tape size.
-
-    Only the structural fields are read. The MAT/MF/MT control fields
-    occupy the fixed byte slice ``[66:75]`` of every record; since all
-    records of a section share that slice, a record whose slice is
-    unchanged from its predecessor is known to continue the current
-    section and is accumulated without parsing any integer. This fast
-    path covers the great majority of records; a record that starts a
-    new run is classified by the shared :func:`_consume_run`.
+    consumed lazily, so peak memory is independent of the number of
+    records. Each record is applied by :func:`_scan_record`; a record
+    that continues the current section is accumulated inline.
     """
     st = _ScanState()
-    prev_ctrl = None  # the [66:75] control slice of the previous record
     offset = 0
-    tpid = None
-
     records = iter(records)
 
     # the tape head (TPID) is the first non-blank record
     for byte_length, part in records:
-        if part.strip():
-            mat = _control_int(part[_MAT_COLS])
-            mf = _control_int(part[_MF_COLS])
-            mt = _control_int(part[_MT_COLS])
-            if mat < 0 or mf != 0 or mt != 0:
-                raise TapeStructureError(
-                    "the tape does not begin with a tape head (TPID) "
-                    f"record (found MAT={mat}, MF={mf}, MT={mt})"
-                )
-            tpid = (part.rstrip(b"\r").decode("latin-1"), offset, byte_length)
-            offset += byte_length
-            break
+        _scan_tpid(st, part, offset, byte_length)
         offset += byte_length
-    if tpid is None:
-        raise TapeStructureError("the tape does not contain any records")
+        if st.tpid is not None:
+            break
 
-    for byte_length, part in records:
-        ctrl = part[_CTRL_COLS]
-
-        # fast path: the control fields are unchanged, so this record
-        # continues the section currently under construction
-        if ctrl == prev_ctrl:
-            st.sec_length += byte_length
-            st.sec_lines += 1
+    if st.tpid is not None:
+        for byte_length, part in records:
+            if part[_CTRL_COLS] == st.prev_ctrl:
+                st.sec_length += byte_length
+                st.sec_lines += 1
+            else:
+                _scan_record(st, part, offset, byte_length)
+                if st.done:  # TEND: nothing meaningful follows
+                    break
             offset += byte_length
-            continue
 
-        if not part.strip():  # blank padding record
-            offset += byte_length
-            continue
+    return st.result()
 
+
+# A record must hold the complete control field (columns 67-75) and its
+# terminator to be scanned in bulk; shorter records are scanned singly.
+_MIN_BULK_WIDTH = _CTRL_COLS.stop + 1
+
+# Bounds of the number of records examined by one bulk operation. The
+# window grows while the records keep a uniform width and shrinks back
+# after a record of another width, so the work spent on a window that
+# turns out to be cut short stays small.
+_MIN_WINDOW_ROWS = 1 << 10
+_MAX_WINDOW_ROWS = 1 << 16
+
+_NOT_NEWLINE = re.compile(b"[^\n]").search
+_NONZERO = re.compile(b"[^\x00]").finditer
+
+
+def _single_line_rows(buf, pos, num_rows, width):
+    """Return how many leading rows hold exactly one record each.
+
+    The ``num_rows`` rows of ``width`` bytes starting at ``buf[pos]``
+    each end with ``"\\n"``, and the first row is a single record. A row
+    can still contain further newlines (two short records whose widths
+    add up to ``width``); the returned count stops before the first such
+    row. Every row holds at least one newline, so the excess newline
+    count of a prefix only grows with its length and is bisected.
+    """
+    end = pos + num_rows * width
+    if buf.count(b"\n", pos, end) == num_rows:
+        return num_rows
+    lo, hi = 1, num_rows  # the first lo rows are single records, hi rows not
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        start = pos + lo * width
+        if buf.count(b"\n", start, pos + mid * width) == mid - lo:
+            lo = mid
+        else:
+            hi = mid
+    return lo
+
+
+def _bulk_rows_numpy(buf, pos, num_rows, width):
+    """Find the uniform rows and their control-field runs using numpy.
+
+    Return ``(n, starts)``: the rows ``[0, n)`` of ``width`` bytes from
+    ``buf[pos]`` are single records, and ``starts`` lists the first row
+    of every run of identical control fields among them. See
+    :func:`_bulk_rows_python` for the variant used without numpy.
+    """
+    arr = _np.frombuffer(buf, dtype=_np.uint8, count=num_rows * width, offset=pos)
+    arr = arr.reshape(num_rows, width)
+    terminated = arr[:, width - 1] == 0x0A
+    n = num_rows if terminated.all() else int(terminated.argmin())
+    # a row holding a further newline contains more than one record
+    inner = arr[:n, : width - 1] == 0x0A
+    if inner.any():
+        n = int(_np.argmax(inner.any(axis=1)))
+    if n == 1:
+        return 1, [0]
+    ctrl = arr[:n, _CTRL_COLS]
+    boundary = _np.flatnonzero(_np.any(ctrl[1:] != ctrl[:-1], axis=1))
+    return n, [0] + (boundary + 1).tolist()
+
+
+def _bulk_rows_python(buf, pos, num_rows, width):
+    """Find the uniform rows and their control-field runs without numpy.
+
+    Same contract as :func:`_bulk_rows_numpy`. Each control column is
+    gathered across the rows by an extended slice and read as one big
+    integer, one byte per row; shifting it by one byte and XOR-ing with
+    itself leaves a non-zero byte exactly where a row's column differs
+    from its predecessor's, so the comparison runs in C.
+    """
+    end = pos + num_rows * width
+    terminators = buf[pos + width - 1 : end : width]
+    if terminators == b"\n" * num_rows:
+        n = num_rows
+    else:
+        n = _NOT_NEWLINE(terminators).start()
+    n = _single_line_rows(buf, pos, n, width)
+    if n == 1:
+        return 1, [0]
+    end = pos + n * width
+    mask = (1 << (8 * (n - 1))) - 1
+    diff = 0
+    for col in range(_CTRL_COLS.start, _CTRL_COLS.stop):
+        column = int.from_bytes(buf[pos + col : end : width], "big")
+        diff |= (column >> 8) ^ (column & mask)
+    if not diff:
+        return n, [0]
+    return n, [0] + [m.start() + 1 for m in _NONZERO(diff.to_bytes(n - 1, "big"))]
+
+
+def _scan_rows(st, buf, pos, num_rows, width, starts, base):
+    """Apply ``num_rows`` single-record rows of ``width`` bytes to ``st``.
+
+    ``starts`` lists the first row of every run of identical control
+    fields. A run of regular section records is applied as a whole,
+    exactly as :func:`_scan_record` applies its records one by one;
+    every other run (framing or blank records) is applied record by
+    record.
+    """
+    ends = starts[1:] + [num_rows]
+    for start, end in zip(starts, ends):
+        offset = pos + start * width
+        ctrl = buf[offset + _CTRL_COLS.start : offset + _CTRL_COLS.stop]
+        if ctrl == st.prev_ctrl:
+            st.sec_length += (end - start) * width
+            st.sec_lines += end - start
+            continue
         mat = _control_int(ctrl[0:4])
         mf = _control_int(ctrl[4:6])
         mt = _control_int(ctrl[6:9])
-        _consume_run(st, mat, mf, mt, offset, byte_length, 1, part.decode("latin-1"))
-        if st.done:  # TEND: nothing meaningful follows
-            break
-        # only a run of regular section records can be extended by the
-        # fast path; after any framing record the next record restarts
-        prev_ctrl = ctrl if (mat > 0 and mf > 0 and mt > 0) else None
-        offset += byte_length
-
-    if st.cur is not None:
-        raise TapeStructureError(
-            "the tape ends in the middle of a material; the final MEND or "
-            "TEND record is missing"
-        )
-    return st.materials, tpid
-
-
-def _scan_chunk_runs(buf, num_records, start_row, base, line_width, st):
-    """Run the structural state machine over one block of whole records.
-
-    ``buf`` holds at least ``num_records`` records of ``line_width``
-    bytes; rows ``start_row`` onward are processed (``start_row`` skips
-    the TPID in the first block). ``base`` is the byte offset of
-    ``buf[0]`` within the file. The carried state ``st`` is updated in
-    place; ``st.uniform`` is cleared and the scan abandoned if a row is
-    not newline-terminated or a data record carries a blank control
-    field.
-
-    The MAT/MF/MT control field of every record is the byte slice
-    ``[66:75]``; a section or material boundary is exactly a row whose
-    control field differs from its predecessor, so the per-record scan
-    collapses into a loop over *runs* of identical control fields. Each
-    run is then classified by the shared :func:`_consume_run`.
-    """
-    if num_records <= start_row:
-        return
-    flat = _np.frombuffer(buf, dtype=_np.uint8)
-    arr = flat[: num_records * line_width].reshape(num_records, line_width)
-    # certain fixed-width check: the last byte of every record is "\n"
-    if not bool(_np.all(arr[:, line_width - 1] == 0x0A)):
-        st.uniform = False
-        return
-    ctrl = arr[:, _CTRL_COLS]  # the MAT/MF/MT control field of every record
-
-    # segment the rows into runs of identical control fields
-    window = ctrl[start_row:]
-    if len(window) == 1:
-        starts = [start_row]
-    else:
-        boundary = _np.any(window[1:] != window[:-1], axis=1)
-        starts = [start_row] + (_np.flatnonzero(boundary) + 1 + start_row).tolist()
-    ends = starts[1:] + [num_records]
-
-    for start, end in zip(starts, ends):
-        ctrl_field = ctrl[start].tobytes()
-        run_offset = base + start * line_width
-        run_length = (end - start) * line_width
-        if not ctrl_field.strip():  # blank-control run
-            if buf[start * line_width : end * line_width].strip():
-                st.uniform = False  # a record with data but a blank control
-                return
+        if mat > 0 and mf > 0 and mt > 0:
+            head_line = buf[offset : offset + width].decode("latin-1")
+            run_length = (end - start) * width
+            _consume_run(
+                st, mat, mf, mt, base + offset, run_length, end - start, head_line
+            )
+            st.prev_ctrl = ctrl
             continue
-        mat = _control_int(ctrl_field[0:4])
-        mf = _control_int(ctrl_field[4:6])
-        mt = _control_int(ctrl_field[6:9])
-        head_line = buf[start * line_width : start * line_width + line_width].decode(
-            "latin-1"
-        )
-        _consume_run(st, mat, mf, mt, run_offset, run_length, end - start, head_line)
-        if st.done:  # TEND: end of tape
-            return
+        # framing or blank records: as _scan_record, one by one; all of
+        # them share the control field just parsed
+        for row in range(start, end):
+            offset = pos + row * width
+            if not buf[offset : offset + width - 1].strip():  # blank record
+                continue
+            _consume_run(st, mat, mf, mt, base + offset, width, 1, "")
+            st.prev_ctrl = None
+            if st.done:
+                return
 
 
-def _vec_scan_file(fh, chunk_bytes):
-    """Chunked vectorized structural scan of an open binary tape file.
+def _scan_block(st, buf, end, base):
+    """Apply the whole records ``buf[:end]`` to ``st``.
 
-    Read the tape in blocks of about ``chunk_bytes`` and apply the
-    vectorized scan to each, so peak memory stays a small multiple of
-    ``chunk_bytes`` regardless of the tape size. Return
-    ``(materials, tpid)`` for a clean uniform fixed-width tape, or
-    ``None`` for any tape that is not uniform-width or not cleanly
-    structured; the caller then falls back to :func:`_scan`, which is
-    the authority for both the index and any structural error.
-
-    A tape whose only irregularity is an unterminated final TEND record
-    and/or a few trailing blank lines is still accepted: the partial
-    trailing record is trimmed, gated on that tail being benign (only
-    whitespace, or a TEND record), so a genuinely truncated record is
-    never silently dropped.
+    ``buf[end - 1]`` is a newline and ``base`` the file offset of
+    ``buf[0]``. The records are taken in windows of consecutive records
+    of one byte width: :func:`_bulk_rows_numpy` -- or, without numpy or
+    for a short window, where its fixed cost dominates,
+    :func:`_bulk_rows_python` -- locates the extent of the window and
+    the runs of identical control fields within it in one bulk
+    operation, and :func:`_scan_rows` applies those runs. A record of a
+    different width merely starts the next window, so records of mixed
+    widths (CRLF and LF line ends, records with or without sequence
+    numbers) keep the scan in bulk mode. Records too short to hold the
+    control field, and those before the tape head, are applied singly.
     """
-    first = fh.read(chunk_bytes)
-    if not first:
-        return None
-    first_nl = first.find(b"\n")
-    if first_nl < 0:
-        return None
-    line_width = first_nl + 1
-    # the control field ends at column 75, so a record must be wide
-    # enough to contain it
-    if line_width < 76:
-        return None
-    num0 = len(first) // line_width
-    if num0 == 0:
-        return None
+    pos = 0
+    window = _MIN_WINDOW_ROWS
+    while pos < end:
+        nl = buf.find(b"\n", pos, end)
+        width = nl + 1 - pos
+        if st.tpid is None or width < _MIN_BULK_WIDTH:
+            if st.tpid is None:
+                _scan_tpid(st, buf[pos:nl], base + pos, width)
+            else:
+                _scan_record(st, buf[pos:nl], base + pos, width)
+                if st.done:
+                    return
+            pos = nl + 1
+            continue
+        num_rows = min((end - pos) // width, window)
+        if _np is not None and num_rows > _MIN_WINDOW_ROWS:
+            n, starts = _bulk_rows_numpy(buf, pos, num_rows, width)
+        else:
+            n, starts = _bulk_rows_python(buf, pos, num_rows, width)
+        if n == num_rows:
+            window = min(4 * window, _MAX_WINDOW_ROWS)
+        else:
+            window = _MIN_WINDOW_ROWS
+        _scan_rows(st, buf, pos, n, width, starts, base)
+        if st.done:
+            return
+        pos += n * width
 
-    # locate the TPID -- the first record with a non-blank control field
-    flat = _np.frombuffer(first, dtype=_np.uint8)
-    arr0 = flat[: num0 * line_width].reshape(num0, line_width)
-    if not bool(_np.all(arr0[:, line_width - 1] == 0x0A)):
-        return None
-    ctrl0 = arr0[:, _CTRL_COLS]
-    nonblank = _np.any(ctrl0 != 0x20, axis=1)
-    if not bool(_np.any(nonblank)):
-        return None
-    tpid_row = int(_np.argmax(nonblank))
-    if tpid_row and first[: tpid_row * line_width].strip():
-        return None  # non-blank content before the TPID
-    head = ctrl0[tpid_row].tobytes()
-    if (
-        _control_int(head[0:4]) < 0
-        or _control_int(head[4:6]) != 0
-        or _control_int(head[6:9]) != 0
-    ):
-        return None  # not a TPID record (a TEND has MAT=-1)
-    tpid_offset = tpid_row * line_width
-    tpid = (
-        first[tpid_offset : tpid_offset + line_width].rstrip(b"\r\n").decode("latin-1"),
-        tpid_offset,
-        line_width,
-    )
 
+def _scan_file(fh, chunk_bytes):
+    """Structural scan of an open binary tape file.
+
+    Return ``(materials, (tpid_line, offset, length))``, the same result
+    as :func:`_scan` over the records of the file, raising the same
+    errors. Records are delimited by ``"\\n"`` only; a record keeps a
+    preceding ``"\\r"``. The file is read in blocks of about
+    ``chunk_bytes``, each trimmed to whole records (a partial final
+    record is re-read with the next block), so peak memory stays a small
+    multiple of ``chunk_bytes`` unless a single record is longer.
+    """
     st = _ScanState()
-    # scan the records of the first block that follow the TPID
-    _scan_chunk_runs(first, num0, tpid_row + 1, 0, line_width, st)
-    if not st.uniform:
-        return None
-
-    if not st.done:
-        # continue with record-aligned blocks; rewind to the last whole
-        # record of the first block so its partial tail is re-read
-        read_size = max(1, chunk_bytes // line_width) * line_width
-        fh.seek(num0 * line_width)
-        base = num0 * line_width
-        while not st.done:
-            block = fh.read(read_size)
-            if not block:
+    base = 0
+    read_size = chunk_bytes
+    while not st.done:
+        buf = fh.read(read_size)
+        if not buf:
+            break
+        end = buf.rfind(b"\n") + 1
+        if end == 0:
+            if len(buf) < read_size:  # an unterminated final record
+                if st.tpid is None:
+                    _scan_tpid(st, buf, base, len(buf))
+                else:
+                    _scan_record(st, buf, base, len(buf))
                 break
-            final = len(block) < read_size
-            remainder = len(block) % line_width
-            if remainder:
-                # a partial trailing record: accept it only if benign
-                tail = block[len(block) - remainder :]
-                if tail.strip() and _control_int(tail[_MAT_COLS]) != -1:
-                    return None
-                block = block[: len(block) - remainder]
-            if block:
-                num_records = len(block) // line_width
-                _scan_chunk_runs(block, num_records, 0, base, line_width, st)
-                if not st.uniform:
-                    return None
-                base += len(block)
-            if final:
-                break
-
-    if st.cur is not None:
-        return None  # truncated tape -- let _scan raise the structural error
-    return st.materials, tpid
+            # a record longer than the block: read a larger block
+            read_size *= 2
+            fh.seek(base)
+            continue
+        read_size = chunk_bytes
+        _scan_block(st, buf, end, base)
+        base += end
+        if end < len(buf):
+            fh.seek(base)
+    return st.result()
 
 
 class TapeIndex:
@@ -550,14 +620,7 @@ class TapeIndex:
         """
         path = os.fspath(path)
         with open(path, "rb") as fh:
-            result = None
-            if _np is not None:
-                result = _vec_scan_file(fh, chunk_bytes)
-                if result is None:
-                    fh.seek(0)  # the fast path consumed part of the file
-            if result is None:
-                result = _scan(_iter_file_records(fh))
-        materials, tpid = result
+            materials, tpid = _scan_file(fh, chunk_bytes)
         stat = os.stat(path)
         return cls(
             materials,

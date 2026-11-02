@@ -24,6 +24,7 @@ from .code_generator_parsing_core import (
 from .code_generator_writing_core import (
     get_array_accessor,
     get_element_registrar,
+    retrieves_element,
     get_expr_value_using_endf_dict,
     contains_arithmetic,
     get_mat_from_mfmt_section,
@@ -367,8 +368,12 @@ def _nested_element_func_wrapper(
     # parsing code, also if an element remains empty (see IndexShifter).
     # site: the field of the assignment, placement: where the code is
     # placed, the field itself or a loop before which the element is
-    # created. In a loop, the registration is done with a registrar
-    # declared before the loop (see get_element_registrar).
+    # created. The registration is omitted if it follows the retrieval of
+    # an element with these leading indices for the value of the field,
+    # which changes nothing (see retrieves_element). In a loop, it is done
+    # with a registrar declared before the loop (see get_element_registrar).
+    if placement is site and retrieves_element(vartok, indices, site, vardict):
+        return ""
     num = len(indices)
     idcs = "{" + ", ".join(indices) + "}"
     regname = get_element_registrar(vartok, placement, vardict)

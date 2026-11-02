@@ -173,6 +173,43 @@ def get_array_accessor(vartok, site, vardict):
     return registry[key]
 
 
+def _record_retrieval(vartok, idxstrs, site, vardict):
+    # The element of an array variable with the index expressions idxstrs
+    # is retrieved from the dictionary for the value of the field `site`
+    # (see retrieves_element)
+    registry = _function_registry(vardict, "retrieved_elements")
+    if registry is None:
+        return
+    registry.setdefault(id(site), set()).add((str(vartok), tuple(idxstrs)))
+
+
+def retrieves_element(vartok, indices, site, vardict):
+    """Whether the value of the field ``site`` is retrieved with an element
+    of the variable whose leading index expressions are ``indices``.
+
+    The value of a field of a record (outside a lookahead) is retrieved
+    from the dictionary before the code assigning it to the variables in
+    the field is executed, and without a default value, i.e. it either
+    raises an exception or has accessed every level of the variable with
+    the indices of the element (with ``CppArrayAccessor::get`` or
+    ``IndexShifterStore::get_value``). Afterwards, registering an element
+    whose indices are leading indices of this element with the index
+    bookkeeping (``register_element``) changes nothing: the start index of
+    each of these levels is already set, and the positions relative to
+    them are valid.
+    """
+    if site is None or vardict is None or in_lookahead(vardict):
+        return False
+    registry = _function_registry(vardict, "retrieved_elements")
+    if registry is None:
+        return False
+    num = len(indices)
+    return any(
+        name == str(vartok) and len(idxstrs) >= num and idxstrs[:num] == tuple(indices)
+        for name, idxstrs in registry.get(id(site), ())
+    )
+
+
 def get_element_registrar(vartok, placement, vardict):
     """Name of a CppElementRegistrar of an array variable in a loop.
 
@@ -235,6 +272,10 @@ def get_node_value_using_endf_dict(
     for i, idxtok in enumerate(node.indices):
         curidxstr = get_idxstr(node, i, vardict)
         idxstrs.append(curidxstr)
+
+    if site is not None and len(idxstrs) > 0 and dtype not in defaults:
+        if not in_lookahead(vardict):
+            _record_retrieval(node, idxstrs, site, vardict)
 
     if dtype in (int, float) and dtype not in defaults and idx is None:
         accname = get_array_accessor(node, site, vardict)

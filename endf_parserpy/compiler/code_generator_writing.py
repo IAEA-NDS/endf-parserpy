@@ -23,6 +23,7 @@ from .code_generator_parsing_core import (
 )
 from .code_generator_writing_core import (
     get_array_accessor,
+    get_element_registrar,
     get_expr_value_using_endf_dict,
     contains_arithmetic,
     get_mat_from_mfmt_section,
@@ -358,13 +359,21 @@ def _finalize_line_func_wrapper(vardict):
     return code
 
 
-def _nested_element_func_wrapper(vartok, indices):
+def _nested_element_func_wrapper(
+    vartok, indices, site=None, placement=None, vardict=None
+):
     # the start index of each level of a nested array with array_type="list"
     # is the first index of the loop that creates its elements, as in the
-    # parsing code, also if an element remains empty (see IndexShifter);
-    # neither a std::string nor a std::vector is constructed for the call
+    # parsing code, also if an element remains empty (see IndexShifter).
+    # site: the field of the assignment, placement: where the code is
+    # placed, the field itself or a loop before which the element is
+    # created. In a loop, the registration is done with a registrar
+    # declared before the loop (see get_element_registrar).
     num = len(indices)
     idcs = "{" + ", ".join(indices) + "}"
+    regname = get_element_registrar(vartok, placement, vardict)
+    if regname is not None:
+        return cpp.statement(f"{regname}.register_element<{num}>({idcs})")
     return cpp.statement(
         f'cpp_index_shifter_store.register_element<{num}>("{vartok}", {idcs})'
     )

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/26
+# Last modified:   2026/11/02
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -639,7 +639,15 @@ class Assign:
                     ):
                         new_code += _reserve_at_creation_code(ptrvar_new, loop)
             if nested_element_hook is not None:
-                new_code += nested_element_hook(vartok, indices[: i + 1])
+                # placed at destnode (the field itself or a loop before
+                # which the element is prepared)
+                new_code += nested_element_hook(
+                    vartok,
+                    indices[: i + 1],
+                    site=node,
+                    placement=destnode if node is not None else None,
+                    vardict=vardict,
+                )
             if node is not None:
                 if destnode is not node:
                     destnode.check_my_identity()
@@ -663,7 +671,13 @@ class Assign:
                         )
                         create_code = cpp.statement(f"{cpp_varname}{chain}")
                     if nested_element_hook is not None:
-                        create_code += nested_element_hook(vartok, indices[: i + 1])
+                        create_code += nested_element_hook(
+                            vartok,
+                            indices[: i + 1],
+                            site=node,
+                            placement=creation,
+                            vardict=vardict,
+                        )
                     creation.check_my_identity()
                     creation.append_precode(create_code)
                     if (

@@ -919,6 +919,39 @@ private:
 
 
 // ---------------------------------------------------------------------
+// Registration of elements of a nested array in a loop (writing)
+//
+// register_element<K>({i1, ..., iK}) is equivalent to
+// store.register_element<K>(varname, {i1, ..., iK}), but the index
+// bookkeeping of the variable is looked up in the store only at the first
+// registration in list mode, not at every one. The registrar is declared
+// before a loop and does nothing before its first use. The pointer remains
+// valid while the store exists (see IndexShifterStore::get_shifter); the
+// registrar is declared in the scope of the store.
+// ---------------------------------------------------------------------
+
+class CppElementRegistrar {
+
+public:
+    CppElementRegistrar(IndexShifterStore& store, const char* varname)
+        : store(store), varname(varname), shifter(nullptr) {}
+
+    template <int K>
+    void register_element(const int (&indices)[K]) {
+        if (! store.is_list_mode()) return;
+        if (shifter == nullptr) shifter = &store.get_shifter(varname);
+        shifter->register_element(indices, K);
+    }
+
+private:
+    IndexShifterStore& store;
+    const char* varname;
+    IndexShifter* shifter;
+
+};
+
+
+// ---------------------------------------------------------------------
 // Values of INTG records (writing)
 //
 // The first n elements of the row of integers of an INTG record, each one

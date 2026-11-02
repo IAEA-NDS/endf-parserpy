@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2026/10/26
+# Last modified:   2026/11/02
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -85,6 +85,28 @@ def _contains_lookahead(node):
     return any(_contains_lookahead(c) for c in node.children)
 
 
+def _loops_of_scope(node):
+    # The loops around node (not node itself) from the innermost one
+    # outwards, within the scope of node, i.e. with the same
+    # IndexShifterStore, up to the first loop that contains a lookahead,
+    # whose records are generated twice (excluded).
+    curnode = node
+    while getattr(curnode, "parent", None) is not None:
+        parent = curnode.parent
+        # sections and the bodies of named LIST records have their own
+        # IndexShifterStore
+        if is_section(parent):
+            return
+        if is_list(parent) and get_name(curnode) == "list_body":
+            if get_child(parent, "list_name", nofail=True) is not None:
+                return
+        if is_loop(parent):
+            if _contains_lookahead(parent):
+                return
+            yield parent
+        curnode = parent
+
+
 def _hoisting_loop(vartok, site, vardict):
     # The outermost loop around the field `site` (in the same scope) in
     # which the variable occurs only in this field (as any variable with
@@ -94,36 +116,28 @@ def _hoisting_loop(vartok, site, vardict):
     name = str(vartok)
     abbrevs = {str(k): v for k, v in vardict.get("__abbrevs", {}).items()}
     loop = None
-    curnode = site
-    while getattr(curnode, "parent", None) is not None:
-        parent = curnode.parent
-        # sections and the bodies of named LIST records have their own
-        # IndexShifterStore
-        if is_section(parent):
+    for parent in _loops_of_scope(site):
+        _abbreviations(parent, abbrevs)
+        if _count_name(parent, name, abbrevs) != 1:
             break
-        if is_list(parent) and get_name(curnode) == "list_body":
-            if get_child(parent, "list_name", nofail=True) is not None:
-                break
-        if is_loop(parent):
-            if _contains_lookahead(parent):
-                break
-            _abbreviations(parent, abbrevs)
-            if _count_name(parent, name, abbrevs) != 1:
-                break
-            loop = parent
-        curnode = parent
+        loop = parent
     return loop
 
 
-def _accessor_registry(vardict):
-    # accessors of a generated function by loop and variable name, shared
-    # by all scopes of the function (stored with its basic operations)
+def _function_registry(vardict, name):
+    # a registry of a generated function, shared by all its scopes (stored
+    # with its basic operations)
     curdict = vardict
     while "__basic_ops" not in curdict:
         if "__up" not in curdict:
             return None
         curdict = curdict["__up"]
-    return curdict["__basic_ops"].setdefault("array_accessors", {})
+    return curdict["__basic_ops"].setdefault(name, {})
+
+
+def _accessor_registry(vardict):
+    # accessors of a generated function by loop and variable name
+    return _function_registry(vardict, "array_accessors")
 
 
 def get_array_accessor(vartok, site, vardict):
@@ -154,6 +168,40 @@ def get_array_accessor(vartok, site, vardict):
             cpp.statement(
                 f"CppArrayAccessor<{len(vartok.indices)}> {accname}"
                 + f'(cpp_index_shifter_store, "{vartok}")'
+            )
+        )
+    return registry[key]
+
+
+def get_element_registrar(vartok, placement, vardict):
+    """Name of a CppElementRegistrar of an array variable in a loop.
+
+    If code registering elements of a nested array with the index
+    bookkeeping (``register_element``) is placed at the node
+    ``placement`` (in the code of a field or before a loop) inside a loop
+    of the same scope, a registrar of the variable is declared before the
+    outermost such loop (see :func:`_loops_of_scope`), which looks up the
+    index bookkeeping of the variable in the IndexShifterStore once
+    instead of at each registration, with the same result. The registrar
+    does nothing before its first use. ``None`` if this is not applicable.
+    """
+    if placement is None or vardict is None or in_lookahead(vardict):
+        return None
+    registry = _function_registry(vardict, "element_registrars")
+    if registry is None:
+        return None
+    loop = None
+    for loop in _loops_of_scope(placement):
+        pass
+    if loop is None:
+        return None
+    key = (id(loop), str(vartok))
+    if key not in registry:
+        regname = f"cpp_wreg_{len(registry) + 1}"
+        registry[key] = regname
+        loop.append_precode(
+            cpp.statement(
+                f'CppElementRegistrar {regname}(cpp_index_shifter_store, "{vartok}")'
             )
         )
     return registry[key]

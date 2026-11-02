@@ -187,5 +187,7 @@ def test_no_stores_when_writing():
         assert re.search(rf"^\s*aux_last_type_read_for_{name} = ", write, re.M) is None
         assert re.search(rf"^\s*aux_last_type_read_for_{name} = ", parse, re.M)
     # the elements are still registered with the index bookkeeping
-    assert 'register_element<1>("b", {var_j_0d_int_Scalar})' in write
+    reg = re.search(r'CppElementRegistrar (\w+)\(cpp_index_shifter_store, "b"\)', write)
+    assert reg is not None
+    assert f"{reg.group(1)}.register_element<1>({{var_j_0d_int_Scalar}})" in write
     assert "var_NA_1d_int_NestedArray.set(" in write

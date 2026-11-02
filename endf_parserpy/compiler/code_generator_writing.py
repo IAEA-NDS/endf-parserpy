@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/10/26
+# Last modified:   2026/11/02
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -361,10 +361,12 @@ def _finalize_line_func_wrapper(vardict):
 def _nested_element_func_wrapper(vartok, indices):
     # the start index of each level of a nested array with array_type="list"
     # is the first index of the loop that creates its elements, as in the
-    # parsing code, also if an element remains empty (see IndexShifter)
-    idcsarg = "std::vector<int>({" + ", ".join(indices) + "})"
+    # parsing code, also if an element remains empty (see IndexShifter);
+    # neither a std::string nor a std::vector is constructed for the call
+    num = len(indices)
+    idcs = "{" + ", ".join(indices) + "}"
     return cpp.statement(
-        f'cpp_index_shifter_store.register_element("{vartok}", {idcsarg})'
+        f'cpp_index_shifter_store.register_element<{num}>("{vartok}", {idcs})'
     )
 
 

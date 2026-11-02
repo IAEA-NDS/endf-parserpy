@@ -487,15 +487,17 @@ private:
     }
 
 public:
-    // register the position of the element with the given recipe indices
-    // (one index per level, from the first) without accessing it, so that
-    // the start index of each level is the first index of the loop that
-    // creates the elements, also if an element remains empty
-    void register_element(const std::vector<int>& recipe_indices, int i=0) {
-        int index_value;
-        shift_index(recipe_indices[i], index_value);
-        if (i+1 < static_cast<int>(recipe_indices.size())) {
-            get_next_level(index_value).register_element(recipe_indices, i+1);
+    // register the position of the element with the n given recipe
+    // indices (one index per level, from the first) without accessing it,
+    // so that the start index of each level is the first index of the loop
+    // that creates the elements, also if an element remains empty
+    void register_element(const int* recipe_indices, int n) {
+        IndexShifter* level = this;
+        for (int d = 0; d < n; d++) {
+            int index_value;
+            level->shift_index(recipe_indices[d], index_value);
+            // get_next_level only changes the levels below `level`
+            if (d + 1 < n) level = &level->get_next_level(index_value);
         }
     }
 
@@ -570,17 +572,27 @@ public:
         return it->second.setdefault(pyobj, indices, defval);
     }
 
-    // with list mode, register the element of a nested array that the
-    // parsing code creates before the loop filling it (see
-    // IndexShifter::register_element); dict arrays are indexed by the
-    // recipe indices themselves
-    void register_element(const std::string& varname, const std::vector<int>& indices) {
+    // with list mode, register the element of a nested array with K
+    // indices that the parsing code creates before the loop filling it
+    // (see IndexShifter::register_element); dict arrays are indexed by the
+    // recipe indices themselves. No std::string or std::vector is
+    // constructed, so that a call costs nothing in dict mode.
+    template <int K>
+    void register_element(const char* varname, const int (&indices)[K]) {
         if (!list_mode) return;
-        IndexShifterMap::iterator it = index_shifter_map.find(varname);
+        get_shifter(varname).register_element(indices, K);
+    }
+
+    // index bookkeeping of a variable, created if not yet present; the
+    // reference remains valid as long as the store exists (element of a
+    // std::map, from which no element is removed)
+    IndexShifter& get_shifter(const char* varname) {
+        std::string name(varname);
+        IndexShifterMap::iterator it = index_shifter_map.find(name);
         if (it == index_shifter_map.end()) {
-            it = index_shifter_map.insert(std::make_pair(varname, IndexShifter(list_mode))).first;
+            it = index_shifter_map.insert(std::make_pair(name, IndexShifter(list_mode))).first;
         }
-        it->second.register_element(indices);
+        return it->second;
     }
 
     bool is_list_mode() const {
@@ -596,12 +608,7 @@ public:
         PyObject* item = PyDict_GetItemString(refdict.ptr(), varname);
         if (item == nullptr) return false;
         obj = py::reinterpret_borrow<py::object>(item);
-        std::string name(varname);
-        IndexShifterMap::iterator it = index_shifter_map.find(name);
-        if (it == index_shifter_map.end()) {
-            it = index_shifter_map.insert(std::make_pair(name, IndexShifter(list_mode))).first;
-        }
-        shifter = &it->second;
+        shifter = &get_shifter(varname);
         return true;
     }
 

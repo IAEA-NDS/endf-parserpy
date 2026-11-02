@@ -15,6 +15,23 @@
 namespace py = pybind11;
 
 
+// Paths executed rarely from the generated write functions (the
+// registration of elements in list mode, the first use of an accessor)
+// are kept out of line, so that these large functions only contain a
+// test and a call for them. The speed of the frequently executed parts of
+// a write function was found to depend on the code inlined for such
+// paths even where they are not executed (e.g. writing decay data in
+// dict mode up to 5% slower after a registration was removed from a
+// loop that is not executed for these data).
+#if defined(__GNUC__) || defined(__clang__)
+#define INDEX_SHIFTER_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define INDEX_SHIFTER_NOINLINE __declspec(noinline)
+#else
+#define INDEX_SHIFTER_NOINLINE
+#endif
+
+
 // Fast item access for exact Python dict/list objects. In all other cases
 // (missing key, index out of range, subclasses which may override
 // __getitem__ or __missing__) the generic accessor is used, so that the
@@ -580,7 +597,11 @@ public:
     template <int K>
     void register_element(const char* varname, const int (&indices)[K]) {
         if (!list_mode) return;
-        get_shifter(varname).register_element(indices, K);
+        register_indices(varname, indices, K);
+    }
+
+    INDEX_SHIFTER_NOINLINE void register_indices(const char* varname, const int* indices, int n) {
+        get_shifter(varname).register_element(indices, n);
     }
 
     // index bookkeeping of a variable, created if not yet present; the
@@ -603,7 +624,7 @@ public:
     // as retrieved by lookup (for CppArrayAccessor); false if the
     // dictionary is not an exact dict or does not contain the variable,
     // then the generic access is to be used (which raises the error)
-    bool find_array(const char* varname, py::object& obj, IndexShifter*& shifter) {
+    INDEX_SHIFTER_NOINLINE bool find_array(const char* varname, py::object& obj, IndexShifter*& shifter) {
         if (! PyDict_CheckExact(refdict.ptr())) return false;
         PyObject* item = PyDict_GetItemString(refdict.ptr(), varname);
         if (item == nullptr) return false;
@@ -939,11 +960,15 @@ public:
     template <int K>
     void register_element(const int (&indices)[K]) {
         if (! store.is_list_mode()) return;
-        if (shifter == nullptr) shifter = &store.get_shifter(varname);
-        shifter->register_element(indices, K);
+        register_indices(indices, K);
     }
 
 private:
+    INDEX_SHIFTER_NOINLINE void register_indices(const int* indices, int n) {
+        if (shifter == nullptr) shifter = &store.get_shifter(varname);
+        shifter->register_element(indices, n);
+    }
+
     IndexShifterStore& store;
     const char* varname;
     IndexShifter* shifter;

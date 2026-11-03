@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2026/11/01
+# Last modified:   2026/11/03
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -50,6 +50,54 @@ def register_reading_options():
       }
       return res;
     }, py::arg("reset") = false);
+
+    // the row kernel for float fields, selected once when the module is
+    // loaded (see cpp_row_selected)
+    {
+      const cpp_row_selection& sel = cpp_row_selected();
+      if (sel.warning != nullptr) {
+        std::string msg = std::string("ENDF_PARSERPY_CPP_ROW_KERNEL=")
+          + sel.requested + ": " + sel.warning;
+        if (PyErr_WarnEx(PyExc_RuntimeWarning, msg.c_str(), 1) < 0) {
+          throw py::error_already_set();
+        }
+      }
+    }
+
+    // the selected row kernel, the tiers and the CPU features, for tests
+    // and diagnostics; the content may change between versions
+    m.def("_row_kernel_info", []() {
+      const cpp_row_selection& sel = cpp_row_selected();
+      py::dict cpu;
+      cpu["detected"] = sel.cpu.detected;
+      cpu["os_ymm"] = sel.cpu.os_ymm;
+      cpu["os_zmm"] = sel.cpu.os_zmm;
+      cpu["fma"] = sel.cpu.fma;
+      cpu["avx2"] = sel.cpu.avx2;
+      cpu["avx512f"] = sel.cpu.avx512f;
+      cpu["avx512dq"] = sel.cpu.avx512dq;
+      cpu["avx512bw"] = sel.cpu.avx512bw;
+      cpu["avx512vl"] = sel.cpu.avx512vl;
+      cpu["avx512vbmi"] = sel.cpu.avx512vbmi;
+      py::dict tiers;
+      const cpp_row_tier* table = cpp_row_tiers();
+      for (int i = 0; i < CPP_ROW_NUM_TIERS; i++) {
+        py::dict tier;
+        tier["built"] = table[i].kernel != nullptr;
+        tier["supported"] = table[i].supported(sel.cpu);
+        tier["vector"] = table[i].vector;
+        tiers[table[i].name] = tier;
+      }
+      py::dict info;
+      info["variable"] = "ENDF_PARSERPY_CPP_ROW_KERNEL";
+      info["requested"] = sel.requested_set ? py::object(py::str(sel.requested)) : py::object(py::none());
+      info["selected"] = sel.tier;
+      info["warning"] = sel.warning != nullptr ? py::object(py::str(sel.warning)) : py::object(py::none());
+      info["tiers"] = tiers;
+      info["cpu"] = cpu;
+      info["scalar_kernel_lines"] = cpp_row_scalar_lines();
+      return info;
+    });
     """
     return cpp.indent_code(code, -4)
 

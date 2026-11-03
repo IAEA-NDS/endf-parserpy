@@ -11,6 +11,7 @@
 
 import re
 from endf_parserpy.recipe_parser.tree import Token
+from endf_parserpy.utils.tree_utils import get_name
 from .expr_utils.equation_utils import get_variables_in_expr
 from .expr_utils.custom_nodes import VariableToken
 from . import cpp_primitives as cpp
@@ -22,6 +23,7 @@ from .mode_management import (
     get_prepare_line_func,
     get_numeric_field_getter,
     get_finalize_line_func,
+    get_float_row_form,
 )
 
 
@@ -249,19 +251,85 @@ def read_section_verbatim(tarvec, mat, mf, mt, cont, is_firstline, parse_opts):
     return code
 
 
+class FloatRowForm:
+    """The row form of the reading of the body of a LIST record.
+
+    The body is read in today's per-field form (each float value with
+    ``cpp_read_field``) and, in a second copy, in the row form: the float
+    fields of each line of the body are converted by one call of the row
+    kernel selected when the module is loaded (``CppFloatRow`` in
+    ``module_header_reading.hpp``), and each value is taken from the
+    converted fields, or read with ``cpp_read_field`` if the kernel has
+    left the field. The form is chosen once per record: the row form only
+    if a row kernel is selected (``cpp_float_row_kernel``).
+
+    The code of the body is generated once, with the statements of the row
+    form (:attr:`declaration` and :attr:`conversion`, see
+    :class:`ListBodyRecorder`); :meth:`select_form` derives both forms
+    from it, so that the per-field form is exactly the code generated
+    without the row form.
+    """
+
+    declaration = cpp.statement(
+        "CppFloatRow cpp_row(cpp_float_row_kernel(), parse_opts)"
+    )
+    # after a line of the body is read, cpp_npl - cpp_i values remain
+    conversion = cpp.statement("cpp_row.convert(cpp_line.data(), cpp_npl - cpp_i)")
+    condition = "cpp_float_row_kernel() == nullptr"
+
+    @staticmethod
+    def _element_regex():
+        # the reading of a float value of the body (see
+        # ListBodyRecorder.get_element and get_numeric_field)
+        cpp_dtype = re.escape(map_dtype(float))
+        return re.compile(
+            rf"\bcpp_read_field<({cpp_dtype})>\(cpp_line\.data\(\), cpp_j, (\w+)\)"
+        )
+
+    @classmethod
+    def select_form(cls, code, with_row_form=True):
+        """Return the code that reads the body of a LIST record in the form
+        chosen at runtime, from the code ``code`` generated with the
+        statements of the row form. Only the per-field form is returned if
+        ``with_row_form`` is false or the body reads no float value with
+        ``cpp_read_field``."""
+        marks = (cls.declaration.strip(), cls.conversion.strip())
+        lines = code.splitlines(keepends=True)
+        per_field_code = "".join(s for s in lines if s.strip() not in marks)
+        row_code, count = cls._element_regex().subn(
+            r"cpp_read_row_field<\1>(cpp_row, cpp_line.data(), cpp_j, \2)", code
+        )
+        if count == 0 or not with_row_form:
+            return per_field_code
+        return cpp.ifelse(cls.condition, per_field_code, row_code)
+
+
 class ListBodyRecorder:
 
     @staticmethod
+    def _row_form(vardict):
+        # the row form, if registered for the mode, except in a lookahead
+        if in_lookahead(vardict):
+            return None
+        return get_float_row_form(vardict)
+
+    @staticmethod
     def start_list_body_loop(npl_val, vardict):
+        row_form = ListBodyRecorder._row_form(vardict)
         code = cpp.open_block()
         code += cpp.statement(f"int cpp_npl = {npl_val}", cpp.INDENT)
         code += cpp.statement("int cpp_i = 0", cpp.INDENT)
         code += cpp.statement("int cpp_j = 0", cpp.INDENT)
+        if row_form is not None:
+            code += cpp.indent_code(row_form.declaration, cpp.INDENT)
         # only read the first body line if the LIST is non-empty; an
         # NPL=0 LIST occupies its header line only, and an unconditional
         # read would consume the following record (e.g. the SEND)
+        first_line_code = get_prepare_line_func(vardict)(vardict)
+        if row_form is not None:
+            first_line_code += row_form.conversion
         code += cpp.indent_code(
-            cpp.pureif("cpp_npl > 0", get_prepare_line_func(vardict)(vardict)),
+            cpp.pureif("cpp_npl > 0", first_line_code),
             cpp.INDENT,
         )
         return code
@@ -289,6 +357,18 @@ class ListBodyRecorder:
         return code
 
     @staticmethod
+    def select_form(code, list_body_node, vardict):
+        # the code of the loop reading the body, from start_list_body_loop
+        # to finish_list_body_loop, in the forms of the mode; the row form
+        # only for a body with a loop (otherwise it reads a fixed number
+        # of values, usually only a few)
+        row_form = ListBodyRecorder._row_form(vardict)
+        if row_form is None:
+            return code
+        with_loop = any(get_name(c) == "list_loop" for c in list_body_node.children)
+        return row_form.select_form(code, with_loop)
+
+    @staticmethod
     def get_element(node, vardict):
         # an element after the NPL elements of the body is an error, raised
         # before the field is accessed: the line of the NPL-th element is
@@ -304,6 +384,7 @@ class ListBodyRecorder:
 
     @staticmethod
     def update_counters_and_line(vardict):
+        row_form = ListBodyRecorder._row_form(vardict)
         code = cpp.statement("cpp_i++")
         code += cpp.statement("cpp_j++")
         code += cpp.pureif(
@@ -312,6 +393,7 @@ class ListBodyRecorder:
                 [
                     get_finalize_line_func(vardict)(vardict),
                     get_prepare_line_func(vardict)(vardict),
+                    row_form.conversion if row_form is not None else "",
                     cpp.statement("cpp_j = 0"),
                 ]
             ),

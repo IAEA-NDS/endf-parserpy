@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/01
+# Last modified:   2026/11/05
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -934,10 +934,12 @@ def generate_code_for_list(node, vardict):
 
     lbr = aux.ListBodyRecorder
     icode = _record_body_code(template, vardict)
-    icode += lbr.start_list_body_loop(npl_val, vardict)
+    loop_code = lbr.start_list_body_loop(npl_val, vardict)
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
-    icode += lbr.indent(list_body_code)
-    icode += lbr.finish_list_body_loop(vardict)
+    loop_code += lbr.indent(list_body_code)
+    loop_code += lbr.finish_list_body_loop(vardict)
+    # the code is generated once; the forms are derived from it
+    icode += lbr.select_form(loop_code, list_body_node, vardict)
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)

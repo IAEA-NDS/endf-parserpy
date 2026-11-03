@@ -76,6 +76,22 @@ def get_record_body_func(vardict):
     return pardict["__basic_ops"].get("record_body_func")
 
 
+def register_float_row_form(form, vardict):
+    """Register the row form of the reading of the bodies of LIST records
+    (an object as :class:`~endf_parserpy.compiler.endf2cpp_aux.FloatRowForm`).
+
+    Without a registered form, the bodies are only read in the per-field
+    form, see :func:`get_float_row_form`.
+    """
+    _register_getter(form, vardict, "float_row_form", None)
+
+
+def get_float_row_form(vardict):
+    # optional, None if not registered
+    pardict = _find_parent_dict("__basic_ops", vardict)
+    return pardict["__basic_ops"].get("float_row_form")
+
+
 def register_custom_int_row_binder(func, vardict):
     _register_getter(
         func,

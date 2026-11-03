@@ -52,6 +52,7 @@ from .mode_management import (
     register_generate_expr_validation_func,
     register_layout_recorder,
     register_record_body_func,
+    register_float_row_form,
     get_layout_recorder,
 )
 from .endf2cpp_aux import (
@@ -217,6 +218,9 @@ def generate_cpp_parsefun(
     register_finalize_section_func(_finalize_section_func_wrapper, vardict)
     register_generate_expr_validation_func(_generate_expr_validation_wrapper, vardict)
     register_record_body_func(_record_body_func_wrapper, vardict)
+    # the bodies of LIST records also in the row form (TAB1 bodies: see
+    # read_tab1_body)
+    register_float_row_form(aux.FloatRowForm, vardict)
     register_lookahead_tellg_statement(
         cpp.statement("std::streampos cpp_old_streampos = cont.tellg()"), vardict
     )

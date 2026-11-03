@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/01
+# Last modified:   2026/11/03
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -238,7 +238,11 @@ def register_nested_element_hook(func, vardict):
     """Register a function that returns code to be executed where the
     code for parsing creates an element of a nested array (before the
     loop that fills it), called with the variable token and the index
-    expressions of the element.
+    expressions of the element, and with the keyword arguments ``site``
+    (the node of the field whose assignment creates the element, or
+    ``None``), ``placement`` (the node where the returned code is placed:
+    the field itself or a loop before which the element is prepared) and
+    ``vardict``.
 
     Without a registered function, no such code is generated, see
     :func:`get_nested_element_hook`.

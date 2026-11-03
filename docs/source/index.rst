@@ -121,6 +121,9 @@ Install endf-parserpy
    how many translation units the C++ code shared between the format
    flavors is split into for faster parallel builds (default: up to 8;
    ``1`` emits the single ``_shared.cpp`` as found in the repository).
+   At runtime, the environment variable ``ENDF_PARSERPY_CPP_ROW_KERNEL``
+   selects how the C++ modules convert the float fields of lines
+   (see :ref:`cpp_row_kernel_sec`).
 
 
 .. note::

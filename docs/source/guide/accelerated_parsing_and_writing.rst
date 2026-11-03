@@ -62,6 +62,60 @@ own C++ module with parsing and writing functions based on their
 own recipe files.
 
 
+.. _cpp_row_kernel_sec:
+
+Row kernels for float fields
+----------------------------
+
+The float values of the bodies of TAB1 and LIST records can be converted
+in two ways by the C++ modules: field by field, or with one call of a
+*row kernel* per line that converts all float fields of the line.
+Several implementations (tiers) of the row kernel are planned, e.g. for
+the vector instructions of some processors; which one is used is decided
+once when a C++ module is loaded, from the features of the processor.
+The parse results do not depend on this choice: a row kernel converts a
+field only if the conversion field by field would give the same value,
+and every other field is converted field by field.
+
+In the current version, no vector tier is built, so that the float
+fields are converted field by field unless a tier is forced.
+The environment variable ``ENDF_PARSERPY_CPP_ROW_KERNEL``, read when a
+C++ module is loaded (i.e. before the first
+:class:`~endf_parserpy.EndfParserCpp` object of an ENDF format flavor is
+created in a Python process), selects the row kernel:
+
+- ``auto`` (the default, also if the variable is unset or empty): the
+  fastest vector tier supported by the processor, none if there is none;
+- ``off``: no row kernel, the float fields are converted field by field;
+- ``scalar``: the scalar row kernel, the conversion field by field
+  applied to a whole line; it is not faster and serves as the reference
+  for testing;
+- ``avx2``, ``avx512``: this vector tier (x86-64 only), if it is built
+  and supported by the processor.
+
+If the requested tier is not available, or the value is not one of
+these, the automatic choice is used and a ``RuntimeWarning`` is issued
+when the module is loaded. For example, to parse with the scalar row
+kernel under Linux or macOS:
+
+.. code:: bash
+
+   ENDF_PARSERPY_CPP_ROW_KERNEL=scalar python my_script.py
+
+The function ``_row_kernel_info`` of each C++ module returns the
+selected tier, the value of the variable, the tiers that are built and
+supported, and the detected processor features. It is meant for
+diagnostics and tests; its name and content may change between versions:
+
+.. code:: Python
+
+   import importlib
+   from endf_parserpy import EndfParserCpp
+   parser = EndfParserCpp()
+   module = importlib.import_module(parser._parse_endf.__module__)
+   print(module._row_kernel_info()["selected"])
+
+
 Generating C++ code from ENDF recipes
 ----------------------------------------
 

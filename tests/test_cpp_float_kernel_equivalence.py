@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/24
-# Last modified:   2026/10/25
+# Last modified:   2026/11/05
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -29,6 +29,15 @@ to 30, and on near-halfway cases (decimal
 numbers next to the midpoint between two adjacent doubles) generated here
 with exact integer arithmetic, also as fields; for these, the bits must
 also agree with the conversion of Python.
+
+The row kernels of the template (all tiers of the table of row kernels
+that are built and supported by the CPU, which convert the float fields
+of a line in one call) are compared in the same program with
+cpp_fast_field_to_double applied field by field, on random lines and
+masks of the fields to convert: the mask of the converted fields and
+their bits must agree. The selection of the tier from the value of the
+environment variable ENDF_PARSERPY_CPP_BULK_BODIES is checked for all
+combinations of the CPU features of the tiers.
 
 test_float_kernel_sampled runs by default on a sample of fields (every byte
 value at every position of a few hundred valid fields, a few million random
@@ -63,6 +72,8 @@ KERNEL_START = (
     "// Exact conversion of mant * 10^k for decimal exponents k below -22, the"
 )
 KERNEL_FUNCTION = "inline bool cpp_fast_field_to_double("
+ROW_START = "// Row kernels: the float fields of a line converted in one call."
+ROW_END = "// End of the row kernels.\n"
 
 
 def _find_compiler():
@@ -90,7 +101,14 @@ def _extract_kernel():
     )
     end = text.find("\n}\n", func)
     assert end != -1
-    return text[start : end + 3]
+    # the row kernels and their tiers
+    row_start = text.find(ROW_START)
+    row_end = text.find(ROW_END)
+    assert row_start > end and row_end > row_start, (
+        "row kernels not found in module_header_reading.hpp; "
+        "update the markers in this test"
+    )
+    return text[start : end + 3] + "\n\n" + text[row_start : row_end + len(ROW_END)]
 
 
 @pytest.fixture(scope="module")
@@ -102,7 +120,8 @@ def kernel_test_program(tmp_path_factory):
     header = workdir / "float_kernel_under_test.hpp"
     header.write_text(
         "// extracted from module_header_reading.hpp by the test\n"
-        "#include <cstdint>\n#include <cstring>\n\n" + _extract_kernel()
+        "#include <cctype>\n#include <cstdint>\n#include <cstdlib>\n"
+        "#include <cstring>\n\n" + _extract_kernel()
     )
     exe = workdir / "float_kernel_equivalence"
     cmd = compiler + [
@@ -214,6 +233,7 @@ def test_float_kernel_exhaustive(kernel_test_program):
     jobs += [("boundary", "20000")]
     jobs += [("random", "250000000", str(seed)) for seed in range(1, 5)]
     jobs += [("negexp", "400000", str(seed)) for seed in range(1, 5)]
+    jobs += [("rows", "20000000", str(seed)) for seed in range(1, 3)]
     if hasattr(os, "sched_getaffinity"):
         ncpu = len(os.sched_getaffinity(0))
     else:

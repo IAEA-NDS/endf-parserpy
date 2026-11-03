@@ -1079,6 +1079,274 @@ inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, do
 }
 
 
+// Row kernels: the float fields of a line converted in one call.
+//
+// A row kernel converts the fields j = 0..5 of a line that are selected
+// by the bits of `want` and returns the mask of the fields it has
+// converted, with their values in out[j]. It converts a field only if
+// cpp_fast_field_to_double converts it, and to the same bits. The caller
+// reads every field the kernel leaves (bit not set) with the per-field
+// path (cpp_read_field), so that the results, and the errors for
+// malformed fields, do not depend on the kernel. A kernel does not throw
+// and only reads the first 66 columns of the line (every line is padded
+// to 75 columns, see cpp_pad_short_line). `flags` holds the parsing
+// options that matter for the conversion (CPP_ROW_ACCEPT_D_EXPONENT).
+//
+// The kernels are the tiers of a small table (cpp_row_tiers): the scalar
+// tier, cpp_fast_field_to_double applied field by field, is always
+// present; optional tiers for vector instruction sets are only built for
+// GCC and Clang on x86-64 (CPP_ROW_X86_64_GNU, which does not depend on
+// the instruction set the module is compiled for, so that the code of
+// such a tier has to be compiled with per-function target attributes)
+// and only used if the CPU supports them (cpp_cpu_features). One tier,
+// or none, is selected once when the module is loaded
+// (cpp_row_selected), as given by the environment variable
+// ENDF_PARSERPY_CPP_BULK_BODIES:
+//   auto (also if unset or empty): the first vector tier of the table
+//     that is built and supported by the CPU, none if there is none;
+//   off: none;
+//   scalar, avx2, avx512: this tier if it is built and supported by the
+//     CPU, otherwise as auto (with a warning when the module is loaded).
+// Without a selected tier, the float values of the bodies of TAB1 and
+// LIST records are read field by field (the per-field form); with a
+// selected tier, they are converted by one kernel call per line (the row
+// form, see CppFloatRow). The choice is made once per record.
+
+#define CPP_ROW_ACCEPT_D_EXPONENT 1u
+
+typedef unsigned (*cpp_row_kernel_fn)(
+  const char* line, unsigned want, unsigned flags, double* out
+);
+
+
+// number of calls of cpp_row_kernel_scalar, for tests showing that the
+// row form is used (the scalar tier is the reference and the vehicle for
+// testing the row form, it is not selected automatically)
+inline unsigned long long& cpp_row_scalar_lines() {
+  static unsigned long long count = 0;
+  return count;
+}
+
+// the reference: cpp_fast_field_to_double field by field
+inline unsigned cpp_row_kernel_scalar(
+  const char* line, unsigned want, unsigned flags, double* out
+) {
+  cpp_row_scalar_lines()++;
+  const bool accept_d_exponent = (flags & CPP_ROW_ACCEPT_D_EXPONENT) != 0;
+  unsigned done = 0;
+  for (int j = 0; j < 6; j++) {
+    if (((want >> j) & 1u) != 0
+        && cpp_fast_field_to_double(line + 11*j, accept_d_exponent, out[j])) {
+      done |= 1u << j;
+    }
+  }
+  return done;
+}
+
+
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+#define CPP_ROW_X86_64_GNU 1
+#endif
+
+// Features of the CPU relevant for the tiers, from cpuid and xgetbv (the
+// operating system must save the ymm and zmm registers). Only queried
+// with CPP_ROW_X86_64_GNU (GCC and Clang including MinGW and clang-cl
+// on x86-64); otherwise all false. The instructions are issued directly,
+// as __builtin_cpu_supports needs runtime support that not every
+// toolchain links.
+struct cpp_cpu_features {
+  bool detected;
+  bool os_ymm;
+  bool os_zmm;
+  bool fma;
+  bool avx2;
+  bool avx512f;
+  bool avx512dq;
+  bool avx512bw;
+  bool avx512vl;
+  bool avx512vbmi;
+};
+
+#ifdef CPP_ROW_X86_64_GNU
+inline void cpp_cpuid(unsigned leaf, unsigned subleaf, unsigned regs[4]) {
+  __asm__ volatile("cpuid"
+    : "=a"(regs[0]), "=b"(regs[1]), "=c"(regs[2]), "=d"(regs[3])
+    : "a"(leaf), "c"(subleaf));
+}
+#endif
+
+inline cpp_cpu_features cpp_detect_cpu_features() {
+  cpp_cpu_features f = {false, false, false, false, false, false, false, false, false, false};
+#ifdef CPP_ROW_X86_64_GNU
+  unsigned r[4];
+  cpp_cpuid(0, 0, r);
+  const unsigned max_leaf = r[0];
+  if (max_leaf < 1) return f;
+  f.detected = true;
+  cpp_cpuid(1, 0, r);
+  f.fma = ((r[2] >> 12) & 1u) != 0;
+  const bool osxsave = ((r[2] >> 27) & 1u) != 0;
+  const bool avx = ((r[2] >> 28) & 1u) != 0;
+  if (osxsave && avx) {
+    unsigned xcr0, xcr0_hi;
+    __asm__ volatile("xgetbv" : "=a"(xcr0), "=d"(xcr0_hi) : "c"(0));
+    (void) xcr0_hi;
+    f.os_ymm = (xcr0 & 0x6u) == 0x6u;
+    f.os_zmm = (xcr0 & 0xE6u) == 0xE6u;
+  }
+  if (max_leaf >= 7) {
+    cpp_cpuid(7, 0, r);
+    f.avx2 = ((r[1] >> 5) & 1u) != 0;
+    f.avx512f = ((r[1] >> 16) & 1u) != 0;
+    f.avx512dq = ((r[1] >> 17) & 1u) != 0;
+    f.avx512bw = ((r[1] >> 30) & 1u) != 0;
+    f.avx512vl = ((r[1] >> 31) & 1u) != 0;
+    f.avx512vbmi = ((r[2] >> 1) & 1u) != 0;
+  }
+#endif
+  return f;
+}
+
+
+inline bool cpp_row_cpu_any(const cpp_cpu_features&) {
+  return true;
+}
+
+inline bool cpp_row_cpu_avx2(const cpp_cpu_features& f) {
+  return f.os_ymm && f.avx2 && f.fma;
+}
+
+inline bool cpp_row_cpu_avx512(const cpp_cpu_features& f) {
+  return cpp_row_cpu_avx2(f) && f.os_zmm && f.avx512f && f.avx512dq
+    && f.avx512bw && f.avx512vl && f.avx512vbmi;
+}
+
+
+struct cpp_row_tier {
+  const char* name;
+  // nullptr if the tier is not built (e.g. for another architecture)
+  cpp_row_kernel_fn kernel;
+  // whether the tier is a candidate of the automatic selection
+  bool vector;
+  bool (*supported)(const cpp_cpu_features&);
+};
+
+#define CPP_ROW_NUM_TIERS 3
+
+// in the order of preference of the automatic selection; the kernels of
+// the vector tiers are not built yet
+inline const cpp_row_tier* cpp_row_tiers() {
+  static const cpp_row_tier tiers[CPP_ROW_NUM_TIERS] = {
+    {"avx512", nullptr, true, cpp_row_cpu_avx512},
+    {"avx2", nullptr, true, cpp_row_cpu_avx2},
+    {"scalar", cpp_row_kernel_scalar, false, cpp_row_cpu_any},
+  };
+  return tiers;
+}
+
+
+struct cpp_row_selection {
+  // the kernel of the selected tier, nullptr for the per-field form
+  cpp_row_kernel_fn kernel;
+  // the name of the selected tier, "off" if none
+  const char* tier;
+  // the value of the environment variable (at most 15 characters), and
+  // whether it is set
+  char requested[16];
+  bool requested_set;
+  // nullptr, or why the requested tier is not used
+  const char* warning;
+  cpp_cpu_features cpu;
+};
+
+// The selection for the value `value` (nullptr if unset) of the
+// environment variable ENDF_PARSERPY_CPP_BULK_BODIES on a CPU with the
+// features `cpu`. A tier is never selected if it is not built or the CPU
+// does not support it.
+inline cpp_row_selection cpp_row_select(const char* value, const cpp_cpu_features& cpu) {
+  cpp_row_selection sel;
+  sel.kernel = nullptr;
+  sel.tier = "off";
+  sel.requested[0] = '\0';
+  sel.requested_set = value != nullptr;
+  sel.warning = nullptr;
+  sel.cpu = cpu;
+  char name[16];
+  bool too_long = false;
+  if (value != nullptr) {
+    std::size_t n = 0;
+    for (; value[n] != '\0' && n < 15; n++) {
+      sel.requested[n] = value[n];
+      name[n] = static_cast<char>(std::tolower(static_cast<unsigned char>(value[n])));
+    }
+    sel.requested[n] = '\0';
+    name[n] = '\0';
+    too_long = value[n] != '\0';
+  } else {
+    name[0] = '\0';
+  }
+  const cpp_row_tier* tiers = cpp_row_tiers();
+  bool automatic = name[0] == '\0' || std::strcmp(name, "auto") == 0;
+  if (! automatic && ! too_long && std::strcmp(name, "off") == 0) {
+    return sel;
+  }
+  if (! automatic) {
+    const cpp_row_tier* tier = nullptr;
+    for (int i = 0; i < CPP_ROW_NUM_TIERS; i++) {
+      if (! too_long && std::strcmp(name, tiers[i].name) == 0) tier = &tiers[i];
+    }
+    if (tier == nullptr) {
+      sel.warning = "unknown value (expected auto, off, scalar, avx2 or avx512); using auto";
+    } else if (tier->kernel == nullptr) {
+      sel.warning = "this tier is not built in this module; using auto";
+    } else if (! tier->supported(cpu)) {
+      sel.warning = "the CPU does not support this tier; using auto";
+    } else {
+      sel.kernel = tier->kernel;
+      sel.tier = tier->name;
+      return sel;
+    }
+  }
+  for (int i = 0; i < CPP_ROW_NUM_TIERS; i++) {
+    if (tiers[i].vector && tiers[i].kernel != nullptr && tiers[i].supported(cpu)) {
+      sel.kernel = tiers[i].kernel;
+      sel.tier = tiers[i].name;
+      break;
+    }
+  }
+  return sel;
+}
+
+// The kernel for the bodies of TAB1 and LIST records, nullptr for the
+// per-field form: a variable without dynamic initialization (shared by
+// the translation units of a module as a static member of a class
+// template), so that reading it at every record is a plain load.
+template<typename T = void>
+struct cpp_row_state {
+  static cpp_row_kernel_fn kernel;
+};
+
+template<typename T>
+cpp_row_kernel_fn cpp_row_state<T>::kernel = nullptr;
+
+// The selection made when the module is loaded (the first call, see
+// register_reading_options in cpp_boilerplate_reading.py), which also
+// sets the kernel used by the parse functions.
+inline const cpp_row_selection& cpp_row_selected() {
+  static const cpp_row_selection sel = cpp_row_select(
+    std::getenv("ENDF_PARSERPY_CPP_BULK_BODIES"), cpp_detect_cpu_features()
+  );
+  cpp_row_state<>::kernel = sel.kernel;
+  return sel;
+}
+
+inline cpp_row_kernel_fn cpp_float_row_kernel() {
+  return cpp_row_state<>::kernel;
+}
+
+// End of the row kernels.
+
+
 // Single-pass conversion of an integer field for the common case:
 // leading spaces, an optional sign, at most 9 digits, trailing spaces.
 // Returns false for any other content (handled by the general code path).
@@ -1266,6 +1534,69 @@ inline T cpp_read_field(const char *str, const char fieldnum, ParsingOptions &pa
     return cpp_read_field_EndfFloatCpp(str, fieldnum, parse_opts);
   } else {
     return endfstr2int(str+fieldnum*11, parse_opts, fieldnum);
+  }
+}
+
+
+// The row form of the reading of the float values of the body of a TAB1
+// or LIST record (see the row kernels above): the fields of each line are
+// converted by one call of the selected kernel when the line is read
+// (convert), and each value is then taken from the converted fields or,
+// for a field the kernel has left, read with cpp_read_field
+// (cpp_read_row_field), so that the results are those of the per-field
+// form.
+struct CppFloatRow {
+  CppFloatRow(cpp_row_kernel_fn kernel, const ParsingOptions& parse_opts)
+    : done(0), kernel_(kernel),
+      flags_(parse_opts.accept_d_exponent ? CPP_ROW_ACCEPT_D_EXPONENT : 0u) {}
+
+  // a new line, of which the fields 0 .. remaining-1 (at most six) are read
+  void convert(const char* line, int remaining) {
+    const unsigned want = remaining >= 6 ? 0x3Fu
+      : (remaining > 0 ? (1u << remaining) - 1u : 0u);
+    // Point for switching back to the per-field path within a record
+    // (not used yet, for the vector tiers): count the converted fields
+    // of the first lines and, if their share is low, leave all further
+    // fields of the record to cpp_read_field (done = 0) without calling
+    // the kernel.
+    done = kernel_(line, want, flags_, values);
+  }
+
+  double values[6];
+  unsigned done;
+
+  private:
+    cpp_row_kernel_fn kernel_;
+    unsigned flags_;
+};
+
+
+template<typename T>
+inline T cpp_read_row_field(
+  const CppFloatRow& row, const char* str, const char fieldnum, ParsingOptions& parse_opts
+);
+
+template<>
+inline double cpp_read_row_field<double>(
+  const CppFloatRow& row, const char* str, const char fieldnum, ParsingOptions& parse_opts
+) {
+  if (((row.done >> fieldnum) & 1u) != 0) return row.values[static_cast<int>(fieldnum)];
+  return cpp_read_field<double>(str, fieldnum, parse_opts);
+}
+
+// as cpp_read_field_EndfFloatCpp
+template<>
+inline EndfFloatCpp cpp_read_row_field<EndfFloatCpp>(
+  const CppFloatRow& row, const char* str, const char fieldnum, ParsingOptions& parse_opts
+) {
+  if (((row.done >> fieldnum) & 1u) == 0) {
+    return cpp_read_field_EndfFloatCpp(str, fieldnum, parse_opts);
+  }
+  const double float_value = row.values[static_cast<int>(fieldnum)];
+  if (parse_opts.preserve_value_strings) {
+    return EndfFloatCpp(float_value, str+fieldnum*11, 11);
+  } else {
+    return EndfFloatCpp(float_value);
   }
 }
 

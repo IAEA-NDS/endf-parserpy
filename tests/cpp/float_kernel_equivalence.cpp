@@ -30,6 +30,16 @@
 // template into the header "float_kernel_under_test.hpp", which is
 // included below, so that the test always checks the code that ships.
 //
+// The row kernels of the template (cpp_row_kernel_scalar and the other
+// tiers of cpp_row_tiers, which convert the fields of a line in one call)
+// are compared with cpp_fast_field_to_double field by field on random
+// lines and masks of the fields to convert (mode "rows"): the mask of the
+// converted fields and their bits must be those of the per-field
+// conversion, for every tier that is built and supported by the CPU. The
+// selection of the tier from the value of the environment variable is
+// checked for all combinations of CPU features of the tiers (mode
+// "select"); both modes are part of "sampled".
+//
 // usage: float_kernel_equivalence sampled
 //        float_kernel_equivalence exhaustive <first character index 0..2>
 //        float_kernel_equivalence boundary <number of fields>
@@ -38,13 +48,17 @@
 //        float_kernel_equivalence exhaustive3 <first character index 0..2>
 //        float_kernel_equivalence negexp <number of random significands per k> <seed>
 //        float_kernel_equivalence list <file>
+//        float_kernel_equivalence rows <number of lines> <seed>
+//        float_kernel_equivalence select
 // The exit status is 0 if no mismatch was found.
 
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 
 #include "float_kernel_under_test.hpp"
 
@@ -631,9 +645,156 @@ static bool run_list(const char* path) {
   return true;
 }
 
+// random lines: six fields of the forms of run_random, mostly valid
+// fields of the two layouts, and random bytes after the fields
+static void make_line(char* line) {
+  for (int j = 0; j < 6; j++) {
+    char* f = line + 11 * j;
+    const std::uint64_t a = xr();
+    const int m = static_cast<int>(a % 16);
+    if (m < 10) {
+      make_valid(f);
+    } else if (m < 13) {
+      make_general(f);
+    } else if (m == 13) {
+      std::memset(f, ' ', 11);
+    } else {
+      make_valid(f);
+      std::uint64_t b = xr();
+      f[b % 11] = static_cast<char>((b >> 8) & 0xff);
+    }
+  }
+  for (int i = 66; i < 80; i++) line[i] = static_cast<char>(xr() & 0xff);
+}
+
+static long nrow = 0, nrowtier = 0;
+
+static void run_rows(long n) {
+  const cpp_cpu_features cpu = cpp_detect_cpu_features();
+  const cpp_row_tier* tiers = cpp_row_tiers();
+  char line[81];
+  line[80] = '\0';
+  for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
+    if (tiers[t].kernel != nullptr && tiers[t].supported(cpu)) nrowtier++;
+  }
+  for (long r = 0; r < n; r++) {
+    make_line(line);
+    const unsigned want = (r % 4 == 0) ? static_cast<unsigned>(xr() & 0x3F) : 0x3Fu;
+    for (int d = 0; d < 2; d++) {
+      const bool accept_d = d != 0;
+      double ref[6];
+      unsigned ref_done = 0;
+      for (int j = 0; j < 6; j++) {
+        if (((want >> j) & 1u) != 0
+            && cpp_fast_field_to_double(line + 11 * j, accept_d, ref[j])) {
+          ref_done |= 1u << j;
+        }
+      }
+      for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
+        if (tiers[t].kernel == nullptr || ! tiers[t].supported(cpu)) continue;
+        double out[6];
+        const unsigned done = tiers[t].kernel(
+          line, want, accept_d ? CPP_ROW_ACCEPT_D_EXPONENT : 0u, out
+        );
+        nrow++;
+        bool ok = done == ref_done;
+        for (int j = 0; ok && j < 6; j++) {
+          if (((done >> j) & 1u) != 0 && ! same_bits(out[j], ref[j])) ok = false;
+        }
+        if (! ok) {
+          if (nfail < 20) {
+            std::printf("MISMATCH tier %s want=%02x accept_d=%d done=%02x expected=%02x line \"%.66s\"\n",
+                        tiers[t].name, want, d, done, ref_done, line);
+          }
+          nfail++;
+        }
+      }
+    }
+  }
+}
+
+// the selection for all values of the environment variable and all
+// combinations of the CPU features of the tiers
+static void run_select() {
+  const char* values[] = {
+    nullptr, "", "auto", "AUTO", "off", "Off", "scalar", "avx2", "avx512",
+    "bogus", "scalar ", "a_value_longer_than_fifteen_characters"
+  };
+  const int nvalues = sizeof(values) / sizeof(values[0]);
+  const cpp_row_tier* tiers = cpp_row_tiers();
+  for (int bits = 0; bits < (1 << 9); bits++) {
+    cpp_cpu_features cpu = {
+      true, (bits & 1) != 0, (bits & 2) != 0, (bits & 4) != 0, (bits & 8) != 0,
+      (bits & 16) != 0, (bits & 32) != 0, (bits & 64) != 0, (bits & 128) != 0,
+      (bits & 256) != 0
+    };
+    // the automatic selection: the first vector tier built and supported
+    cpp_row_kernel_fn auto_kernel = nullptr;
+    for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
+      if (tiers[t].vector && tiers[t].kernel != nullptr && tiers[t].supported(cpu)) {
+        auto_kernel = tiers[t].kernel;
+        break;
+      }
+    }
+    for (int v = 0; v < nvalues; v++) {
+      const cpp_row_selection sel = cpp_row_select(values[v], cpu);
+      nrow++;
+      bool ok = true;
+      const cpp_row_tier* tier = nullptr;
+      for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
+        if (sel.kernel != nullptr && sel.kernel == tiers[t].kernel) tier = &tiers[t];
+      }
+      // a selected kernel is a tier built and supported by the CPU
+      if (sel.kernel != nullptr && (tier == nullptr || ! tier->supported(cpu)
+                                    || std::strcmp(sel.tier, tier->name) != 0)) ok = false;
+      if (sel.kernel == nullptr && std::strcmp(sel.tier, "off") != 0) ok = false;
+      const char* val = values[v];
+      std::string lower;
+      for (const char* p = val; p != nullptr && *p != '\0'; p++) {
+        lower += static_cast<char>(std::tolower(static_cast<unsigned char>(*p)));
+      }
+      if (val == nullptr || lower == "" || lower == "auto") {
+        ok = ok && sel.kernel == auto_kernel && sel.warning == nullptr;
+      } else if (lower == "off") {
+        ok = ok && sel.kernel == nullptr && sel.warning == nullptr;
+      } else if (lower == "scalar") {
+        ok = ok && sel.kernel == cpp_row_kernel_scalar && sel.warning == nullptr;
+      } else if (lower == "avx2" || lower == "avx512") {
+        const cpp_row_tier* req = nullptr;
+        for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
+          if (lower == tiers[t].name) req = &tiers[t];
+        }
+        if (req->kernel != nullptr && req->supported(cpu)) {
+          ok = ok && sel.kernel == req->kernel && sel.warning == nullptr;
+        } else {
+          ok = ok && sel.kernel == auto_kernel && sel.warning != nullptr;
+        }
+      } else {
+        ok = ok && sel.kernel == auto_kernel && sel.warning != nullptr;
+      }
+      ok = ok && sel.requested_set == (val != nullptr);
+      if (val != nullptr) {
+        ok = ok && std::strncmp(sel.requested, val, 15) == 0;
+      }
+      if (! ok) {
+        if (nfail < 20) {
+          std::printf("MISMATCH select value=%s cpu=%03x tier=%s\n",
+                      val == nullptr ? "(unset)" : val, bits, sel.tier);
+        }
+        nfail++;
+      }
+    }
+  }
+  // the support of the tiers by the features
+  cpp_cpu_features none = {false, false, false, false, false, false, false, false, false, false};
+  if (! cpp_row_cpu_any(none) || cpp_row_cpu_avx2(none) || cpp_row_cpu_avx512(none)) nfail++;
+  cpp_cpu_features all = {true, true, true, true, true, true, true, true, true, true};
+  if (! cpp_row_cpu_avx2(all) || ! cpp_row_cpu_avx512(all)) nfail++;
+}
+
 int main(int argc, char** argv) {
   if (argc < 2) {
-    std::fprintf(stderr, "usage: %s sampled|exhaustive|boundary|random|explicit|exhaustive3|negexp|list ...\n", argv[0]);
+    std::fprintf(stderr, "usage: %s sampled|exhaustive|boundary|random|explicit|exhaustive3|negexp|list|rows|select ...\n", argv[0]);
     return 2;
   }
   const char* mode = argv[1];
@@ -642,6 +803,13 @@ int main(int argc, char** argv) {
     run_boundary(300);
     run_random(3000000);
     run_negexp(1000);
+    run_rows(300000);
+    run_select();
+  } else if (std::strcmp(mode, "rows") == 0 && argc > 3) {
+    rs ^= static_cast<std::uint64_t>(std::atol(argv[3])) * 0x9E3779B97F4A7C15ULL;
+    run_rows(std::atol(argv[2]));
+  } else if (std::strcmp(mode, "select") == 0) {
+    run_select();
   } else if (std::strcmp(mode, "exhaustive3") == 0 && argc > 2) {
     const char s0[] = " +-";
     run_exhaustive3(s0[std::atoi(argv[2]) % 3]);
@@ -668,7 +836,7 @@ int main(int argc, char** argv) {
     return 2;
   }
   std::printf("%s: checks=%ld first_stage=%ld negexp_converted=%ld not_converted=%ld decimal_checks=%ld"
-              " negexp_direct=%ld mismatches=%ld\n",
-              mode, nchk, nfirst, nneg, nleft, ndec, nnchk, nfail);
+              " negexp_direct=%ld row_checks=%ld row_tiers=%ld mismatches=%ld\n",
+              mode, nchk, nfirst, nneg, nleft, ndec, nnchk, nrow, nrowtier, nfail);
   return nfail == 0 ? 0 : 1;
 }

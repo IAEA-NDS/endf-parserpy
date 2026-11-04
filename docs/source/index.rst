@@ -122,8 +122,8 @@ Install endf-parserpy
    flavors is split into for faster parallel builds (default: up to 8;
    ``1`` emits the single ``_shared.cpp`` as found in the repository).
    At runtime, the environment variable ``ENDF_PARSERPY_CPP_BULK_BODIES``
-   selects how the C++ modules convert the float fields of lines
-   (see :ref:`cpp_bulk_bodies_sec`).
+   selects how the C++ modules read the float fields of the bodies of
+   TAB1 and LIST records (see :ref:`cpp_bulk_bodies_sec`).
 
 
 .. note::

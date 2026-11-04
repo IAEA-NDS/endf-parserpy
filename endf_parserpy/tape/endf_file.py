@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/01
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -55,7 +55,13 @@ from .errors import (
 from .index import TapeIndex
 from .material import MaterialView, _MaterialSlot
 from .operations import write_tape, write_tape_file, _VALID_ON_ERROR, _FailedUnit
-from .records import _control_numbers, _control_line, _strip_send, TEND_LINE
+from .records import (
+    _control_numbers,
+    _control_line,
+    _strip_send,
+    DEFAULT_TPID_LINE,
+    TEND_LINE,
+)
 from .views import (
     _FrozenMapping,
     _FrozenSequence,
@@ -181,6 +187,18 @@ def _value_match(field, value, tol):
     return field == value
 
 
+def _tpid_or_default(index):
+    """The tape head record of ``index``, or the default one.
+
+    An index built with ``ignore_missing_tpid=True`` from a tape without
+    a tape head has no TPID record; text and dictionaries synthesized
+    from such a file use the default tape head, so that they are valid
+    ENDF-6 regardless (as ``write_tape`` does).
+    """
+    line = index.tpid_line
+    return line if line is not None else DEFAULT_TPID_LINE
+
+
 class _CurrentMaterials:
     """Adapter over the current slot list for material-selector resolution.
 
@@ -284,6 +302,15 @@ class EndfFile:
         If true, the file's size and mtime are checked against the
         index before every disk read; a change raises
         :class:`StaleSourceError`.
+    ignore_missing_tpid : bool
+        If true, a file whose first record is already a section record
+        (instead of the tape head demanded by the ENDF-6 format) is
+        accepted; the record starts the first material and the index
+        has no TPID record (see :meth:`TapeIndex.from_file`). Text and
+        dictionaries synthesized from such a file carry the default
+        tape head. The option is independent of the identically named
+        option of the parsers, which governs record parsing; pass it to
+        both for a fully lenient treatment of such files.
 
     Notes
     -----
@@ -304,6 +331,7 @@ class EndfFile:
         on_error="mark",
         check_edits="eager",
         verify_source=False,
+        ignore_missing_tpid=False,
     ):
         if mode not in _VALID_MODES:
             raise ValueError(f"mode must be one of {_VALID_MODES}, got {mode!r}")
@@ -326,7 +354,9 @@ class EndfFile:
         self._on_error = on_error
         self._check_edits = check_edits
         self._verify_source = verify_source
-        self._index = TapeIndex.from_file(self._path)
+        self._index = TapeIndex.from_file(
+            self._path, ignore_missing_tpid=ignore_missing_tpid
+        )
         self._materials = [
             _MaterialSlot(e.position, e.mat, e.za, e.awr) for e in self._index
         ]
@@ -1028,7 +1058,9 @@ class EndfFile:
         if not isinstance(section, Mapping):
             return
         try:
-            self._parser.write({0: {0: [self._index.tpid_line]}, mf: {mt: section}})
+            self._parser.write(
+                {0: {0: [_tpid_or_default(self._index)]}, mf: {mt: section}}
+            )
         except Exception as exc:
             raise SectionRenderError(
                 f"the edited MF={mf}/MT={mt} section does not render to "
@@ -1108,9 +1140,9 @@ class EndfFile:
         )
         if "\r" in raw:
             lines = _split_lines(raw)
-            return "\n".join([self._index.tpid_line] + lines + [tail])
+            return "\n".join([_tpid_or_default(self._index)] + lines + [tail])
         sep = "\n" if raw and not raw.endswith("\n") else ""
-        return "".join((self._index.tpid_line, "\n", raw, sep, tail))
+        return "".join((_tpid_or_default(self._index), "\n", raw, sep, tail))
 
     def _sections_tape(self, position, keys):
         """Return one single-material tape holding several sections.
@@ -1128,7 +1160,7 @@ class EndfFile:
         """
         entry = self._index[position]
         fend = _control_line(entry.mat, 0, 0) + "\n"
-        parts = [self._index.tpid_line, "\n"]
+        parts = [_tpid_or_default(self._index), "\n"]
         prev_mf = None
         with self._read_session():
             for mf, mt in keys:
@@ -1277,7 +1309,7 @@ class EndfFile:
         :meth:`MaterialView.to_tape_dict`); the lists of lines of the
         untouched sections are new lists in either case.
         """
-        material = {0: {0: [self._index.tpid_line]}}
+        material = {0: {0: [_tpid_or_default(self._index)]}}
         for mf, mt in self._slot_section_keys(slot):
             if (mf, mt) in slot.overlay:
                 section = slot.overlay[(mf, mt)]
@@ -1340,7 +1372,7 @@ class EndfFile:
         by the tape end (TEND). The original TPID is kept, so an
         emptied tape retains its identity.
         """
-        return self._index.tpid_line + "\n" + TEND_LINE + "\n"
+        return _tpid_or_default(self._index) + "\n" + TEND_LINE + "\n"
 
     def _output_materials(self):
         """Yield each material assembled and ready for :func:`write_tape`.

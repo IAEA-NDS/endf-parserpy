@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/01
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -200,7 +200,16 @@ def open_endf_file(file, parser, **kwargs):
     A single-material file is simply an :class:`EndfFile` of length one,
     so the same object transparently handles single- and multi-material
     files, and individual sections are parsed only when accessed.
+
+    The CLI's ``--ignore_missing_tpid`` flag configures the parser; the
+    same user intention is applied here to the structural index of the
+    file, so that a file without a tape head can be opened at all. (In
+    the library API, the parser option and the ``EndfFile`` option are
+    deliberately independent.)
     """
+    if "ignore_missing_tpid" not in kwargs:
+        opts = getattr(parser, "read_opts", None) or {}
+        kwargs["ignore_missing_tpid"] = bool(opts.get("ignore_missing_tpid") or False)
     return EndfFile(file, parser=parser, **kwargs)
 
 

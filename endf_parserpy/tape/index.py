@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/01
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -180,10 +180,13 @@ class _ScanState:
         "sec_lines",
         "prev_ctrl",
         "tpid",
+        "head_done",
+        "ignore_missing_tpid",
         "done",
     )
 
-    def __init__(self):
+    def __init__(self, ignore_missing_tpid=False):
+        self.ignore_missing_tpid = ignore_missing_tpid
         self.materials = []
         self.cur = None  # the MaterialIndexEntry under construction, or None
         self.sec_key = None  # (MF, MT) of the section under construction
@@ -194,6 +197,7 @@ class _ScanState:
         # equal control field continues the section under construction
         self.prev_ctrl = None
         self.tpid = None  # (line, offset, length) of the tape head, once found
+        self.head_done = False  # the tape head phase is over (see _scan_tpid)
         self.done = False  # a TEND record has been seen
 
     def flush_section(self):
@@ -205,8 +209,12 @@ class _ScanState:
         self.sec_key = None
 
     def result(self):
-        """Return ``(materials, tpid)`` of a finished scan."""
-        if self.tpid is None:
+        """Return ``(materials, tpid)`` of a finished scan.
+
+        ``tpid`` is ``None`` if the tape has no tape head and the scan
+        ran with ``ignore_missing_tpid``.
+        """
+        if not self.head_done:
             raise TapeStructureError("the tape does not contain any records")
         if self.cur is not None:
             raise TapeStructureError(
@@ -274,19 +282,28 @@ def _consume_run(st, mat, mf, mt, offset, length, line_count, head_line):
 def _scan_tpid(st, part, offset, byte_length):
     """Examine one record that precedes the tape head.
 
-    Blank records are skipped; the first non-blank record must be the
-    tape head (TPID), which is stored in ``st.tpid``.
+    Return whether the record was consumed. Blank records are skipped;
+    the first non-blank record must be the tape head (TPID), which is
+    stored in ``st.tpid``. With ``ignore_missing_tpid``, a first record
+    that is not a tape head starts the material data instead: ``st.tpid``
+    stays ``None`` and ``False`` is returned, so that the caller applies
+    the record as a regular record.
     """
     if part.strip():
         mat = _control_int(part[_MAT_COLS])
         mf = _control_int(part[_MF_COLS])
         mt = _control_int(part[_MT_COLS])
         if mat < 0 or mf != 0 or mt != 0:
+            if st.ignore_missing_tpid:
+                st.head_done = True
+                return False
             raise TapeStructureError(
                 "the tape does not begin with a tape head (TPID) "
                 f"record (found MAT={mat}, MF={mf}, MT={mt})"
             )
         st.tpid = (part.rstrip(b"\r").decode("latin-1"), offset, byte_length)
+        st.head_done = True
+    return True
 
 
 def _scan_record(st, part, offset, byte_length):
@@ -317,26 +334,30 @@ def _scan_record(st, part, offset, byte_length):
     st.prev_ctrl = ctrl if (mat > 0 and mf > 0 and mt > 0) else None
 
 
-def _scan(records):
+def _scan(records, ignore_missing_tpid=False):
     """Scan an iterator of ``(byte_length, line)`` records.
 
-    Return ``(materials, (tpid_line, offset, length))``. The iterator is
+    Return ``(materials, tpid)`` with ``tpid = (line, offset, length)``,
+    or ``tpid = None`` for a tape without a tape head scanned with
+    ``ignore_missing_tpid``. The iterator is
     consumed lazily, so peak memory is independent of the number of
     records. Each record is applied by :func:`_scan_record`; a record
     that continues the current section is accumulated inline.
     """
-    st = _ScanState()
+    st = _ScanState(ignore_missing_tpid)
     offset = 0
     records = iter(records)
 
     # the tape head (TPID) is the first non-blank record
     for byte_length, part in records:
-        _scan_tpid(st, part, offset, byte_length)
+        if not _scan_tpid(st, part, offset, byte_length):
+            # ignore_missing_tpid: the record starts the material data
+            _scan_record(st, part, offset, byte_length)
         offset += byte_length
-        if st.tpid is not None:
+        if st.head_done:
             break
 
-    if st.tpid is not None:
+    if st.head_done:
         for byte_length, part in records:
             if part[_CTRL_COLS] == st.prev_ctrl:
                 st.sec_length += byte_length
@@ -501,13 +522,16 @@ def _scan_block(st, buf, end, base):
     while pos < end:
         nl = buf.find(b"\n", pos, end)
         width = nl + 1 - pos
-        if st.tpid is None or width < _MIN_BULK_WIDTH:
-            if st.tpid is None:
-                _scan_tpid(st, buf[pos:nl], base + pos, width)
+        if not st.head_done or width < _MIN_BULK_WIDTH:
+            if not st.head_done:
+                if not _scan_tpid(st, buf[pos:nl], base + pos, width):
+                    # ignore_missing_tpid: the record starts the material
+                    # data
+                    _scan_record(st, buf[pos:nl], base + pos, width)
             else:
                 _scan_record(st, buf[pos:nl], base + pos, width)
-                if st.done:
-                    return
+            if st.done:
+                return
             pos = nl + 1
             continue
         num_rows = min((end - pos) // width, window)
@@ -525,18 +549,18 @@ def _scan_block(st, buf, end, base):
         pos += n * width
 
 
-def _scan_file(fh, chunk_bytes):
+def _scan_file(fh, chunk_bytes, ignore_missing_tpid=False):
     """Structural scan of an open binary tape file.
 
-    Return ``(materials, (tpid_line, offset, length))``, the same result
-    as :func:`_scan` over the records of the file, raising the same
+    Return ``(materials, tpid)``, the same result as :func:`_scan` over
+    the records of the file, raising the same
     errors. Records are delimited by ``"\\n"`` only; a record keeps a
     preceding ``"\\r"``. The file is read in blocks of about
     ``chunk_bytes``, each trimmed to whole records (a partial final
     record is re-read with the next block), so peak memory stays a small
     multiple of ``chunk_bytes`` unless a single record is longer.
     """
-    st = _ScanState()
+    st = _ScanState(ignore_missing_tpid)
     base = 0
     read_size = chunk_bytes
     while not st.done:
@@ -546,8 +570,9 @@ def _scan_file(fh, chunk_bytes):
         end = buf.rfind(b"\n") + 1
         if end == 0:
             if len(buf) < read_size:  # an unterminated final record
-                if st.tpid is None:
-                    _scan_tpid(st, buf, base, len(buf))
+                if not st.head_done:
+                    if not _scan_tpid(st, buf, base, len(buf)):
+                        _scan_record(st, buf, base, len(buf))
                 else:
                     _scan_record(st, buf, base, len(buf))
                 break
@@ -575,10 +600,12 @@ class TapeIndex:
     ----------
     materials : list[MaterialIndexEntry]
         The materials, in tape order.
-    tpid_line : str
-        The tape head (TPID) record.
-    tpid_offset, tpid_length : int
-        Byte location of the TPID record.
+    tpid_line : str or None
+        The tape head (TPID) record, or ``None`` for a tape without a
+        tape head indexed with ``ignore_missing_tpid=True``.
+    tpid_offset, tpid_length : int or None
+        Byte location of the TPID record, or ``None`` (see
+        ``tpid_line``).
     source : str or None
         Path of the indexed file, if built with :meth:`from_file`.
     source_size, source_mtime_ns : int or None
@@ -611,17 +638,28 @@ class TapeIndex:
                 self._by_za.setdefault(entry.za, []).append(entry.position)
 
     @classmethod
-    def from_file(cls, path, *, chunk_bytes=_DEFAULT_CHUNK_BYTES):
+    def from_file(
+        cls,
+        path,
+        *,
+        chunk_bytes=_DEFAULT_CHUNK_BYTES,
+        ignore_missing_tpid=False,
+    ):
         """Build an index of the ENDF tape stored at ``path``.
 
         The tape is read in blocks of about ``chunk_bytes``, so peak
         memory during indexing stays a small multiple of ``chunk_bytes``
-        regardless of the tape size.
+        regardless of the tape size. With ``ignore_missing_tpid=True``, a
+        tape whose first record is already a section record (instead of
+        the tape head demanded by the ENDF-6 format) is accepted: the
+        record starts the first material and the ``tpid_*`` attributes of
+        the index are ``None``.
         """
         path = os.fspath(path)
         with open(path, "rb") as fh:
-            materials, tpid = _scan_file(fh, chunk_bytes)
+            materials, tpid = _scan_file(fh, chunk_bytes, ignore_missing_tpid)
         stat = os.stat(path)
+        tpid = tpid if tpid is not None else (None, None, None)
         return cls(
             materials,
             tpid[0],
@@ -633,15 +671,17 @@ class TapeIndex:
         )
 
     @classmethod
-    def from_lines(cls, lines, source=None):
+    def from_lines(cls, lines, source=None, *, ignore_missing_tpid=False):
         """Build an index from an iterable of ENDF tape lines.
 
         The lines are consumed lazily. Byte offsets are computed
         assuming a single ``"\\n"`` terminates each line; they are
         therefore only exact for a file written that way. Use
-        :meth:`from_file` when exact on-disk offsets are required.
+        :meth:`from_file` when exact on-disk offsets are required. For
+        ``ignore_missing_tpid`` see :meth:`from_file`.
         """
-        materials, tpid = _scan(_iter_line_records(lines))
+        materials, tpid = _scan(_iter_line_records(lines), ignore_missing_tpid)
+        tpid = tpid if tpid is not None else (None, None, None)
         return cls(materials, tpid[0], tpid[1], tpid[2], source=source)
 
     def by_mat(self, mat):

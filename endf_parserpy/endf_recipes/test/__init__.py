@@ -67,6 +67,13 @@ from .endf_recipe_mf9 import ENDF_RECIPE_MF9_MT3
 from .endf_recipe_mf9 import ENDF_RECIPE_MF9_MT4
 from .endf_recipe_mf9 import ENDF_RECIPE_MF9_MT5
 
+# bodies of LIST records in the bulk form of EndfParserCpp
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT1
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT2
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT3
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT4
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT5
+
 endf_recipe_dictionary = {}
 defdic(endf_recipe_dictionary, (2, 1), ENDF_RECIPE_MF2_MT1)
 defdic(endf_recipe_dictionary, (2, 2), ENDF_RECIPE_MF2_MT2)
@@ -117,3 +124,8 @@ defdic(endf_recipe_dictionary, (9, 2), ENDF_RECIPE_MF9_MT2)
 defdic(endf_recipe_dictionary, (9, 3), ENDF_RECIPE_MF9_MT3)
 defdic(endf_recipe_dictionary, (9, 4), ENDF_RECIPE_MF9_MT4)
 defdic(endf_recipe_dictionary, (9, 5), ENDF_RECIPE_MF9_MT5)
+defdic(endf_recipe_dictionary, (10, 1), ENDF_RECIPE_MF10_MT1)
+defdic(endf_recipe_dictionary, (10, 2), ENDF_RECIPE_MF10_MT2)
+defdic(endf_recipe_dictionary, (10, 3), ENDF_RECIPE_MF10_MT3)
+defdic(endf_recipe_dictionary, (10, 4), ENDF_RECIPE_MF10_MT4)
+defdic(endf_recipe_dictionary, (10, 5), ENDF_RECIPE_MF10_MT5)

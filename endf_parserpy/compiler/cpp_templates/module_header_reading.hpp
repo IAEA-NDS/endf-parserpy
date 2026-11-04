@@ -2372,6 +2372,290 @@ inline bool cpp_is_tend_record(const CppLine& line, ParsingOptions &parse_opts) 
 }
 
 
+// The bulk form of the reading of the body of a LIST record (see the row
+// kernels above and ListBulkForm in endf2cpp_aux.py). The body is read
+// in two steps:
+//
+// 1. CppListBody, constructed with the number of values NPL of the body,
+//    reads the lines of the body (cpp_read_line, i.e. with all checks of
+//    a line) and converts their fields with the selected row kernel into
+//    a buffer of NPL doubles. It stops at the first field the kernel
+//    does not convert (e.g. a malformed field, or a form that only the
+//    general path of endfstr2float handles) and at the first line whose
+//    reading fails, whose exception is kept. nconv() values are
+//    converted, which are those of the first nconv() fields of the body
+//    (the value of field j of line l of the body is the value 6*l+j).
+//
+// 2. The values are delivered from the buffer, either by strided copies
+//    into the variables (if the code generator has proven the layout of
+//    the body regular, all NPL values are converted and the number of
+//    values given by the layout is NPL, see ListBulkForm), or by the code
+//    of the per-field form, in which each reading of a field of the body
+//    takes the value from the buffer if it is converted (field) and the
+//    reading of the next line only reads a line not read in step 1
+//    (next_line), where it raises the kept exception for the line whose
+//    reading failed. Thus the values, and the order of the checks and
+//    errors, are those of the per-field form.
+//
+// An error raised while the values are delivered must be reported for
+// the line of the field being read, as by the per-field form, which
+// reads the lines one after the other, whereas step 1 has read all lines:
+// the error message adds the line last read from the stream (see
+// cpp_rethrow_parse_error). Before such an error is propagated,
+// reposition() therefore reads the lines of the body again from its
+// beginning up to the line of the field. This is only done for errors, so
+// the beginning of the body is kept (as a position in the memory of the
+// input, as the bulk form is only used for input held in memory, see
+// cpp_list_bulk).
+//
+// The lines are read as views, as in the per-field form; their lengths
+// may differ (the reading of a line does not assume a fixed length).
+//
+// Point for switching back to the per-field path within a record (not
+// used, for the vector tiers): count the converted fields of the first
+// lines and, if their share is low, stop the conversion (the remaining
+// fields are then read by the per-field form with cpp_read_field).
+
+// Numbers of LIST bodies read in the bulk form, delivered by strided
+// copies and by the code of the per-field form, and the number of bodies
+// whose conversion stopped before the end, only for tests.
+struct cpp_list_bulk_counts {
+  unsigned long long strided;
+  unsigned long long looped;
+  unsigned long long stopped;
+};
+
+inline cpp_list_bulk_counts& cpp_list_bulk_counter() {
+  static cpp_list_bulk_counts counts = {0, 0, 0};
+  return counts;
+}
+
+
+// thrown (and caught) when a strided delivery cannot be done; the values
+// are then delivered by the code of the per-field form
+struct cpp_list_bulk_fallback {};
+
+
+// The memory for the values of a LIST body longer than the buffer of
+// CppListBody, kept for the following bodies (one per module), so that
+// it is not allocated (and its pages not faulted in) for each body. It
+// is used by one CppListBody at a time (busy); a body read while it is
+// in use (not the case when parsing, which holds the GIL and reads one
+// body after the other) gets memory of its own.
+struct cpp_list_body_store {
+  std::unique_ptr<double[]> data;
+  std::size_t capacity = 0;
+  std::atomic<bool> busy{false};
+};
+
+inline cpp_list_body_store& cpp_list_body_shared_store() {
+  static cpp_list_body_store store;
+  return store;
+}
+
+
+class CppListBody {
+  public:
+    CppListBody(
+      CppLine& line, std::istream& cont, int npl,
+      int mat, int mf, int mt, ParsingOptions& parse_opts
+    ) : buf_(small_), cap_(small_size), store_(nullptr), npl_(npl), nconv_(0),
+        good_(0), visited_(0), failed_(false),
+        start_(parse_opts.memory_input->current()), state_(cont.rdstate()) {
+      if (npl <= 0) return;
+      const cpp_row_kernel_fn kernel = cpp_float_row_kernel();
+      const unsigned flags = parse_opts.accept_d_exponent ? CPP_ROW_ACCEPT_D_EXPONENT : 0u;
+      const int nlines = (npl - 1) / 6 + 1;
+      for (int l = 0; l < nlines; l++) {
+        try {
+          cpp_read_line(line, cont, mat, mf, mt, parse_opts);
+        } catch (...) {
+          // raised by next_line when the line is read in the per-field form
+          failed_ = true;
+          error_ = std::current_exception();
+          cpp_list_bulk_counter().stopped++;
+          return;
+        }
+        good_ = l + 1;
+        const int pos = 6 * l;
+        if (static_cast<std::size_t>(pos) + 6 > cap_) grow(pos + 6);
+        const int remaining = npl - pos;
+        const unsigned want = remaining >= 6 ? 0x3Fu : (1u << remaining) - 1u;
+        const unsigned done = kernel(line.data(), want, flags, buf_ + pos);
+        if (done != want) {
+          int j = 0;
+          while ((done >> j) & 1u) j++;
+          nconv_ = pos + j;
+          cpp_list_bulk_counter().stopped++;
+          return;
+        }
+        nconv_ = pos + (remaining >= 6 ? 6 : remaining);
+      }
+    }
+
+    ~CppListBody() {
+      if (store_ != nullptr) store_->busy.store(false);
+    }
+
+    // whether all values of the body are converted (also if NPL <= 0)
+    bool complete() const { return ! failed_ && nconv_ == (npl_ > 0 ? npl_ : 0); }
+
+    int nconv() const { return nconv_; }
+
+    const double* values() const { return buf_; }
+
+    // the converted value i (i < nconv())
+    template<typename T>
+    T value(long long i) const { return T(buf_[i]); }
+
+    // the value i of the body, the field fieldnum of the line str, as
+    // cpp_read_field reads it (the field is only read if not converted)
+    template<typename T>
+    T field(int i, const char* str, const char fieldnum, ParsingOptions& parse_opts) const {
+      if (i < nconv_) return T(buf_[i]);
+      return cpp_read_field<T>(str, fieldnum, parse_opts);
+    }
+
+    // the reading of the next line of the body by the per-field form
+    void next_line(
+      CppLine& line, std::istream& cont, int mat, int mf, int mt, ParsingOptions& parse_opts
+    ) {
+      const int l = visited_++;
+      if (l < good_) return;
+      if (failed_ && l == good_) std::rethrow_exception(error_);
+      cpp_read_line(line, cont, mat, mf, mt, parse_opts);
+    }
+
+    // To be called for an error raised while the per-field form has
+    // consumed `consumed` values: the stream is positioned after the line
+    // of the next value, as the per-field form has read it, unless this
+    // is already the case (the line is the last one read in step 1, the
+    // one whose reading failed, or a line read by next_line).
+    void reposition(
+      int consumed, CppLine& line, std::istream& cont, int mat, int mf, int mt,
+      ParsingOptions& parse_opts
+    ) {
+      if (npl_ <= 0) return;
+      const int target = (consumed < npl_ ? consumed : npl_ - 1) / 6;
+      if (target + (failed_ ? 0 : 1) >= good_) return;
+      try {
+        parse_opts.memory_input->move_to(start_);
+        cont.clear(state_);
+        for (int l = 0; l <= target; l++) {
+          cpp_read_line(line, cont, mat, mf, mt, parse_opts);
+        }
+      } catch (...) {
+        // not raised: these lines have been read without error before
+      }
+    }
+
+  private:
+    enum { small_size = 48 };
+
+    void grow(std::size_t needed) {
+      // the buffer grows with the lines read, at first to the size of
+      // the body or at most 2^20 values, so that a corrupt NPL does not
+      // lead to a huge allocation
+      std::size_t cap = cap_;
+      const std::size_t first = std::min<std::size_t>(
+        static_cast<std::size_t>(npl_) + 6, std::size_t(1) << 20);
+      if (cap < first) cap = first;
+      while (cap < needed) cap *= 2;
+      if (store_ == nullptr && large_ == nullptr) {
+        cpp_list_body_store& store = cpp_list_body_shared_store();
+        if (! store.busy.exchange(true)) store_ = &store;
+      }
+      double* target;
+      if (store_ != nullptr) {
+        if (store_->capacity < cap) {
+          std::unique_ptr<double[]> larger(new double[cap]);
+          if (buf_ == store_->data.get()) {
+            std::memcpy(larger.get(), buf_, sizeof(double) * static_cast<std::size_t>(nconv_));
+          }
+          store_->data.swap(larger);
+          store_->capacity = cap;
+        }
+        target = store_->data.get();
+        cap = store_->capacity;
+      } else {
+        std::unique_ptr<double[]> larger(new double[cap]);
+        if (buf_ == large_.get()) {
+          std::memcpy(larger.get(), buf_, sizeof(double) * static_cast<std::size_t>(nconv_));
+        }
+        large_.swap(larger);
+        target = large_.get();
+      }
+      if (buf_ == small_) {
+        std::memcpy(target, small_, sizeof(double) * static_cast<std::size_t>(nconv_));
+      }
+      buf_ = target;
+      cap_ = cap;
+    }
+
+    double small_[small_size];
+    // the memory of a longer body: the shared store, or memory of its own
+    std::unique_ptr<double[]> large_;
+    double* buf_;
+    std::size_t cap_;
+    cpp_list_body_store* store_;
+    int npl_;
+    int nconv_;
+    // the number of lines read without error in step 1, and whether the
+    // reading of the next line failed (with the exception error_)
+    int good_;
+    // the number of lines of the body read by the per-field form
+    int visited_;
+    bool failed_;
+    std::exception_ptr error_;
+    // the beginning of the body in the memory of the input, and the
+    // state of the stream there
+    const char* start_;
+    std::ios_base::iostate state_;
+
+    CppListBody(const CppListBody&) = delete;
+    CppListBody& operator=(const CppListBody&) = delete;
+};
+
+
+// The number of iterations of a loop over the indices a to b, and the
+// number of values of n iterations of z values each, for the layout of
+// the body of a LIST record (see ListBulkForm in endf2cpp_aux.py); the
+// latter saturates at 2^40, so that the sums of these numbers, which are
+// compared with NPL, do not overflow for any bounds.
+inline long long cpp_list_loop_count(int a, int b) {
+  return b >= a ? static_cast<long long>(b) - a + 1 : 0;
+}
+
+inline long long cpp_list_size(long long n, long long z) {
+  const long long cap = 1LL << 40;
+  if (n == 0 || z == 0) return 0;
+  if (n >= cap || z >= cap || n > cap / z) return cap;
+  return n * z;
+}
+
+
+// The strided copy of values of the body of a LIST record into an array:
+// the values src[sum_k i_k * src_step[k]] for 0 <= i_k < count[k] go to
+// dst[sum_k i_k * dst_step[k]], k = 0 .. rank-1.
+template<typename T>
+inline void cpp_copy_strided(
+  T* dst, const double* src, int rank,
+  const long long* count, const long long* dst_step, const long long* src_step
+) {
+  if (rank == 1) {
+    const long long n = count[0], ds = dst_step[0], ss = src_step[0];
+    for (long long i = 0; i < n; i++) dst[i * ds] = T(src[i * ss]);
+    return;
+  }
+  for (long long i = 0; i < count[0]; i++) {
+    cpp_copy_strided(
+      dst + i * dst_step[0], src + i * src_step[0], rank - 1,
+      count + 1, dst_step + 1, src_step + 1
+    );
+  }
+}
+
+
 // Number of elements to reserve for a vector whose size is given by a
 // count in the data; capped so that a corrupt count does not lead to a
 // huge allocation before the reading fails.

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/01
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -377,27 +377,32 @@ def generate_master_parsefun(name, recipefuns):
 
     conditions = []
     statements = []
-    for mf, mfdic in recipefuns.items():
-        sec_prep_code = cpp.call(
-            "_check_end_records",
-            "after_fend",
-            "after_mend",
-            "after_tend",
-            "mat",
-            "mf",
-            "mt",
-            "last_mat",
-            "last_mf",
-            "last_mt",
-            "section_encountered",
-            "found_tpid",
-            "parse_opts",
-        )
-        sec_prep_code += cpp.statement("after_fend = false")
-        sec_prep_code += cpp.statement("section_encountered = true")
-        sec_prep_code += cpp.statement("cont.seekg(curpos)")
-        sec_prep_code += cpp.pureif("mt != 0", cpp.statement("is_firstline = false"))
+    # code preparing the reading of a section: executed before a section
+    # is parsed with a recipe function and before a section without a
+    # recipe is read verbatim. The stream is set back to the start of the
+    # line already read by the loop, which determined the MAT/MF/MT
+    # numbers of the section.
+    sec_prep_code = cpp.call(
+        "_check_end_records",
+        "after_fend",
+        "after_mend",
+        "after_tend",
+        "mat",
+        "mf",
+        "mt",
+        "last_mat",
+        "last_mf",
+        "last_mt",
+        "section_encountered",
+        "found_tpid",
+        "parse_opts",
+    )
+    sec_prep_code += cpp.statement("after_fend = false")
+    sec_prep_code += cpp.statement("section_encountered = true")
+    sec_prep_code += cpp.statement("cont.seekg(curpos)")
+    sec_prep_code += cpp.pureif("mt != 0", cpp.statement("is_firstline = false"))
 
+    for mf, mfdic in recipefuns.items():
         if isinstance(mfdic, str):
             varname = _mf_mt_dict_varname(mf, None)
             funname = mfdic
@@ -427,7 +432,13 @@ def generate_master_parsefun(name, recipefuns):
     # if no parser function is registered for an MF/MT section
     # we read it in verbatim
     curcond = cpp.logical_and([f"mf != 0", "mt != 0"])
-    curstat = aux.read_section_verbatim(
+    # the same preparation as for a section parsed with a recipe: the end
+    # record checks, and the stream set back to the first line of the
+    # section, which the loop has already read. Without the seekg, the
+    # first line of the section was missing from the verbatim lines (a
+    # section of one line gave an empty list, which writing rejects).
+    curstat = sec_prep_code
+    curstat += aux.read_section_verbatim(
         "verbatim_section", "mat", "mf", "mt", "cont", "is_firstline", "parse_opts"
     )
     curstat += cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section")

@@ -9,13 +9,15 @@
 #
 ############################################################
 
-"""Equivalence of the per-field and the row form of EndfParserCpp.
+"""Equivalence of the per-field and the bulk form of EndfParserCpp.
 
 The float values of the bodies of TAB1 and LIST records are read either
-field by field (the per-field form) or by one call of a row kernel per
-line (the row form), depending on the row kernel selected when the C++
-module is loaded, which the environment variable
-ENDF_PARSERPY_CPP_BULK_BODIES can force (see module_header_reading.hpp).
+field by field (the per-field form) or with a row kernel (the bulk form:
+one kernel call per line of a TAB1 body; a LIST body decoded as a whole
+before its values are delivered), depending on the row kernel selected
+when the C++ module is loaded, which the environment variable
+ENDF_PARSERPY_CPP_BULK_BODIES can force (see module_header_reading.hpp;
+``off`` selects the per-field form).
 The results must not depend on it: for every tier the CPU supports, the
 parse results (values with their bits and types, the layout of the
 arrays) and the errors (type and message) must be those of the
@@ -144,12 +146,16 @@ def _worker(spec_path, out_path):
                 module = importlib.import_module(parser._parse_endf.__module__)
                 info = module._bulk_body_info()
                 out.write(json.dumps({"info": info}) + "\n")
+            before = module._bulk_body_info()["bulk_list_bodies"]
             try:
                 res = parser.parsefile(job["file"])
                 rec = {"digest": _digest(res)}
             except Exception as exc:  # noqa: BLE001 (any error is compared)
                 rec = {"error": type(exc).__name__ + ": " + str(exc)}
             rec["job"] = job["key"]
+            # the LIST bodies of this job by the way they were read
+            after = module._bulk_body_info()["bulk_list_bodies"]
+            rec["bodies"] = {k: after[k] - before[k] for k in after}
             out.write(json.dumps(rec) + "\n")
             out.flush()
         info = module._bulk_body_info()
@@ -287,14 +293,18 @@ def per_field_results(jobs_spec):
 
 
 @pytest.mark.parametrize("tier", ("scalar",) + VECTOR_TIERS)
-def test_row_form_equals_per_field_form(tier, jobs_spec, per_field_results):
+def test_bulk_form_equals_per_field_form(tier, jobs_spec, per_field_results):
     spec, tmpdir = jobs_spec
     info, final_info, results = _run(spec, tmpdir, tier)
     if info["selected"] != tier:
         pytest.skip(f"tier {tier} not available here: {info['warning']}")
     if tier == "scalar":
-        # the row form was used
+        # the bulk form was used
         assert final_info["scalar_kernel_lines"] > 0
+    # LIST bodies delivered by strided copies and by the code of the
+    # per-field form, and conversions that stopped before the end
+    counts = final_info["bulk_list_bodies"]
+    assert counts["strided"] > 0 and counts["looped"] > 0 and counts["stopped"] > 0
     assert results.keys() == per_field_results.keys()
     mismatches = [k for k in results if results[k] != per_field_results[k]]
     assert mismatches == [], "\n".join(
@@ -353,7 +363,14 @@ def test_row_kernel_selection(value, jobs_spec):
             for name in ("avx512", "avx2")
             if tiers[name]["built"] and tiers[name]["supported"]
         ),
-        "off",
+        "scalar",
+    )
+    # all LIST bodies in the bulk form with a vector tier or a forced tier
+    forced = (
+        value not in (None, "", "auto", "AUTO", "off", "bogus") and selected == value
+    )
+    assert info["bulk_all_list_bodies"] == (
+        selected != "off" and (forced or tiers[selected]["vector"])
     )
     if value in (None, "", "auto", "AUTO"):
         assert selected == auto and info["warning"] is None and warnings == []

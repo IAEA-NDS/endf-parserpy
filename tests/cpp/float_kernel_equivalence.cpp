@@ -728,8 +728,9 @@ static void run_select() {
       (bits & 16) != 0, (bits & 32) != 0, (bits & 64) != 0, (bits & 128) != 0,
       (bits & 256) != 0
     };
-    // the automatic selection: the first vector tier built and supported
-    cpp_row_kernel_fn auto_kernel = nullptr;
+    // the automatic selection: the first vector tier built and supported,
+    // otherwise the scalar tier
+    cpp_row_kernel_fn auto_kernel = cpp_row_kernel_scalar;
     for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
       if (tiers[t].vector && tiers[t].kernel != nullptr && tiers[t].supported(cpu)) {
         auto_kernel = tiers[t].kernel;

@@ -214,6 +214,13 @@ Finally, we can output the data in the ENDF-6 format:
 
 
 Once you understand the `formal ENDF format description language
-<https://arxiv.org/abs/2312.08249>`_.
+<https://arxiv.org/abs/2312.08249>`_,
 you can quickly bend the format in any way you want to
 test your ENDF-6 format extension proposals.
+
+Format extensions provided via the ``recipes`` argument are
+interpreted by :class:`~endf_parserpy.EndfParserPy` at run time.
+To read and write an extended format at the speed of the C++
+backend, the same recipe dictionary can be compiled into a
+dedicated C++ parser module, see
+:ref:`accelerated_parsing_and_writing_sec`.

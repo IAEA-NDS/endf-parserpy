@@ -44,9 +44,17 @@ code snippet demonstrates the reading and writing of an ENDF-6 file:
 As can be seen, the same functions as for the
 :class:`~endf_parserpy.EndfParserPy` class are available
 and hence the :class:`~endf_parserpy.EndfParserCpp` class can
-be used as a drop-in replacement. Be aware that the
-logging output is less verbose in case of an error and
-that some initialization options are not available.
+be used as a drop-in replacement. The fastest parsing and writing
+is obtained with the ``array_type="numpy"`` option, i.e.
+``EndfParserCpp(array_type="numpy")``, which returns arrays of
+numbers as numpy arrays (see the ``array_type`` parameter in the
+documentation of the :class:`~endf_parserpy.EndfParserCpp` class).
+Be aware of a few differences: in case of an error,
+:class:`~endf_parserpy.EndfParserCpp` reports the template of the
+record being read, the line number and the failing field, whereas
+:class:`~endf_parserpy.EndfParserPy` in addition provides a
+record-by-record log of the parsing process. Furthermore, some
+initialization options are not available.
 One of these options is ``recipes`` that allows users
 to provide their custom :ref:`format extensions <guide_format_extension>`.
 In the following, we will explain how a user can generate their
@@ -79,6 +87,15 @@ ENDF recipes shipped with this package:
 
     from endf_parserpy.endf_recipes.endf6_ext import endf_recipe_dictionary
 
+.. note::
+
+   A recipe dictionary must contain the recipe for the tape
+   identification (TPID) record under MF=0 and MT=0, as the recipe
+   dictionaries of the package do, e.g.
+   ``recipes = {0: {0: '[MAT, 0, 0/ TAPEDESCR]TEXT'}, 3: ...}``.
+   Without it, the first line of a tape is not recognized as the
+   TPID record and parsing fails with a confusing error.
+
 
 Now, you can use the ``create_project_files`` function to generate the
 module code for parsing and writing files that conform to the format
@@ -101,13 +118,17 @@ Provided that the `pybind11
 <https://pybind11.readthedocs.io/en/stable/index.html>`_  header files
 are available on your system, you can use your favorite C++ compiler
 (supporting the C++11 standard) to generate a dynamic library that
-can be imported in Python. If everything is correctly configured, the following
+can be imported in Python. The header files and the CMake
+configuration of pybind11 can be conveniently installed with
+``pip install pybind11``; the location of the CMake configuration is
+then given by ``python -c "import pybind11; print(pybind11.get_cmake_dir())"``.
+If everything is correctly configured, the following
 instructions on the command line can be used to compile the source code:
 
 .. code:: console
 
-   cd endf_parserpy_project/build
-   cmake ..
+   cd endf_parser_project/build
+   cmake -Dpybind11_DIR=$(python -c "import pybind11; print(pybind11.get_cmake_dir())") ..
    make
 
 

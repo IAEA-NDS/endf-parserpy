@@ -1854,6 +1854,21 @@ public:
     setg(eback(), const_cast<char*>(pos), egptr());
   }
 
+  // The columns 67 to 75 of the lines of the section MAT/MF/MT as they
+  // are written ("%4d%2d%3d", 9 characters), or nullptr if the numbers
+  // do not fit into these columns; formatted once for each section read
+  // from the memory (see cpp_list_body_range).
+  const char* control_columns(int mat, int mf, int mt) {
+    if (! cc_valid_ || mat != cc_mat_ || mf != cc_mf_ || mt != cc_mt_) {
+      cc_mat_ = mat;
+      cc_mf_ = mf;
+      cc_mt_ = mt;
+      cc_ok_ = std::snprintf(cc_, sizeof(cc_), "%4d%2d%3d", mat, mf, mt) == 9;
+      cc_valid_ = true;
+    }
+    return cc_ok_ ? cc_ : nullptr;
+  }
+
 protected:
   pos_type seekoff(
     off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which
@@ -1876,6 +1891,15 @@ protected:
   pos_type seekpos(pos_type pos, std::ios_base::openmode which) override {
     return seekoff(off_type(pos), std::ios_base::beg, which);
   }
+
+private:
+  // the cache of control_columns
+  bool cc_valid_ = false;
+  bool cc_ok_ = false;
+  int cc_mat_ = 0;
+  int cc_mf_ = 0;
+  int cc_mt_ = 0;
+  char cc_[16] = {0};
 };
 
 
@@ -2025,6 +2049,15 @@ class CppLine {
       owned_ = false;
       cpp_line_read_counter().views++;
       return is;
+    }
+
+    // The line as getline leaves a line of n characters (n >= 75, no line
+    // ending) at p, a position in the memory of the input, which is read
+    // without getline (see CppListBody::fast_body).
+    void set_view(const char* p, std::size_t n) {
+      data_ = p;
+      size_ = n;
+      owned_ = false;
     }
 
     // The fields and the MAT/MF/MT numbers are read at fixed columns up
@@ -2339,6 +2372,13 @@ inline bool cpp_is_tend_record(const CppLine& line, ParsingOptions &parse_opts) 
 //    reading fails, whose exception is kept. nconv() values are
 //    converted, which are those of the first nconv() fields of the body
 //    (the value of field j of line l of the body is the value 6*l+j).
+//    A body of at least two lines whose lines cpp_read_line would read
+//    without error and without changing them, under any options, is read
+//    as one byte range instead (see cpp_list_body_range and fast_body):
+//    the lines are checked together, the fields are converted at fixed
+//    offsets in one loop, and the stream, the line and the state of the
+//    object are left exactly as by the line-by-line reading. Any other
+//    body is read line by line, which gives today's errors.
 //
 // 2. The values are delivered from the buffer, either by strided copies
 //    into the variables (if the code generator has proven the layout of
@@ -2389,16 +2429,20 @@ inline bool cpp_list_bulk(const std::istream& cont, const ParsingOptions& parse_
 
 
 // Numbers of LIST bodies read in the bulk form, delivered by strided
-// copies and by the code of the per-field form, and the number of bodies
-// whose conversion stopped before the end, only for tests.
+// copies and by the code of the per-field form, the number of bodies
+// whose conversion stopped before the end, and the numbers of bodies of
+// at least two lines read as one byte range and line by line (see
+// CppListBody), only for tests.
 struct cpp_list_bulk_counts {
   unsigned long long strided;
   unsigned long long looped;
   unsigned long long stopped;
+  unsigned long long byte_range;
+  unsigned long long line_by_line;
 };
 
 inline cpp_list_bulk_counts& cpp_list_bulk_counter() {
-  static cpp_list_bulk_counts counts = {0, 0, 0};
+  static cpp_list_bulk_counts counts = {0, 0, 0, 0, 0};
   return counts;
 }
 
@@ -2426,6 +2470,118 @@ inline cpp_list_body_store& cpp_list_body_shared_store() {
 }
 
 
+// Whether the nlines lines at p (the read position of the input held in
+// memory, which ends at e) are lines that cpp_read_line reads without
+// error and without changing them under any options, as the lines of
+// the body of a LIST record of the section with the control columns cc
+// (see cpp_memory_streambuf::control_columns): the first line has a
+// length L of 75 to 80 characters without its line ending, which is
+// "\n" or "\r\n"; every line has this length and line ending and lies
+// completely before e; all characters of the lines are printable ASCII
+// (32 to 126: no blank line, no other line break or carriage return in
+// a line, nothing accept_non_ascii=False would reject); and columns 67
+// to 75 of every line are cc (the MAT/MF/MT numbers in the form in
+// which they are written; validate_control_records and lines longer
+// than 80 characters check them). Sets L and the stride of the lines (L
+// plus the line ending). A body in any other form is read line by line.
+inline bool cpp_list_body_range(
+  const char* p, const char* e, int nlines, const char* cc,
+  std::size_t& len, std::size_t& stride
+) {
+  const std::size_t avail = static_cast<std::size_t>(e - p);
+  const char* nl = static_cast<const char*>(std::memchr(p, '\n', avail < 82 ? avail : 82));
+  if (nl == nullptr) return false;
+  const std::size_t raw = static_cast<std::size_t>(nl - p);
+  const bool crlf = raw > 0 && p[raw - 1] == '\r';
+  len = crlf ? raw - 1 : raw;
+  if (len < 75 || len > 80) return false;
+  stride = raw + 1;
+  if (avail / stride < static_cast<std::size_t>(nlines)) return false;
+  // 8 bytes at a time: a byte below 32 or above 126 sets the high bit of
+  // its byte in acc (and possibly of other bytes, which is no matter)
+  const std::uint64_t ones = 0x0101010101010101ULL;
+  const std::uint64_t high = 0x8080808080808080ULL;
+  std::uint64_t ref;
+  std::memcpy(&ref, cc, 8);
+  const char ref8 = cc[8];
+  const char end0 = crlf ? '\r' : '\n';
+  const std::size_t last = len - 8;
+  std::uint64_t bad = 0;
+  for (int l = 0; l < nlines; l++) {
+    const char* q = p + static_cast<std::size_t>(l) * stride;
+    std::uint64_t w, acc = 0;
+    for (std::size_t k = 0; k < 72; k += 8) {
+      std::memcpy(&w, q + k, 8);
+      acc |= ((w - 0x20 * ones) & ~w) | (w + ones) | w;
+    }
+    std::memcpy(&w, q + last, 8);
+    acc |= ((w - 0x20 * ones) & ~w) | (w + ones) | w;
+    std::uint64_t c;
+    std::memcpy(&c, q + 66, 8);
+    bad |= (acc & high) | (c ^ ref)
+      | static_cast<std::uint64_t>(q[74] != ref8)
+      | static_cast<std::uint64_t>(q[len] != end0)
+      | static_cast<std::uint64_t>(crlf && q[len + 1] != '\n');
+  }
+  return bad == 0;
+}
+
+
+// The conversion of the first npl fields of the nlines = (npl-1)/6+1
+// lines p, p + stride, ... into out with the scalar row kernel, in one
+// loop with the SWAR stage of cpp_fast_field_to_double inline: a field
+// the SWAR stage does not take goes to cpp_fast_field_to_double (which
+// tries the SWAR stage again and then its general fast path), as in
+// cpp_row_kernel_scalar. Returns the number of leading values converted
+// (npl if all), as the line-by-line conversion with the scalar kernel.
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((flatten))
+#endif
+inline int cpp_list_convert_scalar(
+  const char* p, std::size_t stride, int npl, bool accept_d_exponent, double* out
+) {
+  int i = 0;
+  const int full = npl / 6;
+  for (int l = 0; l < full; l++) {
+    const char* q = p + static_cast<std::size_t>(l) * stride;
+    for (int j = 0; j < 6; j++, i++) {
+      const int r = cpp_fast_field_swar(q + 11 * j, out[i]);
+      if (r > 0) continue;
+      if (r < 0 || ! cpp_fast_field_to_double(q + 11 * j, accept_d_exponent, out[i])) return i;
+    }
+  }
+  const char* q = p + static_cast<std::size_t>(full) * stride;
+  for (int j = 0; i < npl; j++, i++) {
+    const int r = cpp_fast_field_swar(q + 11 * j, out[i]);
+    if (r > 0) continue;
+    if (r < 0 || ! cpp_fast_field_to_double(q + 11 * j, accept_d_exponent, out[i])) return i;
+  }
+  return npl;
+}
+
+
+// The same conversion with one call of a row kernel per line (for the
+// kernels other than the scalar one).
+inline int cpp_list_convert_rows(
+  const char* p, std::size_t stride, int npl, cpp_row_kernel_fn kernel,
+  unsigned flags, double* out
+) {
+  const int nlines = (npl - 1) / 6 + 1;
+  for (int l = 0; l < nlines; l++) {
+    const int pos = 6 * l;
+    const int remaining = npl - pos;
+    const unsigned want = remaining >= 6 ? 0x3Fu : (1u << remaining) - 1u;
+    const unsigned done = kernel(p + static_cast<std::size_t>(l) * stride, want, flags, out + pos);
+    if (done != want) {
+      int j = 0;
+      while ((done >> j) & 1u) j++;
+      return pos + j;
+    }
+  }
+  return npl;
+}
+
+
 class CppListBody {
   public:
     CppListBody(
@@ -2438,6 +2594,15 @@ class CppListBody {
       const cpp_row_kernel_fn kernel = cpp_float_row_kernel();
       const unsigned flags = parse_opts.accept_d_exponent ? CPP_ROW_ACCEPT_D_EXPONENT : 0u;
       const int nlines = (npl - 1) / 6 + 1;
+      // a body of one line is read by the loop (as one range, it would
+      // only add the checks of the range)
+      if (nlines >= 2) {
+        if (fast_body(line, cont, npl, nlines, mat, mf, mt, parse_opts, kernel, flags)) {
+          cpp_list_bulk_counter().byte_range++;
+          return;
+        }
+        cpp_list_bulk_counter().line_by_line++;
+      }
       for (int l = 0; l < nlines; l++) {
         try {
           cpp_read_line(line, cont, mat, mf, mt, parse_opts);
@@ -2523,6 +2688,42 @@ class CppListBody {
 
   private:
     enum { small_size = 48 };
+
+    // Reads the body as one byte range of the input held in memory if
+    // cpp_list_body_range accepts it (otherwise returns false, nothing is
+    // changed), and leaves the stream, the line, good_ and nconv_ as the
+    // line-by-line loop of the constructor leaves them: the position is
+    // after the last line read by the loop (the last line of the body, or
+    // the line with the first value not converted), the line is a view of
+    // it, and the stream is good (each line has a line ending).
+    bool fast_body(
+      CppLine& line, std::istream& cont, int npl, int nlines, int mat, int mf, int mt,
+      ParsingOptions& parse_opts, cpp_row_kernel_fn kernel, unsigned flags
+    ) {
+      if (! cont.good()) return false;
+      cpp_memory_streambuf* mb = parse_opts.memory_input;
+      const char* cc = mb->control_columns(mat, mf, mt);
+      if (cc == nullptr) return false;
+      const char* p = mb->current();
+      std::size_t len, stride;
+      if (! cpp_list_body_range(p, mb->end(), nlines, cc, len, stride)) return false;
+      const std::size_t need = 6 * static_cast<std::size_t>(nlines);
+      if (need > cap_) grow(need);
+      int n;
+      if (kernel == cpp_row_kernel_scalar) {
+        n = cpp_list_convert_scalar(p, stride, npl, parse_opts.accept_d_exponent, buf_);
+      } else {
+        n = cpp_list_convert_rows(p, stride, npl, kernel, flags, buf_);
+      }
+      nconv_ = n;
+      const int stop_line = n >= npl ? nlines - 1 : n / 6;
+      good_ = stop_line + 1;
+      mb->move_to(p + static_cast<std::size_t>(good_) * stride);
+      line.set_view(p + static_cast<std::size_t>(stop_line) * stride, len);
+      cpp_line_read_counter().views += static_cast<unsigned long long>(good_);
+      if (n < npl) cpp_list_bulk_counter().stopped++;
+      return true;
+    }
 
     void grow(std::size_t needed) {
       // the buffer grows with the lines read, at first to the size of

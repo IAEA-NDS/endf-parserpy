@@ -212,13 +212,24 @@ def _unchecked_accesses(code, access):
     # the lines of code that access a field of a LIST body (at cpp_j) after
     # the start of the body or the count of an element (cpp_i++) without
     # the check of the count against NPL in between; an element may be
-    # accessed in several branches of the code
+    # accessed in several branches of the code. In the strided delivery
+    # of the bulk form, a single value or a literal is accessed in a block
+    # that binds its position (const int cpp_i = ...), after the pre-pass
+    # has checked that the layout has exactly NPL values
+    # (see ListBulkForm in compiler/endf2cpp_aux.py)
     out = []
     checked = False
+    prepass = False
     for line in code.splitlines():
+        if "CppListBody cpp_body(" in line:
+            prepass = False
+        elif "if (cpp_npl != " in line:
+            prepass = True
         if "int cpp_i = 0;" in line or "cpp_i++;" in line:
             checked = False
         elif "cpp_throw_list_body_overrun(cpp_npl);" in line:
+            checked = True
+        elif "const int cpp_i = static_cast<int>(" in line and prepass:
             checked = True
         elif access in line and not checked:
             out.append(line)

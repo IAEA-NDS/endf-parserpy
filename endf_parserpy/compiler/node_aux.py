@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2026/10/26
+# Last modified:   2026/11/05
 # License:         MIT
 # Copyright (c) 2024-2025 International Atomic Energy Agency (IAEA)
 #
@@ -37,9 +37,11 @@ class ParseNode(Tree):
         self.parent = parent
         self.precode = ""
         # code emitted after the precode, immediately before a loop, and
-        # the code of the bounds of a loop, see _generate_code_for_loop
+        # the code of the bounds and the variable of a loop, see
+        # _generate_code_for_loop
         self.loop_setup = ""
         self.loop_bounds = None
+        self.loop_variable = None
         self._trackid = id(self)
 
     def __deepcopy__(self, memo):
@@ -51,6 +53,7 @@ class ParseNode(Tree):
         node_copy.precode = self.precode
         node_copy.loop_setup = self.loop_setup
         node_copy.loop_bounds = self.loop_bounds
+        node_copy.loop_variable = self.loop_variable
         node_copy._trackid = self._trackid
         return node_copy
 

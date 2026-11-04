@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/01
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -1170,6 +1170,13 @@ class EndfParserPy(EndfParserBase):
                                 + str(exc)
                                 + self._last_record_hint()
                             )
+                else:
+                    # the section is kept verbatim as a list of its lines:
+                    # each line as read, without its line ending and with a
+                    # newline appended, the same representation as that of
+                    # EndfParserCpp, whether the lines carry line endings
+                    # (parsefile) or not (a string passed to parse)
+                    mfmt_dic[mf][mt] = [line.rstrip("\r\n") + "\n" for line in curlines]
         self._remove_array_state_opts()
         return mfmt_dic
 

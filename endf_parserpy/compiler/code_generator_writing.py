@@ -538,7 +538,6 @@ def generate_master_writefun(name, recipefuns):
     body += cpp.statement("int last_mf = -9999")
     body += cpp.statement("int last_mt = -9999")
     body += cpp.statement("bool section_encountered = false")
-    body += cpp.statement("bool found_tpid = false")
     body += cpp.statement("auto d = py::reinterpret_borrow<py::dict>(endf_dict)")
     body += cpp.statement('py::object mf_keys = d.attr("keys")()')
     # sort the mf keys
@@ -613,15 +612,10 @@ def generate_master_writefun(name, recipefuns):
         for mt in reversed(sorted(mfdic.keys())):
             funname = mfdic[mt]
             varname = _mf_mt_dict_varname(mf, mt)
-            section_code = ""
             if mt == -1:
                 curcond = f"mf == {mf}"
             else:
                 curcond = f"mf == {mf} && mt == {mt}"
-            if mt == 0 and mt == 0:
-                # in case of MF=0/MT=0, we want to register that the tpid record has been read
-                section_code += cpp.statement("found_tpid = true")
-
             section_code = generate_section_writing_code(funname, "write_opts")
             matval = get_mat_from_mfmt_section("mt_dict")
             section_code += cpp.statement(f"mat = {matval}")

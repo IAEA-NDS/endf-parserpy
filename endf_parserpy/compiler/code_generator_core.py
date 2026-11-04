@@ -934,12 +934,15 @@ def generate_code_for_list(node, vardict):
 
     lbr = aux.ListBodyRecorder
     icode = _record_body_code(template, vardict)
+    # the bulk form of the mode, if any, is generated first, in a pass
+    # with a copy of the scope that leaves no trace (as the lookahead of
+    # an if-statement), then the per-field form
+    bulk = lbr.generate_bulk_form(list_body_node, vardict, generate_code_for_list_body)
     loop_code = lbr.start_list_body_loop(npl_val, vardict)
     list_body_code = generate_code_for_list_body(list_body_node, vardict)
     loop_code += lbr.indent(list_body_code)
     loop_code += lbr.finish_list_body_loop(vardict)
-    # the code is generated once; the forms are derived from it
-    icode += lbr.select_form(loop_code, list_body_node, vardict)
+    icode += lbr.select_form(loop_code, bulk, list_body_node, vardict, npl_val=npl_val)
 
     if sectok is not None:
         vardefs = generate_vardefs(vardict)
@@ -952,15 +955,56 @@ def generate_code_for_list(node, vardict):
     return code
 
 
+def _classify_list_element(node, vardict):
+    """How an element of the body of a LIST record is read.
+
+    Returns ``("literal", None)`` for an element without variables, whose
+    value is only checked, ``("assign", vartok)`` for an element that is
+    a variable not encountered before, which is assigned the value
+    without a check (see :func:`generate_code_for_varassign`), and
+    ``("other", reason)`` for any other element (a variable that may have
+    been read before, a scalar read in a loop, an expression). To be
+    called before the code of the element is generated.
+    """
+    node = transform_nodes(node, expand_abbreviation, vardict)
+    variables = get_variables_in_expr(node)
+    if len(variables) == 0:
+        return ("literal", None)
+    if len(variables) > 1:
+        return ("other", "several variables")
+    v = next(iter(variables))
+    if cpp_varops_query.need_read_check(v, vardict, v.indices):
+        return ("other", "variable assigned or checked")
+    if _is_scalar_first_read_in_loop(v, vardict):
+        return ("other", "scalar read in a loop")
+    try:
+        _, expr = get_varassign_from_expr(v, node, vardict)
+    except Exception:  # noqa: BLE001 (not solvable: any reason)
+        return ("other", "expression")
+    if expr != Token("VARIABLE", "cpp_val"):
+        return ("other", "expression")
+    return ("assign", v)
+
+
 def generate_code_for_list_body(node, vardict):
+    # the recorder of the bulk pass of the body (see ListBulkForm), None
+    # otherwise
+    recorder = aux.ListBodyRecorder.recorder(vardict)
     lbr = aux.ListBodyRecorder
     code = cpp.comment("read LIST body")
     for child in node.children:
         child_name = get_name(child)
         if child_name == "expr":
             current_value, addcode = lbr.get_element(child, vardict)
+            if recorder is not None:
+                recorder.start_element(child, _classify_list_element(child, vardict))
             code += addcode
-            code += generate_code_for_varassign(child, vardict, current_value, float)
+            element_code = generate_code_for_varassign(
+                child, vardict, current_value, float
+            )
+            if recorder is not None:
+                recorder.finish_element(child, element_code)
+            code += element_code
             code += lbr.update_counters_and_line(vardict)
         elif child_name == "list_loop":
             code += generate_code_for_list_loop(child, vardict)
@@ -1014,8 +1058,9 @@ def _generate_code_for_loop(
     )
     code += cpp.indent_code(init_readflag(loopvar, val=True))
     # the bounds as evaluated by the loop, for the setup code of the loop
-    # (e.g. the reservation of arrays filled in the loop)
+    # (e.g. the reservation of arrays filled in the loop), and its variable
     node.loop_bounds = (start_expr_str, stop_expr_str)
+    node.loop_variable = cpp_loopvar
     body_code = parsefun(for_body, vardict)
     code += cpp.indent_code(body_code)
     code += cpp.close_block()

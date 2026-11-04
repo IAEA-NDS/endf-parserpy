@@ -1103,14 +1103,16 @@ inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, do
 // (cpp_row_selected), as given by the environment variable
 // ENDF_PARSERPY_CPP_BULK_BODIES:
 //   auto (also if unset or empty): the first vector tier of the table
-//     that is built and supported by the CPU, none if there is none;
+//     that is built and supported by the CPU, otherwise the scalar tier;
 //   off: none;
 //   scalar, avx2, avx512: this tier if it is built and supported by the
 //     CPU, otherwise as auto (with a warning when the module is loaded).
 // Without a selected tier, the float values of the bodies of TAB1 and
-// LIST records are read field by field (the per-field form); with a
-// selected tier, they are converted by one kernel call per line (the row
-// form, see CppFloatRow). The choice is made once per record.
+// LIST records are read field by field (the per-field form, as before
+// the kernels existed); with a selected tier, a TAB1 body is converted by
+// one kernel call per line (cpp_read_pairs_bulk) and a LIST body is
+// decoded as a whole into a buffer first (the bulk form, see
+// CppListBody). The choice is made once per record.
 
 #define CPP_ROW_ACCEPT_D_EXPONENT 1u
 
@@ -1233,8 +1235,9 @@ struct cpp_row_tier {
 
 #define CPP_ROW_NUM_TIERS 3
 
-// in the order of preference of the automatic selection; the kernels of
-// the vector tiers are not built yet
+// in the order of preference of the automatic selection, which takes the
+// scalar tier (the last one) if no vector tier is built and supported;
+// the kernels of the vector tiers are not built yet
 inline const cpp_row_tier* cpp_row_tiers() {
   static const cpp_row_tier tiers[CPP_ROW_NUM_TIERS] = {
     {"avx512", nullptr, true, cpp_row_cpu_avx512},
@@ -1257,6 +1260,11 @@ struct cpp_row_selection {
   // nullptr, or why the requested tier is not used
   const char* warning;
   cpp_cpu_features cpu;
+  // whether all LIST bodies with a loop are read in the bulk form, also
+  // those delivered by the code of the per-field form (see cpp_list_bulk):
+  // with a vector tier and with a tier given by the variable, not with
+  // the scalar tier selected automatically
+  bool list_all;
 };
 
 // The selection for the value `value` (nullptr if unset) of the
@@ -1271,6 +1279,7 @@ inline cpp_row_selection cpp_row_select(const char* value, const cpp_cpu_feature
   sel.requested_set = value != nullptr;
   sel.warning = nullptr;
   sel.cpu = cpu;
+  sel.list_all = false;
   char name[16];
   bool too_long = false;
   if (value != nullptr) {
@@ -1304,13 +1313,16 @@ inline cpp_row_selection cpp_row_select(const char* value, const cpp_cpu_feature
     } else {
       sel.kernel = tier->kernel;
       sel.tier = tier->name;
+      sel.list_all = true;
       return sel;
     }
   }
   for (int i = 0; i < CPP_ROW_NUM_TIERS; i++) {
-    if (tiers[i].vector && tiers[i].kernel != nullptr && tiers[i].supported(cpu)) {
+    if ((tiers[i].vector || i == CPP_ROW_NUM_TIERS - 1)
+        && tiers[i].kernel != nullptr && tiers[i].supported(cpu)) {
       sel.kernel = tiers[i].kernel;
       sel.tier = tiers[i].name;
+      sel.list_all = tiers[i].vector;
       break;
     }
   }
@@ -1324,10 +1336,14 @@ inline cpp_row_selection cpp_row_select(const char* value, const cpp_cpu_feature
 template<typename T = void>
 struct cpp_row_state {
   static cpp_row_kernel_fn kernel;
+  static bool list_all;
 };
 
 template<typename T>
 cpp_row_kernel_fn cpp_row_state<T>::kernel = nullptr;
+
+template<typename T>
+bool cpp_row_state<T>::list_all = false;
 
 // The selection made when the module is loaded (the first call, see
 // register_reading_options in cpp_boilerplate_reading.py), which also
@@ -1337,6 +1353,7 @@ inline const cpp_row_selection& cpp_row_selected() {
     std::getenv("ENDF_PARSERPY_CPP_BULK_BODIES"), cpp_detect_cpu_features()
   );
   cpp_row_state<>::kernel = sel.kernel;
+  cpp_row_state<>::list_all = sel.list_all;
   return sel;
 }
 
@@ -1534,69 +1551,6 @@ inline T cpp_read_field(const char *str, const char fieldnum, ParsingOptions &pa
     return cpp_read_field_EndfFloatCpp(str, fieldnum, parse_opts);
   } else {
     return endfstr2int(str+fieldnum*11, parse_opts, fieldnum);
-  }
-}
-
-
-// The row form of the reading of the float values of the body of a TAB1
-// or LIST record (see the row kernels above): the fields of each line are
-// converted by one call of the selected kernel when the line is read
-// (convert), and each value is then taken from the converted fields or,
-// for a field the kernel has left, read with cpp_read_field
-// (cpp_read_row_field), so that the results are those of the per-field
-// form.
-struct CppFloatRow {
-  CppFloatRow(cpp_row_kernel_fn kernel, const ParsingOptions& parse_opts)
-    : done(0), kernel_(kernel),
-      flags_(parse_opts.accept_d_exponent ? CPP_ROW_ACCEPT_D_EXPONENT : 0u) {}
-
-  // a new line, of which the fields 0 .. remaining-1 (at most six) are read
-  void convert(const char* line, int remaining) {
-    const unsigned want = remaining >= 6 ? 0x3Fu
-      : (remaining > 0 ? (1u << remaining) - 1u : 0u);
-    // Point for switching back to the per-field path within a record
-    // (not used yet, for the vector tiers): count the converted fields
-    // of the first lines and, if their share is low, leave all further
-    // fields of the record to cpp_read_field (done = 0) without calling
-    // the kernel.
-    done = kernel_(line, want, flags_, values);
-  }
-
-  double values[6];
-  unsigned done;
-
-  private:
-    cpp_row_kernel_fn kernel_;
-    unsigned flags_;
-};
-
-
-template<typename T>
-inline T cpp_read_row_field(
-  const CppFloatRow& row, const char* str, const char fieldnum, ParsingOptions& parse_opts
-);
-
-template<>
-inline double cpp_read_row_field<double>(
-  const CppFloatRow& row, const char* str, const char fieldnum, ParsingOptions& parse_opts
-) {
-  if (((row.done >> fieldnum) & 1u) != 0) return row.values[static_cast<int>(fieldnum)];
-  return cpp_read_field<double>(str, fieldnum, parse_opts);
-}
-
-// as cpp_read_field_EndfFloatCpp
-template<>
-inline EndfFloatCpp cpp_read_row_field<EndfFloatCpp>(
-  const CppFloatRow& row, const char* str, const char fieldnum, ParsingOptions& parse_opts
-) {
-  if (((row.done >> fieldnum) & 1u) == 0) {
-    return cpp_read_field_EndfFloatCpp(str, fieldnum, parse_opts);
-  }
-  const double float_value = row.values[static_cast<int>(fieldnum)];
-  if (parse_opts.preserve_value_strings) {
-    return EndfFloatCpp(float_value, str+fieldnum*11, 11);
-  } else {
-    return EndfFloatCpp(float_value);
   }
 }
 
@@ -2415,6 +2369,24 @@ inline bool cpp_is_tend_record(const CppLine& line, ParsingOptions &parse_opts) 
 // used, for the vector tiers): count the converted fields of the first
 // lines and, if their share is low, stop the conversion (the remaining
 // fields are then read by the per-field form with cpp_read_field).
+
+// Whether the body of a LIST record is read in the bulk form: a row
+// kernel is selected, the input is held in memory (see CppLine), and the
+// original strings of the values are not kept (preserve_value_strings,
+// which needs the strings of the fields). `strided` tells whether the
+// code generator has found a regular layout of the body (strided copies):
+// a body without one is only read in the bulk form if all bodies are
+// (list_all of cpp_row_selection), as its delivery by the code of the
+// per-field form is not faster than the per-field form with the scalar
+// row kernel.
+inline bool cpp_list_bulk(const std::istream& cont, const ParsingOptions& parse_opts, bool strided) {
+  return cpp_float_row_kernel() != nullptr
+    && (strided || cpp_row_state<>::list_all)
+    && ! parse_opts.preserve_value_strings
+    && parse_opts.memory_input != nullptr
+    && cont.rdbuf() == parse_opts.memory_input;
+}
+
 
 // Numbers of LIST bodies read in the bulk form, delivered by strided
 // copies and by the code of the per-field form, and the number of bodies

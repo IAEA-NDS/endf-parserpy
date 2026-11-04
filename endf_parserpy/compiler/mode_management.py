@@ -76,20 +76,43 @@ def get_record_body_func(vardict):
     return pardict["__basic_ops"].get("record_body_func")
 
 
-def register_float_row_form(form, vardict):
-    """Register the row form of the reading of the bodies of LIST records
-    (an object as :class:`~endf_parserpy.compiler.endf2cpp_aux.FloatRowForm`).
+def register_list_bulk_form(form, vardict):
+    """Register the bulk form of the reading of the bodies of LIST records
+    (an object as :class:`~endf_parserpy.compiler.endf2cpp_aux.ListBulkForm`).
 
     Without a registered form, the bodies are only read in the per-field
-    form, see :func:`get_float_row_form`.
+    form, see :func:`get_list_bulk_form`.
     """
-    _register_getter(form, vardict, "float_row_form", None)
+    _register_getter(form, vardict, "list_bulk_form", None)
 
 
-def get_float_row_form(vardict):
+def get_list_bulk_form(vardict):
     # optional, None if not registered
     pardict = _find_parent_dict("__basic_ops", vardict)
-    return pardict["__basic_ops"].get("float_row_form")
+    return pardict["__basic_ops"].get("list_bulk_form")
+
+
+def get_list_bulk_recorder(vardict):
+    """Return the recorder of the bulk pass of the body of a LIST record, or
+    None outside of it.
+
+    For its bulk form, the body of a LIST record is generated a second
+    time, with a copy of the vardict that holds the recorder under the key
+    ``__list_bulk_body`` (see
+    :meth:`~endf_parserpy.compiler.endf2cpp_aux.ListBulkForm.generate`).
+    In this pass, the field getter and the reading of a line of the
+    parsing mode take the values and lines from the decoded body, and the
+    assignment code reports the stores of the values (container, kind,
+    indices) and the elements of the body to the recorder, as the
+    assignments are reported to the layout recorder.
+    """
+    curdict = vardict
+    while True:
+        if "__list_bulk_body" in curdict:
+            return curdict["__list_bulk_body"]
+        if "__up" not in curdict:
+            return None
+        curdict = curdict["__up"]
 
 
 def register_custom_int_row_binder(func, vardict):

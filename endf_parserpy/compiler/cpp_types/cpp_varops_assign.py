@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/22
-# Last modified:   2026/10/25
+# Last modified:   2026/11/05
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 from ..variable_management import should_track_read
-from ..mode_management import get_layout_recorder
+from ..mode_management import get_layout_recorder, get_list_bulk_recorder
 from ..unused_arrays import UnstoredAssignment
 from .. import cpp_primitives as cpp
 from .cpp_vartype_handling import (
@@ -59,10 +59,14 @@ def assign_exprstr_to_var(vartok, exprstr, dtype, vardict, node=None):
             # that the type of the variable needs no check either
             if track_read and not isinstance(new_code, UnstoredAssignment):
                 specialtype = m.query.get_specialtype_name()
-                code += type_change_check(vartok, dtype, specialtype)
-                code += update_last_type_var(
+                type_code = type_change_check(vartok, dtype, specialtype)
+                type_code += update_last_type_var(
                     vartok, dtype=dtype, specialtype=specialtype
                 )
+                code += type_code
+                bulk_recorder = get_list_bulk_recorder(vardict)
+                if bulk_recorder is not None:
+                    bulk_recorder.record_type_code(node, vartok, type_code)
                 layout_recorder = get_layout_recorder(vardict)
                 if layout_recorder is not None:
                     layout_recorder.record_assignment(

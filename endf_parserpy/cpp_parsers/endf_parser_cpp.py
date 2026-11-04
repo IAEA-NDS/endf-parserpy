@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/10/25
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -109,7 +109,13 @@ class EndfParserCpp(EndfParserBase):
             to indicate the end of a section is not checked. *(parsing)*
         ignore_missing_tpid: bool
             If ``True``, the parser will tolerate a missing TPID
-            record at the beginning of the file. *(parsing)*
+            record at the beginning of the file, and :func:`write` and
+            :func:`writefile` accept a dictionary without an MF=0/MT=0
+            section and write the data without a tape head. If ``False``
+            (default), writing such a dictionary raises an error after
+            all sections have been written, unless the output is
+            restricted with ``exclude`` or ``include``.
+            *(parsing, writing)*
         accept_nan_inf: bool
             If ``True`` (default), allow non-finite numeric values
             (``NaN``, ``+inf``, ``-inf`` literals as well as values
@@ -256,6 +262,7 @@ class EndfParserCpp(EndfParserBase):
             "array_type": array_type,
         }
         self.write_opts = {
+            "ignore_missing_tpid": ignore_missing_tpid,
             "abuse_signpos": abuse_signpos,
             "keep_E": keep_E,
             "include_linenum": include_linenum,

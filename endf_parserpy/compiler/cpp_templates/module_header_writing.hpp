@@ -21,6 +21,7 @@ struct WritingOptions {
   bool preserve_value_strings;
   bool include_linenum;
   bool accept_non_ascii;
+  bool ignore_missing_tpid;
   std::string array_type;
 };
 
@@ -34,6 +35,7 @@ inline WritingOptions default_writing_options() {
     false,  // preserve_value_strings
     true,   // include_linenum
     true,   // accept_non_ascii
+    false,  // ignore_missing_tpid
     "dict"  // array_type
   };
 }
@@ -66,6 +68,8 @@ namespace pybind11 { namespace detail {
           value.preserve_value_strings = d["preserve_value_strings"].cast<bool>();
         else if (key_str == "accept_non_ascii")
           value.accept_non_ascii = d["accept_non_ascii"].cast<bool>();
+        else if (key_str == "ignore_missing_tpid")
+          value.ignore_missing_tpid = d["ignore_missing_tpid"].cast<bool>();
         else if (key_str == "array_type")
           value.array_type = d["array_type"].cast<std::string>();
         else
@@ -96,6 +100,9 @@ namespace pybind11 { namespace detail {
       if (! d.contains("accept_non_ascii")) {
         value.accept_non_ascii = default_opts.accept_non_ascii;
       }
+      if (! d.contains("ignore_missing_tpid")) {
+        value.ignore_missing_tpid = default_opts.ignore_missing_tpid;
+      }
       if (! d.contains("array_type")) {
         value.array_type = default_opts.array_type;
       }
@@ -112,6 +119,7 @@ namespace pybind11 { namespace detail {
       d["preserve_value_strings"] = src.preserve_value_strings;
       d["include_linenum"] = src.include_linenum;
       d["accept_non_ascii"] = src.accept_non_ascii;
+      d["ignore_missing_tpid"] = src.ignore_missing_tpid;
       d["array_type"] = src.array_type;
       return d.release();
     }

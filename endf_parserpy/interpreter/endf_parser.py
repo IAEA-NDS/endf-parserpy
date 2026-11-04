@@ -237,7 +237,13 @@ class EndfParserPy(EndfParserBase):
             to indicate the end of a section is not checked. *(parsing)*
         ignore_missing_tpid: bool
             If ``True``, the parser will tolerate a missing TPID
-            record at the beginning of the file. *(parsing)*
+            record at the beginning of the file, and :func:`write` and
+            :func:`writefile` accept a dictionary without an MF=0/MT=0
+            section and write the data without a tape head. If ``False``
+            (default), writing such a dictionary raises an error after
+            all sections have been written, unless the output is
+            restricted with ``exclude`` or ``include``.
+            *(parsing, writing)*
         accept_nan_inf: bool
             If ``True`` (default), allow non-finite numeric values
             (``NaN``, ``+inf``, ``-inf`` literals as well as values
@@ -435,6 +441,7 @@ class EndfParserPy(EndfParserBase):
             "check_arrays": check_arrays,
             "strict_datatypes": strict_datatypes,
             "accept_non_ascii": accept_non_ascii,
+            "ignore_missing_tpid": ignore_missing_tpid,
         }
         self.read_opts = {
             "accept_spaces": accept_spaces,
@@ -1368,6 +1375,22 @@ class EndfParserPy(EndfParserBase):
                     )
                 )
 
+        # the check runs after all sections are written, so that errors
+        # in the sections surface first (write is also used to diagnose
+        # incomplete dictionaries); a write restricted with
+        # exclude/include produces a deliberate fragment and is exempt
+        if (
+            exclude is None
+            and include is None
+            and not self.write_opts["ignore_missing_tpid"]
+            and not (0 in endf_dic and 0 in endf_dic[0])
+        ):
+            raise RuntimeError(
+                "no tape identification (TPID) record written: the "
+                "dictionary does not contain an MF=0/MT=0 section. Add "
+                "this section or set the option ignore_missing_tpid=True "
+                "to write data without a tape head"
+            )
         lines.extend(
             write_mend(
                 with_ctrl=True,

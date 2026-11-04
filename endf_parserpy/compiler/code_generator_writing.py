@@ -538,6 +538,7 @@ def generate_master_writefun(name, recipefuns):
     body += cpp.statement("int last_mf = -9999")
     body += cpp.statement("int last_mt = -9999")
     body += cpp.statement("bool section_encountered = false")
+    body += cpp.statement("bool found_tpid = false")
     body += cpp.statement("auto d = py::reinterpret_borrow<py::dict>(endf_dict)")
     body += cpp.statement('py::object mf_keys = d.attr("keys")()')
     # sort the mf keys
@@ -607,6 +608,8 @@ def generate_master_writefun(name, recipefuns):
             matval = get_mat_from_mfmt_section("mt_dict")
             section_code += cpp.statement(f"mat = {matval}")
             section_code += cpp.statement("section_encountered = true")
+            if mf == 0:
+                section_code += cpp.statement("found_tpid = true")
             statements.append(section_code)
             continue
         for mt in reversed(sorted(mfdic.keys())):
@@ -620,6 +623,9 @@ def generate_master_writefun(name, recipefuns):
             matval = get_mat_from_mfmt_section("mt_dict")
             section_code += cpp.statement(f"mat = {matval}")
             section_code += cpp.statement("section_encountered = true")
+            if mf == 0 and mt == 0:
+                # the tape head has been written
+                section_code += cpp.statement("found_tpid = true")
             statements.append(section_code)
             conditions.append(curcond)
 
@@ -639,6 +645,7 @@ def generate_master_writefun(name, recipefuns):
     )
     default_code += cpp.statement(f"mat = {get_mat_from_mfmt_section('mt_dict')}")
     default_code += cpp.statement("section_encountered = true")
+    default_code += cpp.pureif("mf == 0 && mt == 0", cpp.statement("found_tpid = true"))
 
     body += cpp.indent_code(
         cpp.conditional_branches(conditions, statements, default=default_code),
@@ -651,6 +658,26 @@ def generate_master_writefun(name, recipefuns):
     body += cpp.indent_code(cpp.close_block(), cpp.INDENT)
     body += cpp.close_block()
 
+    # the check runs after all sections are written, so that errors in
+    # the sections surface first (write is also used to diagnose
+    # incomplete dictionaries); a write restricted with exclude/include
+    # produces a deliberate fragment and is exempt
+    body += cpp.pureif(
+        cpp.logical_and(
+            [
+                "! found_tpid",
+                "! write_opts.ignore_missing_tpid",
+                "exclude.is_none()",
+                "include.is_none()",
+            ]
+        ),
+        cpp.throw_runtime_error(
+            "no tape identification (TPID) record written: the dictionary "
+            "does not contain an MF=0/MT=0 section. Add this section or "
+            "set the option ignore_missing_tpid=True to write data "
+            "without a tape head"
+        ),
+    )
     # add FEND, MEND and TEND record at the very end
     body += cpp.statement("cont << cpp_prepare_send(mat, 0, write_opts)")
     body += cpp.statement("cont << cpp_prepare_send(0, 0, write_opts)")

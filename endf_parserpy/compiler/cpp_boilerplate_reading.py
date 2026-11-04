@@ -96,6 +96,14 @@ def register_reading_options():
       info["tiers"] = tiers;
       info["cpu"] = cpu;
       info["scalar_kernel_lines"] = cpp_row_scalar_lines();
+      // the LIST bodies read in the bulk form (see CppListBody)
+      const cpp_list_bulk_counts& bulk = cpp_list_bulk_counter();
+      py::dict list_bodies;
+      list_bodies["strided"] = bulk.strided;
+      list_bodies["looped"] = bulk.looped;
+      list_bodies["stopped"] = bulk.stopped;
+      info["bulk_list_bodies"] = list_bodies;
+      info["bulk_all_list_bodies"] = sel.list_all;
       return info;
     });
     """

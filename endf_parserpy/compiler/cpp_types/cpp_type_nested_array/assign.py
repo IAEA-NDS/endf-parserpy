@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/11/02
+# Last modified:   2026/11/05
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -40,6 +40,7 @@ from endf_parserpy.compiler.node_aux import (
 )
 from endf_parserpy.compiler.mode_management import (
     get_layout_recorder,
+    get_list_bulk_recorder,
     get_nested_element_hook,
     get_unused_arrays,
 )
@@ -707,8 +708,19 @@ class Assign:
                 loop = reservation[0]
                 loop.check_my_identity()
                 loop.append_loop_setup(_reserve_code(f"{cpp_varname}.", loop))
+        bulk_recorder = get_list_bulk_recorder(vardict)
         if block is None:
             setter = "set_row" if rows else "set"
+            if bulk_recorder is not None:
+                bulk_recorder.record_store(
+                    node,
+                    vartok,
+                    kind="row" if rows else "list",
+                    container=f"{ptrvar_old}{dot}",
+                    indices=indices[-1:],
+                    index_exprs=vartok.indices[-1:],
+                    preceded=code != "",
+                )
             code += cpp.statement(
                 f"{ptrvar_old}{dot}{setter}({indices[-1]}, {exprstr})"
             )
@@ -722,6 +734,16 @@ class Assign:
             layout_recorder.record_block(vartok, num_leading, outer, node, rank)
         trailing = ", ".join(indices[num_leading:])
         deref = cpp_varname if num_leading == 0 else f"(*{ptrvar_old})"
+        if bulk_recorder is not None:
+            bulk_recorder.record_store(
+                node,
+                vartok,
+                kind="row" if rows else "block",
+                container=deref,
+                indices=indices[num_leading:],
+                index_exprs=vartok.indices[num_leading:],
+                preceded=code != "",
+            )
         if rows:
             code += cpp.statement(f"{deref}.set_block_row({exprstr}, {trailing})")
         else:

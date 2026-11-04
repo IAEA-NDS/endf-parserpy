@@ -52,8 +52,9 @@ from .mode_management import (
     register_generate_expr_validation_func,
     register_layout_recorder,
     register_record_body_func,
-    register_float_row_form,
+    register_list_bulk_form,
     get_layout_recorder,
+    get_list_bulk_recorder,
 )
 from .endf2cpp_aux import (
     get_numeric_field,
@@ -91,7 +92,13 @@ def _mf_mt_dict_varname(mf, mt):
 
 
 def _get_numeric_field_wrapper(node, idx, dtype, vardict):
-    valcode = get_numeric_field(idx, dtype, "parse_opts")
+    recorder = get_list_bulk_recorder(vardict)
+    if recorder is not None and dtype == float:
+        # the bulk pass of the body of a LIST record: the value from the
+        # decoded body (see ListBulkForm)
+        valcode = recorder.field(idx, "parse_opts")
+    else:
+        valcode = get_numeric_field(idx, dtype, "parse_opts")
     code = ""
     return valcode, code
 
@@ -138,6 +145,11 @@ def _record_body_func_wrapper(template, vardict):
 
 
 def _prepare_line_func_wrapper(vardict):
+    recorder = get_list_bulk_recorder(vardict)
+    if recorder is not None:
+        # the bulk pass of the body of a LIST record: the next line of the
+        # decoded body (see ListBulkForm)
+        return recorder.next_line("cpp_line", "mat", "mf", "mt", "parse_opts")
     code = read_line_la(
         "cpp_line", "mat", "mf", "mt", "parse_opts", in_lookahead(vardict)
     )
@@ -218,9 +230,9 @@ def generate_cpp_parsefun(
     register_finalize_section_func(_finalize_section_func_wrapper, vardict)
     register_generate_expr_validation_func(_generate_expr_validation_wrapper, vardict)
     register_record_body_func(_record_body_func_wrapper, vardict)
-    # the bodies of LIST records also in the row form (TAB1 bodies: see
+    # the bodies of LIST records also in the bulk form (TAB1 bodies: see
     # read_tab1_body)
-    register_float_row_form(aux.FloatRowForm, vardict)
+    register_list_bulk_form(aux.ListBulkForm, vardict)
     register_lookahead_tellg_statement(
         cpp.statement("std::streampos cpp_old_streampos = cont.tellg()"), vardict
     )

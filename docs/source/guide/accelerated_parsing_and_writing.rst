@@ -64,48 +64,83 @@ own recipe files.
 
 .. _cpp_bulk_bodies_sec:
 
-Float fields of TAB1 and LIST bodies
+Bulk reading of TAB1 and LIST bodies
 ------------------------------------
 
-The float values of the bodies of TAB1 and LIST records can be converted
-in two ways by the C++ modules: field by field, or with one call of a
-*row kernel* per line that converts all float fields of the line.
+The float values of the bodies of TAB1 and LIST records can be read in
+two forms by the C++ modules:
+
+- the *per-field form*: each field is converted when its value is
+  needed, and the lines of a body are read one after the other;
+- the *bulk form* (the default): the float fields of the lines are
+  converted with one call of a *row kernel* per line. A TAB1 body is read
+  this way line by line. A LIST body is first read and converted as a
+  whole into a buffer (a body of several lines of 75 to 80 columns with
+  the same line ending, only printable characters and the MAT, MF and MT
+  numbers of the section is checked and converted as one block of
+  memory, any other body line by line, with the same checks and errors
+  as in the per-field form), from which its values are then delivered to the
+  variables: by strided copies if the code generator has proven the
+  layout of the body regular (e.g. one copy per array for the bodies of
+  MF6 LAW=1 records, the bulk of most neutron files), otherwise by the
+  same code as in the per-field form, which takes each value from the
+  buffer. With the scalar row kernel, bodies without a regular layout
+  (e.g. triangular matrices of covariance data and the scattering laws
+  of thermal scattering data) are read in the per-field form, which is
+  as fast for them, unless the tier is forced (see below).
+
 Several implementations (tiers) of the row kernel are planned, e.g. for
 the vector instructions of some processors; which one is used is decided
 once when a C++ module is loaded, from the features of the processor.
-The parse results do not depend on this choice: a row kernel converts a
-field only if the conversion field by field would give the same value,
-and every other field is converted field by field.
+The parse results do not depend on the form or the tier: a row kernel
+converts a field only if the conversion field by field would give the
+same value, every other field is converted field by field, and the
+checks of the values and all errors (type, message and the line named in
+it) are those of the per-field form, in the same order. The bulk form is
+not used for ``preserve_value_strings=True`` (which needs the strings of
+the fields), for ``load_file_into_memory=False`` and in the lookahead of
+recipes; writing is not affected.
 
-In the current version, no vector tier is built, so that the float
-fields are converted field by field unless a tier is forced.
 The environment variable ``ENDF_PARSERPY_CPP_BULK_BODIES``, read when a
 C++ module is loaded (i.e. before the first
 :class:`~endf_parserpy.EndfParserCpp` object of an ENDF format flavor is
-created in a Python process), selects the row kernel:
+created in a Python process), selects the form and the tier of the row
+kernel:
 
 - ``auto`` (the default, also if the variable is unset or empty): the
-  fastest vector tier supported by the processor, none if there is none;
-- ``off``: no row kernel, the float fields are converted field by field;
-- ``scalar``: the scalar row kernel, the conversion field by field
-  applied to a whole line; it is not faster and serves as the reference
-  for testing;
-- ``avx2``, ``avx512``: this vector tier (x86-64 only), if it is built
-  and supported by the processor.
+  bulk form with the fastest vector tier supported by the processor, or
+  with the scalar row kernel if there is none (then only for the LIST
+  bodies with a regular layout);
+- ``off``: the per-field form, as in versions without the bulk form; for
+  diagnosis and comparisons;
+- ``scalar``: the bulk form with the scalar row kernel, the conversion
+  field by field applied to a whole line, for all LIST bodies with a
+  loop; it is also the reference for testing the vector tiers;
+- ``avx2``, ``avx512``: the bulk form with this vector tier (x86-64
+  only), if it is built and supported by the processor.
 
 If the requested tier is not available, or the value is not one of
 these, the automatic choice is used and a ``RuntimeWarning`` is issued
-when the module is loaded. For example, to parse with the scalar row
-kernel under Linux or macOS:
+when the module is loaded. For example, to parse in the per-field form
+under Linux or macOS:
 
 .. code:: bash
 
-   ENDF_PARSERPY_CPP_BULK_BODIES=scalar python my_script.py
+   ENDF_PARSERPY_CPP_BULK_BODIES=off python my_script.py
+
+In the current version, no vector tier is built, so that the bulk form
+uses the scalar row kernel.
 
 The function ``_bulk_body_info`` of each C++ module returns the
 selected tier, the value of the variable, the tiers that are built and
-supported, and the detected processor features. It is meant for
-diagnostics and tests; its name and content may change between versions:
+supported, the detected processor features, whether all LIST bodies
+with a loop are read in the bulk form (``bulk_all_list_bodies``) and the
+numbers of LIST bodies read in the bulk form (``bulk_list_bodies``:
+delivered by strided copies, delivered by the code of the per-field
+form, those whose conversion stopped at a field the row kernel does
+not convert, and the bodies of several lines read as one block of memory
+and line by line). It is meant for diagnostics and tests; its name and content
+may change between versions:
 
 .. code:: Python
 

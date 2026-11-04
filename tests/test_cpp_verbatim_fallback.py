@@ -55,20 +55,13 @@ def _make_tape():
     return "".join(l + "\n" for l in lines), lines
 
 
-def _content(section):
-    # EndfParserCpp returns the lines of a verbatim section with a
-    # trailing newline (see test_cpp_line_views.py), EndfParserPy without
-    # one (pre-existing difference, not changed here)
-    return [line.rstrip("\n") for line in section]
-
-
 @pytest.mark.parametrize("ParserCls", [EndfParserCpp, EndfParserPy])
 def test_sections_without_recipe_contain_all_lines(ParserCls):
     tape, lines = _make_tape()
     result = ParserCls().parse(tape)
-    assert _content(result[1][480]) == [lines[1]]
-    assert _content(result[39][1]) == [lines[4], lines[5]]
-    assert _content(result[39][2]) == [lines[7]]
+    assert result[1][480] == [lines[1] + "\n"]
+    assert result[39][1] == [lines[4] + "\n", lines[5] + "\n"]
+    assert result[39][2] == [lines[7] + "\n"]
 
 
 def test_both_parsers_agree_on_sections_without_recipe():
@@ -76,7 +69,7 @@ def test_both_parsers_agree_on_sections_without_recipe():
     cpp_result = EndfParserCpp().parse(tape)
     py_result = EndfParserPy().parse(tape)
     for mf, mt in ((1, 480), (39, 1), (39, 2)):
-        assert _content(cpp_result[mf][mt]) == _content(py_result[mf][mt])
+        assert cpp_result[mf][mt] == py_result[mf][mt]
 
 
 @pytest.mark.parametrize("ParserCls", [EndfParserCpp, EndfParserPy])

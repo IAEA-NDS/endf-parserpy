@@ -27,6 +27,8 @@
 #include <limits>     // for std::numeric_limits
 #include <memory>     // for std::unique_ptr
 #include <typeinfo>   // for typeid
+#include <exception>  // for std::exception_ptr
+#include <atomic>     // for std::atomic
 
 // When Python merges the various
 // C++ files, there is no need

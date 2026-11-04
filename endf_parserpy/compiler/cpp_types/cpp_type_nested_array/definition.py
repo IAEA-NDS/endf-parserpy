@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/26
+# Last modified:   2026/11/05
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -165,6 +165,24 @@ class NestedArray<T, 1> {
       }
     }
 
+    // the n values src[k*stride] (k = 0 .. n-1) of the body of a LIST
+    // record (see CppListBody) set as set(first + k, ...) sets them, if
+    // they are appended (the list is empty or ends before first);
+    // otherwise false is returned and nothing is changed
+    bool set_strided(int first, const double* src, long long stride, long long n) {
+      if (n <= 0) return true;
+      if (items.empty()) {
+        start = first;
+      } else if (first != start + (int)items.size()) {
+        return false;
+      }
+      std::size_t old = items.size();
+      items.resize(old + (std::size_t)n);
+      T* dst = items.data() + old;
+      for (long long k = 0; k < n; k++) dst[k] = T(src[k * stride]);
+      return true;
+    }
+
     const std::vector<T>& values() const {
       return items;
     }
@@ -318,26 +336,38 @@ class NestedArray {
     }
 
     // turn the array into a regular block whose indices range from
-    // limits[2*d] to limits[2*d+1] (both inclusive) in dimension d
+    // limits[2*d] to limits[2*d+1] (both inclusive) in dimension d; the
+    // array is not changed if an exception is raised
     template<typename... L>
     void make_block(L... limits) {
       static_assert(sizeof...(L) == 2 * N, "two limits per index expected");
       const int lims[2 * N] = {static_cast<int>(limits)...};
+      int new_dims[N];
       std::size_t size = 1;
       bool same = is_block;
       for (int d = 0; d < N; d++) {
-        int dim = std::max(0, lims[2*d+1] - lims[2*d] + 1);
-        same = same && first[d] == lims[2*d] && dims[d] == dim;
-        first[d] = lims[2*d];
-        dims[d] = dim;
-        size *= dim;
+        new_dims[d] = std::max(0, lims[2*d+1] - lims[2*d] + 1);
+        same = same && first[d] == lims[2*d] && dims[d] == new_dims[d];
+        size *= new_dims[d];
       }
       if (same) return;
       if (is_block || ! items.empty()) {
         throw std::logic_error("regular block created again with a different shape");
       }
-      is_block = true;
       data.resize(size);
+      for (int d = 0; d < N; d++) {
+        first[d] = lims[2*d];
+        dims[d] = new_dims[d];
+      }
+      is_block = true;
+    }
+
+    // the distance of the elements of a block whose index d differs by
+    // one (for the strided copies of CppListBody)
+    long long block_stride(int d) const {
+      long long stride = 1;
+      for (int k = d + 1; k < N; k++) stride *= dims[k];
+      return stride;
     }
 
     template<typename... I, typename std::enable_if<sizeof...(I) == N - 1, int>::type = 0>

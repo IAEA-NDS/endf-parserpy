@@ -2690,11 +2690,13 @@ inline void cpp_read_pairs(
 }
 
 
-// cpp_read_pairs for float values in the row form (see CppFloatRow)
-// with the row kernel `kernel`; the same lines are consumed and the same
-// values and errors result.
+// cpp_read_pairs for float values with the row kernel `kernel` (the
+// bulk form of the body of a TAB1 record): one kernel call per line
+// converts its fields, and a field the kernel leaves is read with
+// cpp_read_field; the same lines are consumed in the same order, and the
+// same values and errors result. Not for preserve_value_strings.
 template<typename T>
-inline void cpp_read_pairs_rows(
+inline void cpp_read_pairs_bulk(
   std::istream& cont, const int n, std::vector<T>& a, std::vector<T>& b,
   int mat, int mf, int mt, ParsingOptions &parse_opts, cpp_row_kernel_fn kernel
 ) {
@@ -2702,18 +2704,24 @@ inline void cpp_read_pairs_rows(
   if (numel <= 0) return;
   a.reserve(cpp_reserve_size(n));
   b.reserve(cpp_reserve_size(n));
-  int j = 0;
+  const unsigned flags = parse_opts.accept_d_exponent ? CPP_ROW_ACCEPT_D_EXPONENT : 0u;
   CppLine line(parse_opts);
-  CppFloatRow row(kernel, parse_opts);
-  cpp_read_line(line, cont, mat, mf, mt, parse_opts);
-  row.convert(line.data(), numel);
-  for (int i=0; i < numel; i += 2) {
-    a.push_back(cpp_read_row_field<T>(row, line.data(), j++, parse_opts));
-    b.push_back(cpp_read_row_field<T>(row, line.data(), j++, parse_opts));
-    if (j > 5 && i+2 < numel) {
-      cpp_read_line(line, cont, mat, mf, mt, parse_opts);
-      row.convert(line.data(), numel - i - 2);
-      j = 0;
+  double v[6];
+  for (int i=0; i < numel; i += 6) {
+    cpp_read_line(line, cont, mat, mf, mt, parse_opts);
+    const int m = numel - i < 6 ? numel - i : 6;
+    const unsigned want = (1u << m) - 1u;
+    const unsigned done = kernel(line.data(), want, flags, v);
+    if (done == want) {
+      for (int j=0; j < m; j += 2) {
+        a.push_back(T(v[j]));
+        b.push_back(T(v[j+1]));
+      }
+    } else {
+      for (int j=0; j < m; j += 2) {
+        a.push_back(((done >> j) & 1u) ? T(v[j]) : cpp_read_field<T>(line.data(), j, parse_opts));
+        b.push_back(((done >> (j+1)) & 1u) ? T(v[j+1]) : cpp_read_field<T>(line.data(), j+1, parse_opts));
+      }
     }
   }
 }
@@ -2830,10 +2838,10 @@ inline Tab1Body read_tab1_body(
   cpp_read_pairs<int>(cont, nr, tab_body.NBT, tab_body.INT, mat, mf, mt, parse_opts);
   // the form of the reading of the float values is chosen once per record
   const cpp_row_kernel_fn row_kernel = cpp_float_row_kernel();
-  if (row_kernel == nullptr) {
+  if (row_kernel == nullptr || parse_opts.preserve_value_strings) {
     cpp_read_pairs<DOUBLE_TYPE>(cont, np, tab_body.X, tab_body.Y, mat, mf, mt, parse_opts);
   } else {
-    cpp_read_pairs_rows<DOUBLE_TYPE>(
+    cpp_read_pairs_bulk<DOUBLE_TYPE>(
       cont, np, tab_body.X, tab_body.Y, mat, mf, mt, parse_opts, row_kernel
     );
   }

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/02
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -528,7 +528,10 @@ def _register_unused_arrays(parsetree, vardict):
 def generate_master_writefun(name, recipefuns):
     code = ""
     body = ""
-    body += cpp.statement("int mat")
+    # mat is set after each section is written (also used for the FEND
+    # records); initialized so that a dictionary without sections cannot
+    # lead to the use of an indeterminate value
+    body += cpp.statement("int mat = 0")
     body += cpp.statement("int mf")
     body += cpp.statement("int mt")
     body += cpp.statement("int last_mat = -9999")
@@ -627,12 +630,21 @@ def generate_master_writefun(name, recipefuns):
             conditions.append(curcond)
 
     # if no writing function registered for an MF/MT function,
-    # the section must be given as a py::list of strings
+    # the section must be given as a py::list of strings. As for the
+    # sections with a writing function, the MAT number of the section
+    # (here from the control columns of its lines) is kept for the FEND
+    # records, and the section counts as encountered; previously mat
+    # remained at its value from the preceding sections, so that a
+    # dictionary whose first sections have no writing function gave
+    # FEND records with an arbitrary MAT number, and the FEND record
+    # between such a section and the next MF was missing
     default_code = write_section_verbatim(
         "cont",
         "py::cast<py::list>(endf_dict[py::cast(mf)][py::cast(mt)])",
         "write_opts",
     )
+    default_code += cpp.statement(f"mat = {get_mat_from_mfmt_section('mt_dict')}")
+    default_code += cpp.statement("section_encountered = true")
 
     body += cpp.indent_code(
         cpp.conditional_branches(conditions, statements, default=default_code),

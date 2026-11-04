@@ -1,0 +1,212 @@
+name: Benchmark bulk bodies
+
+# Parse timing of the float bodies of TAB1 and LIST records (see
+# tools/benchmark_bulk_bodies.py): the base ref and the pushed ref are
+# built into two virtual environments on every runner of the test
+# workflow and timed interleaved, with every row kernel tier the CPU of
+# the runner supports. Only run on demand or for pushes to bench/**
+# branches; this workflow is not part of testing or publishing.
+#
+# ENDF files: four ENDF/B-VIII.1 neutron files (Fe56, H1, U233, Pu238),
+# zip archives in the private repository IAEA-NDS/ENDF-PENDF-File, checked
+# out with a read-only deploy key whose private key is the Actions secret
+# ENDF_DATA_SSH_KEY. The list of archives is DATA_FILES in
+# tools/benchmark_bulk_bodies.py; the sparse checkout below must name the
+# same files. The script checks every archive (zip signature, not a Git
+# LFS pointer, exactly one ENDF file) and unzips it.
+#
+# TODO: add a thermal scattering file (e.g. H in H2O) here and in
+# DATA_FILES once the data repository has one.
+#
+# Without the secret (it is empty, e.g. on forks), the data checkout is
+# skipped: the job downloads the files from ENDF_BASE_URL if that
+# repository variable is set, and otherwise times the test data of the
+# repository; the job summary says which data were used.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "ref to compare with"
+        default: "dev"
+      rounds:
+        description: "number of interleaved rounds"
+        default: "11"
+  push:
+    branches: ["bench/**"]
+
+permissions:
+  contents: read
+
+env:
+  BASE_REF: ${{ inputs.base_ref || 'dev' }}
+  ROUNDS: ${{ inputs.rounds || '11' }}
+  # 'true' if the deploy key of the data repository is available
+  HAVE_DATA_KEY: ${{ secrets.ENDF_DATA_SSH_KEY != '' }}
+  # Optional alternative public source, used only without the deploy key:
+  # ENDF_FILES are downloaded from ENDF_BASE_URL/<file> (plain ENDF files).
+  # Empty by default (repository variable ENDF_BASE_URL). The IAEA download
+  # page https://nds.iaea.org/public/download-endf/ currently answers
+  # scripted downloads with a Cloudflare JavaScript challenge (HTTP 403),
+  # so it cannot be used from CI.
+  ENDF_BASE_URL: ${{ vars.ENDF_BASE_URL || '' }}
+  ENDF_FILES: "n-026_Fe_056.endf n-001_H_001.endf n-092_U_233.endf n-094_Pu_238.endf"
+
+jobs:
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-15-intel
+          - macos-latest
+
+    runs-on: ${{ matrix.runner }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: new
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_REF }}
+          path: base
+
+      # Git LFS is not used by the data repository today; with lfs: true
+      # the checkout also works once it is.
+      - name: Check out the ENDF files of the data repository
+        if: env.HAVE_DATA_KEY == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: IAEA-NDS/ENDF-PENDF-File
+          ssh-key: ${{ secrets.ENDF_DATA_SSH_KEY }}
+          persist-credentials: false
+          path: endf_data
+          lfs: true
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            ENDF-B-VIII.1/n/n-Fe56-2631.enf.zip
+            ENDF-B-VIII.1/n/n-H1-0125.enf.zip
+            ENDF-B-VIII.1/n/n-U233-9222.enf.zip
+            ENDF-B-VIII.1/n/n-Pu238-9434.enf.zip
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Every archive must start with the zip signature "PK" (a Git LFS
+      # pointer or anything else stops the job, naming the file) and hold
+      # exactly one ENDF file; written to endf_files/<name>.endf.
+      - name: Check and unzip the ENDF files
+        if: env.HAVE_DATA_KEY == 'true'
+        run: |
+          python new/tools/benchmark_bulk_bodies.py prepare \
+            --data-dir endf_data --out-dir endf_files
+          echo "ENDF files: ENDF/B-VIII.1 from IAEA-NDS/ENDF-PENDF-File ($(ls endf_files | tr '\n' ' '))" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Note the missing deploy key
+        if: env.HAVE_DATA_KEY != 'true'
+        run: |
+          if [ -n "$ENDF_BASE_URL" ]; then src="the files from ENDF_BASE_URL"; else src="the test data of the repository"; fi
+          msg="The secret ENDF_DATA_SSH_KEY is not set (e.g. on a fork): IAEA-NDS/ENDF-PENDF-File not checked out, timing $src instead."
+          echo "::notice::$msg"
+          echo "**Note:** $msg" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record CPU information
+        run: |
+          mkdir -p results
+          case "$RUNNER_OS" in
+            Linux)
+              lscpu | tee results/cpu.txt
+              grep -m1 '^flags' /proc/cpuinfo | tee -a results/cpu.txt ;;
+            macOS)
+              sysctl -a | grep -E '^(machdep\.cpu|hw\.optional|hw\.ncpu)' | tee results/cpu.txt ;;
+            Windows)
+              powershell -Command "Get-CimInstance Win32_Processor | Format-List Name,Manufacturer,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed" | tee results/cpu.txt ;;
+          esac
+
+      - name: Build the base ref and the pushed ref into two environments
+        env:
+          INSTALL_ENDF_PARSERPY_CPP: "yes"
+        run: |
+          for v in base new; do
+            python -m venv "venv_$v"
+            if [ "$RUNNER_OS" = "Windows" ]; then py="venv_$v/Scripts/python"; else py="venv_$v/bin/python"; fi
+            "$py" -m pip install --upgrade pip
+            "$py" -m pip install numpy
+            "$py" -m pip install "./$v"
+          done
+
+      # Only the files of the public alternative are cached, never those
+      # of the private data repository.
+      - name: Cache the downloaded ENDF files
+        id: cache
+        if: env.HAVE_DATA_KEY != 'true' && env.ENDF_BASE_URL != ''
+        uses: actions/cache@v4
+        with:
+          path: endf_files
+          key: endf-public-${{ hashFiles('new/.github/workflows/benchmark_bulk_bodies.yml') }}-${{ env.ENDF_BASE_URL }}
+
+      - name: Download the ENDF files
+        if: env.HAVE_DATA_KEY != 'true' && env.ENDF_BASE_URL != '' && steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p endf_files
+          for f in $ENDF_FILES; do
+            curl -fsSL --retry 3 -o "endf_files/$(basename $f)" "$ENDF_BASE_URL/$f" \
+              || { echo "download failed: $ENDF_BASE_URL/$f"; rm -f "endf_files/$(basename $f)"; }
+          done
+          ls -la endf_files
+
+      - name: Run the benchmark
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then sfx=Scripts/python; else sfx=bin/python; fi
+          files=$(ls endf_files/*.endf 2>/dev/null || true)
+          if [ -z "$files" ]; then
+            echo "**Note:** no ENDF files available, timing the test data of the repository." >> "$GITHUB_STEP_SUMMARY"
+            files="new/tests/testdata/n_2925_29-Cu-63.endf new/tests/testdata/tsl_Al.endf"
+          fi
+          "venv_new/$sfx" new/tools/benchmark_bulk_bodies.py run \
+            --base-python "venv_base/$sfx" --new-python "venv_new/$sfx" \
+            --files $files --rounds "$ROUNDS" --machine "${{ matrix.runner }}" \
+            --out "results/benchmark_${{ matrix.runner }}.json" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ matrix.runner }}
+          path: results
+
+  merge:
+    needs: benchmark
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: benchmark-*
+
+      - name: Merge the results
+        run: |
+          python tools/benchmark_bulk_bodies.py merge --out benchmark_all.json \
+            --summary "$GITHUB_STEP_SUMMARY" artifacts/*/benchmark_*.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-all
+          path: benchmark_all.json

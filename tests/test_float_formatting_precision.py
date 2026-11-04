@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/13
-# Last modified:   2026/11/02
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -100,7 +100,10 @@ def _written_xs_field(parser, value):
     ],
 )
 def test_carry_in_rounding(ParserCls, value, options, expected):
-    assert _written_xs_field(ParserCls(**options), value) == expected
+    assert (
+        _written_xs_field(ParserCls(**{"ignore_missing_tpid": True, **options}), value)
+        == expected
+    )
 
 
 @pytest.mark.parametrize("ParserCls", PARSER_CLASSES)
@@ -140,7 +143,10 @@ def test_digits_and_exponent_lengths(ParserCls, value, options, expected):
     # field can have; EndfParserCpp writes the values with decimal
     # exponents up to about 44 in magnitude in its fast path, the others
     # with the general procedure (std::snprintf)
-    assert _written_xs_field(ParserCls(**options), value) == expected
+    assert (
+        _written_xs_field(ParserCls(**{"ignore_missing_tpid": True, **options}), value)
+        == expected
+    )
 
 
 def _test_values():
@@ -164,8 +170,12 @@ TEST_VALUES = _test_values()
 @pytest.mark.parametrize("options", OPTION_COMBINATIONS, ids=_option_id)
 def test_python_and_cpp_writer_agree(options):
     section = _mf3_section(TEST_VALUES)
-    lines_py = _lines(EndfParserPy(**options).write(section))
-    lines_cpp = _lines(EndfParserCpp(**options).write(section))
+    lines_py = _lines(
+        EndfParserPy(**{"ignore_missing_tpid": True, **options}).write(section)
+    )
+    lines_cpp = _lines(
+        EndfParserCpp(**{"ignore_missing_tpid": True, **options}).write(section)
+    )
     assert len(lines_py) == len(lines_cpp)
     differing = [(a, b) for a, b in zip(lines_py, lines_cpp) if a != b]
     assert differing == []

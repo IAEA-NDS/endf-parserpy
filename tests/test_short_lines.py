@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/23
-# Last modified:   2026/10/24
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -33,6 +33,7 @@ def _lines(written):
 def _parser(ParserCls, **kwargs):
     if ParserCls is EndfParserPy:
         kwargs.setdefault("print_cache_info", False)
+    kwargs.setdefault("ignore_missing_tpid", True)
     return ParserCls(**kwargs)
 
 

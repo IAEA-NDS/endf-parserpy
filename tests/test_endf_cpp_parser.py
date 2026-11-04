@@ -25,6 +25,7 @@ def myEndfParserPy(
     preserve_value_strings,
 ):
     return EndfParserPy(
+        ignore_missing_tpid=True,
         ignore_zero_mismatch=ignore_zero_mismatch,
         ignore_number_mismatch=ignore_number_mismatch,
         ignore_varspec_mismatch=ignore_varspec_mismatch,
@@ -54,6 +55,7 @@ def myEndfParserCpp(
     preserve_value_strings,
 ):
     return EndfParserCpp(
+        ignore_missing_tpid=True,
         ignore_zero_mismatch=ignore_zero_mismatch,
         ignore_number_mismatch=ignore_number_mismatch,
         ignore_varspec_mismatch=ignore_varspec_mismatch,
@@ -175,7 +177,7 @@ def test_linenum_wraparound():
     linenum_width = 5
     linenum_max = 10**linenum_width - 1
     numels = linenum_max * 3
-    parser = EndfParserCpp()
+    parser = EndfParserCpp(ignore_missing_tpid=True)
     endf_dict = EndfDict()
     endf_dict["3/1"] = {}
     dd = endf_dict["3/1"]
@@ -209,7 +211,7 @@ def test_linenum_wraparound_verbatim():
     linenum_width = 5
     linenum_max = 10**linenum_width - 1
     numels = linenum_max * 3
-    parser = EndfParserCpp()
+    parser = EndfParserCpp(ignore_missing_tpid=True)
     endf_dict = EndfDict()
     endf_dict["3/1"] = {}
     dd = endf_dict["3/1"]

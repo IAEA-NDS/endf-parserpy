@@ -27,8 +27,8 @@ def mf3_section():
 
 
 def test_prefer_noexp_behavior_equivalence(mf3_section):
-    parser_py = EndfParserPy(prefer_noexp=True)
-    parser_cpp = EndfParserCpp(prefer_noexp=True)
+    parser_py = EndfParserPy(ignore_missing_tpid=True, prefer_noexp=True)
+    parser_cpp = EndfParserCpp(ignore_missing_tpid=True, prefer_noexp=True)
     endftext_py = parser_py.write(mf3_section)
     endftext_cpp = parser_cpp.write(mf3_section)
     assert endftext_py == endftext_cpp
@@ -42,8 +42,8 @@ def test_scientific_rounding_behavior_equivalence(mf3_section):
     mf3_section[3][1]["AWR"] = 1.0000005e1
     mf3_section[3][1]["QM"] = 2.0000015e1
     mf3_section[3][1]["QI"] = -3.000000025
-    parser_py = EndfParserPy()
-    parser_cpp = EndfParserCpp()
+    parser_py = EndfParserPy(ignore_missing_tpid=True)
+    parser_cpp = EndfParserCpp(ignore_missing_tpid=True)
     endftext_py = parser_py.write(mf3_section)
     endftext_cpp = parser_cpp.write(mf3_section)
     assert endftext_py == endftext_cpp
@@ -57,8 +57,8 @@ def test_fixdec_rounding_behavior_equivalence(mf3_section):
     mf3_section[3][1]["AWR"] = 1.000000005
     mf3_section[3][1]["QM"] = 2.000000015
     mf3_section[3][1]["QI"] = -3.000000025
-    parser_py = EndfParserPy(prefer_noexp=True)
-    parser_cpp = EndfParserCpp(prefer_noexp=True)
+    parser_py = EndfParserPy(ignore_missing_tpid=True, prefer_noexp=True)
+    parser_cpp = EndfParserCpp(ignore_missing_tpid=True, prefer_noexp=True)
     endftext_py = parser_py.write(mf3_section)
     endftext_cpp = parser_cpp.write(mf3_section)
     assert endftext_py == endftext_cpp
@@ -86,8 +86,8 @@ def test_all_writing_options_equivalence(mf3_section):
     numbers2 = tuple(1 + n for n in numbers1)
     numbers = numbers1 + numbers2
     for params in generate_params():
-        parser_py = EndfParserPy(**params)
-        parser_cpp = EndfParserCpp(**params)
+        parser_py = EndfParserPy(**{"ignore_missing_tpid": True, **params})
+        parser_cpp = EndfParserCpp(**{"ignore_missing_tpid": True, **params})
         mf3_section[3][1]["INT"] = [2]
         mf3_section[3][1]["NBT"] = [len(numbers)]
         mf3_section[3][1]["xstable"]["xs"] = numbers

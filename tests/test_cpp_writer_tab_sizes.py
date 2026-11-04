@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/22
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -46,7 +46,7 @@ def _mf4_section_with_tab2(NBT, INT):
     # MF4/MT2 of Cu-63: the interpolation of the Legendre coefficients over
     # the incident energies is given by the TAB2 record `leg_int`
     path = str(TESTDATA / "n_2925_29-Cu-63.endf")
-    parser = EndfParserCpp(array_type="list")
+    parser = EndfParserCpp(ignore_missing_tpid=True, array_type="list")
     section = parser.parsefile(path, include=[(4, 2)])[4][2]
     section["leg_int"] = {"NBT": list(NBT), "INT": list(INT)}
     return {4: {2: section}}
@@ -65,9 +65,11 @@ CASES = {
 @pytest.mark.parametrize("case", list(CASES))
 def test_arrays_of_different_lengths_rejected(case):
     with pytest.raises(RuntimeError, match="same number of elements"):
-        EndfParserCpp(array_type="list").write(CASES[case])
+        EndfParserCpp(ignore_missing_tpid=True, array_type="list").write(CASES[case])
     with pytest.raises(Exception):
-        EndfParserPy(print_cache_info=False, array_type="list").write(CASES[case])
+        EndfParserPy(
+            ignore_missing_tpid=True, print_cache_info=False, array_type="list"
+        ).write(CASES[case])
 
 
 @pytest.mark.parametrize(
@@ -79,6 +81,10 @@ def test_arrays_of_different_lengths_rejected(case):
     ids=["TAB1", "TAB2"],
 )
 def test_arrays_of_same_length_accepted(endf_dict):
-    written = EndfParserCpp(array_type="list").write(endf_dict)
-    expected = EndfParserPy(print_cache_info=False, array_type="list").write(endf_dict)
+    written = EndfParserCpp(ignore_missing_tpid=True, array_type="list").write(
+        endf_dict
+    )
+    expected = EndfParserPy(
+        ignore_missing_tpid=True, print_cache_info=False, array_type="list"
+    ).write(endf_dict)
     assert list(written) == list(expected)

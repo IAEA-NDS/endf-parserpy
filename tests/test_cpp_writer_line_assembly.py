@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/25
-# Last modified:   2026/10/25
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -73,8 +73,12 @@ SIZES = [0, 1, 2, 3, 5, 6, 7, 12, 13]
 @pytest.mark.parametrize("nc", [1, 5, 6, 7, 12, 13, 600])
 def test_list_record_lines_agree_with_python_writer(nc, include_linenum):
     tape = _tape([_mf1_mt452_list(nc)])
-    lines_py = EndfParserPy(include_linenum=include_linenum).write(tape)
-    lines_cpp = EndfParserCpp(include_linenum=include_linenum).write(tape)
+    lines_py = EndfParserPy(
+        ignore_missing_tpid=True, include_linenum=include_linenum
+    ).write(tape)
+    lines_cpp = EndfParserCpp(
+        ignore_missing_tpid=True, include_linenum=include_linenum
+    ).write(tape)
     assert lines_cpp == lines_py
 
 
@@ -87,15 +91,19 @@ def test_tab1_record_lines_agree_with_python_writer(np, nr, include_linenum):
     nbt = [np * (i + 1) // nr for i in range(nr)]
     intcode = [1 + i % 5 for i in range(nr)]
     tape = _tape([_mf3_tab1(np, nbt, intcode), _mf3_tab1(np, nbt, intcode, mt=2)])
-    lines_py = EndfParserPy(include_linenum=include_linenum).write(tape)
-    lines_cpp = EndfParserCpp(include_linenum=include_linenum).write(tape)
+    lines_py = EndfParserPy(
+        ignore_missing_tpid=True, include_linenum=include_linenum
+    ).write(tape)
+    lines_cpp = EndfParserCpp(
+        ignore_missing_tpid=True, include_linenum=include_linenum
+    ).write(tape)
     assert lines_cpp == lines_py
 
 
 def test_empty_tab1_record():
     tape = _tape([_mf3_tab1(0)])
-    lines_py = EndfParserPy().write(tape)
-    lines_cpp = EndfParserCpp().write(tape)
+    lines_py = EndfParserPy(ignore_missing_tpid=True).write(tape)
+    lines_cpp = EndfParserCpp(ignore_missing_tpid=True).write(tape)
     assert lines_cpp == lines_py
 
 
@@ -103,14 +111,16 @@ def test_line_number_wraps_in_list_body():
     # 100002 body lines: the line number wraps from 99999 to 1
     nc = 6 * 100002
     tape = _tape([_mf1_mt452_list(nc)])
-    lines = EndfParserCpp().write(tape)
+    lines = EndfParserCpp(ignore_missing_tpid=True).write(tape)
     section = lines[:-4]  # without SEND, FEND, MEND, TEND
     numbers = [int(line[75:80]) for line in section]
     assert numbers == [(i % 99999) + 1 for i in range(len(section))]
     assert len(section) == 100004
     assert [line[75:80] for line in lines[-4:]] == ["99999", "    0", "    0", "    0"]
     assert all(len(line) == 80 for line in lines)
-    lines_nonum = EndfParserCpp(include_linenum=False).write(tape)
+    lines_nonum = EndfParserCpp(ignore_missing_tpid=True, include_linenum=False).write(
+        tape
+    )
     assert lines_nonum == [line[:75] for line in lines]
 
 
@@ -118,13 +128,17 @@ def test_line_number_wraps_in_list_body():
 def test_several_sections_and_verbatim_sections(include_linenum):
     sections = [_mf1_mt452_list(8), _mf3_tab1(10), _mf3_tab1(4, mt=102)]
     tape = _tape(sections)
-    parser = EndfParserCpp(include_linenum=include_linenum)
+    parser = EndfParserCpp(ignore_missing_tpid=True, include_linenum=include_linenum)
     lines = parser.write(tape)
     # the MF3/MT2 section as a list of lines (written verbatim)
-    verbatim = EndfParserCpp().write(_tape([_mf3_tab1(7, mt=2)]))
+    verbatim = EndfParserCpp(ignore_missing_tpid=True).write(
+        _tape([_mf3_tab1(7, mt=2)])
+    )
     tape[3][2] = [line for line in verbatim if line[72:75] == "  2"]
     lines_verbatim = parser.write(tape)
-    lines_py = EndfParserPy(include_linenum=include_linenum).write(tape)
+    lines_py = EndfParserPy(
+        ignore_missing_tpid=True, include_linenum=include_linenum
+    ).write(tape)
     assert lines_verbatim == lines_py
     assert len(lines_verbatim) == len(lines) + len(tape[3][2]) + 1
 
@@ -133,7 +147,7 @@ def test_several_sections_and_verbatim_sections(include_linenum):
 def test_writefile_bytes_equal_write_output(tmp_path, include_linenum):
     sections = [_mf1_mt452_list(6 * 3000 + 1), _mf3_tab1(3 * 40000 + 2)]
     tape = _tape(sections)
-    parser = EndfParserCpp(include_linenum=include_linenum)
+    parser = EndfParserCpp(ignore_missing_tpid=True, include_linenum=include_linenum)
     lines = parser.write(tape)
     filename = tmp_path / "out.endf"
     parser.writefile(filename, tape)
@@ -148,7 +162,7 @@ def test_writefile_keeps_lines_written_before_an_error(tmp_path):
     bad = _mf3_tab1(5, mt=2)
     bad["xstable"]["xs"] = bad["xstable"]["xs"][:4]
     tape = _tape([good, bad])
-    parser = EndfParserCpp()
+    parser = EndfParserCpp(ignore_missing_tpid=True)
     filename = tmp_path / "out.endf"
     with pytest.raises(Exception):
         parser.writefile(filename, tape)
@@ -157,5 +171,7 @@ def test_writefile_keeps_lines_written_before_an_error(tmp_path):
     # lines of the first section with its SEND record, and the HEAD record
     # and the first line of the TAB1 record of the second section, written
     # before the inconsistent table is detected
-    lines_bad = EndfParserCpp().write(_tape([_mf3_tab1(5, mt=2)]))[:2]
+    lines_bad = EndfParserCpp(ignore_missing_tpid=True).write(
+        _tape([_mf3_tab1(5, mt=2)])
+    )[:2]
     assert content == "\n".join(expected[:-3] + lines_bad) + "\n"

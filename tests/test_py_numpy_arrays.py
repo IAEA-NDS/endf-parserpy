@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/21
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -52,7 +52,9 @@ def _exact(obj):
 
 
 def _py_parser(**kwargs):
-    return EndfParserPy(print_cache_info=False, **kwargs)
+    return EndfParserPy(
+        print_cache_info=False, **{"ignore_missing_tpid": True, **kwargs}
+    )
 
 
 def _ni(LS, NE, F):
@@ -111,7 +113,7 @@ def test_same_result_as_cpp_parser(filename, value_strings):
     path = str(TESTDATA / filename)
     opts = dict(array_type="numpy", preserve_value_strings=value_strings)
     py_parser = _py_parser(**opts)
-    cpp_parser = EndfParserCpp(**opts)
+    cpp_parser = EndfParserCpp(**{"ignore_missing_tpid": True, **opts})
     py_dict = py_parser.parsefile(path)
     cpp_dict = cpp_parser.parsefile(path)
     assert _exact(py_dict) == _exact(cpp_dict)
@@ -121,7 +123,7 @@ def test_same_result_as_cpp_parser(filename, value_strings):
 def test_matrix_form_follows_definition(mf33_text):
     opts = dict(array_type="numpy", ignore_missing_tpid=True)
     py_dict = _py_parser(**opts).parse(mf33_text)
-    cpp_dict = EndfParserCpp(**opts).parse(mf33_text)
+    cpp_dict = EndfParserCpp(**{"ignore_missing_tpid": True, **opts}).parse(mf33_text)
     assert _exact(py_dict) == _exact(cpp_dict)
     ni = py_dict[33][102]["subsection"][0]["ni_subsection"]
     for (orig, triangular), parsed in zip(NI_SUBSECTIONS, ni):
@@ -162,7 +164,7 @@ def test_kind_follows_branch(LNU, NNF):
     text = _mt455(LNU, NNF)
     opts = dict(array_type="numpy", ignore_missing_tpid=True)
     py_dict = _py_parser(**opts).parse(text)
-    cpp_dict = EndfParserCpp(**opts).parse(text)
+    cpp_dict = EndfParserCpp(**{"ignore_missing_tpid": True, **opts}).parse(text)
     assert _exact(py_dict) == _exact(cpp_dict)
     section = py_dict[1][455]
     if LNU == 1:
@@ -196,7 +198,9 @@ def test_empty_arrays(mf4_text_with_empty_arrays, value_strings):
         preserve_value_strings=value_strings,
     )
     py_dict = _py_parser(**opts).parse(mf4_text_with_empty_arrays)
-    cpp_dict = EndfParserCpp(**opts).parse(mf4_text_with_empty_arrays)
+    cpp_dict = EndfParserCpp(**{"ignore_missing_tpid": True, **opts}).parse(
+        mf4_text_with_empty_arrays
+    )
     assert _exact(py_dict) == _exact(cpp_dict)
     al = py_dict[4][2]["al"]
     assert len(al) == len(py_dict[4][2]["NL"])
@@ -214,7 +218,9 @@ def test_custom_recipe():
     parser = _py_parser(array_type="numpy", recipes={3: recipe}, cache_dir=False)
     path = str(TESTDATA / "n_2925_29-Cu-63.endf")
     py_dict = parser.parsefile(path, include=[(3, 1)])
-    cpp_dict = EndfParserCpp(array_type="numpy").parsefile(path, include=[(3, 1)])
+    cpp_dict = EndfParserCpp(ignore_missing_tpid=True, array_type="numpy").parsefile(
+        path, include=[(3, 1)]
+    )
     assert _exact(py_dict[3][1]) == _exact(cpp_dict[3][1])
 
 
@@ -223,7 +229,7 @@ def test_parser_does_not_import_compiler():
     code = (
         "import sys\n"
         "from endf_parserpy import EndfParserPy\n"
-        "p = EndfParserPy(array_type='numpy', print_cache_info=False)\n"
+        "p = EndfParserPy(ignore_missing_tpid=True, array_type='numpy', print_cache_info=False)\n"
         f"p.parsefile({str(TESTDATA / 'tsl_Al.endf')!r})\n"
         "mods = [m for m in sys.modules if m.startswith('endf_parserpy.compiler')]\n"
         "assert mods == [], mods\n"

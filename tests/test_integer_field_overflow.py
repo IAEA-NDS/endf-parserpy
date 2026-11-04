@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/22
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -57,13 +57,17 @@ def test_python_writer_rejects_wide_integers(kwargs):
 def test_mat_number_too_wide(ParserCls, mat):
     kwargs = {"print_cache_info": False} if ParserCls is EndfParserPy else {}
     with pytest.raises(Exception, match="does not fit"):
-        ParserCls(**kwargs).write(_mf3_section(MAT=mat))
+        ParserCls(**{"ignore_missing_tpid": True, **kwargs}).write(
+            _mf3_section(MAT=mat)
+        )
 
 
 @pytest.mark.parametrize("ParserCls", [EndfParserCpp, EndfParserPy])
 def test_largest_integers_written(ParserCls):
     kwargs = {"print_cache_info": False} if ParserCls is EndfParserPy else {}
-    lines = ParserCls(**kwargs).write(_mf3_section(MAT=9999, LR=-(10**9)))
+    lines = ParserCls(**{"ignore_missing_tpid": True, **kwargs}).write(
+        _mf3_section(MAT=9999, LR=-(10**9))
+    )
     lines = lines.splitlines() if isinstance(lines, str) else list(lines)
     assert lines[1][33:44] == str(-(10**9)).rjust(11)
     assert lines[1][66:70] == "9999"

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/20
-# Last modified:   2026/10/20
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -109,8 +109,12 @@ def test_cpp_writer_agrees_with_python_writer(options):
     else:
         values = TEST_VALUES
     section = _mf3_section(values)
-    lines_py = _lines(EndfParserPy(**options).write(section))
-    lines_cpp = _lines(EndfParserCpp(**options).write(section))
+    lines_py = _lines(
+        EndfParserPy(**{"ignore_missing_tpid": True, **options}).write(section)
+    )
+    lines_cpp = _lines(
+        EndfParserCpp(**{"ignore_missing_tpid": True, **options}).write(section)
+    )
     assert len(lines_py) == len(lines_cpp)
     differing = [(a, b) for a, b in zip(lines_py, lines_cpp) if a != b]
     assert differing == []

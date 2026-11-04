@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/20
-# Last modified:   2026/10/20
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -79,8 +79,12 @@ def _small_values():
 @pytest.mark.parametrize("options", OPTION_COMBINATIONS, ids=_option_id)
 def test_small_numbers_written_by_both_parsers(options):
     section = _mf3_section(_small_values())
-    lines_py = _lines(EndfParserPy(**options).write(section))
-    lines_cpp = _lines(EndfParserCpp(**options).write(section))
+    lines_py = _lines(
+        EndfParserPy(**{"ignore_missing_tpid": True, **options}).write(section)
+    )
+    lines_cpp = _lines(
+        EndfParserCpp(**{"ignore_missing_tpid": True, **options}).write(section)
+    )
     assert lines_cpp == lines_py
 
 

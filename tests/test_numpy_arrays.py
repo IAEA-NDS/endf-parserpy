@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/20
-# Last modified:   2026/10/21
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -46,6 +46,7 @@ def parser_cls(request):
 def _parser(ParserCls, **kwargs):
     if ParserCls is EndfParserPy:
         kwargs["print_cache_info"] = False
+    kwargs.setdefault("ignore_missing_tpid", True)
     return ParserCls(**kwargs)
 
 
@@ -160,7 +161,7 @@ def _mf33_section():
 
 @pytest.fixture(scope="module")
 def mf33_text():
-    parser = EndfParserCpp(array_type="list")
+    parser = EndfParserCpp(ignore_missing_tpid=True, array_type="list")
     return "\n".join(parser.write({33: {102: _mf33_section()}}))
 
 
@@ -325,7 +326,7 @@ def test_writing_out_of_range_integers_raises(dtype):
     # EndfParserCpp only: EndfParserPy writes integers of any size
     # (a field wider than 11 characters), as for Python integers
     path = str(TESTDATA / "n_2925_29-Cu-63.endf")
-    parser = EndfParserCpp(array_type="numpy")
+    parser = EndfParserCpp(ignore_missing_tpid=True, array_type="numpy")
     big = np.iinfo(dtype).max
     endf_dict = parser.parsefile(path, include=(3, 4))
     xstable = endf_dict[3][1]["xstable"]
@@ -368,7 +369,10 @@ def test_preserve_value_strings(parser_cls):
 @pytest.mark.parametrize("select", ["cpp", "python", "fastest"])
 def test_factory(select):
     parser = EndfParserFactory.create(
-        select=select, array_type="numpy", print_cache_info=False
+        ignore_missing_tpid=True,
+        select=select,
+        array_type="numpy",
+        print_cache_info=False,
     )
     expected = EndfParserPy if select == "python" else EndfParserCpp
     assert isinstance(parser, expected)
@@ -380,7 +384,10 @@ def test_factory(select):
 
 def test_factory_require_compat():
     parser = EndfParserFactory.create(
-        select="fastest", require_compat=True, array_type="numpy"
+        ignore_missing_tpid=True,
+        select="fastest",
+        require_compat=True,
+        array_type="numpy",
     )
     assert isinstance(parser, EndfParserCpp)
 
@@ -392,7 +399,10 @@ def test_factory_fastest_falls_back_on_python_parser(monkeypatch):
     monkeypatch.setattr(EndfParserFactory, "get_cpp_parser", staticmethod(unavailable))
     with pytest.warns(UserWarning, match="C\\+\\+ parser not available"):
         parser = EndfParserFactory.create(
-            select="fastest", array_type="numpy", print_cache_info=False
+            ignore_missing_tpid=True,
+            select="fastest",
+            array_type="numpy",
+            print_cache_info=False,
         )
     assert isinstance(parser, EndfParserPy)
     assert parser.parse_opts["array_type"] == "numpy"

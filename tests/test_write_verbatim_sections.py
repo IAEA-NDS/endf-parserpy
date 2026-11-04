@@ -77,7 +77,9 @@ def test_verbatim_only_dict_writes_correct_framing(ParserCls):
         1: {480: [l + "\n" for l in MF1_LINES]},
         39: {1: [l + "\n" for l in MF39_LINES]},
     }
-    out = ParserCls().write(endf_dict)
+    # the dictionary has no TPID section, which writing a full tape
+    # only accepts with ignore_missing_tpid=True
+    out = ParserCls(ignore_missing_tpid=True).write(endf_dict)
     ctrls = [_ctrl(l) for l in out]
     # the content lines and the SEND records carry the MAT of the sections
     assert all(mat == MAT for mat, mf, mt in ctrls[:3])

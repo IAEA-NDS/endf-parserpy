@@ -18,5 +18,5 @@ def test_mt_injection():
     endf_dict["3/1/xstable/INT"] = [2]
     endf_dict["3/1/xstable/E"] = [1.0, 2.0, 3.0, 4.0, 5.0]
     endf_dict["3/1/xstable/xs"] = [10.0, 11.0, 12.0, 13.0, 14.0]
-    parser = EndfParserCpp()
+    parser = EndfParserCpp(ignore_missing_tpid=True)
     parser.write(endf_dict)

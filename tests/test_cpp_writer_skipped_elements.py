@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/22
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -40,7 +40,7 @@ def _lines(written):
 def _mf4_section(empty):
     # MF4/MT2 of Cu-63 with NL[i]=0 and no Legendre coefficients al[i] for
     # the incident energies i in `empty` ("last" for the last one)
-    parser = EndfParserCpp(array_type="dict")
+    parser = EndfParserCpp(ignore_missing_tpid=True, array_type="dict")
     path = str(TESTDATA / "n_2925_29-Cu-63.endf")
     section = parser.parsefile(path, include=[(4, 2)])[4][2]
     last = max(section["al"])
@@ -57,14 +57,22 @@ EMPTY_CASES = [(2,), (1,), ("last",), (2, "last"), (1, 2, "last")]
 @pytest.mark.parametrize("empty", EMPTY_CASES, ids=str)
 def test_mf4_dict_written_as_by_python_writer(empty):
     endf_dict = _mf4_section(empty)
-    written = _lines(EndfParserCpp(array_type="dict").write(endf_dict))
-    expected = _lines(EndfParserPy(print_cache_info=False).write(endf_dict))
+    written = _lines(
+        EndfParserCpp(ignore_missing_tpid=True, array_type="dict").write(endf_dict)
+    )
+    expected = _lines(
+        EndfParserPy(ignore_missing_tpid=True, print_cache_info=False).write(endf_dict)
+    )
     assert written == expected
 
 
 @pytest.mark.parametrize("empty", EMPTY_CASES, ids=str)
 def test_mf4_dict_roundtrip(empty):
-    text = _lines(EndfParserPy(print_cache_info=False).write(_mf4_section(empty)))
+    text = _lines(
+        EndfParserPy(ignore_missing_tpid=True, print_cache_info=False).write(
+            _mf4_section(empty)
+        )
+    )
     parser = EndfParserCpp(array_type="dict", ignore_missing_tpid=True)
     assert _lines(parser.write(parser.parse("\n".join(text)))) == text
 
@@ -74,6 +82,10 @@ def test_mf4_dict_roundtrip(empty):
 def test_mf4_roundtrip_list_modes(empty, mode):
     if mode == "numpy":
         pytest.importorskip("numpy")
-    text = _lines(EndfParserPy(print_cache_info=False).write(_mf4_section(empty)))
+    text = _lines(
+        EndfParserPy(ignore_missing_tpid=True, print_cache_info=False).write(
+            _mf4_section(empty)
+        )
+    )
     parser = EndfParserCpp(array_type=mode, ignore_missing_tpid=True)
     assert _lines(parser.write(parser.parse("\n".join(text)))) == text

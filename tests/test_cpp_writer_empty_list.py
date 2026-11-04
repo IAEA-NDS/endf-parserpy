@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/22
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -48,16 +48,22 @@ def _mt455_section():
 def test_written_as_by_python_writer():
     endf_dict = _mt455_section()
     expected = _lines(
-        EndfParserPy(print_cache_info=False, array_type="list").write(endf_dict)
+        EndfParserPy(
+            ignore_missing_tpid=True, print_cache_info=False, array_type="list"
+        ).write(endf_dict)
     )
-    written = _lines(EndfParserCpp(array_type="list").write(endf_dict))
+    written = _lines(
+        EndfParserCpp(ignore_missing_tpid=True, array_type="list").write(endf_dict)
+    )
     assert written == expected
 
 
 @pytest.mark.parametrize("mode", ["dict", "list"])
 def test_roundtrip(mode):
     text = _lines(
-        EndfParserPy(print_cache_info=False, array_type="list").write(_mt455_section())
+        EndfParserPy(
+            ignore_missing_tpid=True, print_cache_info=False, array_type="list"
+        ).write(_mt455_section())
     )
     parser = EndfParserCpp(array_type=mode, ignore_missing_tpid=True)
     assert _lines(parser.write(parser.parse("\n".join(text)))) == text

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/21
-# Last modified:   2026/10/21
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -34,7 +34,7 @@ PARSER_CLASSES = [EndfParserCpp, EndfParserPy]
 def _parser(ParserCls, **kwargs):
     if ParserCls is EndfParserPy:
         kwargs["print_cache_info"] = False
-    return ParserCls(ignore_missing_tpid=True, **kwargs)
+    return ParserCls(**{"ignore_missing_tpid": True, **kwargs})
 
 
 def _mf3_section(qi=0.0):
@@ -67,7 +67,11 @@ def _lines(written):
 def _text_with_blank_field():
     # MF3 section whose QI field (second field of the TAB1 header record)
     # is blank
-    lines = _lines(EndfParserPy(print_cache_info=False).write(_mf3_section()))
+    lines = _lines(
+        EndfParserPy(ignore_missing_tpid=True, print_cache_info=False).write(
+            _mf3_section()
+        )
+    )
     lines[1] = lines[1][:11] + " " * 11 + lines[1][22:]
     return "\n".join(lines), lines
 

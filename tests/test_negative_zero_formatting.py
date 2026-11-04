@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/13
-# Last modified:   2026/10/13
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -65,7 +65,7 @@ def _lines(written):
 @pytest.mark.parametrize("ParserCls", PARSER_CLASSES)
 @pytest.mark.parametrize("options", OPTION_COMBINATIONS, ids=_option_id)
 def test_negative_zero_written_as_zero(ParserCls, options):
-    parser = ParserCls(**options)
+    parser = ParserCls(**{"ignore_missing_tpid": True, **options})
     lines_negzero = _lines(parser.write(_mf3_section([-0.0, 1.0])))
     lines_zero = _lines(parser.write(_mf3_section([0.0, 1.0])))
     assert lines_negzero == lines_zero
@@ -73,7 +73,9 @@ def test_negative_zero_written_as_zero(ParserCls, options):
 
 def _section_text_with_negative_zero():
     # MF3 section in which the second cross section value is -0.000000+0
-    lines = _lines(EndfParserPy().write(_mf3_section([1.0, 0.5])))
+    lines = _lines(
+        EndfParserPy(ignore_missing_tpid=True).write(_mf3_section([1.0, 0.5]))
+    )
     data_line = lines[3]
     assert data_line[33:44] == " 5.000000-1"
     lines[3] = data_line[:33] + "-0.000000+0" + data_line[44:]

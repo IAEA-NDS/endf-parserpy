@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/20
-# Last modified:   2026/10/24
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -147,7 +147,9 @@ def _mf3_section(xs):
 def _mf3_text(fields):
     # MF3 section written by EndfParserPy, with the cross section fields
     # (second, fourth and sixth field of the data lines) replaced
-    written = EndfParserPy().write(_mf3_section([1.0] * len(fields)))
+    written = EndfParserPy(ignore_missing_tpid=True).write(
+        _mf3_section([1.0] * len(fields))
+    )
     lines = written.splitlines() if isinstance(written, str) else list(written)
     remaining = list(fields)
     for i in range(3, len(lines)):

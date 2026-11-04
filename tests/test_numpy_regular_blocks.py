@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/23
-# Last modified:   2026/10/23
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -44,7 +44,12 @@ def _parser(name, mode):
 
 
 def _text(endf_dict):
-    writer = EndfParserPy(array_type="dict", print_cache_info=False, check_arrays=False)
+    writer = EndfParserPy(
+        ignore_missing_tpid=True,
+        array_type="dict",
+        print_cache_info=False,
+        check_arrays=False,
+    )
     return "\n".join(writer.write(endf_dict))
 
 
@@ -80,7 +85,7 @@ def _parse(text, name, mode):
 @pytest.fixture(scope="module")
 def mf6_section():
     # MF6/MT16 of Cu-63: three subsections with LAW=1
-    parser = EndfParserCpp(array_type="dict")
+    parser = EndfParserCpp(ignore_missing_tpid=True, array_type="dict")
     path = str(TESTDATA / "n_2925_29-Cu-63.endf")
     return parser.parsefile(path, include=[(6, 16)])[6][16]
 

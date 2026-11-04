@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/23
-# Last modified:   2026/10/23
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -32,8 +32,10 @@ np = pytest.importorskip("numpy")
 def _parser(name, mode):
     kwargs = dict(endf_format="test", array_type=mode, ignore_missing_tpid=True)
     if name == "python":
-        return EndfParserPy(print_cache_info=False, **kwargs)
-    return EndfParserCpp(**kwargs)
+        return EndfParserPy(
+            print_cache_info=False, **{"ignore_missing_tpid": True, **kwargs}
+        )
+    return EndfParserCpp(**{"ignore_missing_tpid": True, **kwargs})
 
 
 def _value(*idcs):
@@ -75,6 +77,7 @@ def _mt2_dict():
 
 def _text(section):
     writer = EndfParserPy(
+        ignore_missing_tpid=True,
         endf_format="test",
         array_type="dict",
         print_cache_info=False,

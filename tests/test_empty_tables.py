@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/22
-# Last modified:   2026/10/22
+# Last modified:   2026/11/04
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -50,7 +50,9 @@ def _mf4_section_without_tab2_ranges():
     # MF4/MT2 of Cu-63 with an empty interpolation table (NR=0) of the TAB2
     # record `leg_int` over the incident energies
     path = str(TESTDATA / "n_2925_29-Cu-63.endf")
-    section = EndfParserCpp(array_type="list").parsefile(path, include=[(4, 2)])
+    section = EndfParserCpp(ignore_missing_tpid=True, array_type="list").parsefile(
+        path, include=[(4, 2)]
+    )
     section = section[4][2]
     section["leg_int"] = {"NBT": [], "INT": []}
     return {4: {2: section}}
@@ -67,14 +69,23 @@ CASES = {
 def test_same_output_of_both_writers(case):
     endf_dict = CASES[case]()
     expected = _lines(
-        EndfParserPy(print_cache_info=False, array_type="list").write(endf_dict)
+        EndfParserPy(
+            ignore_missing_tpid=True, print_cache_info=False, array_type="list"
+        ).write(endf_dict)
     )
-    assert _lines(EndfParserCpp(array_type="list").write(endf_dict)) == expected
+    assert (
+        _lines(
+            EndfParserCpp(ignore_missing_tpid=True, array_type="list").write(endf_dict)
+        )
+        == expected
+    )
     assert not any(line[:66].strip() == "" for line in expected)
 
 
 def test_tab1_without_points_is_header_line_only():
-    lines = _lines(EndfParserCpp().write(_mf3_section([], [], [], [])))
+    lines = _lines(
+        EndfParserCpp(ignore_missing_tpid=True).write(_mf3_section([], [], [], []))
+    )
     # HEAD record, TAB1 header with NR=NP=0, then directly the SEND record
     assert lines[1][44:66] == "0".rjust(11) + "0".rjust(11)
     assert lines[2][70:75] == " 3  0"
@@ -85,7 +96,9 @@ def test_tab1_without_points_is_header_line_only():
 def test_roundtrip(case, ParserCls):
     kwargs = {"print_cache_info": False} if ParserCls is EndfParserPy else {}
     text = _lines(
-        EndfParserPy(print_cache_info=False, array_type="list").write(CASES[case]())
+        EndfParserPy(
+            ignore_missing_tpid=True, print_cache_info=False, array_type="list"
+        ).write(CASES[case]())
     )
-    parser = ParserCls(ignore_missing_tpid=True, array_type="list", **kwargs)
+    parser = ParserCls(array_type="list", **{"ignore_missing_tpid": True, **kwargs})
     assert _lines(parser.write(parser.parse("\n".join(text)))) == text

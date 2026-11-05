@@ -31,7 +31,15 @@ errors at chosen places, in particular:
 - for the reading of a body as one byte range (CppListBody::fast_body):
   CRLF line endings, mixed line endings, a tab, a byte of 127 or more,
   lines of 80 columns, MAT/MF/MT in another form, the end of the data
-  within a body and a body of one line, which is not read as a range.
+  within a body and a body of one line, which is not read as a range;
+- for the bodies delivered by one strided copy per row (MT2, MT6-MT11:
+  triangular matrices, a value or a checked literal per row, rows of
+  rows, rows of the lower triangle, bounds that are expressions):
+  valid bodies of several sizes (also without rows and with empty rows)
+  and damaged triangular bodies: NPL larger or smaller by one, a
+  consistently smaller matrix, a cut line, a malformed field and a field
+  with a D exponent in the middle of a row, a deleted and a blank line,
+  the end of the data within the triangle, a failing check of a row.
 
 The results (values with their bits, types and array layouts) and the
 errors (type and message, which names the line) must be identical, and
@@ -145,6 +153,54 @@ def _mt4(ni, nk, values_of=None):
 def _mt5(n, npl=None):
     values = [7.0 + k for k in range(1, n + 1)]
     return _list((n, 0), values, 10, 5, npl) + _send(10, 5)
+
+
+def _row_values(mt, n, m=0):
+    # the values of the bodies of MT2 and MT6-MT11 (row loops), distinct
+    # per position
+    values = []
+
+    def add(count=1):
+        for _ in range(count):
+            values.append(1.0 + 0.25 * len(values))
+
+    if mt == 10:
+        add()
+    for k in range(1, n + 1):
+        if mt == 2:
+            add(n - k + 1)
+        elif mt == 6:
+            add(1 + n - k + 1)
+        elif mt == 7:
+            for j in range(k, n + 1):
+                add(n - j + 1)
+        elif mt == 8:
+            add(n - k + 1)
+            values.append(0.0)
+        elif mt == 9:
+            add((n - k + 1) * m)
+        elif mt == 10:
+            add(k)
+        elif mt == 11:
+            add(max(0, n + k - 2 * k + 1))
+    if mt == 10:
+        add()
+    return values
+
+
+# the valid bodies with row loops: MF10/MT, N, M
+ROW_SIZES = [(mt, n, 0) for mt in (2, 6, 7, 8, 10, 11) for n in (0, 1, 2, 3, 5, 8)]
+ROW_SIZES += [(9, n, m) for n, m in ((0, 2), (1, 3), (3, 0), (3, 2), (5, 3), (8, 2))]
+
+
+def _row_case(mt, n, m):
+    return f"rows_mt{mt}_n{n}_m{m}"
+
+
+def _rows(mt, n, m=0, npl=None, values=None):
+    if values is None:
+        values = _row_values(mt, n, m)
+    return _list((n, m), values, 10, mt, npl) + _send(10, mt)
 
 
 def _replace(lines, lineno, field, text):
@@ -265,6 +321,36 @@ def _cases():
     # a body of one line (not read as a range) and of two lines
     cases["range_one_line_body"] = _mt5(4)
     cases["range_two_line_body"] = _mt5(7)
+    # one strided copy per row: valid bodies
+    for mt, n, m in ROW_SIZES:
+        cases[_row_case(mt, n, m)] = _rows(mt, n, m)
+    # damaged triangular bodies (N=8: 36 values, 6 lines)
+    tri = _rows(2, 8)
+    values = _row_values(2, 8)
+    cases["tri_npl_large"] = _rows(2, 8, npl=37, values=values + [9.0])
+    cases["tri_npl_small"] = _rows(2, 8, npl=35, values=values[:35])
+    # a consistently smaller matrix (N=7 with its NPL), the lines of the
+    # matrix of N=8 after it
+    small = _rows(2, 7)
+    cases["tri_smaller_matrix"] = small[:-4] + tri[6:-4] + small[-4:]
+    cut = list(tri)
+    cut[3] = cut[3][:40]
+    cases["tri_cut_row_line"] = cut
+    cases["tri_malformed_mid_row"] = _replace(tri, 3, 2, "1.23x456+00")
+    cases["tri_dexp_mid_row"] = _replace(tri, 3, 2, "1.234567D+1")
+    cases["tri_deleted_line"] = tri[:4] + tri[5:]
+    cases["tri_blank_line"] = tri[:4] + [""] + tri[4:]
+    cases["tri_truncated"] = tri[:5]
+    # the same in rows of rows (MT9, N=5, M=3: 45 values) and a failing
+    # check of a row (MT8)
+    rr = _rows(9, 5, 3)
+    cases["rows_mt9_malformed"] = _replace(rr, 5, 4, "1.23x456+00")
+    cases["rows_mt9_npl_small"] = _rows(
+        9, 5, 3, npl=44, values=_row_values(9, 5, 3)[:44]
+    )
+    lit = _row_values(8, 5)
+    lit[5 + 1 + 4 + 1 + 3] = 2.0
+    cases["rows_mt8_check"] = _rows(8, 5, values=lit)
     return cases
 
 
@@ -424,6 +510,64 @@ def test_cases_give_the_intended_errors(both_forms):
     assert "1.23x456+00" in _result(res, "mt2_malformed")
     assert "Line 3" in _result(res, "mt2_malformed")
     assert "Line 7" in _result(res, "mt4_check", optset=1)
+    # the bodies with row loops
+    for mt, n, m in ROW_SIZES:
+        case = _row_case(mt, n, m)
+        assert _is_digest(_result(res, case)), case
+    for case in ("tri_npl_large", "tri_npl_small", "rows_mt9_npl_small"):
+        assert "not exactly NPL elements consumed" in _result(res, case), case
+    for case in ("tri_malformed_mid_row", "rows_mt9_malformed"):
+        assert "1.23x456+00" in _result(res, case), case
+    assert "Line 4" in _result(res, "tri_malformed_mid_row")
+    assert _is_digest(_result(res, "tri_dexp_mid_row"))
+    assert not _is_digest(_result(res, "tri_dexp_mid_row", optset=5))
+    assert "Blank line" in _result(res, "tri_blank_line")
+    for case in ("tri_smaller_matrix", "tri_deleted_line"):
+        assert not _is_digest(_result(res, case)), case
+    # the missing columns of a cut line are blanks
+    assert _is_digest(_result(res, "tri_cut_row_line"))
+    assert not _is_digest(_result(res, "tri_truncated"))
+    assert _is_digest(_result(res, "rows_mt8_check"))
+    msg = _result(res, "rows_mt8_check", optset=1)
+    assert "Expected a field to contain the value 0" in msg and "Line 4" in msg
+
+
+def test_bodies_delivered_by_row_copies(both_forms):
+    # the valid bodies with rows are delivered by one strided copy per
+    # row in the bulk form, except those whose rows have no values (the
+    # number of rows exceeds NPL, and the pre-pass falls back); the
+    # damaged ones by the code of the per-field form (the results are
+    # those of the per-field form, see test_bulk_form_equals_per_field_form)
+    _, (_, final, _, bodies) = both_forms
+    counts = final["bulk_list_bodies"]
+    assert counts["row_bodies"] > 0 and counts["row_rows"] > 0
+    assert counts["row_values"] > 0
+    for mt, n, m in ROW_SIZES:
+        case = _row_case(mt, n, m)
+        npl = len(_row_values(mt, n, m))
+        for array_type in ARRAY_TYPES:
+            for optset in (0, 3):
+                c = bodies[f"{case}|{array_type}|{optset}"]
+                key = (case, array_type, optset)
+                if n > 0 and npl == 0:
+                    assert c["row_bodies"] == 0 and c["looped"] == 1, key
+                    continue
+                assert c["row_bodies"] == 1 and c["strided"] == 1, key
+                assert c["looped"] == 0 and c["row_values"] == npl, key
+    for case in (
+        "tri_npl_large",
+        "tri_npl_small",
+        "tri_malformed_mid_row",
+        "rows_mt9_malformed",
+        "rows_mt9_npl_small",
+    ):
+        c = bodies[f"{case}|numpy|0"]
+        assert c["row_bodies"] == 0 and c["looped"] == 1, case
+    # the failing check of a row (only if zero mismatches are not ignored)
+    c = bodies["rows_mt8_check|numpy|1"]
+    assert c["row_bodies"] == 0 and c["looped"] == 1
+    c = bodies["rows_mt8_check|numpy|0"]
+    assert c["row_bodies"] == 1 and c["looped"] == 0
 
 
 # the bodies of the cases read as one byte range (the others: line by

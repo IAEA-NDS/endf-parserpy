@@ -73,6 +73,12 @@ from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT2
 from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT3
 from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT4
 from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT5
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT6
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT7
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT8
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT9
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT10
+from .endf_recipe_mf10 import ENDF_RECIPE_MF10_MT11
 
 endf_recipe_dictionary = {}
 defdic(endf_recipe_dictionary, (2, 1), ENDF_RECIPE_MF2_MT1)
@@ -129,3 +135,9 @@ defdic(endf_recipe_dictionary, (10, 2), ENDF_RECIPE_MF10_MT2)
 defdic(endf_recipe_dictionary, (10, 3), ENDF_RECIPE_MF10_MT3)
 defdic(endf_recipe_dictionary, (10, 4), ENDF_RECIPE_MF10_MT4)
 defdic(endf_recipe_dictionary, (10, 5), ENDF_RECIPE_MF10_MT5)
+defdic(endf_recipe_dictionary, (10, 6), ENDF_RECIPE_MF10_MT6)
+defdic(endf_recipe_dictionary, (10, 7), ENDF_RECIPE_MF10_MT7)
+defdic(endf_recipe_dictionary, (10, 8), ENDF_RECIPE_MF10_MT8)
+defdic(endf_recipe_dictionary, (10, 9), ENDF_RECIPE_MF10_MT9)
+defdic(endf_recipe_dictionary, (10, 10), ENDF_RECIPE_MF10_MT10)
+defdic(endf_recipe_dictionary, (10, 11), ENDF_RECIPE_MF10_MT11)

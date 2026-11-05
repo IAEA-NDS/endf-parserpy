@@ -39,6 +39,7 @@ from endf_parserpy.endf_recipes.catalogue import list_endf_flavors
 
 COND_RE = re.compile(r"if \(! cpp_list_bulk\(cont, parse_opts, (true|false)\)\) \{\n")
 STRIDED = "// LIST body: strided copies from the buffer"
+ROWS = "// LIST body: strided copies from the buffer, per row"
 LOOPED_RE = re.compile(r"// LIST body: code of the per-field form \((.*)\)")
 FIELD_RE = re.compile(r"cpp_read_field<\w+>\(cpp_line\.data\(\), cpp_j")
 
@@ -133,9 +134,10 @@ def _generation_counts(flavor):
     # Counts of the bulk form in the parse functions of all recipes of a
     # flavor (each recipe once): LIST bodies in the bulk form, bodies with
     # strided copies, strided sites by kind (list copies, block copies,
-    # single values outside of loops, checks of literals), the reasons of
-    # the bodies without strided copies, and the type checks removed by
-    # remove_redundant_type_checks and kept
+    # single values outside of loops, checks of literals), of these the
+    # bodies with row loops and the copies, single values and checks in
+    # row loops, the reasons of the bodies without strided copies, and the
+    # type checks removed by remove_redundant_type_checks and kept
     counts = {
         "bulk": 0,
         "strided": 0,
@@ -143,6 +145,10 @@ def _generation_counts(flavor):
         "block": 0,
         "single": 0,
         "check": 0,
+        "rows": 0,
+        "row_copies": 0,
+        "row_single": 0,
+        "row_check": 0,
         "reasons": {},
         "type_checks_removed": 0,
         "type_checks_kept": 0,
@@ -159,13 +165,20 @@ def _generation_counts(flavor):
             reasons[str(reason)] = reasons.get(str(reason), 0) + 1
         else:
             counts["strided"] += 1
-            for site in cls._sites(items):
+            sites = list(cls._sites(items))
+            if any(len(site.rloops) > 0 for site in sites):
+                counts["rows"] += 1
+            for site in sites:
+                in_rows = len(site.rloops) > 0
                 if site.kind == "literal":
                     counts["check"] += 1
-                elif len(site.loops) == 0:
+                    counts["row_check"] += in_rows
+                elif len(site.cloops) == 0:
                     counts["single"] += 1
+                    counts["row_single"] += in_rows
                 else:
                     counts[site.copy[0]] += 1
+                    counts["row_copies"] += in_rows
         return items, reason
 
     def remove(code):
@@ -187,66 +200,78 @@ def _generation_counts(flavor):
 GOLDEN_COUNTS = {
     "endf6-ext": {
         "bulk": 98,
-        "strided": 80,
-        "list": 265,
+        "strided": 92,
+        "list": 308,
         "block": 14,
         "single": 17,
         "check": 22,
+        "rows": 12,
+        "row_copies": 12,
+        "row_single": 0,
+        "row_check": 0,
         "reasons": {
             "assignment code": 3,
             "index expression": 1,
-            "loop bounds depend on a loop of the body": 12,
             "variable assigned or checked": 2,
         },
-        "type_checks_removed": 2588,
+        "type_checks_removed": 2631,
         "type_checks_kept": 29,
     },
     "endf6": {
         "bulk": 96,
-        "strided": 78,
-        "list": 264,
+        "strided": 90,
+        "list": 307,
         "block": 14,
         "single": 17,
         "check": 21,
+        "rows": 12,
+        "row_copies": 12,
+        "row_single": 0,
+        "row_check": 0,
         "reasons": {
             "assignment code": 3,
             "index expression": 1,
-            "loop bounds depend on a loop of the body": 12,
             "variable assigned or checked": 2,
         },
-        "type_checks_removed": 2540,
+        "type_checks_removed": 2583,
         "type_checks_kept": 29,
     },
     "jendl": {
         "bulk": 97,
-        "strided": 79,
-        "list": 264,
+        "strided": 91,
+        "list": 307,
         "block": 14,
         "single": 17,
         "check": 22,
+        "rows": 12,
+        "row_copies": 12,
+        "row_single": 0,
+        "row_check": 0,
         "reasons": {
             "assignment code": 3,
             "index expression": 1,
-            "loop bounds depend on a loop of the body": 12,
             "variable assigned or checked": 2,
         },
-        "type_checks_removed": 2572,
+        "type_checks_removed": 2615,
         "type_checks_kept": 29,
     },
     "pendf": {
         "bulk": 100,
-        "strided": 81,
-        "list": 269,
+        "strided": 93,
+        "list": 312,
         "block": 26,
         "single": 17,
         "check": 21,
+        "rows": 12,
+        "row_copies": 12,
+        "row_single": 0,
+        "row_check": 0,
         "reasons": {
             "assignment code": 3,
             "index expression": 1,
-            "loop bounds depend on a loop of the body": 12,
             "variable assigned or checked": 3,
         },
-        "type_checks_removed": 2649,
+        "type_checks_removed": 2692,
         "type_checks_kept": 29,
     },
     "errorr": {
@@ -256,23 +281,30 @@ GOLDEN_COUNTS = {
         "block": 0,
         "single": 0,
         "check": 0,
+        "rows": 0,
+        "row_copies": 0,
+        "row_single": 0,
+        "row_check": 0,
         "reasons": {},
         "type_checks_removed": 43,
         "type_checks_kept": 0,
     },
     "test": {
-        "bulk": 11,
-        "strided": 8,
-        "list": 5,
+        "bulk": 17,
+        "strided": 15,
+        "list": 12,
         "block": 5,
-        "single": 2,
-        "check": 2,
+        "single": 5,
+        "check": 3,
+        "rows": 7,
+        "row_copies": 7,
+        "row_single": 1,
+        "row_check": 1,
         "reasons": {
             "assignment code": 1,
-            "loop bounds depend on a loop of the body": 1,
             "variable assigned or checked": 1,
         },
-        "type_checks_removed": 426,
+        "type_checks_removed": 485,
         "type_checks_kept": 15,
     },
 }
@@ -333,11 +365,23 @@ def test_bulk_form_only_for_bodies_with_loops():
             + "endfor\nSEND\n",
             "strided",
         ),
-        # triangular ranges: one copy per row (R), not implemented
-        (
-            _list_recipe("{{F[k,l]}{l=k to N}}{k=1 to N}"),
-            "loop bounds depend on a loop of the body",
-        ),
+        # triangular ranges: one copy per row (R)
+        (_list_recipe("{{F[k,l]}{l=k to N}}{k=1 to N}"), "strided"),
+        # a value per row, rows of the lower triangle between two scalars,
+        # bounds that are expressions of the variable of the row loop
+        (_list_recipe("{X[k], {F[k,l]}{l=k to N}}{k=1 to N}"), "strided"),
+        (_list_recipe("A, {{F[k,l]}{l=1 to k}}{k=1 to N}, B"), "strided"),
+        (_list_recipe("{{F[k,l]}{l=2*k to N+k}}{k=1 to N}"), "strided"),
+        # rows of rows: two row loops around a list, and a list in the
+        # innermost of three loops, the bounds of the middle one depending
+        # on the outer one
+        (_list_recipe("{{{G[i,j,l]}{l=j to N}}{j=i to N}}{i=1 to N}"), "strided"),
+        (_list_recipe("{{{Y[k,l,m]}{m=1 to M}}{l=k to N}}{k=1 to N}"), "strided"),
+        # a literal per row
+        (_list_recipe("{{F[k,l]}{l=k to N}, 0.0}{k=1 to N}"), "strided"),
+        # an index that is an expression of the variable of a copy loop in
+        # a row (L)
+        (_list_recipe("{{F[k,l+1]}{l=k to N}}{k=1 to N}"), "index expression"),
         # a variable read before: assigned or checked at runtime (L)
         (_list_recipe("{N, X[k]}{k=1 to N}"), "variable assigned or checked"),
         # an index that is an expression of the loop variable (L)
@@ -356,14 +400,16 @@ def test_generator_rule(recipe, form):
 def test_rows_of_a_list_in_two_loops():
     # a list of 1-D arrays, one per iteration of the outer loop of the body
     # (the list form of F, as F is also assigned elsewhere): one copy per
-    # row would be needed (R)
+    # row (R), the outer loop is a row loop although its iterations have
+    # the same number of values
     recipe = _HEAD
     recipe += (
         "[MAT,MF,MT/ 0.0, 0.0, 0, 0, NPL, 0/ {{F[k,l]}{l=1 to M}}{k=1 to N}] LIST\n"
     )
     recipe += "[MAT,MF,MT/ F[1,1], 0.0, 0, 0, 0, 0] CONT\nSEND\n"
     _, bulks = _split_forms(generate_cpp_parsefun("f", recipe))
-    assert _form(bulks) == "rows"
+    assert _form(bulks) == "strided"
+    assert ROWS in bulks[0][1]
 
 
 def test_strided_copies_and_checks():
@@ -377,3 +423,77 @@ def test_strided_copies_and_checks():
     assert check < code.index("set_strided(")
     # the number of values of the layout is compared with NPL
     assert "if (cpp_npl != " in code
+
+
+def _row_loop(code, q):
+    # the code of the row loop q (from its header to its closing brace)
+    start = code.index(
+        f"for (long long cpp_r{q} = 0; cpp_r{q} < cpp_ln{q}; cpp_r{q}++)"
+    )
+    indent = code.rfind("\n", 0, start) + 1
+    end = code.index("\n" + code[indent:start] + "}\n", start)
+    return code[start:end]
+
+
+def test_row_copies():
+    # one strided copy per row: the pre-pass sums the numbers of values of
+    # the rows (falling back if they exceed NPL), the delivery iterates the
+    # row loop with its variable under its name in the per-field form,
+    # runs the setup code of the row (preparation and reservation of the
+    # row) and copies the row
+    bulks = _bulk_code("{X[k], {F[k,l]}{l=k to N}}{k=1 to N}")
+    code = bulks[0][1]
+    assert bulks[0][0] and ROWS in code
+    assert "cpp_lt0 += 1 + cpp_list_size(cpp_ln1, cpp_lz1);" in code
+    assert code.count("if (cpp_lt0 > cpp_npl)") == 1
+    assert code.count("if (cpp_ln0 > cpp_npl)") == 1
+    assert "if (cpp_npl != cpp_lt0)" in code
+    delivery = code[code.index("cpp_rb0 = cpp_lo0;") :]
+    row = _row_loop(delivery, 0)
+    assert "int var_k_0d_int_Scalar = cpp_la0 + static_cast<int>(cpp_r0);" in row
+    assert "bool aux_k_read = true;" in row
+    assert "var_F_2d_double_NestedArray.prepare(var_k_0d_int_Scalar)->reserve(" in row
+    # the value per row by the code of the per-field form, then the row
+    value = row.index("const int cpp_i = static_cast<int>(cpp_rb0 + (0));")
+    assert value < row.index("var_X_1d_double_NestedArray.set(var_k_0d_int_Scalar, ")
+    assert value < row.index(
+        "ptr_F_2d_idx0 = var_F_2d_double_NestedArray.prepare(var_k_0d_int_Scalar);"
+    )
+    assert (
+        row.count("set_strided(cpp_la1, cpp_body.values() + cpp_rb0 + cpp_lo1 + (0)")
+        == 1
+    )
+    assert "cpp_rb0 += 1 + cpp_list_size(cpp_ln1, cpp_lz1);" in row
+    assert "cpp_list_bulk_counter().row_rows += cpp_rows;" in code
+
+
+def test_block_in_rows():
+    # a block per row (G[k,.,.]) copied with the start of the row, and a
+    # row of a triangular matrix in the same row loop
+    bulks = _bulk_code(
+        "{{{G[k,m,n]}{n=1 to M}}{m=1 to M}, {F[k,l]}{l=k to N}}{k=1 to N}"
+    )
+    code = bulks[0][1]
+    assert ROWS in code
+    row = _row_loop(code[code.index("cpp_rb0 = cpp_lo0;") :], 0)
+    copy = (
+        "cpp_copy_strided(&var_G_3d_double_NestedArray(var_k_0d_int_Scalar, "
+        "cpp_la1, cpp_la2), cpp_body.values() + cpp_rb0 + cpp_lo1 + cpp_lo2 + (0), 2,"
+    )
+    assert row.count(copy) == 1
+    assert (
+        row.count("set_strided(cpp_la3, cpp_body.values() + cpp_rb0 + cpp_lo3 + (0)")
+        == 1
+    )
+
+
+def test_bodies_without_rows_unchanged_by_the_row_rule():
+    # a body without row loops has no code of the row copies
+    for body in (
+        "A, B, {X[i]}{i=1 to N}",
+        "{E[k], 0.0, {F[k,m]}{m=1 to M}}{k=1 to N}",
+        "{{G[m,n]}{m=1 to M}}{n=1 to N}",
+    ):
+        code = _bulk_code(body)[0][1]
+        assert STRIDED in code and ROWS not in code
+        assert "cpp_r0" not in code and "cpp_lt" not in code and "cpp_rows" not in code

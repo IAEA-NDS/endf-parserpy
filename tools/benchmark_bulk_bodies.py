@@ -40,9 +40,13 @@ The variants are run one after the other in each round, in an order that
 is rotated from round to round (interleaved, so that a drift of the
 machine affects all variants alike). Each process parses the file once
 (warm-up) and then ``--reps`` times; its time is the minimum of these
-(``time.process_time``; on Windows ``time.perf_counter``, because the
-resolution of ``process_time`` there is about 15.6 ms, which measures a
-fast parse as zero). The result per variant is the median over the
+(``time.thread_time``, the CPU time of the parsing thread only; on
+Windows ``time.perf_counter``, because the resolution of the CPU clocks
+there is about 15.6 ms, which measures a fast parse as zero). The CPU
+time of the whole process is not used: importing numpy starts the thread
+pool of its BLAS library, whose idle threads spin for a while, and their
+CPU time would be added to fast parses (seen on many-core runners). The
+workers also run with one BLAS/OpenMP thread. The result per variant is the median over the
 rounds of the ratio of its time to the time of ``base`` in the same
 round; with ``base`` against itself (``base:aa``, a second process of the
 base build) as the noise floor. The JSON file contains the CPU
@@ -89,10 +93,13 @@ p = EndfParserCpp(array_type=mode)
 mod = importlib.import_module(p._parse_endf.__module__)
 # None for a build without _bulk_body_info (e.g. a base build before it)
 info = mod._bulk_body_info() if hasattr(mod, "_bulk_body_info") else None
-# the resolution of process_time on Windows is about 15.6 ms, which
-# measures a fast parse as zero; the interleaved rounds and the median
-# of the ratios absorb the noise of the wall clock
-timer = time.perf_counter if sys.platform == "win32" else time.process_time
+# CPU time of this thread only: the idle threads of numpy's BLAS thread
+# pool spin for a while after numpy is imported, and the CPU time of the
+# whole process (process_time) would include them. The resolution of the
+# CPU clocks on Windows is about 15.6 ms, which measures a fast parse as
+# zero; there the interleaved rounds and the median of the ratios absorb
+# the noise of the wall clock
+timer = time.perf_counter if sys.platform == "win32" else time.thread_time
 p.parsefile(path)
 ts = []
 for _ in range(reps):
@@ -106,6 +113,10 @@ print(json.dumps({"times": ts, "info": info}))
 
 def _run_worker(python, value, path, mode, reps):
     env = dict(os.environ)
+    # one thread for the BLAS and OpenMP libraries numpy may load, so that
+    # no idle thread pool runs next to the parse
+    for name in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS"):
+        env[name] = "1"
     env.pop(ENV_VAR, None)
     if value is not None:
         env[ENV_VAR] = value

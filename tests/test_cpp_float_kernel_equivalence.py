@@ -35,9 +35,17 @@ that are built and supported by the CPU, which convert the float fields
 of a line in one call) are compared in the same program with
 cpp_fast_field_to_double applied field by field, on random lines and
 masks of the fields to convert: the mask of the converted fields and
-their bits must agree. The selection of the tier from the value of the
-environment variable ENDF_PARSERPY_CPP_BULK_BODIES is checked for all
-combinations of the CPU features of the tiers.
+their bits must agree. The vector tiers (AVX2, AVX-512) are in addition
+run on all fields of all other checks, six fields per line, so that the
+exhaustive test covers every string of the two layouts their vector path
+converts. The conversion loops of LIST bodies read as one byte range (the
+scalar loop, one kernel call per line, the loops of the vector tiers) are
+compared on random bodies (lines of 75 to 80 columns with LF or CRLF; valid fields, plain
+decimals, malformed fields): the position of the first field not
+converted and the bits of the values before it must agree. The selection
+of the tier from the value of the environment variable
+ENDF_PARSERPY_CPP_BULK_BODIES is checked for all combinations of the CPU
+features of the tiers.
 
 test_float_kernel_sampled runs by default on a sample of fields (every byte
 value at every position of a few hundred valid fields, a few million random
@@ -234,6 +242,7 @@ def test_float_kernel_exhaustive(kernel_test_program):
     jobs += [("random", "250000000", str(seed)) for seed in range(1, 5)]
     jobs += [("negexp", "400000", str(seed)) for seed in range(1, 5)]
     jobs += [("rows", "20000000", str(seed)) for seed in range(1, 3)]
+    jobs += [("bodies", "2000000", str(seed)) for seed in range(1, 3)]
     if hasattr(os, "sched_getaffinity"):
         ncpu = len(os.sched_getaffinity(0))
     else:

@@ -38,7 +38,14 @@
 // conversion, for every tier that is built and supported by the CPU. The
 // selection of the tier from the value of the environment variable is
 // checked for all combinations of CPU features of the tiers (mode
-// "select"); both modes are part of "sampled".
+// "select"); both modes are part of "sampled". The vector tiers are also
+// run on the fields of all other modes, six at a time as a line (see
+// check_tier_line), so that mode "exhaustive" covers every string of the
+// two layouts their vector path converts. The conversion loops of LIST
+// bodies read as one byte range (cpp_list_convert_scalar,
+// cpp_list_convert_rows, the loops of the vector tiers and
+// cpp_list_convert) are checked on random bodies (mode "bodies", also
+// part of "sampled").
 //
 // usage: float_kernel_equivalence sampled
 //        float_kernel_equivalence exhaustive <first character index 0..2>
@@ -49,6 +56,7 @@
 //        float_kernel_equivalence negexp <number of random significands per k> <seed>
 //        float_kernel_equivalence list <file>
 //        float_kernel_equivalence rows <number of lines> <seed>
+//        float_kernel_equivalence bodies <number of bodies> <seed>
 //        float_kernel_equivalence select
 // The exit status is 0 if no mismatch was found.
 
@@ -290,6 +298,44 @@ static void print_field(const char* f) {
 
 static bool same_bits(double x, double y) { return std::memcmp(&x, &y, 8) == 0; }
 
+// The vector tiers of the row kernels on the fields checked by check():
+// the fields are collected six at a time into a line (columns 67 to 80
+// hold a fixed pattern), which every vector tier built and supported by
+// the CPU converts; the mask of the converted fields and their bits must
+// be those of cpp_fast_field_to_double field by field.
+static char tline[81];
+static int tfields = 0;
+static double tref[2][6];
+static unsigned tdone[2] = {0, 0};
+static long ntierline = 0;
+
+static void check_tier_line() {
+  if (tfields == 0) return;
+  static const cpp_cpu_features cpu = cpp_detect_cpu_features();
+  const cpp_row_tier* tiers = cpp_row_tiers();
+  const unsigned want = (1u << tfields) - 1u;
+  for (int i = 66; i < 80; i++) tline[i] = "+1.2-34 5e7dD.9"[i - 66];
+  tline[80] = '\0';
+  for (int d = 0; d < 2; d++) {
+    for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
+      if (! tiers[t].vector || tiers[t].kernel == nullptr || ! tiers[t].supported(cpu)) continue;
+      double out[6];
+      const unsigned done = tiers[t].kernel(tline, want, d != 0 ? CPP_ROW_ACCEPT_D_EXPONENT : 0u, out);
+      ntierline++;
+      bool ok = done == tdone[d];
+      for (int j = 0; ok && j < tfields; j++) {
+        if (((done >> j) & 1u) != 0 && ! same_bits(out[j], tref[d][j])) ok = false;
+      }
+      if (! ok && nfail++ < 20) {
+        std::printf("MISMATCH tier %s accept_d_exponent=%d done=%02x expected=%02x line \"%.66s\"\n",
+                    tiers[t].name, d, done, tdone[d], tline);
+      }
+    }
+  }
+  tfields = 0;
+  tdone[0] = tdone[1] = 0;
+}
+
 // the field must consist of exactly 11 readable bytes
 static void check(const char* f) {
   double r_first = 0;
@@ -306,6 +352,8 @@ static void check(const char* f) {
     const bool a = ref_fast_field_to_double(f, d == 1, r_ref);
     const bool b = cpp_fast_field_to_double(f, d == 1, r_new);
     nchk++;
+    tref[d][tfields] = r_new;
+    if (b) tdone[d] |= 1u << tfields;
     // expected decision and value
     bool expect = a;
     double r_exp = r_ref;
@@ -341,6 +389,8 @@ static void check(const char* f) {
                   a, r_ref, expect, r_exp, b, r_new, s, lay, c, r_dec, r_std);
     }
   }
+  std::memcpy(tline + 11 * tfields, f, 11);
+  if (++tfields == 6) check_tier_line();
 }
 
 static std::uint64_t rs = 88172645463325252ULL;
@@ -713,6 +763,131 @@ static void run_rows(long n) {
   }
 }
 
+// plain decimals without exponent (" 27.0871527", "-0.12345678") and
+// fields with 'E' ("1.090516E-5"): forms the vector path leaves to the
+// scalar code
+static void make_plain(char* f) {
+  const std::uint64_t a = xr();
+  char buf[16];
+  if (a & 1) {
+    const int nint = 1 + static_cast<int>((a >> 1) % 4);
+    int n = 0;
+    buf[n++] = ((a >> 4) & 3) == 0 ? '-' : ' ';
+    for (int i = 0; i < nint; i++) buf[n++] = static_cast<char>('0' + xr() % 10);
+    buf[n++] = '.';
+    while (n < 11) buf[n++] = static_cast<char>('0' + xr() % 10);
+  } else {
+    std::snprintf(buf, sizeof(buf), "%c.%06dE%c%d", static_cast<char>('1' + (a >> 1) % 9),
+                  static_cast<int>((a >> 8) % 1000000), ((a >> 30) & 1) ? '-' : '+',
+                  static_cast<int>((a >> 32) % 10));
+  }
+  std::memcpy(f, buf, 11);
+}
+
+static long nbody = 0;
+
+// Bodies held in memory (lines of 75 to 80 columns plus "\n" or "\r\n"):
+// the conversion of the first n fields by cpp_list_convert_scalar,
+// cpp_list_convert_rows with every tier built and supported, the loops of
+// the vector tiers and cpp_list_convert must give the position of the
+// first field cpp_fast_field_to_double does not convert and the bits of
+// the values before it.
+static void run_bodies(long nb) {
+  const cpp_cpu_features cpu = cpp_detect_cpu_features();
+  const cpp_row_tier* tiers = cpp_row_tiers();
+  static char data[16 * 82 + 64];
+  static double ref[16 * 6], out[16 * 6 + 6];
+  for (long r = 0; r < nb; r++) {
+    const int nlines = 2 + static_cast<int>(xr() % 14);
+    const int len = 75 + static_cast<int>(xr() % 6);
+    const int crlf = static_cast<int>(xr() % 2);
+    const std::size_t stride = static_cast<std::size_t>(len + 1 + crlf);
+    const int n = 6 * (nlines - 1) + 1 + static_cast<int>(xr() % 6);
+    const int kind = static_cast<int>(xr() % 5);
+    const int nplain = static_cast<int>(xr() % (nlines + 1));
+    for (int l = 0; l < nlines; l++) {
+      char* q = data + l * stride;
+      for (int j = 0; j < 6; j++) {
+        char* f = q + 11 * j;
+        const std::uint64_t a = xr();
+        if (kind == 0) {
+          make_valid(f);
+        } else if (kind == 1) {
+          make_plain(f);
+        } else if (kind == 2) {
+          // the first lines plain, then valid
+          if (l < nplain) make_plain(f); else make_valid(f);
+        } else if (kind == 3) {
+          if (a % 8 == 0) make_general(f); else if (a % 8 == 1) make_plain(f); else make_valid(f);
+        } else {
+          make_valid(f);
+          if (a % 64 == 0) f[(a >> 8) % 11] = static_cast<char>((a >> 16) & 0xff);
+        }
+      }
+      for (int i = 66; i < len; i++) q[i] = static_cast<char>(32 + xr() % 95);
+      if (crlf) q[len] = '\r';
+      q[len + crlf] = '\n';
+    }
+    std::memset(data + nlines * stride, 0, 64);
+    for (int d = 0; d < 2; d++) {
+      const bool accd = d != 0;
+      int nref = n;
+      for (int i = 0; i < n; i++) {
+        if (! cpp_fast_field_to_double(data + (i / 6) * stride + 11 * (i % 6), accd, ref[i])) {
+          nref = i;
+          break;
+        }
+      }
+      // the variants: 0 the scalar loop, then per tier the loop with one
+      // kernel call per line and cpp_list_convert, then the loops of the
+      // vector tiers
+      for (int v = 0; v < 2 * CPP_ROW_NUM_TIERS + 3; v++) {
+        int got = -1;
+        const char* name = "";
+        if (v == 0) {
+          got = cpp_list_convert_scalar(data, stride, n, accd, out);
+          name = "scalar loop";
+        } else if (v <= 2 * CPP_ROW_NUM_TIERS) {
+          const cpp_row_tier& t = tiers[(v - 1) / 2];
+          if (t.kernel == nullptr || ! t.supported(cpu)) continue;
+          if ((v - 1) % 2 == 0) {
+            got = cpp_list_convert_rows(data, stride, n, t.kernel,
+                                        accd ? CPP_ROW_ACCEPT_D_EXPONENT : 0u, out);
+            name = "one call per line";
+          } else {
+            got = cpp_list_convert(data, stride, n, t.kernel, accd, out);
+            name = "cpp_list_convert";
+          }
+        } else {
+#ifdef CPP_ROW_VECTOR_TIERS
+          if (v == 2 * CPP_ROW_NUM_TIERS + 1) {
+            if (! cpp_row_cpu_avx2(cpu)) continue;
+            got = cpp_list_convert_avx2(data, stride, n, accd, out);
+            name = "avx2 loop";
+          } else {
+            if (! cpp_row_cpu_avx512(cpu)) continue;
+            got = cpp_list_convert_avx512(data, stride, n, accd, out);
+            name = "avx512 loop";
+          }
+#else
+          continue;
+#endif
+        }
+        nbody++;
+        bool ok = got == nref;
+        for (int i = 0; ok && i < nref; i++) {
+          if (! same_bits(out[i], ref[i])) ok = false;
+        }
+        if (! ok && nfail++ < 20) {
+          std::printf("MISMATCH body %s variant=%d accept_d_exponent=%d n=%d lines=%d stride=%d"
+                      " converted=%d expected=%d\n", name, v, d, n, nlines,
+                      static_cast<int>(stride), got, nref);
+        }
+      }
+    }
+  }
+}
+
 // the selection for all values of the environment variable and all
 // combinations of the CPU features of the tiers
 static void run_select() {
@@ -805,10 +980,14 @@ int main(int argc, char** argv) {
     run_random(3000000);
     run_negexp(1000);
     run_rows(300000);
+    run_bodies(20000);
     run_select();
   } else if (std::strcmp(mode, "rows") == 0 && argc > 3) {
     rs ^= static_cast<std::uint64_t>(std::atol(argv[3])) * 0x9E3779B97F4A7C15ULL;
     run_rows(std::atol(argv[2]));
+  } else if (std::strcmp(mode, "bodies") == 0 && argc > 3) {
+    rs ^= static_cast<std::uint64_t>(std::atol(argv[3])) * 0x9E3779B97F4A7C15ULL;
+    run_bodies(std::atol(argv[2]));
   } else if (std::strcmp(mode, "select") == 0) {
     run_select();
   } else if (std::strcmp(mode, "exhaustive3") == 0 && argc > 2) {
@@ -836,8 +1015,11 @@ int main(int argc, char** argv) {
     std::fprintf(stderr, "invalid arguments\n");
     return 2;
   }
+  check_tier_line();
   std::printf("%s: checks=%ld first_stage=%ld negexp_converted=%ld not_converted=%ld decimal_checks=%ld"
-              " negexp_direct=%ld row_checks=%ld row_tiers=%ld mismatches=%ld\n",
-              mode, nchk, nfirst, nneg, nleft, ndec, nnchk, nrow, nrowtier, nfail);
+              " negexp_direct=%ld row_checks=%ld row_tiers=%ld vector_tier_lines=%ld"
+              " body_checks=%ld mismatches=%ld\n",
+              mode, nchk, nfirst, nneg, nleft, ndec, nnchk, nrow, nrowtier, ntierline,
+              nbody, nfail);
   return nfail == 0 ? 0 : 1;
 }

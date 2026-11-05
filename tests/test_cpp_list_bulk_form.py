@@ -16,9 +16,10 @@ The bodies of the test recipes MF10 (endf_recipes/test/endf_recipe_mf10.py)
 are read in the bulk form by default and in the per-field form with
 ENDF_PARSERPY_CPP_BULK_BODIES=off; each runs in a subprocess (the variable
 is read when the module is loaded, see test_cpp_float_row_kernel.py, whose
-script the subprocesses run), also with the scalar row kernel forced,
-which reads all bodies with a loop in the bulk form, not only those with
-a regular layout. The inputs are valid bodies and bodies with
+script the subprocesses run), also with each tier of the row kernel
+forced (the scalar tier and the vector tiers built and supported by the
+CPU), which reads all bodies with a loop in the bulk form, not only those
+with a regular layout. The inputs are valid bodies and bodies with
 errors at chosen places, in particular:
 
 - a check that fails before a field that cannot be converted, in one
@@ -418,12 +419,17 @@ def per_field_form(jobs_spec):
     return _run(spec, tmpdir, "off")
 
 
-@pytest.fixture(scope="module", params=[None, "scalar"])
+@pytest.fixture(scope="module", params=[None, "scalar", "avx2", "avx512"])
 def both_forms(request, jobs_spec, per_field_form):
-    # the default (bulk form for the bodies with a regular layout) and the
-    # scalar tier forced (bulk form for all bodies)
+    # the default (the bulk form with the tier selected automatically) and
+    # each tier forced (bulk form for all bodies); the vector tiers only if
+    # they are built and supported by the CPU
     spec, tmpdir = jobs_spec
-    return per_field_form, _run(spec, tmpdir, request.param)
+    bulk = _run(spec, tmpdir, request.param)
+    info = bulk[0]
+    if request.param is not None and info["selected"] != request.param:
+        pytest.skip(f"tier {request.param} not available here: {info['warning']}")
+    return per_field_form, bulk
 
 
 def _is_digest(value):

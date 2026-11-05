@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2026/11/01
+# Last modified:   2026/11/05
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -290,10 +290,17 @@ class ListBodyRecorder:
 
     @staticmethod
     def get_element(node, vardict):
+        # an element after the NPL elements of the body is an error, raised
+        # before the field is accessed: the line of the NPL-th element is
+        # the last line of the body and the field may lie beyond the six
+        # fields of the line (cpp_j > 5), i.e. beyond the line
+        code = cpp.pureif(
+            "cpp_i >= cpp_npl", cpp.statement("cpp_throw_list_body_overrun(cpp_npl)")
+        )
         valcode, addcode = get_numeric_field_getter(vardict)(
             node, "cpp_j", float, vardict
         )
-        return valcode, addcode
+        return valcode, code + addcode
 
     @staticmethod
     def update_counters_and_line(vardict):

@@ -104,6 +104,21 @@ inline int cpp_intg_block_length(int ndigit) {
 }
 
 
+// Raised when the recipe requires an element of the body of a LIST
+// record after its NPL elements, before the element is read or written:
+// the fields after the last of the NPL elements are not part of the
+// body, and beyond the six fields of the line they are not even part
+// of the line. The same message as for fewer elements than NPL (see
+// ListBodyRecorder in endf2cpp_aux.py), with details.
+[[noreturn]] inline void cpp_throw_list_body_overrun(int npl) {
+  throw std::runtime_error(
+    "not exactly NPL elements consumed: all NPL=" + std::to_string(npl)
+    + " elements of the LIST body have been consumed, but the recipe "
+    + "requires more elements"
+  );
+}
+
+
 inline int cpp_mod(int x, int y) {
   if (y == 0) {
     throw std::runtime_error("modulo by zero in expression " +

@@ -88,11 +88,27 @@ two forms by the C++ modules:
   per-field form, which takes each value from the buffer. With the
   scalar row kernel, bodies without a regular layout (e.g. the
   scattering laws of thermal scattering data) are read in the per-field
-  form, which is as fast for them, unless the tier is forced (see below).
+  form, which is as fast for them, unless the tier is forced (see below);
+  with a vector tier they are read in the bulk form, which is faster
+  then.
 
-Several implementations (tiers) of the row kernel are planned, e.g. for
-the vector instructions of some processors; which one is used is decided
-once when a C++ module is loaded, from the features of the processor.
+The row kernel has several implementations (tiers); which one is used is
+decided once when a C++ module is loaded, from the features of the
+processor:
+
+- ``avx512``: AVX-512 (the subsets F, BW, VL, DQ and VBMI, e.g. Intel
+  processors since Ice Lake and Tiger Lake, AMD processors since Zen 4);
+- ``avx2``: AVX2 with FMA (most x86-64 processors since about 2013);
+- ``scalar``: the conversion field by field applied to a whole line, on
+  every platform.
+
+The vector tiers are built on x86-64 with GCC and Clang (Linux, macOS on
+Intel processors, MinGW, and clang-cl if its headers declare the
+intrinsics without global compiler flags); the modules themselves are
+compiled for the baseline instruction set, and only the functions of a
+tier use its instructions, which are executed only if the processor and
+the operating system support them. With the Microsoft compiler (MSVC)
+and on other architectures (e.g. ARM), only the scalar tier is built.
 The parse results do not depend on the form or the tier: a row kernel
 converts a field only if the conversion field by field would give the
 same value, every other field is converted field by field, and the
@@ -129,12 +145,14 @@ under Linux or macOS:
 
    ENDF_PARSERPY_CPP_BULK_BODIES=off python my_script.py
 
-In the current version, no vector tier is built, so that the bulk form
-uses the scalar row kernel.
-
 The function ``_bulk_body_info`` of each C++ module returns the
-selected tier, the value of the variable, the tiers that are built and
-supported, the detected processor features, whether all LIST bodies
+selected tier (``selected``: ``avx512``, ``avx2``, ``scalar`` or
+``off``), the name and the value of the variable (``variable``,
+``requested``), the reason why a requested tier is not used
+(``warning``), for each tier whether it is built, supported by the
+processor and a vector tier (``tiers``), the detected processor features
+(``cpu``), the number of lines converted by the scalar tier
+(``scalar_kernel_lines``), whether all LIST bodies
 with a loop are read in the bulk form (``bulk_all_list_bodies``) and the
 numbers of LIST bodies read in the bulk form (``bulk_list_bodies``:
 delivered by strided copies, delivered by the code of the per-field

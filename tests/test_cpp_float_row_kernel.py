@@ -301,6 +301,9 @@ def test_bulk_form_equals_per_field_form(tier, jobs_spec, per_field_results):
     if tier == "scalar":
         # the bulk form was used
         assert final_info["scalar_kernel_lines"] > 0
+    else:
+        # the lines were converted by the vector tier, never by the scalar one
+        assert final_info["scalar_kernel_lines"] == 0
     # LIST bodies delivered by strided copies and by the code of the
     # per-field form, and conversions that stopped before the end
     counts = final_info["bulk_list_bodies"]

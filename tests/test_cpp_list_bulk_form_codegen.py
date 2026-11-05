@@ -37,7 +37,12 @@ from endf_parserpy.endf_recipes import get_recipe_dict
 from endf_parserpy.endf_recipes.catalogue import list_endf_flavors
 
 
-COND_RE = re.compile(r"if \(! cpp_list_bulk\(cont, parse_opts, (true|false)\)\) \{\n")
+# DIAGNOSTIC ONLY (branch diag/bulk-bodies-u233): also the condition of the
+# bodies with rows with the switch rowpf of ENDF_PARSERPY_DIAG_BULK_DISABLE
+COND_RE = re.compile(
+    r"if \(! \(?cpp_list_bulk\(cont, parse_opts, (true|false)\)"
+    r"(?: && cpp_diag_rows_bulk_ok\(\)\))?\) \{\n"
+)
 STRIDED = "// LIST body: strided copies from the buffer"
 ROWS = "// LIST body: strided copies from the buffer, per row"
 LOOPED_RE = re.compile(r"// LIST body: code of the per-field form \((.*)\)")

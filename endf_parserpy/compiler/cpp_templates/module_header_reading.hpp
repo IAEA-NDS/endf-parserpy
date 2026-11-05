@@ -1845,6 +1845,114 @@ cpp_row_kernel_fn cpp_row_state<T>::kernel = nullptr;
 template<typename T>
 bool cpp_row_state<T>::list_all = false;
 
+// ==== DIAGNOSTIC ONLY (branch diag/bulk-bodies-u233, never merged) ====
+// ENDF_PARSERPY_DIAG_BULK_DISABLE: a comma-separated list of parts of the
+// bulk form switched off, read once when the module is loaded (see
+// cpp_row_selected); the results are the same with any of them:
+//   rows    - LIST bodies with row loops (row copies): delivered by the
+//             code of the per-field form from the buffer (looped)
+//   rowpf   - LIST bodies with row loops read in the per-field form
+//   strided - no strided delivery at all: every LIST body read in the bulk
+//             form is delivered by the code of the per-field form from the
+//             buffer (looped)
+//   range   - no byte range: LIST bodies read line by line, one kernel
+//             call per line
+//   loop    - no tight conversion loop of the byte range: one call of the
+//             selected kernel per line through the pointer
+//   tab1    - TAB1 bodies read in the per-field form
+//   store   - no shared buffer for long LIST bodies: memory of their own
+enum {
+  CPP_DIAG_ROWS = 1u, CPP_DIAG_ROWPF = 2u, CPP_DIAG_STRIDED = 4u,
+  CPP_DIAG_RANGE = 8u, CPP_DIAG_LOOP = 16u, CPP_DIAG_TAB1 = 32u,
+  CPP_DIAG_STORE = 64u
+};
+
+struct cpp_diag_part { const char* name; unsigned bit; };
+
+inline const cpp_diag_part* cpp_diag_parts(int& n) {
+  static const cpp_diag_part parts[] = {
+    {"rows", CPP_DIAG_ROWS}, {"rowpf", CPP_DIAG_ROWPF},
+    {"strided", CPP_DIAG_STRIDED}, {"range", CPP_DIAG_RANGE},
+    {"loop", CPP_DIAG_LOOP}, {"tab1", CPP_DIAG_TAB1},
+    {"store", CPP_DIAG_STORE}
+  };
+  n = static_cast<int>(sizeof(parts) / sizeof(parts[0]));
+  return parts;
+}
+
+// unknown names are ignored (the parts switched off are reported by
+// _bulk_body_info); only <cstring>, as the C++ test program compiles this
+// section of the template on its own
+inline unsigned cpp_diag_parse(const char* value) {
+  unsigned mask = 0;
+  if (value == nullptr) return 0;
+  int n;
+  const cpp_diag_part* parts = cpp_diag_parts(n);
+  const char* p = value;
+  while (*p != '\0') {
+    while (*p == ' ' || *p == ',') p++;
+    const char* q = p;
+    while (*q != '\0' && *q != ',' && *q != ' ') q++;
+    const std::size_t len = static_cast<std::size_t>(q - p);
+    for (int i = 0; i < n; i++) {
+      if (len > 0 && std::strlen(parts[i].name) == len && std::strncmp(p, parts[i].name, len) == 0) {
+        mask |= parts[i].bit;
+      }
+    }
+    p = q;
+  }
+  return mask;
+}
+
+template<typename T = void>
+struct cpp_diag_state {
+  static unsigned mask;
+};
+
+template<typename T>
+unsigned cpp_diag_state<T>::mask = 0;
+
+inline bool cpp_diag_off(unsigned part) {
+  return (cpp_diag_state<>::mask & part) != 0;
+}
+
+struct cpp_diag_counts {
+  // catches of the strided pre-pass and of the strided delivery (each an
+  // exception thrown and caught, e.g. cpp_list_bulk_fallback)
+  unsigned long long prepass_catches;
+  unsigned long long delivery_catches;
+  // strided bodies not attempted because the conversion was incomplete
+  unsigned long long incomplete_bodies;
+  // bodies with rows read in the per-field form (rowpf)
+  unsigned long long rowpf_bodies;
+  // bodies of the byte range converted per line through the pointer (loop)
+  unsigned long long loop_off_bodies;
+  // CppListBody::reposition calls (errors only)
+  unsigned long long repositions;
+  // CppListBody::grow: calls, (re)allocations of the shared store, memory
+  // of a body's own, the largest capacity (values)
+  unsigned long long grow_calls;
+  unsigned long long store_allocs;
+  unsigned long long private_allocs;
+  unsigned long long max_capacity;
+  // TAB1 bodies in the bulk form and in the per-field form
+  unsigned long long tab1_bulk;
+  unsigned long long tab1_perfield;
+};
+
+inline cpp_diag_counts& cpp_diag_counter() {
+  static cpp_diag_counts counts = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  return counts;
+}
+
+// for the condition of the bulk form of bodies with rows (rowpf)
+inline bool cpp_diag_rows_bulk_ok() {
+  if (! cpp_diag_off(CPP_DIAG_ROWPF)) return true;
+  cpp_diag_counter().rowpf_bodies++;
+  return false;
+}
+// ==== end of DIAGNOSTIC ONLY ====
+
 // The selection made when the module is loaded (the first call, see
 // register_reading_options in cpp_boilerplate_reading.py), which also
 // sets the kernel used by the parse functions.
@@ -1854,6 +1962,9 @@ inline const cpp_row_selection& cpp_row_selected() {
   );
   cpp_row_state<>::kernel = sel.kernel;
   cpp_row_state<>::list_all = sel.list_all;
+  // DIAGNOSTIC ONLY: the parts of the bulk form switched off
+  static const unsigned diag_mask = cpp_diag_parse(std::getenv("ENDF_PARSERPY_DIAG_BULK_DISABLE"));
+  cpp_diag_state<>::mask = diag_mask;
   return sel;
 }
 
@@ -3069,7 +3180,9 @@ class CppListBody {
       // a body of one line is read by the loop (as one range, it would
       // only add the checks of the range)
       if (nlines >= 2) {
-        if (fast_body(line, cont, npl, nlines, mat, mf, mt, parse_opts, kernel)) {
+        // DIAGNOSTIC ONLY: ! cpp_diag_off(CPP_DIAG_RANGE)
+        if (! cpp_diag_off(CPP_DIAG_RANGE)
+            && fast_body(line, cont, npl, nlines, mat, mf, mt, parse_opts, kernel)) {
           cpp_list_bulk_counter().byte_range++;
           return;
         }
@@ -3145,6 +3258,7 @@ class CppListBody {
       ParsingOptions& parse_opts
     ) {
       if (npl_ <= 0) return;
+      cpp_diag_counter().repositions++;  // DIAGNOSTIC ONLY
       const int target = (consumed < npl_ ? consumed : npl_ - 1) / 6;
       if (target + (failed_ ? 0 : 1) >= good_) return;
       try {
@@ -3181,7 +3295,15 @@ class CppListBody {
       if (! cpp_list_body_range(p, mb->end(), nlines, cc, len, stride)) return false;
       const std::size_t need = 6 * static_cast<std::size_t>(nlines);
       if (need > cap_) grow(need);
-      const int n = cpp_list_convert(p, stride, npl, kernel, parse_opts.accept_d_exponent, buf_);
+      // DIAGNOSTIC ONLY: with CPP_DIAG_LOOP one kernel call per line
+      int n;
+      if (cpp_diag_off(CPP_DIAG_LOOP)) {
+        cpp_diag_counter().loop_off_bodies++;
+        n = cpp_list_convert_rows(p, stride, npl, kernel,
+          parse_opts.accept_d_exponent ? CPP_ROW_ACCEPT_D_EXPONENT : 0u, buf_);
+      } else {
+        n = cpp_list_convert(p, stride, npl, kernel, parse_opts.accept_d_exponent, buf_);
+      }
       nconv_ = n;
       const int stop_line = n >= npl ? nlines - 1 : n / 6;
       good_ = stop_line + 1;
@@ -3196,18 +3318,21 @@ class CppListBody {
       // the buffer grows with the lines read, at first to the size of
       // the body or at most 2^20 values, so that a corrupt NPL does not
       // lead to a huge allocation
+      cpp_diag_counter().grow_calls++;  // DIAGNOSTIC ONLY
       std::size_t cap = cap_;
       const std::size_t first = std::min<std::size_t>(
         static_cast<std::size_t>(npl_) + 6, std::size_t(1) << 20);
       if (cap < first) cap = first;
       while (cap < needed) cap *= 2;
-      if (store_ == nullptr && large_ == nullptr) {
+      // DIAGNOSTIC ONLY: ! cpp_diag_off(CPP_DIAG_STORE)
+      if (store_ == nullptr && large_ == nullptr && ! cpp_diag_off(CPP_DIAG_STORE)) {
         cpp_list_body_store& store = cpp_list_body_shared_store();
         if (! store.busy.exchange(true)) store_ = &store;
       }
       double* target;
       if (store_ != nullptr) {
         if (store_->capacity < cap) {
+          cpp_diag_counter().store_allocs++;  // DIAGNOSTIC ONLY
           std::unique_ptr<double[]> larger(new double[cap]);
           if (buf_ == store_->data.get()) {
             std::memcpy(larger.get(), buf_, sizeof(double) * static_cast<std::size_t>(nconv_));
@@ -3218,6 +3343,7 @@ class CppListBody {
         target = store_->data.get();
         cap = store_->capacity;
       } else {
+        cpp_diag_counter().private_allocs++;  // DIAGNOSTIC ONLY
         std::unique_ptr<double[]> larger(new double[cap]);
         if (buf_ == large_.get()) {
           std::memcpy(larger.get(), buf_, sizeof(double) * static_cast<std::size_t>(nconv_));
@@ -3230,6 +3356,8 @@ class CppListBody {
       }
       buf_ = target;
       cap_ = cap;
+      // DIAGNOSTIC ONLY
+      if (cap > cpp_diag_counter().max_capacity) cpp_diag_counter().max_capacity = cap;
     }
 
     double small_[small_size];
@@ -3478,9 +3606,12 @@ inline Tab1Body read_tab1_body(
   cpp_read_pairs<int>(cont, nr, tab_body.NBT, tab_body.INT, mat, mf, mt, parse_opts);
   // the form of the reading of the float values is chosen once per record
   const cpp_row_kernel_fn row_kernel = cpp_float_row_kernel();
-  if (row_kernel == nullptr || parse_opts.preserve_value_strings) {
+  // DIAGNOSTIC ONLY: || cpp_diag_off(CPP_DIAG_TAB1), and the counters
+  if (row_kernel == nullptr || parse_opts.preserve_value_strings || cpp_diag_off(CPP_DIAG_TAB1)) {
+    if (row_kernel != nullptr) cpp_diag_counter().tab1_perfield++;
     cpp_read_pairs<DOUBLE_TYPE>(cont, np, tab_body.X, tab_body.Y, mat, mf, mt, parse_opts);
   } else {
+    cpp_diag_counter().tab1_bulk++;
     cpp_read_pairs_bulk<DOUBLE_TYPE>(
       cont, np, tab_body.X, tab_body.Y, mat, mf, mt, parse_opts, row_kernel
     );

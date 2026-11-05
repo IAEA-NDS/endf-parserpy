@@ -1017,7 +1017,17 @@ class ListBulkForm:
             "int " + ", ".join(f"cpp_la{q} = 0" for q in names.values())
         )
         code += cpp.statement("long long " + ", ".join(decls))
-        code += cpp.statement("bool cpp_strided = cpp_body.complete()")
+        # DIAGNOSTIC ONLY (branch diag/bulk-bodies-u233): the switches
+        # strided and rows of ENDF_PARSERPY_DIAG_BULK_DISABLE, and the
+        # counters of incomplete bodies and of the catches
+        diag_cond = " && ! cpp_diag_off(CPP_DIAG_STRIDED)"
+        if len(rows) > 0:
+            diag_cond += " && ! cpp_diag_off(CPP_DIAG_ROWS)"
+        code += cpp.statement(f"bool cpp_strided = cpp_body.complete(){diag_cond}")
+        code += cpp.pureif(
+            "! cpp_body.complete()",
+            cpp.statement("cpp_diag_counter().incomplete_bodies++"),
+        )
         sizes_code, total = cls._sizes_code(items, names)
         checks = cls._check_walk(items, names)
         prepass = sizes_code
@@ -1026,17 +1036,27 @@ class ListBulkForm:
         )
         prepass += checks
         catch = cpp.statement("cpp_strided = false")
+        prepass_catch = catch + cpp.statement("cpp_diag_counter().prepass_catches++")
+        delivery_catch = catch + cpp.statement("cpp_diag_counter().delivery_catches++")
         # the bounds, the number of values and the checks first, then the
         # delivery, which only changes the variables
-        code += cpp.pureif("cpp_strided", cpp.trycatch(prepass, "...", catch))
+        code += cpp.pureif("cpp_strided", cpp.trycatch(prepass, "...", prepass_catch))
         delivery = cls._delivery_code(items, names)
         delivery += cpp.statement("cpp_list_bulk_counter().strided++")
         if len(rows) > 0:
             delivery += cpp.statement("cpp_list_bulk_counter().row_bodies++")
             delivery += cpp.statement("cpp_list_bulk_counter().row_values += cpp_npl")
             delivery += cpp.statement("cpp_list_bulk_counter().row_rows += cpp_rows")
-        code += cpp.pureif("cpp_strided", cpp.trycatch(delivery, "...", catch))
+        code += cpp.pureif("cpp_strided", cpp.trycatch(delivery, "...", delivery_catch))
         return code
+
+    @classmethod
+    def _diag_has_rows(cls, items):
+        # DIAGNOSTIC ONLY: whether the plan has row loops (switch rowpf)
+        for it in items:
+            if isinstance(it, _BulkLoop) and (it.row or cls._diag_has_rows(it.items)):
+                return True
+        return False
 
     @staticmethod
     def _sites(items):
@@ -1092,7 +1112,13 @@ class ListBulkForm:
                 f"LIST body: code of the per-field form ({reason})"
             )
             bulk_code += looped
-        return cpp.ifelse(cls.condition(plan is not None), code, cpp.block(bulk_code))
+        cond = cls.condition(plan is not None)
+        if plan is not None and cls._diag_has_rows(plan):
+            # DIAGNOSTIC ONLY: switch rowpf of ENDF_PARSERPY_DIAG_BULK_DISABLE
+            cond = (
+                "! (cpp_list_bulk(cont, parse_opts, true) && cpp_diag_rows_bulk_ok())"
+            )
+        return cpp.ifelse(cond, code, cpp.block(bulk_code))
 
 
 class ListBodyRecorder:

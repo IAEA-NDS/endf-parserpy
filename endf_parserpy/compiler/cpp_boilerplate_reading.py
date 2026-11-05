@@ -109,6 +109,39 @@ def register_reading_options():
       list_bodies["row_rows"] = bulk.row_rows;
       info["bulk_list_bodies"] = list_bodies;
       info["bulk_all_list_bodies"] = sel.list_all;
+      // DIAGNOSTIC ONLY (branch diag/bulk-bodies-u233): the switches of
+      // ENDF_PARSERPY_DIAG_BULK_DISABLE and the diagnostic counters
+      {
+        py::dict diag;
+        const char* env = std::getenv("ENDF_PARSERPY_DIAG_BULK_DISABLE");
+        diag["variable"] = "ENDF_PARSERPY_DIAG_BULK_DISABLE";
+        diag["value_now"] = env != nullptr ? py::object(py::str(env)) : py::object(py::none());
+        diag["mask"] = cpp_diag_state<>::mask;
+        py::list disabled;
+        int n;
+        const cpp_diag_part* parts = cpp_diag_parts(n);
+        for (int i = 0; i < n; i++) {
+          if (cpp_diag_state<>::mask & parts[i].bit) disabled.append(parts[i].name);
+        }
+        diag["disabled"] = disabled;
+        const cpp_diag_counts& dc = cpp_diag_counter();
+        diag["prepass_catches"] = dc.prepass_catches;
+        diag["delivery_catches"] = dc.delivery_catches;
+        diag["incomplete_bodies"] = dc.incomplete_bodies;
+        diag["rowpf_bodies"] = dc.rowpf_bodies;
+        diag["loop_off_bodies"] = dc.loop_off_bodies;
+        diag["repositions"] = dc.repositions;
+        diag["grow_calls"] = dc.grow_calls;
+        diag["store_allocs"] = dc.store_allocs;
+        diag["private_allocs"] = dc.private_allocs;
+        diag["max_capacity"] = dc.max_capacity;
+        diag["tab1_bulk"] = dc.tab1_bulk;
+        diag["tab1_perfield"] = dc.tab1_perfield;
+        diag["line_views"] = cpp_line_read_counter().views;
+        diag["line_copies"] = cpp_line_read_counter().copies;
+        info["diag"] = diag;
+        info["diag_disabled"] = disabled;
+      }
       return info;
     });
     """

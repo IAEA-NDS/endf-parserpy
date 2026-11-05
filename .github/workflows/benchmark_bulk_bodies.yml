@@ -33,7 +33,9 @@ on:
         description: "number of interleaved rounds"
         default: "11"
   push:
-    branches: ["bench/**"]
+    # DIAGNOSTIC ONLY (branch diag/bulk-bodies-u233): not for the branch of
+    # the diagnostic run, which has its own workflow (diag_bulk_bodies.yml)
+    branches: ["bench/**", "!bench/bulk-bodies-diag"]
 
 permissions:
   contents: read

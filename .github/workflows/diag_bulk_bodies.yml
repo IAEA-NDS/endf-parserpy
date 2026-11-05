@@ -1,0 +1,369 @@
+name: Diagnose bulk bodies (U233 numpy)
+
+# DIAGNOSTIC ONLY (branch diag/bulk-bodies-u233, never merged).
+#
+# Run 41994600015 of benchmark_bulk_bodies.yml (PR 4 tip aa2a178) found
+# U233 (ENDF/B-VIII.1 n-U233-9222) in numpy mode 2.5-3.6x slower than dev
+# with every bulk variant on ubuntu-latest (AMD EPYC 9V74, GCC), while
+# ENDF_PARSERPY_CPP_BULK_BODIES=off was at 0.99, and fast on
+# ubuntu-24.04-arm (GCC, aarch64) and macos-15-intel (Apple Clang). This
+# workflow looks for the cause on ubuntu-latest, with ubuntu-24.04-arm as
+# the control of the same compiler family:
+#
+#   - builds: dev (base), this branch with the package defaults (setup.py:
+#     -O1, as users get it) and this branch with
+#     INSTALL_ENDF_PARSERPY_CPP_OPTIM=-O2; the compiler version and the
+#     compile command lines are recorded;
+#   - the data files: size, sha256, line endings and lengths (compared with
+#     the local reference copy, LOCAL_*_SHA256 below);
+#   - the counters of _bulk_body_info() after one parse per variant;
+#   - interleaved timing of U233 numpy, Fe56 numpy and U233 dict for all
+#     tiers of both builds, with system time and page faults per parse;
+#   - per-MF tapes of U233 in numpy mode (base, default, off, scalar, -O2);
+#   - the diagnostic switches ENDF_PARSERPY_DIAG_BULK_DISABLE (rows, rowpf,
+#     strided, range, loop, tab1, store; see module_header_reading.hpp),
+#     one at a time, and the digests of the results with each of them;
+#   - the reproduction with tools/benchmark_bulk_bodies.py run (as run
+#     41994600015 measured it);
+#   - perf profiles (flat and call graph) of a loop of U233 numpy parses
+#     with the default tier and with off; py-spy --native or callgrind if
+#     perf cannot be used.
+#
+# Everything goes to the artifact diag-<runner> (JSON, text and
+# summary.md); the job summary has the tables. The data checkout and the
+# prepare step are those of benchmark_bulk_bodies.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "ref to compare with"
+        default: "dev"
+      rounds:
+        description: "number of interleaved rounds"
+        default: "7"
+  push:
+    branches: ["bench/bulk-bodies-diag"]
+
+permissions:
+  contents: read
+
+env:
+  BASE_REF: ${{ inputs.base_ref || 'dev' }}
+  ROUNDS: ${{ inputs.rounds || '7' }}
+  PYTHONUNBUFFERED: "1"
+  # sha256 of the local copies (ENDF/B-VIII.1 neutrons-version.VIII.1,
+  # n-092_U_233.endf and n-026_Fe_056.endf) on which the anomaly does not
+  # occur, to see whether the files of the data repository are the same
+  LOCAL_U233_SHA256: d3502e8666813bb87e66d2990691ee085d4541da50a628a3e7e24cd3f2d5574e
+  LOCAL_FE56_SHA256: eca38d4ce177a463bbc872e50fef451dd4428adf86495ba69e71b4ebf65a7b19
+
+jobs:
+  diag:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+
+    env:
+      USE_DATA_KEY: ${{ secrets.ENDF_DATA_SSH_KEY != '' }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: new
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_REF }}
+          path: base
+
+      - name: Check out the ENDF files of the data repository
+        if: env.USE_DATA_KEY == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: IAEA-NDS/ENDF-PENDF-File
+          ssh-key: ${{ secrets.ENDF_DATA_SSH_KEY }}
+          persist-credentials: false
+          path: endf_data
+          lfs: true
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            ENDF-B-VIII.1/n/n-Fe56-2631.enf.zip
+            ENDF-B-VIII.1/n/n-H1-0125.enf.zip
+            ENDF-B-VIII.1/n/n-U233-9222.enf.zip
+            ENDF-B-VIII.1/n/n-Pu238-9434.enf.zip
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check and unzip the ENDF files
+        if: env.USE_DATA_KEY == 'true'
+        run: |
+          python new/tools/benchmark_bulk_bodies.py prepare \
+            --data-dir endf_data --out-dir endf_files
+          echo "ENDF files: ENDF/B-VIII.1 from IAEA-NDS/ENDF-PENDF-File ($(ls endf_files | tr '\n' ' '))" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Note the skipped data checkout
+        if: env.USE_DATA_KEY != 'true'
+        run: |
+          msg="IAEA-NDS/ENDF-PENDF-File not checked out (the secret ENDF_DATA_SSH_KEY is not set): the test data of the repository (Cu63) stand in for U233 and Fe56."
+          echo "::notice::$msg"
+          echo "**Note:** $msg" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Select the files
+        run: |
+          if [ -f endf_files/U233.endf ] && [ -f endf_files/Fe56.endf ]; then
+            echo "U233=$PWD/endf_files/U233.endf" >> "$GITHUB_ENV"
+            echo "FE56=$PWD/endf_files/Fe56.endf" >> "$GITHUB_ENV"
+          else
+            echo "U233=$PWD/new/tests/testdata/n_2925_29-Cu-63.endf" >> "$GITHUB_ENV"
+            echo "FE56=$PWD/new/tests/testdata/n_2925_29-Cu-63.endf" >> "$GITHUB_ENV"
+          fi
+
+      - name: Record the system and the compiler
+        run: |
+          mkdir -p results
+          {
+            echo "== uname"; uname -a
+            echo "== lscpu"; lscpu
+            echo "== cpu flags"; grep -m1 -E '^(flags|Features)' /proc/cpuinfo || true
+            echo "== memory"; free -m
+            echo "== transparent hugepages"
+            cat /sys/kernel/mm/transparent_hugepage/enabled /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || true
+            echo "== glibc"; ldd --version | head -1 || true
+            echo "== gcc"; gcc --version || true
+            echo "== g++"; g++ --version || true
+            echo "== c++"; c++ --version || true
+            echo "== python"; python -VV
+            echo "== sysconfig"
+            python -c "import sysconfig as s; [print(k, '=', s.get_config_var(k)) for k in ('CC', 'CXX', 'LDSHARED', 'CFLAGS', 'OPT', 'CCSHARED')]"
+            echo "== perf_event_paranoid"; cat /proc/sys/kernel/perf_event_paranoid || true
+          } 2>&1 | tee results/system.txt
+          gcc --version | head -1 > results/gcc_version.txt || true
+
+      - name: Build dev, this branch (defaults) and this branch (-O2)
+        env:
+          INSTALL_ENDF_PARSERPY_CPP: "yes"
+        run: |
+          # separate source trees, so that no build reuses the objects of
+          # another (pip builds in the tree)
+          cp -a new new_o2
+          build() {
+            local v=$1 src=$2
+            python -m venv "venv_$v"
+            "venv_$v/bin/python" -m pip install --upgrade pip > /dev/null
+            "venv_$v/bin/python" -m pip install numpy > /dev/null
+            local t0=$(date +%s)
+            "venv_$v/bin/python" -m pip install -v --no-cache-dir "./$src" > "results/build_$v.log" 2>&1 \
+              || { tail -50 "results/build_$v.log"; return 1; }
+            echo "build $v: $(( $(date +%s) - t0 )) s" | tee -a results/build_times.txt
+            grep -E -- ' -c [^ ]+\.cpp' "results/build_$v.log" > "results/compile_lines_$v.txt" || true
+            grep -E -- ' -shared ' "results/build_$v.log" > "results/link_lines_$v.txt" || true
+            echo "$v: $(wc -l < "results/compile_lines_$v.txt") compile lines"
+            head -1 "results/compile_lines_$v.txt"
+            ( cd /tmp && "$OLDPWD/venv_$v/bin/python" -c "import endf_parserpy, numpy; print(endf_parserpy.__file__, numpy.__version__)" )
+          }
+          build base base
+          build o1 new
+          INSTALL_ENDF_PARSERPY_CPP_OPTIM=-O2 build o2 new_o2
+
+      - name: Data files and counters
+        continue-on-error: true
+        run: |
+          py1=venv_o1/bin/python; py2=venv_o2/bin/python
+          B=ENDF_PARSERPY_CPP_BULK_BODIES; D=ENDF_PARSERPY_DIAG_BULK_DISABLE
+          python new/tools/diag_bulk_bodies.py fileinfo --files "$U233" "$FE56" --out results/fileinfo.json
+          tiers=$(python new/tools/diag_bulk_bodies.py tiers --python "$py1")
+          echo "tiers built and supported: $tiers" | tee results/tiers.txt
+          specs=("O1|$py1" "O1:off|$py1|$B=off")
+          for t in $tiers; do specs+=("O1:$t|$py1|$B=$t"); done
+          for d in rows rowpf strided range loop tab1 store; do specs+=("O1-$d|$py1|$D=$d"); done
+          specs+=("O1:scalar-loop|$py1|$B=scalar;$D=loop" "O2|$py2")
+          python new/tools/diag_bulk_bodies.py counters --title "Counters (one parse per process)" \
+            --files "$U233" "$FE56" --modes numpy dict --out results/counters.json --spec "${specs[@]}"
+
+      - name: "Timing: all tiers of both builds"
+        continue-on-error: true
+        run: |
+          pyb=venv_base/bin/python; py1=venv_o1/bin/python; py2=venv_o2/bin/python
+          B=ENDF_PARSERPY_CPP_BULK_BODIES
+          tiers=$(python new/tools/diag_bulk_bodies.py tiers --python "$py1")
+          specs=("base|$pyb" "base:aa|$pyb")
+          for py in O1 O2; do
+            p=$([ $py = O1 ] && echo "$py1" || echo "$py2")
+            specs+=("$py|$p" "$py:off|$p|$B=off")
+            for t in $tiers; do specs+=("$py:$t|$p|$B=$t"); done
+          done
+          python new/tools/diag_bulk_bodies.py timing --title "Timing: base vs both builds, all tiers" \
+            --files "$U233" "$FE56" --modes numpy dict --rounds "$ROUNDS" --reps 5 \
+            --out results/timing_tiers.json --spec "${specs[@]}"
+
+      - name: "Timing: per-MF tapes of U233"
+        continue-on-error: true
+        run: |
+          pyb=venv_base/bin/python; py1=venv_o1/bin/python; py2=venv_o2/bin/python
+          B=ENDF_PARSERPY_CPP_BULK_BODIES
+          python new/tools/diag_bulk_bodies.py cut --file "$U233" --out-dir mf | tee results/mf_tapes.txt
+          python new/tools/diag_bulk_bodies.py timing --title "Timing: per-MF tapes of U233, numpy" \
+            --files mf/*.endf --modes numpy --rounds "$ROUNDS" --reps 5 --out results/timing_per_mf.json \
+            --spec "base|$pyb" "O1|$py1" "O1:off|$py1|$B=off" "O1:scalar|$py1|$B=scalar" "O2|$py2"
+
+      - name: "Timing: diagnostic switches"
+        continue-on-error: true
+        run: |
+          pyb=venv_base/bin/python; py1=venv_o1/bin/python
+          B=ENDF_PARSERPY_CPP_BULK_BODIES; D=ENDF_PARSERPY_DIAG_BULK_DISABLE
+          specs=("base|$pyb" "O1|$py1" "O1:off|$py1|$B=off")
+          for d in rows rowpf strided range loop tab1 store; do specs+=("O1-$d|$py1|$D=$d"); done
+          specs+=("O1:scalar|$py1|$B=scalar")
+          for d in rows rowpf strided range loop; do specs+=("O1:scalar-$d|$py1|$B=scalar;$D=$d"); done
+          python new/tools/diag_bulk_bodies.py timing --title "Timing: switches off one at a time (O1 build)" \
+            --files "$U233" "$FE56" --modes numpy --rounds "$ROUNDS" --reps 5 \
+            --out results/timing_switches.json --spec "${specs[@]}"
+
+      - name: "Digests: the switches give the same results"
+        continue-on-error: true
+        run: |
+          pyb=venv_base/bin/python; py1=venv_o1/bin/python; py2=venv_o2/bin/python
+          B=ENDF_PARSERPY_CPP_BULK_BODIES; D=ENDF_PARSERPY_DIAG_BULK_DISABLE
+          tiers=$(python new/tools/diag_bulk_bodies.py tiers --python "$py1")
+          specs=("O1:off|$py1|$B=off" "base|$pyb" "O1|$py1" "O2|$py2")
+          for t in $tiers; do specs+=("O1:$t|$py1|$B=$t"); done
+          for d in rows rowpf strided range loop tab1 store; do specs+=("O1-$d|$py1|$D=$d"); done
+          python new/tools/diag_bulk_bodies.py digest --title "Digests of the results (reference O1:off)" \
+            --files "$U233" "$FE56" --modes numpy list dict --out results/digests.json --spec "${specs[@]}"
+
+      - name: "Reproduction with tools/benchmark_bulk_bodies.py run"
+        continue-on-error: true
+        run: |
+          venv_o1/bin/python new/tools/benchmark_bulk_bodies.py run \
+            --base-python venv_base/bin/python --new-python venv_o1/bin/python \
+            --files "$U233" "$FE56" --rounds 5 --machine "${{ matrix.runner }}" \
+            --out results/benchmark_script.json --summary results/benchmark_script.md
+
+      - name: Profiles (perf, else py-spy, else callgrind)
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          py1=venv_o1/bin/python
+          T=new/tools/diag_bulk_bodies.py
+          mkdir -p results/profile
+          sudo apt-get update -qq > /dev/null 2>&1 || true
+          sudo apt-get install -y -qq linux-tools-common linux-tools-generic "linux-tools-$(uname -r)" > results/profile/apt.log 2>&1 \
+            || sudo apt-get install -y -qq linux-tools-common linux-tools-generic linux-tools-azure >> results/profile/apt.log 2>&1 \
+            || true
+          PERF=""
+          for c in "/usr/lib/linux-tools/$(uname -r)/perf" /usr/lib/linux-tools/*/perf "$(command -v perf || true)"; do
+            if [ -n "$c" ] && [ -x "$c" ] && "$c" --version > /dev/null 2>&1; then PERF=$c; break; fi
+          done
+          sudo sysctl -w kernel.perf_event_paranoid=-1 kernel.kptr_restrict=0 > /dev/null 2>&1 || true
+          if [ -n "$PERF" ] && "$PERF" record -o /tmp/perf_probe.data -- true > /dev/null 2>&1; then
+            echo "profiler: perf ($PERF, $("$PERF" --version))" | tee results/profile/profiler.txt
+            for v in default off; do
+              if [ $v = off ]; then export ENDF_PARSERPY_CPP_BULK_BODIES=off; else unset ENDF_PARSERPY_CPP_BULK_BODIES; fi
+              "$PERF" stat -e task-clock,page-faults,context-switches,cpu-migrations,cycles,instructions,branch-misses,cache-misses \
+                -o "results/profile/perf_stat_$v.txt" -- "$py1" $T loop --file "$U233" --mode numpy --seconds 8 \
+                > "results/profile/loop_stat_$v.txt" 2>&1 || true
+              "$PERF" record -F 1999 -g -o "perf_$v.data" -- "$py1" $T loop --file "$U233" --mode numpy --seconds 15 \
+                > "results/profile/loop_record_$v.txt" 2>&1 || true
+              "$PERF" report -i "perf_$v.data" --stdio --no-children --sort dso,symbol --percent-limit 0.2 2> /dev/null \
+                | head -200 > "results/profile/perf_flat_$v.txt" || true
+              "$PERF" report -i "perf_$v.data" --stdio --children --sort symbol --percent-limit 1 -G 2> /dev/null \
+                | head -1500 > "results/profile/perf_callgraph_fp_$v.txt" || true
+              "$PERF" record -F 299 --call-graph dwarf,16384 -o "perf_dwarf_$v.data" -- "$py1" $T loop --file "$U233" --mode numpy --seconds 6 \
+                > /dev/null 2>&1 || true
+              "$PERF" report -i "perf_dwarf_$v.data" --stdio --children --sort symbol --percent-limit 1 -G 2> /dev/null \
+                | head -2000 > "results/profile/perf_callgraph_dwarf_$v.txt" || true
+              rm -f "perf_dwarf_$v.data"
+            done
+            unset ENDF_PARSERPY_CPP_BULK_BODIES
+          elif python -m pip install py-spy > results/profile/pip_pyspy.log 2>&1; then
+            echo "profiler: py-spy --native (perf not usable)" | tee results/profile/profiler.txt
+            for v in default off; do
+              if [ $v = off ]; then export ENDF_PARSERPY_CPP_BULK_BODIES=off; else unset ENDF_PARSERPY_CPP_BULK_BODIES; fi
+              py-spy record --native -r 250 -f raw -o "results/profile/pyspy_$v.txt" -- \
+                "$py1" $T loop --file "$U233" --mode numpy --seconds 15 > /dev/null 2>&1 \
+                || sudo -E env "PATH=$PATH" py-spy record --native -r 250 -f raw -o "results/profile/pyspy_$v.txt" -- \
+                "$py1" $T loop --file "$U233" --mode numpy --seconds 15 > /dev/null 2>&1 || true
+              python $T collapse --file "results/profile/pyspy_$v.txt" --top 60 > "results/profile/pyspy_top_$v.txt" || true
+            done
+            unset ENDF_PARSERPY_CPP_BULK_BODIES
+          else
+            echo "profiler: callgrind (perf and py-spy not usable)" | tee results/profile/profiler.txt
+            sudo apt-get install -y -qq valgrind > /dev/null 2>&1 || true
+            for v in default off; do
+              if [ $v = off ]; then export ENDF_PARSERPY_CPP_BULK_BODIES=off; else unset ENDF_PARSERPY_CPP_BULK_BODIES; fi
+              valgrind --tool=callgrind --callgrind-out-file="callgrind_$v.out" "$py1" $T loop --file "$U233" --mode numpy --seconds 0 \
+                > /dev/null 2>&1 || true
+              callgrind_annotate "callgrind_$v.out" 2> /dev/null | head -120 > "results/profile/callgrind_top_$v.txt" || true
+            done
+            unset ENDF_PARSERPY_CPP_BULK_BODIES
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### ${{ matrix.runner }}: diagnosis of U233 numpy"
+            echo ""
+            echo "- CPU: $(lscpu | sed -n 's/^Model name: *//p' | head -1)"
+            echo "- compiler: $(cat results/gcc_version.txt 2>/dev/null)"
+            echo "- builds: $(tr '\n' ';' 2>/dev/null < results/build_times.txt)"
+            echo "- $(cat results/tiers.txt 2>/dev/null)"
+            for v in base o1 o2; do
+              echo "- compile line ($v): \`$(head -1 results/compile_lines_$v.txt 2>/dev/null | cut -c1-600)\`"
+            done
+            python - <<'EOF'
+          import json, os
+          try:
+              info = json.load(open("results/fileinfo.json"))
+          except (OSError, ValueError):
+              info = {}
+          ref = {"U233": os.environ["LOCAL_U233_SHA256"], "Fe56": os.environ["LOCAL_FE56_SHA256"]}
+          for name, r in info.items():
+              same = "same as" if r["sha256"] == ref.get(name) else "differs from"
+              print(f"- {name}: {r['bytes']} bytes, {r['lines']} lines, CRLF lines {r['crlf_lines']}, "
+                    f"line lengths {r['line_lengths']}, sha256 {r['sha256'][:16]}... ({same} the local copy)")
+          EOF
+            echo "- $(cat results/profile/profiler.txt 2>/dev/null || echo 'profiler: none')"
+            echo ""
+            python new/tools/diag_bulk_bodies.py summary --results-dir results --out results/summary_tables.md > /dev/null 2>&1 || true
+            cat results/summary_tables.md 2>/dev/null
+            echo ""
+            if [ -f results/benchmark_script.md ]; then
+              echo "#### Reproduction with tools/benchmark_bulk_bodies.py run"
+              cat results/benchmark_script.md
+            fi
+            for f in results/profile/perf_stat_default.txt results/profile/perf_stat_off.txt \
+                     results/profile/perf_flat_default.txt results/profile/perf_flat_off.txt \
+                     results/profile/pyspy_top_default.txt results/profile/pyspy_top_off.txt \
+                     results/profile/callgrind_top_default.txt results/profile/callgrind_top_off.txt; do
+              if [ -s "$f" ]; then
+                echo ""
+                echo "<details><summary>$(basename "$f") (top)</summary>"
+                echo ""
+                echo '```'
+                grep -v '^#' "$f" | grep -v '^$' | head -45 || true
+                echo '```'
+                echo "</details>"
+              fi
+            done
+          } > results/summary.md
+          cat results/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diag-${{ matrix.runner }}
+          path: results

@@ -1088,8 +1088,9 @@ inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, do
 // reads every field the kernel leaves (bit not set) with the per-field
 // path (cpp_read_field), so that the results, and the errors for
 // malformed fields, do not depend on the kernel. A kernel does not throw
-// and only reads the first 66 columns of the line (every line is padded
-// to 75 columns, see cpp_pad_short_line). `flags` holds the parsing
+// and only reads the first 75 columns of the line (every line is padded
+// to 75 columns, see cpp_pad_short_line; the fields are in columns 1-66,
+// the AVX2 tier loads 16 bytes per field, up to column 71). `flags` holds the parsing
 // options that matter for the conversion (CPP_ROW_ACCEPT_D_EXPONENT).
 //
 // The kernels are the tiers of a small table (cpp_row_tiers): the scalar
@@ -1224,6 +1225,398 @@ inline bool cpp_row_cpu_avx512(const cpp_cpu_features& f) {
 }
 
 
+// The vector tiers (AVX2 and AVX-512), only built with CPP_ROW_VECTOR_TIERS:
+// GCC and Clang on x86-64 (CPP_ROW_X86_64_GNU), and for clang-cl only if
+// <immintrin.h> declares the intrinsics without the corresponding global
+// compiler flags (older clang-cl versions declare them only with these
+// flags; the two macros below are defined by the headers that do). The
+// translation units are compiled for the baseline instruction set of the
+// module; every function using these instructions carries a target
+// attribute (CPP_ROW_TARGET_AVX2, CPP_ROW_TARGET_AVX512) and is only
+// executed if the CPU supports its tier (cpp_row_select). Such a function
+// calls the scalar conversion only out of line (cpp_row_vector_fallback),
+// so that this code is never compiled with the instruction set of a tier.
+//
+// The vector path of both kernels converts exactly the two layouts of
+// cpp_fast_field_swar, " d.dddddd+d" and " d.ddddd+dd" (first character
+// blank, '+' or '-', exponent sign '+' or '-'), with a decimal exponent
+// k (of the significand as an integer) in -22..22: the significand m (an
+// integer below 10^7, exact as a double) is multiplied by 10^k for k >= 0,
+// which gives the correctly rounded product as the scalar code does; for
+// k < 0 the quotient m / 10^-k is computed without a division as
+// q0 = m * y, r = fma(-q0, b, m), q1 = fma(r, y, q0) with b = 10^-k and
+// y = 10^k rounded, which equals the correctly rounded quotient computed
+// by the scalar code (a division) for all m < 10^7 and -k = 1..22; the
+// mode "exhaustive" of tests/cpp/float_kernel_equivalence.cpp checks every
+// string of both layouts with every vector tier. The sign is applied
+// last, so that "-0.000000+0" gives -0.0 as in the scalar code. Every other field (other layouts, exponents
+// outside -22..22, among them those of cpp_decimal_to_double_negexp)
+// is converted by cpp_fast_field_to_double, so that a kernel converts
+// exactly the fields cpp_fast_field_to_double converts, to the same bits.
+#ifdef CPP_ROW_X86_64_GNU
+#include <immintrin.h>
+#if ! defined(_MSC_VER) || defined(__GNUC__) \
+    || (defined(_mm256_inserti128_si256) && defined(_mm512_cmple_epi64_mask))
+#define CPP_ROW_VECTOR_TIERS 1
+#endif
+#endif
+
+#ifdef CPP_ROW_VECTOR_TIERS
+
+#define CPP_ROW_TARGET_AVX2 __attribute__((target("avx2,fma")))
+#define CPP_ROW_TARGET_AVX512 \
+  __attribute__((target("avx2,fma,avx512f,avx512bw,avx512vl,avx512dq,avx512vbmi")))
+// the parts of the kernels, inlined into the functions of their tier
+#define CPP_ROW_INLINE_AVX2 __attribute__((always_inline, target("avx2,fma"))) inline
+#define CPP_ROW_INLINE_AVX512 __attribute__((always_inline, \
+  target("avx2,fma,avx512f,avx512bw,avx512vl,avx512dq,avx512vbmi"))) inline
+
+// The fields of `todo` converted by cpp_fast_field_to_double (the fields
+// the vector path does not take); returns the mask of those converted.
+CPP_DECIMAL_NOINLINE inline unsigned cpp_row_vector_fallback(
+  const char* line, unsigned todo, bool accept_d_exponent, double* out
+) {
+  unsigned done = 0;
+  while (todo != 0) {
+    const int j = __builtin_ctz(todo);
+    todo &= todo - 1;
+    if (cpp_fast_field_to_double(line + 11 * j, accept_d_exponent, out[j])) {
+      done |= 1u << j;
+    }
+  }
+  return done;
+}
+
+// tables of the vector kernels (constant-initialized, shared by the
+// translation units of a module)
+struct cpp_row_vector_tables {
+  // AVX2: {10^q, 10^-q rounded} for q = 0..22, entry 23 neutral
+  alignas(16) double pow2[24][2];
+  // AVX-512: 10^q and 10^-q rounded for q = 0..22, entry 23 neutral
+  alignas(64) double pow[24];
+  alignas(64) double rpow[24];
+  // AVX-512: the indices of the bytes of the line gathered into the eight
+  // qwords (field j in qword j, qwords 6 and 7 repeat field 0): bytes 0-7
+  // of the field, bytes 8-10, and the significand digits of the two
+  // layouts (index 66: a byte '0')
+  alignas(64) std::uint8_t idx1[64];
+  alignas(64) std::uint8_t idx2[64];
+  alignas(64) std::uint8_t idx3a[64];
+  alignas(64) std::uint8_t idx3b[64];
+};
+
+inline const cpp_row_vector_tables& cpp_row_vector_tab() {
+  static const cpp_row_vector_tables tab = {
+    {
+      {1e0, 1e-0}, {1e1, 1e-1}, {1e2, 1e-2}, {1e3, 1e-3}, {1e4, 1e-4}, {1e5, 1e-5},
+      {1e6, 1e-6}, {1e7, 1e-7}, {1e8, 1e-8}, {1e9, 1e-9}, {1e10, 1e-10}, {1e11, 1e-11},
+      {1e12, 1e-12}, {1e13, 1e-13}, {1e14, 1e-14}, {1e15, 1e-15}, {1e16, 1e-16},
+      {1e17, 1e-17}, {1e18, 1e-18}, {1e19, 1e-19}, {1e20, 1e-20}, {1e21, 1e-21},
+      {1e22, 1e-22}, {1.0, 1.0}
+    },
+    {
+      1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15,
+      1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22, 1.0
+    },
+    {
+      1e-0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10, 1e-11, 1e-12,
+      1e-13, 1e-14, 1e-15, 1e-16, 1e-17, 1e-18, 1e-19, 1e-20, 1e-21, 1e-22, 1.0
+    },
+    {
+      0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18,
+      22, 23, 24, 25, 26, 27, 28, 29, 33, 34, 35, 36, 37, 38, 39, 40,
+      44, 45, 46, 47, 48, 49, 50, 51, 55, 56, 57, 58, 59, 60, 61, 62,
+      0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7
+    },
+    {
+      8, 9, 10, 8, 8, 8, 8, 8, 19, 20, 21, 19, 19, 19, 19, 19,
+      30, 31, 32, 30, 30, 30, 30, 30, 41, 42, 43, 41, 41, 41, 41, 41,
+      52, 53, 54, 52, 52, 52, 52, 52, 63, 64, 65, 63, 63, 63, 63, 63,
+      8, 9, 10, 8, 8, 8, 8, 8, 8, 9, 10, 8, 8, 8, 8, 8
+    },
+    {
+      66, 1, 3, 4, 5, 6, 7, 8, 66, 12, 14, 15, 16, 17, 18, 19,
+      66, 23, 25, 26, 27, 28, 29, 30, 66, 34, 36, 37, 38, 39, 40, 41,
+      66, 45, 47, 48, 49, 50, 51, 52, 66, 56, 58, 59, 60, 61, 62, 63,
+      66, 1, 3, 4, 5, 6, 7, 8, 66, 1, 3, 4, 5, 6, 7, 8
+    },
+    {
+      66, 66, 1, 3, 4, 5, 6, 7, 66, 66, 12, 14, 15, 16, 17, 18,
+      66, 66, 23, 25, 26, 27, 28, 29, 66, 66, 34, 36, 37, 38, 39, 40,
+      66, 66, 45, 47, 48, 49, 50, 51, 66, 66, 56, 58, 59, 60, 61, 62,
+      66, 66, 1, 3, 4, 5, 6, 7, 66, 66, 1, 3, 4, 5, 6, 7
+    }
+  };
+  return tab;
+}
+
+// ---- AVX2: one ymm register holds two fields, each in a 128-bit lane
+// (bytes 0..10 of the field; bytes 11..15 are ignored).
+
+enum { CPP_ROW_C_D = 1, CPP_ROW_C_DOT = 2, CPP_ROW_C_S = 4, CPP_ROW_C_B = 8 };
+
+CPP_ROW_INLINE_AVX2 __m256i cpp_row_avx2_load2(const char* p) {
+  return _mm256_inserti128_si256(
+    _mm256_castsi128_si256(_mm_loadu_si128(reinterpret_cast<const __m128i*>(p))),
+    _mm_loadu_si128(reinterpret_cast<const __m128i*>(p + 11)), 1);
+}
+
+// Classification and digit reduction of two fields. Returns per lane the
+// dwords [H, L, e, ld + 256*es]: significand = H*10^4 + L (layout B with
+// an appended zero digit, i.e. ten times the significand), e the exponent
+// digits, ld and es the first character and the exponent sign minus '0'
+// (bit 2 set exactly for '-'). bad: movemask, a lane holds a field of one
+// of the two layouts iff its 16 bits are zero.
+CPP_ROW_INLINE_AVX2 __m256i cpp_row_avx2_prep(__m256i Y, unsigned& bad) {
+  const __m256i lo_t = _mm256_setr_epi8(
+    CPP_ROW_C_D | CPP_ROW_C_B, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D,
+    CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, 0, CPP_ROW_C_S, 0,
+    CPP_ROW_C_S, CPP_ROW_C_DOT, 0,
+    CPP_ROW_C_D | CPP_ROW_C_B, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D,
+    CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, 0, CPP_ROW_C_S, 0,
+    CPP_ROW_C_S, CPP_ROW_C_DOT, 0);
+  const __m256i hi_t = _mm256_setr_epi8(
+    0, 0, CPP_ROW_C_DOT | CPP_ROW_C_S | CPP_ROW_C_B, CPP_ROW_C_D, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, CPP_ROW_C_DOT | CPP_ROW_C_S | CPP_ROW_C_B, CPP_ROW_C_D, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  const __m256i nib = _mm256_set1_epi8(0x0F);
+  const __m256i code = _mm256_and_si256(
+    _mm256_shuffle_epi8(lo_t, _mm256_and_si256(Y, nib)),
+    _mm256_shuffle_epi8(hi_t, _mm256_and_si256(_mm256_srli_epi16(Y, 4), nib)));
+  // layout B iff byte 8 is a sign
+  const __m256i isB = _mm256_cmpeq_epi8(
+    _mm256_shuffle_epi8(code, _mm256_set1_epi8(8)), _mm256_set1_epi8(CPP_ROW_C_S));
+#define CPP_ROW_PA CPP_ROW_C_S | CPP_ROW_C_B, CPP_ROW_C_D, CPP_ROW_C_DOT, CPP_ROW_C_D, \
+  CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_S, CPP_ROW_C_D, \
+  0, 0, 0, 0, 0
+#define CPP_ROW_PB CPP_ROW_C_S | CPP_ROW_C_B, CPP_ROW_C_D, CPP_ROW_C_DOT, CPP_ROW_C_D, \
+  CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_D, CPP_ROW_C_S, CPP_ROW_C_D, CPP_ROW_C_D, \
+  0, 0, 0, 0, 0
+  const __m256i patA = _mm256_setr_epi8(CPP_ROW_PA, CPP_ROW_PA);
+  const __m256i patB = _mm256_setr_epi8(CPP_ROW_PB, CPP_ROW_PB);
+#undef CPP_ROW_PA
+#undef CPP_ROW_PB
+  const __m256i dc = _mm256_setr_epi8(
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1);
+  const __m256i pat = _mm256_blendv_epi8(patA, patB, isB);
+  const __m256i ok = _mm256_or_si256(_mm256_and_si256(code, pat), dc);
+  bad = static_cast<unsigned>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(ok, _mm256_setzero_si256())));
+  // digit gathering: A [Z,1,3,4,5,6,7,8, Z,10, Z,Z, 0,Z, 9,Z]
+  //                  B [Z,1,3,4,5,6,7,Z, 9,10, Z,Z, 0,Z, 8,Z]
+  const char Z = static_cast<char>(0x80);
+#define CPP_ROW_CA Z, 1, 3, 4, 5, 6, 7, 8, Z, 10, Z, Z, 0, Z, 9, Z
+#define CPP_ROW_CB Z, 1, 3, 4, 5, 6, 7, Z, 9, 10, Z, Z, 0, Z, 8, Z
+  const __m256i ctrlA = _mm256_setr_epi8(CPP_ROW_CA, CPP_ROW_CA);
+  const __m256i ctrlB = _mm256_setr_epi8(CPP_ROW_CB, CPP_ROW_CB);
+#undef CPP_ROW_CA
+#undef CPP_ROW_CB
+  const __m256i ctrl = _mm256_blendv_epi8(ctrlA, ctrlB, isB);
+  const __m256i dg = _mm256_sub_epi8(Y, _mm256_set1_epi8('0'));
+  const __m256i sh = _mm256_shuffle_epi8(dg, ctrl);
+  const __m256i W1 = _mm256_setr_epi8(
+    10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 0, 0, 1, 0, 1, 0,
+    10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 0, 0, 1, 0, 1, 0);
+  const __m256i W2 = _mm256_setr_epi16(100, 1, 100, 1, 1, 0, 1, 256,
+                                       100, 1, 100, 1, 1, 0, 1, 256);
+  return _mm256_madd_epi16(_mm256_maddubs_epi16(sh, W1), W2);
+}
+
+// Floating-point stage for four fields: Pa holds the fields (a0, a1), Pb
+// (b0, b1). Returns the values in the order (a0, a1, b0, b1); rmask: bit
+// set where the exponent is in range, in the order (a0, b0, a1, b1).
+CPP_ROW_INLINE_AVX2 __m256d cpp_row_avx2_fp4(__m256i Pa, __m256i Pb, unsigned& rmask) {
+  const cpp_row_vector_tables& T = cpp_row_vector_tab();
+  __m256i u = _mm256_unpacklo_epi32(Pa, Pb);   // lane: Ha Hb La Lb
+  __m256i v = _mm256_unpackhi_epi32(Pa, Pb);   // lane: Ea Eb Da Db
+  u = _mm256_permute4x64_epi64(u, 0xD8);       // Ha0 Hb0 Ha1 Hb1 | La0 Lb0 La1 Lb1
+  v = _mm256_permute4x64_epi64(v, 0xD8);
+  const __m128i H = _mm256_castsi256_si128(u), L = _mm256_extracti128_si256(u, 1);
+  const __m128i E = _mm256_castsi256_si128(v), D = _mm256_extracti128_si256(v, 1);
+  const __m256d m = _mm256_fmadd_pd(_mm256_cvtepi32_pd(H), _mm256_set1_pd(1e4), _mm256_cvtepi32_pd(L));
+  const __m128i n = _mm_srai_epi32(_mm_slli_epi32(D, 21), 31);   // exponent sign
+  const __m128i k = _mm_sub_epi32(_mm_sub_epi32(_mm_xor_si128(E, n), n), _mm_set1_epi32(6));
+  // range of the decimal exponent of the (for B: scaled) significand
+  const __m128i rok = _mm_andnot_si128(_mm_cmpgt_epi32(k, _mm_set1_epi32(21)),
+                                       _mm_cmpgt_epi32(k, _mm_set1_epi32(-23)));
+  rmask = static_cast<unsigned>(_mm_movemask_ps(_mm_castsi128_ps(rok)));
+  const __m128i qi = _mm_min_epu32(_mm_abs_epi32(k), _mm_set1_epi32(23));
+  alignas(16) int idx[4];
+  _mm_store_si128(reinterpret_cast<__m128i*>(idx), qi);
+  const __m256d X02 = _mm256_insertf128_pd(
+    _mm256_castpd128_pd256(_mm_load_pd(T.pow2[idx[0]])), _mm_load_pd(T.pow2[idx[2]]), 1);
+  const __m256d X13 = _mm256_insertf128_pd(
+    _mm256_castpd128_pd256(_mm_load_pd(T.pow2[idx[1]])), _mm_load_pd(T.pow2[idx[3]]), 1);
+  const __m256d B = _mm256_unpacklo_pd(X02, X13);
+  const __m256d Yr = _mm256_unpackhi_pd(X02, X13);
+  const __m256d rmul = _mm256_mul_pd(m, B);
+  const __m256d q0 = _mm256_mul_pd(m, Yr);
+  const __m256d r = _mm256_fnmadd_pd(q0, B, m);
+  const __m256d q1 = _mm256_fmadd_pd(r, Yr, q0);
+  __m256d res = _mm256_blendv_pd(rmul, q1, _mm256_castsi256_pd(_mm256_cvtepi32_epi64(k)));
+  const __m256i sg = _mm256_and_si256(_mm256_cvtepi32_epi64(_mm_slli_epi32(D, 29)),
+                                      _mm256_set1_epi64x(static_cast<long long>(0x8000000000000000ULL)));
+  res = _mm256_xor_pd(res, _mm256_castsi256_pd(sg));
+  return _mm256_permute4x64_pd(res, 0xD8);
+}
+
+// Floating-point stage for the two fields (a0, a1) of Pa, with 128-bit
+// vectors. rmask: bits 0 and 1.
+CPP_ROW_INLINE_AVX2 __m128d cpp_row_avx2_fp2(__m256i Pa, unsigned& rmask) {
+  const cpp_row_vector_tables& T = cpp_row_vector_tab();
+  const __m128i lo = _mm256_castsi256_si128(Pa), hi = _mm256_extracti128_si256(Pa, 1);
+  const __m128i u = _mm_unpacklo_epi32(lo, hi);   // H0 H1 L0 L1
+  const __m128i v = _mm_unpackhi_epi32(lo, hi);   // E0 E1 D0 D1
+  const __m128d m = _mm_fmadd_pd(_mm_cvtepi32_pd(u), _mm_set1_pd(1e4), _mm_cvtepi32_pd(_mm_unpackhi_epi64(u, u)));
+  const __m128i D = _mm_unpackhi_epi64(v, v);
+  const __m128i n = _mm_srai_epi32(_mm_slli_epi32(D, 21), 31);
+  const __m128i k = _mm_sub_epi32(_mm_sub_epi32(_mm_xor_si128(v, n), n), _mm_set1_epi32(6));
+  const __m128i rok = _mm_andnot_si128(_mm_cmpgt_epi32(k, _mm_set1_epi32(21)),
+                                       _mm_cmpgt_epi32(k, _mm_set1_epi32(-23)));
+  rmask = static_cast<unsigned>(_mm_movemask_ps(_mm_castsi128_ps(rok))) & 3u;
+  const __m128i qi = _mm_min_epu32(_mm_abs_epi32(k), _mm_set1_epi32(23));
+  const __m128d X0 = _mm_load_pd(T.pow2[_mm_cvtsi128_si32(qi)]);
+  const __m128d X1 = _mm_load_pd(T.pow2[_mm_extract_epi32(qi, 1)]);
+  const __m128d B = _mm_unpacklo_pd(X0, X1);
+  const __m128d Yr = _mm_unpackhi_pd(X0, X1);
+  const __m128d rmul = _mm_mul_pd(m, B);
+  const __m128d kn = _mm_castsi128_pd(_mm_cvtepi32_epi64(k));
+  const __m128d q0 = _mm_mul_pd(m, Yr);
+  const __m128d r = _mm_fnmadd_pd(q0, B, m);
+  const __m128d res = _mm_blendv_pd(rmul, _mm_fmadd_pd(r, Yr, q0), kn);
+  const __m128i sg = _mm_and_si128(_mm_cvtepi32_epi64(_mm_slli_epi32(D, 29)),
+                                   _mm_set1_epi64x(static_cast<long long>(0x8000000000000000ULL)));
+  return _mm_xor_pd(res, _mm_castsi128_pd(sg));
+}
+
+// The vector path of the AVX2 kernel: stores six values in out[0..5] and
+// returns the mask of the fields it has converted (the other values are
+// undefined).
+CPP_ROW_INLINE_AVX2 unsigned cpp_row_avx2_fast(const char* s, double* out) {
+  unsigned b0, b1, b2, r01, r2;
+  const __m256i P0 = cpp_row_avx2_prep(cpp_row_avx2_load2(s), b0);
+  const __m256i P1 = cpp_row_avx2_prep(cpp_row_avx2_load2(s + 22), b1);
+  const __m256i P2 = cpp_row_avx2_prep(cpp_row_avx2_load2(s + 44), b2);
+  _mm256_storeu_pd(out, cpp_row_avx2_fp4(P0, P1, r01));
+  _mm_storeu_pd(out + 4, cpp_row_avx2_fp2(P2, r2));
+  unsigned fast = (r01 & 9u) | ((r01 >> 1) & 2u) | ((r01 << 1) & 4u) | (r2 << 4);
+  if ((b0 | b1 | b2) != 0) {
+    const unsigned valid = static_cast<unsigned>((b0 & 0xFFFFu) == 0)
+      | (static_cast<unsigned>((b0 >> 16) == 0) << 1)
+      | (static_cast<unsigned>((b1 & 0xFFFFu) == 0) << 2)
+      | (static_cast<unsigned>((b1 >> 16) == 0) << 3)
+      | (static_cast<unsigned>((b2 & 0xFFFFu) == 0) << 4)
+      | (static_cast<unsigned>((b2 >> 16) == 0) << 5);
+    fast &= valid;
+  }
+  return fast;
+}
+
+// ---- AVX-512: one zmm register, field j in qword j (j = 0..5; qwords 6
+// and 7 repeat field 0); the bytes are gathered from the line with
+// vpermi2b (VBMI).
+
+enum {
+  CPP_ROW_C5_D = 1, CPP_ROW_C5_DOT = 2, CPP_ROW_C5_P = 4, CPP_ROW_C5_M = 8, CPP_ROW_C5_B = 16
+};
+
+CPP_ROW_INLINE_AVX512 __m512i cpp_row_avx512_code(__m512i G) {
+  const __m512i lo_t = _mm512_broadcast_i32x4(_mm_setr_epi8(
+    CPP_ROW_C5_D | CPP_ROW_C5_B, CPP_ROW_C5_D, CPP_ROW_C5_D, CPP_ROW_C5_D, CPP_ROW_C5_D,
+    CPP_ROW_C5_D, CPP_ROW_C5_D, CPP_ROW_C5_D, CPP_ROW_C5_D, CPP_ROW_C5_D, 0, CPP_ROW_C5_P, 0,
+    CPP_ROW_C5_M, CPP_ROW_C5_DOT, 0));
+  const __m512i hi_t = _mm512_broadcast_i32x4(_mm_setr_epi8(
+    0, 0, CPP_ROW_C5_DOT | CPP_ROW_C5_P | CPP_ROW_C5_M | CPP_ROW_C5_B, CPP_ROW_C5_D,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+  const __m512i nib = _mm512_set1_epi8(0x0F);
+  return _mm512_and_si512(_mm512_shuffle_epi8(lo_t, _mm512_and_si512(G, nib)),
+                          _mm512_shuffle_epi8(hi_t, _mm512_and_si512(_mm512_srli_epi16(G, 4), nib)));
+}
+
+// The vector path of the AVX-512 kernel, as cpp_row_avx2_fast. The
+// patterns per qword: the classes of bytes 0-7 (sign or blank, digit,
+// '.', digits) and of bytes 8-10 for the layouts A (digit, exponent sign,
+// digit) and B (exponent sign, digits), and the weights of the exponent
+// digits for A and B.
+CPP_ROW_INLINE_AVX512 unsigned cpp_row_avx512_fast(const char* s, double* out) {
+  const cpp_row_vector_tables& T = cpp_row_vector_tab();
+  const __m512i pat1 = _mm512_set1_epi64(0x010101010102011CLL);
+  const __m512i pat2a = _mm512_set1_epi64(static_cast<long long>(0xFFFFFFFFFF010C01ULL));
+  const __m512i pat2b = _mm512_set1_epi64(static_cast<long long>(0xFFFFFFFFFF01010CULL));
+  const __m512i wea = _mm512_set1_epi64(0x0000000000010000LL);
+  const __m512i web = _mm512_set1_epi64(0x0000000000010A00LL);
+  const __m512i L0 = _mm512_loadu_si512(s);
+  const __m512i L1 = _mm512_mask_loadu_epi8(_mm512_set1_epi8('0'), 0x3, s + 64);
+  const __m512i G1 = _mm512_permutex2var_epi8(L0, _mm512_load_si512(T.idx1), L1);
+  const __m512i G2 = _mm512_permutex2var_epi8(L0, _mm512_load_si512(T.idx2), L1);
+  const __m512i C1 = cpp_row_avx512_code(G1), C2 = cpp_row_avx512_code(G2);
+  const __mmask8 kB = _mm512_test_epi64_mask(C2, _mm512_set1_epi64(CPP_ROW_C5_P | CPP_ROW_C5_M));
+  const __m512i pat2 = _mm512_mask_blend_epi64(kB, pat2a, pat2b);
+  const __mmask64 t = _mm512_test_epi8_mask(C1, pat1) & _mm512_test_epi8_mask(C2, pat2);
+  const __mmask8 kval = _mm512_cmpeq_epi64_mask(_mm512_movm_epi8(t), _mm512_set1_epi64(-1));
+  const __mmask8 keneg = _mm512_test_epi64_mask(
+    C2, _mm512_set1_epi64(CPP_ROW_C5_M | (CPP_ROW_C5_M << 8)));
+  const __mmask8 klneg = _mm512_test_epi64_mask(C1, _mm512_set1_epi64(CPP_ROW_C5_M));
+  const __m512i G3 = _mm512_permutex2var_epi8(
+    L0, _mm512_mask_blend_epi64(kB, _mm512_load_si512(T.idx3a), _mm512_load_si512(T.idx3b)), L1);
+  const __m512i zero = _mm512_setzero_si512();
+  const __m512i x = _mm512_madd_epi16(
+    _mm512_maddubs_epi16(_mm512_sub_epi8(G3, _mm512_set1_epi8('0')), _mm512_set1_epi16(0x010A)),
+    _mm512_set1_epi32(0x00010064));
+  const __m512i mant = _mm512_add_epi64(
+    _mm512_mul_epu32(x, _mm512_set1_epi64(10000)), _mm512_srli_epi64(x, 32));
+  const __m512d m = _mm512_cvtepi64_pd(mant);
+  const __m512i ex = _mm512_madd_epi16(
+    _mm512_maddubs_epi16(_mm512_sub_epi8(G2, _mm512_set1_epi8('0')),
+                         _mm512_mask_blend_epi64(kB, wea, web)),
+    _mm512_set1_epi64(0x0000000000010001LL));
+  __m512i k = _mm512_mask_sub_epi64(ex, keneg, zero, ex);
+  k = _mm512_sub_epi64(k, _mm512_set1_epi64(6));
+  k = _mm512_mask_add_epi64(k, kB, k, _mm512_set1_epi64(1));
+  const __mmask8 kr = _mm512_mask_cmple_epi64_mask(
+    _mm512_cmpge_epi64_mask(k, _mm512_set1_epi64(-22)), k, _mm512_set1_epi64(22));
+  const __mmask8 kneg = _mm512_movepi64_mask(k);
+  const __m512i q = _mm512_abs_epi64(k);
+  const __mmask8 k16 = _mm512_test_epi64_mask(q, _mm512_set1_epi64(16));
+  const __m512d B = _mm512_mask_permutexvar_pd(
+    _mm512_permutex2var_pd(_mm512_load_pd(T.pow), q, _mm512_load_pd(T.pow + 8)),
+    k16, q, _mm512_load_pd(T.pow + 16));
+  const __m512d Yr = _mm512_mask_permutexvar_pd(
+    _mm512_permutex2var_pd(_mm512_load_pd(T.rpow), q, _mm512_load_pd(T.rpow + 8)),
+    k16, q, _mm512_load_pd(T.rpow + 16));
+  const __m512d q0 = _mm512_mul_pd(m, Yr);
+  const __m512d r = _mm512_fnmadd_pd(q0, B, m);
+  const __m512d q1 = _mm512_fmadd_pd(r, Yr, q0);
+  __m512d res = _mm512_mask_mul_pd(q1, static_cast<__mmask8>(~kneg), m, B);
+  res = _mm512_mask_xor_pd(res, klneg, res, _mm512_set1_pd(-0.0));
+  _mm512_mask_storeu_pd(out, 0x3F, res);
+  return static_cast<unsigned>(kval & kr) & 0x3Fu;
+}
+
+// the row kernels of the two tiers (called through cpp_row_kernel_fn by
+// the line-by-line readers)
+CPP_ROW_TARGET_AVX2 CPP_DECIMAL_NOINLINE inline unsigned cpp_row_kernel_avx2(
+  const char* line, unsigned want, unsigned flags, double* out
+) {
+  const unsigned fast = cpp_row_avx2_fast(line, out) & want;
+  if (fast == want) return fast;
+  return fast | cpp_row_vector_fallback(
+    line, want & ~fast, (flags & CPP_ROW_ACCEPT_D_EXPONENT) != 0, out);
+}
+
+CPP_ROW_TARGET_AVX512 CPP_DECIMAL_NOINLINE inline unsigned cpp_row_kernel_avx512(
+  const char* line, unsigned want, unsigned flags, double* out
+) {
+  const unsigned fast = cpp_row_avx512_fast(line, out) & want;
+  if (fast == want) return fast;
+  return fast | cpp_row_vector_fallback(
+    line, want & ~fast, (flags & CPP_ROW_ACCEPT_D_EXPONENT) != 0, out);
+}
+
+#endif  // CPP_ROW_VECTOR_TIERS
+
+
+
+
 struct cpp_row_tier {
   const char* name;
   // nullptr if the tier is not built (e.g. for another architecture)
@@ -1237,11 +1630,16 @@ struct cpp_row_tier {
 
 // in the order of preference of the automatic selection, which takes the
 // scalar tier (the last one) if no vector tier is built and supported;
-// the kernels of the vector tiers are not built yet
+// the vector tiers are only built with CPP_ROW_VECTOR_TIERS
 inline const cpp_row_tier* cpp_row_tiers() {
   static const cpp_row_tier tiers[CPP_ROW_NUM_TIERS] = {
+#ifdef CPP_ROW_VECTOR_TIERS
+    {"avx512", cpp_row_kernel_avx512, true, cpp_row_cpu_avx512},
+    {"avx2", cpp_row_kernel_avx2, true, cpp_row_cpu_avx2},
+#else
     {"avx512", nullptr, true, cpp_row_cpu_avx512},
     {"avx2", nullptr, true, cpp_row_cpu_avx2},
+#endif
     {"scalar", cpp_row_kernel_scalar, false, cpp_row_cpu_any},
   };
   return tiers;

@@ -40,7 +40,9 @@ The variants are run one after the other in each round, in an order that
 is rotated from round to round (interleaved, so that a drift of the
 machine affects all variants alike). Each process parses the file once
 (warm-up) and then ``--reps`` times; its time is the minimum of these
-(``time.process_time``). The result per variant is the median over the
+(``time.process_time``; on Windows ``time.perf_counter``, because the
+resolution of ``process_time`` there is about 15.6 ms, which measures a
+fast parse as zero). The result per variant is the median over the
 rounds of the ratio of its time to the time of ``base`` in the same
 round; with ``base`` against itself (``base:aa``, a second process of the
 base build) as the noise floor. The JSON file contains the CPU
@@ -87,12 +89,16 @@ p = EndfParserCpp(array_type=mode)
 mod = importlib.import_module(p._parse_endf.__module__)
 # None for a build without row kernels
 info = mod._row_kernel_info() if hasattr(mod, "_row_kernel_info") else None
+# the resolution of process_time on Windows is about 15.6 ms, which
+# measures a fast parse as zero; the interleaved rounds and the median
+# of the ratios absorb the noise of the wall clock
+timer = time.perf_counter if sys.platform == "win32" else time.process_time
 p.parsefile(path)
 ts = []
 for _ in range(reps):
-    t0 = time.process_time()
+    t0 = timer()
     d = p.parsefile(path)
-    ts.append(time.process_time() - t0)
+    ts.append(timer() - t0)
     del d
 print(json.dumps({"times": ts, "info": info}))
 """
@@ -237,7 +243,13 @@ def _median_ratios(records, variants):
     for key, recs in table.items():
         result[key] = {}
         for name, _, _ in variants:
-            ratios = [r["t"][name] / r["t"]["base"] for r in recs if name in r["t"]]
+            # a base time of zero (a timer too coarse for the file)
+            # cannot give a ratio
+            ratios = [
+                r["t"][name] / r["t"]["base"]
+                for r in recs
+                if name in r["t"] and r["t"]["base"] > 0
+            ]
             if ratios:
                 result[key][name] = (
                     statistics.median(ratios),

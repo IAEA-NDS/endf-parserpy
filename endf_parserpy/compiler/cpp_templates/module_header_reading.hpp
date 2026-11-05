@@ -2927,10 +2927,10 @@ inline bool cpp_is_tend_record(const CppLine& line, ParsingOptions &parse_opts) 
 // The lines are read as views, as in the per-field form; their lengths
 // may differ (the reading of a line does not assume a fixed length).
 //
-// Point for switching back to the per-field path within a record (not
-// used, for the vector tiers): count the converted fields of the first
-// lines and, if their share is low, stop the conversion (the remaining
-// fields are then read by the per-field form with cpp_read_field).
+// A switch from a vector tier to the scalar loop within a body, for
+// bodies whose fields the vector path mostly leaves (e.g. decimals
+// without exponent), was measured and not taken: it gave no gain on the
+// files concerned (see the description of the change).
 
 // Whether the body of a LIST record is read in the bulk form: a row
 // kernel is selected, the input is held in memory (see CppLine), and the

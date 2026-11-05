@@ -67,6 +67,15 @@ jobs:
 
     runs-on: ${{ matrix.runner }}
 
+    env:
+      # 'true' if the data repository is checked out with the deploy key
+      # on this runner. On windows-11-arm, actions/checkout leaves the
+      # key file readable by all authenticated users and OpenSSH refuses
+      # it ("UNPROTECTED PRIVATE KEY FILE"), so that runner falls back to
+      # the public source or the test data; ARM coverage with the real
+      # files comes from ubuntu-24.04-arm.
+      USE_DATA_KEY: ${{ secrets.ENDF_DATA_SSH_KEY != '' && matrix.runner != 'windows-11-arm' }}
+
     defaults:
       run:
         shell: bash
@@ -84,7 +93,7 @@ jobs:
       # Git LFS is not used by the data repository today; with lfs: true
       # the checkout also works once it is.
       - name: Check out the ENDF files of the data repository
-        if: env.HAVE_DATA_KEY == 'true'
+        if: env.USE_DATA_KEY == 'true'
         uses: actions/checkout@v4
         with:
           repository: IAEA-NDS/ENDF-PENDF-File
@@ -107,17 +116,22 @@ jobs:
       # pointer or anything else stops the job, naming the file) and hold
       # exactly one ENDF file; written to endf_files/<name>.endf.
       - name: Check and unzip the ENDF files
-        if: env.HAVE_DATA_KEY == 'true'
+        if: env.USE_DATA_KEY == 'true'
         run: |
           python new/tools/benchmark_bulk_bodies.py prepare \
             --data-dir endf_data --out-dir endf_files
           echo "ENDF files: ENDF/B-VIII.1 from IAEA-NDS/ENDF-PENDF-File ($(ls endf_files | tr '\n' ' '))" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Note the missing deploy key
-        if: env.HAVE_DATA_KEY != 'true'
+      - name: Note the skipped data checkout
+        if: env.USE_DATA_KEY != 'true'
         run: |
           if [ -n "$ENDF_BASE_URL" ]; then src="the files from ENDF_BASE_URL"; else src="the test data of the repository"; fi
-          msg="The secret ENDF_DATA_SSH_KEY is not set (e.g. on a fork): IAEA-NDS/ENDF-PENDF-File not checked out, timing $src instead."
+          if [ "$HAVE_DATA_KEY" = "true" ]; then
+            why="the deploy-key checkout does not work on this runner (the key file is left readable by all authenticated users and OpenSSH refuses it)"
+          else
+            why="the secret ENDF_DATA_SSH_KEY is not set (e.g. on a fork)"
+          fi
+          msg="IAEA-NDS/ENDF-PENDF-File not checked out ($why): timing $src instead."
           echo "::notice::$msg"
           echo "**Note:** $msg" >> "$GITHUB_STEP_SUMMARY"
 
@@ -127,7 +141,7 @@ jobs:
           case "$RUNNER_OS" in
             Linux)
               lscpu | tee results/cpu.txt
-              grep -m1 '^flags' /proc/cpuinfo | tee -a results/cpu.txt ;;
+              grep -m1 -E '^(flags|Features)' /proc/cpuinfo | tee -a results/cpu.txt || true ;;
             macOS)
               sysctl -a | grep -E '^(machdep\.cpu|hw\.optional|hw\.ncpu)' | tee results/cpu.txt ;;
             Windows)
@@ -150,14 +164,14 @@ jobs:
       # of the private data repository.
       - name: Cache the downloaded ENDF files
         id: cache
-        if: env.HAVE_DATA_KEY != 'true' && env.ENDF_BASE_URL != ''
+        if: env.USE_DATA_KEY != 'true' && env.ENDF_BASE_URL != ''
         uses: actions/cache@v4
         with:
           path: endf_files
           key: endf-public-${{ hashFiles('new/.github/workflows/benchmark_bulk_bodies.yml') }}-${{ env.ENDF_BASE_URL }}
 
       - name: Download the ENDF files
-        if: env.HAVE_DATA_KEY != 'true' && env.ENDF_BASE_URL != '' && steps.cache.outputs.cache-hit != 'true'
+        if: env.USE_DATA_KEY != 'true' && env.ENDF_BASE_URL != '' && steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p endf_files
           for f in $ENDF_FILES; do

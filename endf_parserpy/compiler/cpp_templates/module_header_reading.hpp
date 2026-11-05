@@ -2439,10 +2439,15 @@ struct cpp_list_bulk_counts {
   unsigned long long stopped;
   unsigned long long byte_range;
   unsigned long long line_by_line;
+  // of the strided bodies, those with row loops (one copy per row), their
+  // values and the iterations of their row loops
+  unsigned long long row_bodies;
+  unsigned long long row_values;
+  unsigned long long row_rows;
 };
 
 inline cpp_list_bulk_counts& cpp_list_bulk_counter() {
-  static cpp_list_bulk_counts counts = {0, 0, 0, 0, 0};
+  static cpp_list_bulk_counts counts = {0, 0, 0, 0, 0, 0, 0, 0};
   return counts;
 }
 

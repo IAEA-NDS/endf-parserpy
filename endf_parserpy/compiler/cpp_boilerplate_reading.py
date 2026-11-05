@@ -104,6 +104,9 @@ def register_reading_options():
       list_bodies["stopped"] = bulk.stopped;
       list_bodies["byte_range"] = bulk.byte_range;
       list_bodies["line_by_line"] = bulk.line_by_line;
+      list_bodies["row_bodies"] = bulk.row_bodies;
+      list_bodies["row_values"] = bulk.row_values;
+      list_bodies["row_rows"] = bulk.row_rows;
       info["bulk_list_bodies"] = list_bodies;
       info["bulk_all_list_bodies"] = sel.list_all;
       return info;

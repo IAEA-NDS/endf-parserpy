@@ -1056,11 +1056,14 @@ def _generate_code_for_loop(
     """,
         -4,
     )
-    code += cpp.indent_code(init_readflag(loopvar, val=True))
+    readflag = init_readflag(loopvar, val=True)
+    code += cpp.indent_code(readflag)
     # the bounds as evaluated by the loop, for the setup code of the loop
-    # (e.g. the reservation of arrays filled in the loop), and its variable
+    # (e.g. the reservation of arrays filled in the loop), its variable and
+    # the read flag of the variable declared at the start of an iteration
     node.loop_bounds = (start_expr_str, stop_expr_str)
     node.loop_variable = cpp_loopvar
+    node.loop_readflag = readflag
     body_code = parsefun(for_body, vardict)
     code += cpp.indent_code(body_code)
     code += cpp.close_block()

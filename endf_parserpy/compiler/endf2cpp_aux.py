@@ -294,16 +294,21 @@ class _ListStore:
     # (cpp_type_nested_array/assign.py): the kind ("list": set, "block":
     # operator(), "row": the values of an INTG record), the container (a
     # list ending with "." or "->", or a block), the C++ code and the
-    # expressions of the indices of the store, and whether other code
-    # (e.g. the preparation of an element) precedes it in the code of the
-    # assignment
-    def __init__(self, vartok, kind, container, indices, index_exprs, preceded):
+    # expressions of the indices of the store, whether other code (e.g. the
+    # preparation of an element) precedes it in the code of the
+    # assignment, and the preparations of elements in that code (the code
+    # and the expression of the index of each), if it has no other
+    # statements (None otherwise)
+    def __init__(
+        self, vartok, kind, container, indices, index_exprs, preceded, preparations
+    ):
         self.vartok = vartok
         self.kind = kind
         self.container = container
         self.indices = list(indices)
         self.index_exprs = list(index_exprs)
         self.preceded = preceded
+        self.preparations = None if preparations is None else list(preparations)
 
 
 class _ListElement:
@@ -322,12 +327,14 @@ class _ListElement:
 
 class _ListLoop:
     # a loop of the body of a LIST record as generated in the bulk pass:
-    # its C++ variable, its bounds, and its setup code (the code placed
-    # before the loop, see ParseNode)
+    # its C++ variable, its bounds, its setup code (the code placed before
+    # the loop, see ParseNode) and the declaration of the read flag of its
+    # variable at the start of an iteration
     def __init__(self, node):
         self.variable = node.loop_variable
         self.bounds = node.loop_bounds
         self.setup = node.precode + node.loop_setup
+        self.readflag = node.loop_readflag
 
 
 class ListBulkRecorder:
@@ -371,11 +378,27 @@ class ListBulkRecorder:
         self._current = None
 
     def record_store(
-        self, node, vartok, kind, container, indices, index_exprs, preceded
+        self,
+        node,
+        vartok,
+        kind,
+        container,
+        indices,
+        index_exprs,
+        preceded,
+        preparations=None,
     ):
         if self._current is not None:
             self._current.stores.append(
-                _ListStore(vartok, kind, container, indices, index_exprs, preceded)
+                _ListStore(
+                    vartok,
+                    kind,
+                    container,
+                    indices,
+                    index_exprs,
+                    preceded,
+                    preparations,
+                )
             )
 
     def record_type_code(self, node, vartok, code):
@@ -415,7 +438,8 @@ def _sandbox_vardict(vardict):
 
 class _BulkSite:
     # an element of the body of a LIST record, in the loops `loops` (from
-    # the outermost one) of the body
+    # the outermost one) of the body; of these, the row loops (`rloops`)
+    # and the copy loops (`cloops`), see ListBulkForm._strided_plan
     def __init__(self, node, element, loops):
         self.node = node
         self.element = element
@@ -423,15 +447,22 @@ class _BulkSite:
         self.vartok = element.vartok
         self.code = element.code
         self.loops = loops
+        self.rloops = []
+        self.cloops = list(loops)
 
 
 class _BulkLoop:
-    def __init__(self, node, depth, info):
+    # a loop of the body of a LIST record, in the loops `ancestors` (from
+    # the outermost one) of the body; `row`: whether it is a row loop
+    def __init__(self, node, depth, info, ancestors):
         self.node = node
         self.depth = depth
         self.variable = info.variable
         self.bounds = info.bounds
         self.setup = info.setup
+        self.readflag = info.readflag
+        self.ancestors = list(ancestors)
+        self.row = False
         self.items = []
 
 
@@ -491,7 +522,14 @@ class ListBulkForm:
         while getattr(root, "parent", None) is not None:
             root = root.parent
         saved = [
-            (n, n.precode, n.loop_setup, n.loop_bounds, n.loop_variable)
+            (
+                n,
+                n.precode,
+                n.loop_setup,
+                n.loop_bounds,
+                n.loop_variable,
+                n.loop_readflag,
+            )
             for n in _parse_nodes(root)
         ]
         recorder = ListBulkRecorder()
@@ -504,11 +542,12 @@ class ListBulkForm:
                 if get_name(node) == "list_loop":
                     recorder.loops[id(node)] = _ListLoop(node)
         finally:
-            for node, precode, loop_setup, loop_bounds, loop_variable in saved:
+            for node, precode, setup, bounds, variable, readflag in saved:
                 node.precode = precode
-                node.loop_setup = loop_setup
-                node.loop_bounds = loop_bounds
-                node.loop_variable = loop_variable
+                node.loop_setup = setup
+                node.loop_bounds = bounds
+                node.loop_variable = variable
+                node.loop_readflag = readflag
         return recorder
 
     # --- the regular layout -----------------------------------------
@@ -528,7 +567,7 @@ class ListBulkForm:
                 info = bulk.loops.get(id(child))
                 if info is None or info.variable is None or info.bounds is None:
                     return "loop not recorded"
-                loop = _BulkLoop(child, depth, info)
+                loop = _BulkLoop(child, depth, info, loops)
                 items.append(loop)
                 all_loops.append(loop)
                 reason = cls._tree(
@@ -557,25 +596,64 @@ class ListBulkForm:
         return keys
 
     @staticmethod
-    def _store(element):
-        # The store of the value of an element in a loop into an array, as
-        # reported by the assignment code: the only store of the element,
-        # into a list (set) or a block (operator()), with no other code
-        # before it in the code of the assignment, which is then the store
-        # followed by the code of the type of the variable (see
-        # assign_exprstr_to_var in cpp_varops_assign.py). Returns the store
-        # and the code of the type, or None.
+    def _loop_key(loop):
+        # the name of the variable of a loop, as a key of _all_variable_keys
+        head = get_child(loop.node, "list_for_head")
+        return (str(get_child(head, "VARNAME")), 0)
+
+    @staticmethod
+    def _depends(expr, keys, vardict):
+        # whether an expression (abbreviations expanded, indices included)
+        # contains one of the variables `keys`
+        expr = transform_nodes(expr, expand_abbreviation, vardict)
+        return len(_all_variable_keys(expr) & keys) > 0
+
+    @staticmethod
+    def _list_store(element):
+        # the only store of an element into a list, without code before it
+        # in the code of the assignment other than preparations of
+        # elements; None otherwise
         if len(element.stores) != 1:
             return None
         store = element.stores[0]
-        if store.kind not in ("list", "block") or store.preceded:
+        if store.kind != "list" or not _same_variable(store.vartok, element.vartok):
+            return None
+        if store.preceded and store.preparations is None:
+            return None
+        return store
+
+    @classmethod
+    def _store(cls, element, forbidden, vardict):
+        # The store of the value of an element in a loop into an array, as
+        # reported by the assignment code: the only store of the element,
+        # into a list (set) or a block (operator()), with no other code
+        # before it in the code of the assignment than preparations of
+        # elements (a pointer assigned, e.g. to the row of a list of
+        # lists) whose indices do not depend on the variables `forbidden`
+        # (those of the copy loops), so that the code of the assignment is
+        # these preparations, the store and the code of the type of the
+        # variable (see assign_exprstr_to_var in cpp_varops_assign.py).
+        # Returns the store, the code of the type and the code of the
+        # preparations, or None.
+        if len(element.stores) != 1:
+            return None
+        store = element.stores[0]
+        if store.kind not in ("list", "block"):
             return None
         if not _same_variable(store.vartok, element.vartok):
             return None
+        prepare_code = ""
+        if store.preceded:
+            if not store.preparations:
+                return None
+            for code, expr in store.preparations:
+                if cls._depends(expr, forbidden, vardict):
+                    return None
+                prepare_code += code
         type_code = "".join(
             code for v, code in element.type_codes if _same_variable(v, element.vartok)
         )
-        return store, type_code
+        return store, type_code, prepare_code
 
     @classmethod
     def _strided_plan(cls, body_node, bulk, vardict):
@@ -586,23 +664,39 @@ class ListBulkForm:
         generator): every element of the body is a literal, whose value is
         checked (with ``cpp_validate_field``, as the per-field form does),
         or a variable assigned for the first time; the bounds of the loops
-        of the body do not depend on the variables of the loops of the
-        body or on variables assigned in the body, so that the number of
-        values of each iteration of a loop is the same and all bounds can
-        be evaluated before the values are delivered; a loop inside a loop
-        of the body has no setup code (preparation of elements, blocks,
-        reservations). A variable outside the loops of the body (S1) is
-        assigned by the code of the per-field form from the value at its
-        position. A variable in loops of the body (S) is an array whose
-        indices are the variables of these loops (each in one index) and
-        indices that do not depend on them, stored as reported by the
-        assignment code (:meth:`_store`): either a list (the value set
-        with ``set``) in one loop, whose values are appended by one strided
-        copy (``set_strided``), or a block (the value assigned with
-        ``operator()``), whose values are copied with the strides of the
-        block. A list in several loops (a row per iteration of the outer
-        loops, as for triangular matrices) needs one copy per row (R; not
-        implemented), and makes the body irregular, as any other site.
+        of the body do not depend on variables assigned in the body, and
+        depend on variables of loops of the body only if these loops
+        enclose them.
+
+        A loop of the body is a row loop if the bounds of a loop inside it
+        depend on its variable, if it encloses the loop of a list filled
+        in the innermost of several loops (a list per iteration of the
+        outer loops), or if it encloses a row loop; the other loops are
+        copy loops. Every iteration of a copy loop has the same number of
+        values, given the iteration of the enclosing row loops, and the
+        row loops are the outermost loops around every element. All
+        bounds and numbers of values can then be evaluated before the
+        values are delivered: those of the copy loops once per iteration
+        of the enclosing row loops, the number of values of a row loop by
+        summing over its iterations. A copy loop inside a copy loop has no
+        setup code (preparation of elements, blocks, reservations); the
+        setup code of the other loops is executed as in the per-field
+        form, i.e. once per iteration of the enclosing row loops.
+
+        A variable outside of the copy loops (S1, outside of all loops,
+        or a value per iteration of the row loops) is assigned by the code
+        of the per-field form from the value at its position. A variable in
+        copy loops (S) is an array whose indices are the variables of
+        these loops (each in one index) and indices that do not depend on
+        them (but may depend on the variables of the row loops), stored as
+        reported by the assignment code (:meth:`_store`): either a list
+        (the value set with ``set``) in one copy loop, whose values are
+        appended by one strided copy (``set_strided``), per iteration of
+        the row loops if there are any (R), or a block (the value assigned
+        with ``operator()``), whose values are copied with the strides of
+        the block. The preparations of elements in the code of the
+        assignment (e.g. of the row of a list of lists) are done before
+        the copy.
         """
         items, sites, loops = [], [], []
         reason = cls._tree(body_node, bulk, [], 0, items, sites, loops)
@@ -610,53 +704,81 @@ class ListBulkForm:
             return None, reason
         if len(loops) == 0:
             return None, "no loop"
-        loopvar_keys = {
-            (str(get_child(get_child(loop.node, "list_for_head"), "VARNAME")), 0)
-            for loop in loops
-        }
+        loopvar_keys = {cls._loop_key(loop) for loop in loops}
         assigned = set()
         for site in sites:
             if site.kind == "other":
                 return None, site.element.reason
             if site.kind == "assign":
                 assigned.add((str(site.vartok), len(site.vartok.indices)))
+        # the row loops: those whose variables the bounds of the loops
+        # inside them depend on ...
+        rows = set()
         for loop in loops:
             keys = cls._bound_keys(loop, vardict)
-            if keys & loopvar_keys:
+            outer = {cls._loop_key(a): a for a in loop.ancestors}
+            dependencies = keys & loopvar_keys
+            if any(key not in outer for key in dependencies):
                 return None, "loop bounds depend on a loop of the body"
             if keys & assigned:
                 return None, "loop bounds depend on a value of the body"
+            rows.update(id(outer[key]) for key in dependencies)
+        # ... those around a list filled in the innermost of several loops
+        # (a list per iteration of the outer loops) ...
         for site in sites:
-            if site.kind == "literal" or len(site.loops) == 0:
+            if site.kind != "assign" or len(site.loops) < 2:
                 continue
-            found = cls._store(site.element)
+            store = cls._list_store(site.element)
+            if store is not None and store.indices[0] == site.loops[-1].variable:
+                rows.update(id(lp) for lp in site.loops[:-1])
+        # ... and those around a row loop
+        for loop in loops:
+            if id(loop) in rows:
+                rows.update(id(a) for a in loop.ancestors)
+        for loop in loops:
+            loop.row = id(loop) in rows
+        for site in sites:
+            site.rloops = [lp for lp in site.loops if lp.row]
+            site.cloops = [lp for lp in site.loops if not lp.row]
+        for site in sites:
+            if site.kind == "literal" or len(site.cloops) == 0:
+                continue
+            # the variables of the loops of the body other than the row
+            # loops around the site
+            forbidden = loopvar_keys - {cls._loop_key(lp) for lp in site.rloops}
+            found = cls._store(site.element, forbidden, vardict)
             if found is None:
                 return None, "assignment code"
-            store, type_code = found
+            store, type_code, prepare_code = found
             mapping = []
             for idx, expr in zip(store.indices, store.index_exprs):
-                loop = next((lp for lp in site.loops if lp.variable == idx), None)
-                if loop is None:
-                    expr = transform_nodes(expr, expand_abbreviation, vardict)
-                    if _all_variable_keys(expr) & loopvar_keys:
-                        return None, "index expression"
+                loop = next((lp for lp in site.cloops if lp.variable == idx), None)
+                if loop is None and cls._depends(expr, forbidden, vardict):
+                    return None, "index expression"
                 mapping.append(loop)
             if (
                 store.kind == "list"
-                and len(site.loops) > 1
-                and mapping[0] is site.loops[-1]
+                and len(site.cloops) > 1
+                and mapping[0] is site.cloops[-1]
             ):
-                # a list in the innermost loop, one per iteration of the
-                # outer loops: one copy per row (R)
+                # a list in the innermost of several copy loops (not
+                # reached: the outer loops are row loops)
                 return None, "rows"
             mapped = [lp for lp in mapping if lp is not None]
             if len(set(map(id, mapped))) != len(mapped) or len(mapped) != len(
-                site.loops
+                site.cloops
             ):
                 return None, "indices"
-            site.copy = (store.kind, store.container, store.indices, mapping, type_code)
+            site.copy = (
+                store.kind,
+                store.container,
+                store.indices,
+                mapping,
+                type_code,
+                prepare_code,
+            )
         for loop in loops:
-            if loop.depth > 0 and loop.setup != "":
+            if any(not a.row for a in loop.ancestors) and loop.setup != "":
                 return None, "setup code of an inner loop"
         return items, None
 
@@ -674,11 +796,29 @@ class ListBulkForm:
         parts = [str(const)] if const != 0 or len(terms) == 0 else []
         return " + ".join(parts + terms)
 
+    @staticmethod
+    def _row_header(loop, q):
+        # the variable of a row loop under its name in the per-field form,
+        # and its read flag, for the iteration cpp_r{q}
+        code = cpp.statement(
+            f"int {loop.variable} = cpp_la{q} + static_cast<int>(cpp_r{q})"
+        )
+        return code + loop.readflag
+
+    @staticmethod
+    def _row_for(q, body):
+        return cpp.forloop(
+            f"long long cpp_r{q} = 0", f"cpp_r{q} < cpp_ln{q}", f"cpp_r{q}++", body
+        )
+
     @classmethod
     def _sizes_code(cls, items, names):
         # the code computing the start, count, size of an iteration and
         # offset (in its container) of each loop; the offset of each site
-        # in its container; returns the code and the size of the container
+        # in its container; returns the code and the size of the container.
+        # For a row loop: its start, count, number of values (cpp_lt, the
+        # sum over its iterations, which are bounded by NPL) and offset;
+        # the code and the size of an iteration are kept for the delivery
         code = ""
         const, terms = 0, []
         for item in items:
@@ -691,6 +831,18 @@ class ListBulkForm:
             code += cpp.statement(f"cpp_la{q} = {start}")
             code += cpp.statement(f"cpp_ln{q} = cpp_list_loop_count(cpp_la{q}, {stop})")
             inner_code, inner_size = cls._sizes_code(item.items, names)
+            if item.row:
+                fallback = cpp.statement("throw cpp_list_bulk_fallback()")
+                code += cpp.pureif(f"cpp_ln{q} > cpp_npl", fallback)
+                code += cpp.statement(f"cpp_lt{q} = 0")
+                body = cls._row_header(item, q) + inner_code
+                body += cpp.statement(f"cpp_lt{q} += {inner_size}")
+                body += cpp.pureif(f"cpp_lt{q} > cpp_npl", fallback)
+                code += cls._row_for(q, body)
+                code += cpp.statement(f"cpp_lo{q} = {cls._offset(const, terms)}")
+                terms.append(f"cpp_lt{q}")
+                item.inner_code, item.inner_size = inner_code, inner_size
+                continue
             code += inner_code
             code += cpp.statement(f"cpp_lz{q} = {inner_size}")
             code += cpp.statement(f"cpp_lo{q} = {cls._offset(const, terms)}")
@@ -698,35 +850,40 @@ class ListBulkForm:
         return code, cls._offset(const, terms)
 
     @staticmethod
-    def _base(site, names):
+    def _base(site, names, base=None):
+        # the position of the first value of a site in the buffer (base:
+        # the start of the iteration of the innermost row loop around it)
+        parts = [] if base is None else [base]
         return " + ".join(
-            [f"cpp_lo{names[id(lp)]}" for lp in site.loops] + [f"({site.offset})"]
+            parts
+            + [f"cpp_lo{names[id(lp)]}" for lp in site.cloops]
+            + [f"({site.offset})"]
         )
 
     @classmethod
-    def _check_code(cls, site, names):
-        # the check of the values of a literal in loops, as by the per-field
-        # form, for all its positions
-        pos = cls._base(site, names)
-        for k, loop in enumerate(site.loops):
+    def _check_code(cls, site, names, base=None):
+        # the check of the values of a literal in copy loops, as by the
+        # per-field form, for all its positions
+        pos = cls._base(site, names, base)
+        for k, loop in enumerate(site.cloops):
             pos += f" + cpp_k{k} * cpp_lz{names[id(loop)]}"
         code = cls._at(site, pos)
-        for k in reversed(range(len(site.loops))):
-            q = names[id(site.loops[k])]
+        for k in reversed(range(len(site.cloops))):
+            q = names[id(site.cloops[k])]
             code = cpp.forloop(
                 f"long long cpp_k{k} = 0", f"cpp_k{k} < cpp_ln{q}", f"cpp_k{k}++", code
             )
         return code
 
     @classmethod
-    def _copy_code(cls, site, names):
-        kind, obj, indices, mapping, type_code = site.copy
-        base = cls._base(site, names)
-        code = ""
+    def _copy_code(cls, site, names, base=None):
+        kind, obj, indices, mapping, type_code, prepare_code = site.copy
+        pos = cls._base(site, names, base)
+        code = prepare_code
         if kind == "list":
             q = names[id(mapping[0])]
             copy = (
-                f"{obj}set_strided(cpp_la{q}, cpp_body.values() + {base}, "
+                f"{obj}set_strided(cpp_la{q}, cpp_body.values() + {pos}, "
                 f"cpp_lz{q}, cpp_ln{q})"
             )
             code += cpp.pureif(
@@ -738,10 +895,10 @@ class ListBulkForm:
                 for idx, lp in zip(indices, mapping)
             ]
             position = {id(lp): d for d, lp in enumerate(mapping) if lp is not None}
-            counts = [f"cpp_ln{names[id(lp)]}" for lp in site.loops]
-            dst = [f"{obj}.block_stride({position[id(lp)]})" for lp in site.loops]
-            src = [f"cpp_lz{names[id(lp)]}" for lp in site.loops]
-            n = len(site.loops)
+            counts = [f"cpp_ln{names[id(lp)]}" for lp in site.cloops]
+            dst = [f"{obj}.block_stride({position[id(lp)]})" for lp in site.cloops]
+            src = [f"cpp_lz{names[id(lp)]}" for lp in site.cloops]
+            n = len(site.cloops)
             inner = cpp.statement(
                 f"const long long cpp_count[{n}] = {{{', '.join(counts)}}}"
             )
@@ -753,38 +910,82 @@ class ListBulkForm:
             )
             inner += cpp.statement(
                 f"cpp_copy_strided(&{obj}({', '.join(first)}), "
-                f"cpp_body.values() + {base}, {n}, cpp_count, cpp_dst_step, "
+                f"cpp_body.values() + {pos}, {n}, cpp_count, cpp_dst_step, "
                 "cpp_src_step)"
             )
             code += cpp.block(inner)
         code += type_code
-        if len(site.loops) == 0:
+        if len(site.cloops) == 0:
             return code
-        guard = cpp.logical_and([f"cpp_ln{names[id(lp)]} > 0" for lp in site.loops])
+        guard = cpp.logical_and([f"cpp_ln{names[id(lp)]} > 0" for lp in site.cloops])
         return cpp.pureif(guard, code)
 
     @classmethod
-    def _delivery_code(cls, items, names):
-        # the delivery in the order of the body: the sites outside of
+    def _delivery_code(cls, items, names, base=None):
+        # the delivery in the order of the body: the sites outside of copy
         # loops by the code of the per-field form, then for each loop its
-        # setup code, as in the per-field form, and the copies of its sites
+        # setup code, as in the per-field form, and the copies of its
+        # sites; a row loop is iterated (see _row_code)
         code = ""
         for item in items:
             if isinstance(item, _BulkSite):
-                code += cls._at(item, item.offset)
+                pos = item.offset if base is None else f"{base} + ({item.offset})"
+                code += cls._at(item, pos)
                 continue
             code += item.setup
-            code += cls._loop_copies(item, names)
+            if item.row:
+                code += cls._row_code(item, names, base, deliver=True)
+            else:
+                code += cls._loop_copies(item, names, base)
         return code
 
     @classmethod
-    def _loop_copies(cls, loop, names):
+    def _row_code(cls, loop, names, base, deliver):
+        # the iterations of a row loop, each with the variable of the loop
+        # and the numbers of values of its loops computed again (as in the
+        # pre-pass), then the delivery (or the checks of the literals) of
+        # its items from the start of the iteration (cpp_rb)
+        q = names[id(loop)]
+        start = f"cpp_lo{q}" if base is None else f"{base} + cpp_lo{q}"
+        code = cpp.statement(f"cpp_rb{q} = {start}")
+        body = cls._row_header(loop, q) + loop.inner_code
+        if deliver:
+            body += cls._delivery_code(loop.items, names, f"cpp_rb{q}")
+        else:
+            body += cls._check_walk(loop.items, names, f"cpp_rb{q}")
+        body += cpp.statement(f"cpp_rb{q} += {loop.inner_size}")
+        code += cls._row_for(q, body)
+        if deliver:
+            code += cpp.statement(f"cpp_rows += cpp_ln{q}")
+        return code
+
+    @classmethod
+    def _loop_copies(cls, loop, names, base=None):
         code = ""
         for item in loop.items:
             if isinstance(item, _BulkLoop):
-                code += cls._loop_copies(item, names)
+                code += cls._loop_copies(item, names, base)
             elif item.kind == "assign":
-                code += cls._copy_code(item, names)
+                code += cls._copy_code(item, names, base)
+        return code
+
+    @classmethod
+    def _check_walk(cls, items, names, base=None):
+        # the checks of the literals in loops, before the delivery: in copy
+        # loops for all positions, in row loops per iteration
+        code = ""
+        for item in items:
+            if isinstance(item, _BulkSite):
+                if base is not None and item.kind == "literal":
+                    code += cls._at(item, f"{base} + ({item.offset})")
+                continue
+            if item.row:
+                if any(site.kind == "literal" for site in cls._sites(item.items)):
+                    code += cls._row_code(item, names, base, deliver=False)
+                continue
+            for site in cls._sites(item.items):
+                if site.kind == "literal":
+                    code += cls._check_code(site, names, base)
         return code
 
     @classmethod
@@ -799,20 +1000,26 @@ class ListBulkForm:
 
         collect(items)
         names = {id(lp): q for q, lp in enumerate(loops)}
-        code = cpp.comment("LIST body: strided copies from the buffer")
+        rows = [lp for lp in loops if lp.row]
+        if len(rows) == 0:
+            code = cpp.comment("LIST body: strided copies from the buffer")
+        else:
+            code = cpp.comment("LIST body: strided copies from the buffer, per row")
         decls = []
         for q in range(len(loops)):
             decls += [f"cpp_ln{q} = 0", f"cpp_lz{q} = 0", f"cpp_lo{q} = 0"]
+        for lp in rows:
+            q = names[id(lp)]
+            decls += [f"cpp_lt{q} = 0", f"cpp_rb{q} = 0"]
+        if len(rows) > 0:
+            decls.append("cpp_rows = 0")
         code += cpp.statement(
             "int " + ", ".join(f"cpp_la{q} = 0" for q in names.values())
         )
         code += cpp.statement("long long " + ", ".join(decls))
         code += cpp.statement("bool cpp_strided = cpp_body.complete()")
         sizes_code, total = cls._sizes_code(items, names)
-        checks = ""
-        for site in cls._sites(items):
-            if site.kind == "literal" and len(site.loops) > 0:
-                checks += cls._check_code(site, names)
+        checks = cls._check_walk(items, names)
         prepass = sizes_code
         prepass += cpp.pureif(
             f"cpp_npl != {total}", cpp.statement("throw cpp_list_bulk_fallback()")
@@ -824,6 +1031,10 @@ class ListBulkForm:
         code += cpp.pureif("cpp_strided", cpp.trycatch(prepass, "...", catch))
         delivery = cls._delivery_code(items, names)
         delivery += cpp.statement("cpp_list_bulk_counter().strided++")
+        if len(rows) > 0:
+            delivery += cpp.statement("cpp_list_bulk_counter().row_bodies++")
+            delivery += cpp.statement("cpp_list_bulk_counter().row_values += cpp_npl")
+            delivery += cpp.statement("cpp_list_bulk_counter().row_rows += cpp_rows")
         code += cpp.pureif("cpp_strided", cpp.trycatch(delivery, "...", catch))
         return code
 

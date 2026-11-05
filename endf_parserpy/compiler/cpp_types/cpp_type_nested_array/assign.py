@@ -561,6 +561,18 @@ def _reserve_at_creation_code(ptrname, loop):
     )
 
 
+def _add_preparation(preparations, new_code, prepare_code, vartok, i):
+    # the preparation of the element of level i added to the code of an
+    # assignment (see Assign.assign_exprstr_to_var): kept with the
+    # expression of its index if the code is only the preparation, None
+    # (and from then on) otherwise
+    if preparations is None or new_code == "":
+        return preparations
+    if prepare_code == "" or new_code != prepare_code:
+        return None
+    return preparations + [(prepare_code, vartok.indices[i])]
+
+
 class Assign:
 
     def define_var(vartok, vardict, save_state=False):
@@ -609,6 +621,11 @@ class Assign:
             and _prepared_per_iteration(vartok, node, num_leading)
         )
         code = ""
+        # the preparations of elements in the code of the assignment (a
+        # pointer assigned, nothing else), with the expressions of their
+        # indices, for the recorder of the bulk form; None if the code has
+        # other statements before the store
+        inline_preparations = []
         ptrvar_old = cpp_varname
         limit_node = None
         # the levels whose elements are lists (not blocks) of children
@@ -618,10 +635,12 @@ class Assign:
             ptrvar_new = get_ptr_varname(vartok, i)
             dot = "." if i == 0 else "->"
             new_code = ""
+            prepare_code = ""
             if not unused:
-                new_code = cpp.statement(
+                prepare_code = cpp.statement(
                     f"{ptrvar_new} = {ptrvar_old}{dot}prepare({indices[i]})"
                 )
+                new_code = prepare_code
             if node is not None:
                 destnode = moveup_ptrassign(vartok, i, node, limit_node)
                 limit_node = destnode
@@ -659,6 +678,9 @@ class Assign:
                         )
                 else:
                     code += new_code
+                    inline_preparations = _add_preparation(
+                        inline_preparations, new_code, prepare_code, vartok, i
+                    )
                 # the element is created (empty) before the loop of the
                 # next index if the preparation above stays inside it,
                 # e.g. because the variable occurs elsewhere in that loop,
@@ -696,6 +718,9 @@ class Assign:
                         )
             else:
                 code += new_code
+                inline_preparations = _add_preparation(
+                    inline_preparations, new_code, prepare_code, vartok, i
+                )
             ptrvar_old = ptrvar_new
         if unused:
             return UnstoredAssignment(code)
@@ -720,6 +745,7 @@ class Assign:
                     indices=indices[-1:],
                     index_exprs=vartok.indices[-1:],
                     preceded=code != "",
+                    preparations=inline_preparations,
                 )
             code += cpp.statement(
                 f"{ptrvar_old}{dot}{setter}({indices[-1]}, {exprstr})"
@@ -743,6 +769,7 @@ class Assign:
                 indices=indices[num_leading:],
                 index_exprs=vartok.indices[num_leading:],
                 preceded=code != "",
+                preparations=inline_preparations,
             )
         if rows:
             code += cpp.statement(f"{deref}.set_block_row({exprstr}, {trailing})")

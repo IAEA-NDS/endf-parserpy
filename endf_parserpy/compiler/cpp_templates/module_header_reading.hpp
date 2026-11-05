@@ -1616,6 +1616,108 @@ CPP_ROW_TARGET_AVX512 CPP_DECIMAL_NOINLINE inline unsigned cpp_row_kernel_avx512
 
 
 
+// Conversion of the float fields of the body of a LIST record read as
+// one byte range (see cpp_list_body_range and CppListBody): the first npl
+// fields of the nlines = (npl-1)/6+1 lines p, p + stride, ... into out
+// (all 6*nlines values may be written). Each function returns the number
+// of leading values converted (npl if all), i.e. the position of the
+// first field the kernel of its tier does not convert, exactly as one
+// call of that kernel per line would give. The tier is chosen once per
+// body (cpp_list_convert).
+
+// The scalar tier: one loop with the SWAR stage of cpp_fast_field_to_double
+// inline; a field the SWAR stage does not take goes to
+// cpp_fast_field_to_double (which tries the SWAR stage again and then its
+// general fast path), as in cpp_row_kernel_scalar.
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((flatten))
+#endif
+inline int cpp_list_convert_scalar(
+  const char* p, std::size_t stride, int npl, bool accept_d_exponent, double* out
+) {
+  int i = 0;
+  const int full = npl / 6;
+  for (int l = 0; l < full; l++) {
+    const char* q = p + static_cast<std::size_t>(l) * stride;
+    for (int j = 0; j < 6; j++, i++) {
+      const int r = cpp_fast_field_swar(q + 11 * j, out[i]);
+      if (r > 0) continue;
+      if (r < 0 || ! cpp_fast_field_to_double(q + 11 * j, accept_d_exponent, out[i])) return i;
+    }
+  }
+  const char* q = p + static_cast<std::size_t>(full) * stride;
+  for (int j = 0; i < npl; j++, i++) {
+    const int r = cpp_fast_field_swar(q + 11 * j, out[i]);
+    if (r > 0) continue;
+    if (r < 0 || ! cpp_fast_field_to_double(q + 11 * j, accept_d_exponent, out[i])) return i;
+  }
+  return npl;
+}
+
+// Any other kernel: one call through the pointer per line.
+inline int cpp_list_convert_rows(
+  const char* p, std::size_t stride, int npl, cpp_row_kernel_fn kernel,
+  unsigned flags, double* out
+) {
+  const int nlines = (npl - 1) / 6 + 1;
+  for (int l = 0; l < nlines; l++) {
+    const int pos = 6 * l;
+    const int remaining = npl - pos;
+    const unsigned want = remaining >= 6 ? 0x3Fu : (1u << remaining) - 1u;
+    const unsigned done = kernel(p + static_cast<std::size_t>(l) * stride, want, flags, out + pos);
+    if (done != want) {
+      int j = 0;
+      while ((done >> j) & 1u) j++;
+      return pos + j;
+    }
+  }
+  return npl;
+}
+
+#ifdef CPP_ROW_VECTOR_TIERS
+
+// The vector tiers: one loop per tier with the vector path of its kernel
+// inline, one step per line; the fields it leaves go to
+// cpp_row_vector_fallback (out of line), as in cpp_row_kernel_avx2 and
+// cpp_row_kernel_avx512.
+CPP_ROW_TARGET_AVX2 inline int cpp_list_convert_avx2(
+  const char* p, std::size_t stride, int npl, bool accept_d_exponent, double* out
+) {
+  const int nlines = (npl - 1) / 6 + 1;
+  for (int l = 0; l < nlines; l++) {
+    const char* q = p + static_cast<std::size_t>(l) * stride;
+    const int pos = 6 * l;
+    const int remaining = npl - pos;
+    const unsigned want = remaining >= 6 ? 0x3Fu : (1u << remaining) - 1u;
+    const unsigned fast = cpp_row_avx2_fast(q, out + pos) & want;
+    if (fast != want) {
+      const unsigned done = fast | cpp_row_vector_fallback(q, want & ~fast, accept_d_exponent, out + pos);
+      if (done != want) return pos + __builtin_ctz(~done);
+    }
+  }
+  return npl;
+}
+
+CPP_ROW_TARGET_AVX512 inline int cpp_list_convert_avx512(
+  const char* p, std::size_t stride, int npl, bool accept_d_exponent, double* out
+) {
+  const int nlines = (npl - 1) / 6 + 1;
+  for (int l = 0; l < nlines; l++) {
+    const char* q = p + static_cast<std::size_t>(l) * stride;
+    const int pos = 6 * l;
+    const int remaining = npl - pos;
+    const unsigned want = remaining >= 6 ? 0x3Fu : (1u << remaining) - 1u;
+    const unsigned fast = cpp_row_avx512_fast(q, out + pos) & want;
+    if (fast != want) {
+      const unsigned done = fast | cpp_row_vector_fallback(q, want & ~fast, accept_d_exponent, out + pos);
+      if (done != want) return pos + __builtin_ctz(~done);
+    }
+  }
+  return npl;
+}
+
+#endif  // CPP_ROW_VECTOR_TIERS
+
 
 struct cpp_row_tier {
   const char* name;
@@ -1757,6 +1859,28 @@ inline const cpp_row_selection& cpp_row_selected() {
 
 inline cpp_row_kernel_fn cpp_float_row_kernel() {
   return cpp_row_state<>::kernel;
+}
+
+// The conversion of a LIST body read as one byte range (see
+// cpp_list_convert_scalar) with the kernel `kernel`: the loop of its tier,
+// chosen once per body.
+inline int cpp_list_convert(
+  const char* p, std::size_t stride, int npl, cpp_row_kernel_fn kernel,
+  bool accept_d_exponent, double* out
+) {
+  if (kernel == cpp_row_kernel_scalar) {
+    return cpp_list_convert_scalar(p, stride, npl, accept_d_exponent, out);
+  }
+#ifdef CPP_ROW_VECTOR_TIERS
+  if (kernel == cpp_row_kernel_avx512) {
+    return cpp_list_convert_avx512(p, stride, npl, accept_d_exponent, out);
+  }
+  if (kernel == cpp_row_kernel_avx2) {
+    return cpp_list_convert_avx2(p, stride, npl, accept_d_exponent, out);
+  }
+#endif
+  return cpp_list_convert_rows(
+    p, stride, npl, kernel, accept_d_exponent ? CPP_ROW_ACCEPT_D_EXPONENT : 0u, out);
 }
 
 // End of the row kernels.
@@ -2930,61 +3054,6 @@ inline bool cpp_list_body_range(
 }
 
 
-// The conversion of the first npl fields of the nlines = (npl-1)/6+1
-// lines p, p + stride, ... into out with the scalar row kernel, in one
-// loop with the SWAR stage of cpp_fast_field_to_double inline: a field
-// the SWAR stage does not take goes to cpp_fast_field_to_double (which
-// tries the SWAR stage again and then its general fast path), as in
-// cpp_row_kernel_scalar. Returns the number of leading values converted
-// (npl if all), as the line-by-line conversion with the scalar kernel.
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((flatten))
-#endif
-inline int cpp_list_convert_scalar(
-  const char* p, std::size_t stride, int npl, bool accept_d_exponent, double* out
-) {
-  int i = 0;
-  const int full = npl / 6;
-  for (int l = 0; l < full; l++) {
-    const char* q = p + static_cast<std::size_t>(l) * stride;
-    for (int j = 0; j < 6; j++, i++) {
-      const int r = cpp_fast_field_swar(q + 11 * j, out[i]);
-      if (r > 0) continue;
-      if (r < 0 || ! cpp_fast_field_to_double(q + 11 * j, accept_d_exponent, out[i])) return i;
-    }
-  }
-  const char* q = p + static_cast<std::size_t>(full) * stride;
-  for (int j = 0; i < npl; j++, i++) {
-    const int r = cpp_fast_field_swar(q + 11 * j, out[i]);
-    if (r > 0) continue;
-    if (r < 0 || ! cpp_fast_field_to_double(q + 11 * j, accept_d_exponent, out[i])) return i;
-  }
-  return npl;
-}
-
-
-// The same conversion with one call of a row kernel per line (for the
-// kernels other than the scalar one).
-inline int cpp_list_convert_rows(
-  const char* p, std::size_t stride, int npl, cpp_row_kernel_fn kernel,
-  unsigned flags, double* out
-) {
-  const int nlines = (npl - 1) / 6 + 1;
-  for (int l = 0; l < nlines; l++) {
-    const int pos = 6 * l;
-    const int remaining = npl - pos;
-    const unsigned want = remaining >= 6 ? 0x3Fu : (1u << remaining) - 1u;
-    const unsigned done = kernel(p + static_cast<std::size_t>(l) * stride, want, flags, out + pos);
-    if (done != want) {
-      int j = 0;
-      while ((done >> j) & 1u) j++;
-      return pos + j;
-    }
-  }
-  return npl;
-}
-
-
 class CppListBody {
   public:
     CppListBody(
@@ -3000,7 +3069,7 @@ class CppListBody {
       // a body of one line is read by the loop (as one range, it would
       // only add the checks of the range)
       if (nlines >= 2) {
-        if (fast_body(line, cont, npl, nlines, mat, mf, mt, parse_opts, kernel, flags)) {
+        if (fast_body(line, cont, npl, nlines, mat, mf, mt, parse_opts, kernel)) {
           cpp_list_bulk_counter().byte_range++;
           return;
         }
@@ -3101,7 +3170,7 @@ class CppListBody {
     // it, and the stream is good (each line has a line ending).
     bool fast_body(
       CppLine& line, std::istream& cont, int npl, int nlines, int mat, int mf, int mt,
-      ParsingOptions& parse_opts, cpp_row_kernel_fn kernel, unsigned flags
+      ParsingOptions& parse_opts, cpp_row_kernel_fn kernel
     ) {
       if (! cont.good()) return false;
       cpp_memory_streambuf* mb = parse_opts.memory_input;
@@ -3112,12 +3181,7 @@ class CppListBody {
       if (! cpp_list_body_range(p, mb->end(), nlines, cc, len, stride)) return false;
       const std::size_t need = 6 * static_cast<std::size_t>(nlines);
       if (need > cap_) grow(need);
-      int n;
-      if (kernel == cpp_row_kernel_scalar) {
-        n = cpp_list_convert_scalar(p, stride, npl, parse_opts.accept_d_exponent, buf_);
-      } else {
-        n = cpp_list_convert_rows(p, stride, npl, kernel, flags, buf_);
-      }
+      const int n = cpp_list_convert(p, stride, npl, kernel, parse_opts.accept_d_exponent, buf_);
       nconv_ = n;
       const int stop_line = n >= npl ? nlines - 1 : n / 6;
       good_ = stop_line + 1;

@@ -82,12 +82,13 @@ two forms by the C++ modules:
   as in the per-field form), from which its values are then delivered to the
   variables: by strided copies if the code generator has proven the
   layout of the body regular (e.g. one copy per array for the bodies of
-  MF6 LAW=1 records, the bulk of most neutron files), otherwise by the
-  same code as in the per-field form, which takes each value from the
-  buffer. With the scalar row kernel, bodies without a regular layout
-  (e.g. triangular matrices of covariance data and the scattering laws
-  of thermal scattering data) are read in the per-field form, which is
-  as fast for them, unless the tier is forced (see below).
+  MF6 LAW=1 records, the bulk of most neutron files, and one copy per
+  row for the triangular matrices of covariance data, whose rows have
+  lengths that depend on the row), otherwise by the same code as in the
+  per-field form, which takes each value from the buffer. With the
+  scalar row kernel, bodies without a regular layout (e.g. the
+  scattering laws of thermal scattering data) are read in the per-field
+  form, which is as fast for them, unless the tier is forced (see below).
 
 Several implementations (tiers) of the row kernel are planned, e.g. for
 the vector instructions of some processors; which one is used is decided
@@ -138,8 +139,9 @@ with a loop are read in the bulk form (``bulk_all_list_bodies``) and the
 numbers of LIST bodies read in the bulk form (``bulk_list_bodies``:
 delivered by strided copies, delivered by the code of the per-field
 form, those whose conversion stopped at a field the row kernel does
-not convert, and the bodies of several lines read as one block of memory
-and line by line). It is meant for diagnostics and tests; its name and content
+not convert, the bodies of several lines read as one block of memory
+and line by line, and, of the bodies delivered by strided copies, those
+with one copy per row, their values and their rows). It is meant for diagnostics and tests; its name and content
 may change between versions:
 
 .. code:: Python

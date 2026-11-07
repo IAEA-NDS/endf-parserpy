@@ -157,3 +157,13 @@ to the development of this package. He debugged the
 ENDF-6 recipe files and helped in numerous discussions
 to convey a good understanding of the technical details of
 the ENDF-6 format that enabled the creation of this package.
+
+endf-parserpy, including the formal recipe language, the parser
+architecture and the compiler that translates recipes into C++ code,
+was designed and developed without AI assistance from its beginning
+in 2022 up to and including version 0.16 (May 2026). Starting with
+version 0.17, AI coding assistance (Claude Fable 5 and Claude Opus 5.5
+by Anthropic) has been used, in particular, but not exclusively, for
+finding and fixing bugs and for the performance optimization of the
+recipe compiler and the generated C++ backend. All AI-assisted changes
+were reviewed and tested before inclusion.

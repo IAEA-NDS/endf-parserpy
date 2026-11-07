@@ -1096,9 +1096,10 @@ inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, do
 // The kernels are the tiers of a small table (cpp_row_tiers): the scalar
 // tier, cpp_fast_field_to_double applied field by field, is always
 // present; optional tiers for vector instruction sets are only built for
-// GCC and Clang on x86-64 (CPP_ROW_X86_64_GNU, which does not depend on
+// x86-64 with GCC and Clang (CPP_ROW_X86_64_GNU, which does not depend on
 // the instruction set the module is compiled for, so that the code of
 // such a tier has to be compiled with per-function target attributes)
+// and with MSVC (CPP_ROW_X86_64_MSVC, which needs no such attributes)
 // and only used if the CPU supports them (cpp_cpu_features), and for
 // AArch64 (CPP_ROW_NEON: GCC, Clang and MSVC; NEON is part of the
 // baseline instruction set there, so that this tier needs neither target
@@ -1156,6 +1157,13 @@ inline unsigned cpp_row_kernel_scalar(
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
 #define CPP_ROW_X86_64_GNU 1
 #endif
+// MSVC itself on x64: not clang-cl (which defines _MSC_VER and __clang__
+// and is handled as Clang above, with target attributes) and not ARM64EC
+// (which defines _M_X64 as well, but compiles for ARM64)
+#if defined(_MSC_VER) && ! defined(__clang__) && ! defined(__GNUC__) \
+    && defined(_M_X64) && ! defined(_M_ARM64EC)
+#define CPP_ROW_X86_64_MSVC 1
+#endif
 
 // The vector tiers (AVX2, AVX-512, NEON) are only built with compilers
 // known to support everything they use (CPP_ROW_SIMD_COMPILER), so that an
@@ -1177,8 +1185,12 @@ inline unsigned cpp_row_kernel_scalar(
 //   Clang 11 (Xcode 11, 2019), based on about LLVM 8;
 // - MSVC 19.30 (Visual Studio 2022) for the NEON tier on ARM64 (the ACLE
 //   intrinsics of <arm_neon.h> and _BitScanForward; earlier versions
-//   provide ARM64 NEON intrinsics as well, but were not checked); MSVC
-//   builds no x86 tier;
+//   provide ARM64 NEON intrinsics as well, but were not checked) and for
+//   the AVX2 and AVX-512 tiers on x64: Microsoft's documentation of /arch
+//   (x64) says that "limited support for /arch:AVX512 was added in Visual
+//   Studio 2017, and expanded in Visual Studio 2019"; the minimum is
+//   conservatively the release after that (the kernels use AVX-512 F, BW,
+//   VL, DQ and VBMI intrinsics); earlier versions were not checked;
 // - not the classic Intel compiler (__INTEL_COMPILER, which defines
 //   __GNUC__ but has its own support of target attributes).
 #if ! defined(CPP_ROW_NO_VECTOR_TIERS) && ! defined(__INTEL_COMPILER)
@@ -1225,11 +1237,12 @@ inline unsigned cpp_row_kernel_scalar(
 
 // Features of the CPU relevant for the tiers, from cpuid and xgetbv (the
 // operating system must save the ymm and zmm registers). Only queried
-// with CPP_ROW_X86_64_GNU (GCC and Clang including MinGW and clang-cl
-// on x86-64); otherwise all false. The instructions are issued directly,
-// as __builtin_cpu_supports needs runtime support that not every
-// toolchain links. `neon` is true on AArch64 (not queried: NEON is
-// mandatory there).
+// on x86-64 with CPP_ROW_X86_64_GNU (GCC and Clang including MinGW and
+// clang-cl), where the instructions are issued directly, as
+// __builtin_cpu_supports needs runtime support that not every toolchain
+// links, and with CPP_ROW_X86_64_MSVC, with the intrinsics __cpuidex
+// (<intrin.h>) and _xgetbv (<immintrin.h>); otherwise all false. `neon`
+// is true on AArch64 (not queried: NEON is mandatory there).
 struct cpp_cpu_features {
   bool detected;
   bool os_ymm;
@@ -1252,12 +1265,28 @@ inline void cpp_cpuid(unsigned leaf, unsigned subleaf, unsigned regs[4]) {
 }
 #endif
 
+#ifdef CPP_ROW_X86_64_MSVC
+#include <intrin.h>
+#include <immintrin.h>
+inline void cpp_cpuid(unsigned leaf, unsigned subleaf, unsigned regs[4]) {
+  int r[4];
+  __cpuidex(r, static_cast<int>(leaf), static_cast<int>(subleaf));
+  for (int i = 0; i < 4; i++) regs[i] = static_cast<unsigned>(r[i]);
+}
+
+// the low 32 bits of XCR0 (only called if cpuid reports OSXSAVE; out of
+// line, so that the instruction cannot be moved before that check)
+CPP_DECIMAL_NOINLINE inline unsigned cpp_xgetbv0() {
+  return static_cast<unsigned>(_xgetbv(0));
+}
+#endif
+
 inline cpp_cpu_features cpp_detect_cpu_features() {
   cpp_cpu_features f = {false, false, false, false, false, false, false, false, false, false, false};
 #ifdef CPP_ROW_AARCH64
   f.neon = true;
 #endif
-#ifdef CPP_ROW_X86_64_GNU
+#if defined(CPP_ROW_X86_64_GNU) || defined(CPP_ROW_X86_64_MSVC)
   unsigned r[4];
   cpp_cpuid(0, 0, r);
   const unsigned max_leaf = r[0];
@@ -1268,9 +1297,13 @@ inline cpp_cpu_features cpp_detect_cpu_features() {
   const bool osxsave = ((r[2] >> 27) & 1u) != 0;
   const bool avx = ((r[2] >> 28) & 1u) != 0;
   if (osxsave && avx) {
+#ifdef CPP_ROW_X86_64_GNU
     unsigned xcr0, xcr0_hi;
     __asm__ volatile("xgetbv" : "=a"(xcr0), "=d"(xcr0_hi) : "c"(0));
     (void) xcr0_hi;
+#else
+    const unsigned xcr0 = cpp_xgetbv0();
+#endif
     f.os_ymm = (xcr0 & 0x6u) == 0x6u;
     f.os_zmm = (xcr0 & 0xE6u) == 0xE6u;
   }
@@ -1310,13 +1343,35 @@ inline bool cpp_row_cpu_neon(const cpp_cpu_features& f) {
 // GCC and Clang on x86-64 (CPP_ROW_X86_64_GNU), and for clang-cl only if
 // <immintrin.h> declares the intrinsics without the corresponding global
 // compiler flags (older clang-cl versions declare them only with these
-// flags; the two macros below are defined by the headers that do). The
-// translation units are compiled for the baseline instruction set of the
-// module; every function using these instructions carries a target
-// attribute (CPP_ROW_TARGET_AVX2, CPP_ROW_TARGET_AVX512) and is only
-// executed if the CPU supports its tier (cpp_row_select). Such a function
-// calls the scalar conversion only out of line (cpp_row_vector_fallback),
-// so that this code is never compiled with the instruction set of a tier.
+// flags; the two macros below are defined by the headers that do), and
+// MSVC on x64 (CPP_ROW_X86_64_MSVC). The translation units are compiled
+// for the baseline instruction set of the module; every function using
+// these instructions is only executed if the CPU supports its tier
+// (cpp_row_select). Such a function calls the scalar conversion only out
+// of line (cpp_row_vector_fallback), so that this code is never compiled
+// with the instruction set of a tier.
+// - GCC and Clang: every function using these instructions carries a
+//   target attribute (CPP_ROW_TARGET_AVX2, CPP_ROW_TARGET_AVX512), as the
+//   compiler accepts the intrinsics of an instruction set only in
+//   functions compiled for it; the parts of a kernel are always_inline
+//   with the same attribute, and a function with a target attribute is
+//   not inlined into a function without it.
+// - MSVC accepts the intrinsics of every instruction set in every
+//   function, without /arch: it emits the instruction of each intrinsic
+//   and compiles all other code for the instruction set of /arch (SSE2
+//   by default), so that no attribute is needed and the code around the
+//   intrinsics (and every inline function shared with other translation
+//   units) stays baseline code. The parts of a kernel are __forceinline;
+//   the functions entered from outside a tier (the kernels and the LIST
+//   loops of the tiers) are noinline (CPP_DECIMAL_NOINLINE,
+//   CPP_ROW_VECTOR_ENTRY), so that their instructions stay behind the
+//   call through the selected kernel and the comparison with it in
+//   cpp_list_convert, and cannot be inlined into or scheduled before
+//   these checks in a caller. (Compiling the tiers in translation units
+//   of their own with /arch:AVX2 or /arch:AVX512 is not done: the inline
+//   functions such units share with the others, e.g. those of the C++
+//   library, would be compiled for that instruction set as well, and the
+//   linker keeps one of the copies for the whole module.)
 //
 // The vector path of both kernels converts exactly the two layouts of
 // cpp_fast_field_swar, " d.dddddd+d" and " d.ddddd+dd" (first character
@@ -1340,6 +1395,9 @@ inline bool cpp_row_cpu_neon(const cpp_cpu_features& f) {
     || (defined(_mm256_inserti128_si256) && defined(_mm512_cmple_epi64_mask))
 #define CPP_ROW_VECTOR_TIERS 1
 #endif
+#elif defined(CPP_ROW_X86_64_MSVC) && defined(CPP_ROW_SIMD_COMPILER)
+#include <immintrin.h>
+#define CPP_ROW_VECTOR_TIERS 1
 #endif
 
 #if defined(CPP_ROW_VECTOR_TIERS) || defined(CPP_ROW_NEON)
@@ -1379,6 +1437,15 @@ CPP_DECIMAL_NOINLINE inline unsigned cpp_row_vector_fallback(
 
 #ifdef CPP_ROW_VECTOR_TIERS
 
+#ifdef CPP_ROW_X86_64_MSVC
+#define CPP_ROW_TARGET_AVX2
+#define CPP_ROW_TARGET_AVX512
+// the parts of the kernels, inlined into the functions of their tier
+#define CPP_ROW_INLINE_AVX2 __forceinline
+#define CPP_ROW_INLINE_AVX512 __forceinline
+// the LIST loops of the tiers
+#define CPP_ROW_VECTOR_ENTRY CPP_DECIMAL_NOINLINE
+#else
 #define CPP_ROW_TARGET_AVX2 __attribute__((target("avx2,fma")))
 #define CPP_ROW_TARGET_AVX512 \
   __attribute__((target("avx2,fma,avx512f,avx512bw,avx512vl,avx512dq,avx512vbmi")))
@@ -1386,6 +1453,10 @@ CPP_DECIMAL_NOINLINE inline unsigned cpp_row_vector_fallback(
 #define CPP_ROW_INLINE_AVX2 __attribute__((always_inline, target("avx2,fma"))) inline
 #define CPP_ROW_INLINE_AVX512 __attribute__((always_inline, \
   target("avx2,fma,avx512f,avx512bw,avx512vl,avx512dq,avx512vbmi"))) inline
+// the LIST loops of the tiers (not inlined into functions without the
+// target attribute)
+#define CPP_ROW_VECTOR_ENTRY
+#endif
 
 // tables of the vector kernels (constant-initialized, shared by the
 // translation units of a module)
@@ -2094,7 +2165,7 @@ inline int cpp_list_convert_rows(
 // inline, one step per line; the fields it leaves go to
 // cpp_row_vector_fallback (out of line), as in cpp_row_kernel_avx2 and
 // cpp_row_kernel_avx512.
-CPP_ROW_TARGET_AVX2 inline int cpp_list_convert_avx2(
+CPP_ROW_TARGET_AVX2 CPP_ROW_VECTOR_ENTRY inline int cpp_list_convert_avx2(
   const char* p, std::size_t stride, int npl, bool accept_d_exponent, double* out
 ) {
   const int nlines = (npl - 1) / 6 + 1;
@@ -2106,13 +2177,13 @@ CPP_ROW_TARGET_AVX2 inline int cpp_list_convert_avx2(
     const unsigned fast = cpp_row_avx2_fast(q, out + pos) & want;
     if (fast != want) {
       const unsigned done = fast | cpp_row_vector_fallback(q, want & ~fast, accept_d_exponent, out + pos);
-      if (done != want) return pos + __builtin_ctz(~done);
+      if (done != want) return pos + cpp_row_ctz(~done);
     }
   }
   return npl;
 }
 
-CPP_ROW_TARGET_AVX512 inline int cpp_list_convert_avx512(
+CPP_ROW_TARGET_AVX512 CPP_ROW_VECTOR_ENTRY inline int cpp_list_convert_avx512(
   const char* p, std::size_t stride, int npl, bool accept_d_exponent, double* out
 ) {
   const int nlines = (npl - 1) / 6 + 1;
@@ -2124,7 +2195,7 @@ CPP_ROW_TARGET_AVX512 inline int cpp_list_convert_avx512(
     const unsigned fast = cpp_row_avx512_fast(q, out + pos) & want;
     if (fast != want) {
       const unsigned done = fast | cpp_row_vector_fallback(q, want & ~fast, accept_d_exponent, out + pos);
-      if (done != want) return pos + __builtin_ctz(~done);
+      if (done != want) return pos + cpp_row_ctz(~done);
     }
   }
   return npl;
@@ -2203,9 +2274,15 @@ inline bool cpp_row_tier_auto(const cpp_row_tier* tiers, int i) {
   return tiers[i].vector || i == CPP_ROW_NUM_TIERS - 1;
 }
 
-// the compiler of the module, for diagnostics
+// the compiler of the module, for diagnostics: clang-cl (Clang with
+// _MSC_VER, which takes the GCC/Clang branch of the x86 tiers) and Apple
+// Clang are told apart from Clang, MSVC itself from both
 inline const char* cpp_row_compiler() {
-#if defined(__clang__)
+#if defined(__clang__) && defined(_MSC_VER)
+  return "clang-cl";
+#elif defined(__clang__) && defined(__apple_build_version__)
+  return "apple-clang";
+#elif defined(__clang__)
   return "clang";
 #elif defined(__GNUC__)
   return "gcc";

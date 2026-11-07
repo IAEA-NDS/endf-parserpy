@@ -7,6 +7,11 @@ name: Benchmark bulk bodies
 # the runner supports. Only run on demand or for pushes to bench/**
 # branches; this workflow is not part of testing or publishing.
 #
+# Before the timing, each job checks that every tier built and supported
+# on its runner (avx2/avx512 on x86-64 with GCC and Clang, neon on ARM64,
+# scalar everywhere) gives the results of the conversion field by field,
+# bit for bit; the job fails otherwise.
+#
 # ENDF files: four ENDF/B-VIII.1 neutron files (Fe56, H1, U233, Pu238),
 # zip archives in the private repository IAEA-NDS/ENDF-PENDF-File, checked
 # out with a read-only deploy key whose private key is the Actions secret
@@ -108,9 +113,12 @@ jobs:
             ENDF-B-VIII.1/n/n-U233-9222.enf.zip
             ENDF-B-VIII.1/n/n-Pu238-9434.enf.zip
 
+      # the native interpreter on the ARM64 runners (the builds must be
+      # ARM64 builds, so that the NEON tier is built and timed)
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          architecture: ${{ matrix.runner == 'windows-11-arm' && 'arm64' || '' }}
 
       # Every archive must start with the zip signature "PK" (a Git LFS
       # pointer or anything else stops the job, naming the file) and hold
@@ -159,6 +167,25 @@ jobs:
             "$py" -m pip install numpy
             "$py" -m pip install "./$v"
           done
+
+      # Every tier built and supported on this runner must give the
+      # results of the per-field form, bit for bit: the C++ test of the
+      # conversion kernels (sampled mode, a few seconds to a minute),
+      # compiled with the compiler of the wheels of the platform (GCC,
+      # Apple Clang, MSVC), and the parse tests, which force each tier of
+      # the installed build under test in turn (each in a fresh process)
+      # and compare its results and errors with the per-field form.
+      - name: Check the tiers for bit-identity
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then sfx=Scripts/python; else sfx=bin/python; fi
+          "venv_new/$sfx" -c "import platform, sys; print(sys.version, platform.machine())"
+          "venv_new/$sfx" -m pip install pytest setuptools
+          "venv_new/$sfx" new/tools/benchmark_bulk_bodies.py equivalence \
+            --tests new/tests --work-dir equivalence --summary "$GITHUB_STEP_SUMMARY"
+          "venv_new/$sfx" -m pytest -q -rs -p no:cacheprovider \
+            new/tests/test_cpp_float_row_kernel.py new/tests/test_cpp_list_bulk_form.py \
+            | tee results/tier_tests.txt
+          echo "Tier tests (each tier forced): $(tail -n 1 results/tier_tests.txt)" >> "$GITHUB_STEP_SUMMARY"
 
       # Only the files of the public alternative are cached, never those
       # of the private data repository.

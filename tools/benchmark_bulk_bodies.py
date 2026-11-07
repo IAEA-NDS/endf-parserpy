@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/03
-# Last modified:   2026/11/05
+# Last modified:   2026/11/07
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -19,6 +19,8 @@ usage:
       [--rounds 11] [--reps 3] [--summary <summary.md>]
   python tools/benchmark_bulk_bodies.py merge --out <merged.json> \\
       [--summary <summary.md>] <results.json>...
+  python tools/benchmark_bulk_bodies.py equivalence --tests <tests dir> \\
+      --work-dir <dir> [--mode sampled] [--summary <summary.md>]
 
 ``prepare`` checks the zip archives of ``DATA_FILES`` in a checkout of the
 data repository IAEA-NDS/ENDF-PENDF-File (each must be a zip archive, not
@@ -55,6 +57,15 @@ is a Markdown table (for ``$GITHUB_STEP_SUMMARY``).
 
 ``merge`` combines the JSON files of several machines into one file and
 one summary table.
+
+``equivalence`` compiles the C++ test of the conversion kernels
+(tests/cpp/float_kernel_equivalence.cpp with the header extracted from the
+installed template, see tests/test_cpp_float_kernel_equivalence.py) with
+the compiler of the machine and runs it (mode ``sampled`` by default):
+every row kernel tier built and supported there must give the mask and
+the bits of the conversion field by field. The compiler is the one of the
+wheels: MSVC on Windows (found by setuptools, which must be installed),
+otherwise CXX or c++, g++, clang++. Exits with status 1 on a mismatch.
 """
 
 import argparse
@@ -356,6 +367,76 @@ def cmd_merge(args):
             f.write(text + "\n")
 
 
+def _compile_equivalence(tests, workdir):
+    # the test program, with the compiler of the wheels of this platform
+    source = os.path.join(tests, "cpp", "float_kernel_equivalence.cpp")
+    sys.path.insert(0, tests)
+    try:
+        import test_cpp_float_kernel_equivalence as t
+    finally:
+        sys.path.pop(0)
+    t.write_test_header(workdir)
+    if sys.platform == "win32":
+        from setuptools._distutils.ccompiler import new_compiler
+
+        cc = new_compiler()
+        cc.initialize()
+        objs = cc.compile(
+            [source],
+            output_dir=workdir,
+            include_dirs=[workdir],
+            extra_postargs=["/O2", "/EHsc", "/std:c++14"],
+        )
+        cc.link_executable(objs, "float_kernel_equivalence", output_dir=workdir)
+        name = "MSVC"
+        exe = os.path.join(workdir, "float_kernel_equivalence.exe")
+    else:
+        cmd = t._find_compiler()
+        if cmd is None:
+            raise SystemExit("no C++ compiler found (set CXX)")
+        exe = os.path.join(workdir, "float_kernel_equivalence")
+        res = subprocess.run(
+            cmd + ["-O2", "-std=c++11", "-I", workdir, source, "-o", exe],
+            capture_output=True,
+            text=True,
+        )
+        if res.returncode != 0:
+            raise SystemExit("compilation failed:\n" + res.stdout + res.stderr)
+        name = " ".join(cmd)
+    version = ""
+    if sys.platform != "win32":
+        res = subprocess.run(cmd + ["--version"], capture_output=True, text=True)
+        version = res.stdout.splitlines()[0] if res.stdout else ""
+    return exe, f"{name} {version}".strip()
+
+
+def cmd_equivalence(args):
+    workdir = os.path.abspath(args.work_dir)
+    os.makedirs(workdir, exist_ok=True)
+    exe, compiler = _compile_equivalence(os.path.abspath(args.tests), workdir)
+    t0 = time.perf_counter()
+    res = subprocess.run([exe, args.mode], capture_output=True, text=True)
+    elapsed = time.perf_counter() - t0
+    out = (res.stdout + res.stderr).strip()
+    ok = res.returncode == 0 and "mismatches=0" in out
+    lines = [
+        f"C++ kernel equivalence ({args.mode}, {compiler}, {elapsed:.0f} s, "
+        f"{platform.machine()}): {'passed' if ok else 'FAILED'}",
+        "",
+        "```",
+        *out.splitlines()[-25:],
+        "```",
+        "",
+    ]
+    text = "\n".join(lines)
+    print(text)
+    if args.summary:
+        with open(args.summary, "a") as f:
+            f.write(text + "\n")
+    if not ok:
+        sys.exit(1)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -375,11 +456,18 @@ def main():
     merge.add_argument("--out", required=True)
     merge.add_argument("--summary", default=None)
     merge.add_argument("inputs", nargs="+")
+    equiv = sub.add_parser("equivalence")
+    equiv.add_argument("--tests", required=True)
+    equiv.add_argument("--work-dir", required=True)
+    equiv.add_argument("--mode", default="sampled")
+    equiv.add_argument("--summary", default=None)
     args = ap.parse_args()
     if args.cmd == "prepare":
         cmd_prepare(args)
     elif args.cmd == "run":
         cmd_run(args)
+    elif args.cmd == "equivalence":
+        cmd_equivalence(args)
     else:
         cmd_merge(args)
 

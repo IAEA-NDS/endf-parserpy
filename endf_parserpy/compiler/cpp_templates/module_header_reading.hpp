@@ -2044,6 +2044,30 @@ CPP_ROW_TARGET_AVX512 inline int cpp_list_convert_avx512(
 
 #endif  // CPP_ROW_VECTOR_TIERS
 
+#ifdef CPP_ROW_NEON
+
+// The NEON tier: one loop with the vector path of its kernel inline, as
+// for the x86 tiers.
+inline int cpp_list_convert_neon(
+  const char* p, std::size_t stride, int npl, bool accept_d_exponent, double* out
+) {
+  const int nlines = (npl - 1) / 6 + 1;
+  for (int l = 0; l < nlines; l++) {
+    const char* q = p + static_cast<std::size_t>(l) * stride;
+    const int pos = 6 * l;
+    const int remaining = npl - pos;
+    const unsigned want = remaining >= 6 ? 0x3Fu : (1u << remaining) - 1u;
+    const unsigned fast = cpp_row_neon_fast(q, out + pos) & want;
+    if (fast != want) {
+      const unsigned done = fast | cpp_row_vector_fallback(q, want & ~fast, accept_d_exponent, out + pos);
+      if (done != want) return pos + cpp_row_ctz(~done);
+    }
+  }
+  return npl;
+}
+
+#endif  // CPP_ROW_NEON
+
 
 struct cpp_row_tier {
   const char* name;
@@ -2209,6 +2233,11 @@ inline int cpp_list_convert(
   }
   if (kernel == cpp_row_kernel_avx2) {
     return cpp_list_convert_avx2(p, stride, npl, accept_d_exponent, out);
+  }
+#endif
+#ifdef CPP_ROW_NEON
+  if (kernel == cpp_row_kernel_neon) {
+    return cpp_list_convert_neon(p, stride, npl, accept_d_exponent, out);
   }
 #endif
   return cpp_list_convert_rows(

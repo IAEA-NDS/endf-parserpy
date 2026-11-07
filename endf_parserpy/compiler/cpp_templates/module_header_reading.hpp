@@ -1155,6 +1155,50 @@ inline unsigned cpp_row_kernel_scalar(
 #define CPP_ROW_X86_64_GNU 1
 #endif
 
+// The vector tiers (AVX2, AVX-512, NEON) are only built with compilers
+// known to support everything they use (CPP_ROW_SIMD_COMPILER), so that an
+// older compiler builds the module with the scalar tier only instead of
+// failing to compile it (which in setup.py's optional mode would install
+// the package without C++ modules). Defining CPP_ROW_NO_VECTOR_TIERS
+// disables them as well (setup.py retries with it if a build fails in
+// optional mode). The minimum versions are conservative:
+// - GCC 8 (x86-64 and AArch64): the target attribute and option
+//   avx512vbmi and the AVX-512 BW/VL/DQ intrinsics exist since GCC 5
+//   (GCC 5 release notes), but the AVX-512 intrinsics and the inlining
+//   of always_inline functions with target attributes were extended in
+//   later releases; GCC 8.4 compiles all tiers (checked for x86-64 and
+//   AArch64), older versions were not checked;
+// - Clang 8 (LLVM release numbering; AVX-512 VBMI since Clang 3.9 by the
+//   LLVM 3.9 release notes, the AArch64 NEON intrinsics of arm_neon.h
+//   since Clang 3.5): Clang 8.0 compiles all tiers (checked); Apple Clang
+//   numbers its releases differently (__apple_build_version__): Apple
+//   Clang 11 (Xcode 11, 2019), based on about LLVM 8;
+// - MSVC 19.30 (Visual Studio 2022) for the NEON tier on ARM64 (the ACLE
+//   intrinsics of <arm_neon.h> and _BitScanForward; earlier versions
+//   provide ARM64 NEON intrinsics as well, but were not checked); MSVC
+//   builds no x86 tier;
+// - not the classic Intel compiler (__INTEL_COMPILER, which defines
+//   __GNUC__ but has its own support of target attributes).
+#if ! defined(CPP_ROW_NO_VECTOR_TIERS) && ! defined(__INTEL_COMPILER)
+#if defined(__clang__)
+#if defined(__apple_build_version__)
+#if __clang_major__ >= 11
+#define CPP_ROW_SIMD_COMPILER 1
+#endif
+#elif __clang_major__ >= 8
+#define CPP_ROW_SIMD_COMPILER 1
+#endif
+#elif defined(__GNUC__)
+#if __GNUC__ >= 8
+#define CPP_ROW_SIMD_COMPILER 1
+#endif
+#elif defined(_MSC_VER)
+#if _MSC_VER >= 1930
+#define CPP_ROW_SIMD_COMPILER 1
+#endif
+#endif
+#endif
+
 // AArch64, where NEON (Advanced SIMD) is mandatory: the NEON tier is built
 // with GCC, Clang and MSVC for little-endian AArch64 (Linux, macOS,
 // Windows); not for ARM64EC (x64 code conventions on Windows) and not for
@@ -1163,7 +1207,7 @@ inline unsigned cpp_row_kernel_scalar(
 #define CPP_ROW_AARCH64 1
 #endif
 #if defined(CPP_ROW_AARCH64) && ! defined(_M_ARM64EC) && ! defined(__ARM_BIG_ENDIAN) \
-    && ! defined(CPP_ROW_X86_64_GNU)
+    && ! defined(CPP_ROW_X86_64_GNU) && defined(CPP_ROW_SIMD_COMPILER)
 #define CPP_ROW_NEON 1
 #endif
 
@@ -1278,7 +1322,7 @@ inline bool cpp_row_cpu_neon(const cpp_cpu_features& f) {
 // outside -22..22, among them those of cpp_decimal_to_double_negexp)
 // is converted by cpp_fast_field_to_double, so that a kernel converts
 // exactly the fields cpp_fast_field_to_double converts, to the same bits.
-#ifdef CPP_ROW_X86_64_GNU
+#if defined(CPP_ROW_X86_64_GNU) && defined(CPP_ROW_SIMD_COMPILER)
 #include <immintrin.h>
 #if ! defined(_MSC_VER) || defined(__GNUC__) \
     || (defined(_mm256_inserti128_si256) && defined(_mm512_cmple_epi64_mask))

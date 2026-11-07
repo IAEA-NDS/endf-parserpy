@@ -115,6 +115,10 @@ Windows); NEON is part of the baseline instruction set there, so this
 tier is always supported. With the Microsoft compiler (MSVC) on x86-64
 and on other architectures (e.g. 32-bit ARM), only the scalar tier is
 built.
+The vector tiers need GCC 8 or later, Clang 8 or later (Apple Clang 11
+or later) or, for ``neon`` on Windows, MSVC 19.30 (Visual Studio 2022) or
+later; with an older compiler the modules are built with the scalar tier
+only.
 The parse results do not depend on the form or the tier: a row kernel
 converts a field only if the conversion field by field would give the
 same value, every other field is converted field by field, and the

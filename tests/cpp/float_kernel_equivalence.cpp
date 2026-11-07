@@ -990,6 +990,8 @@ static void run_select() {
 #endif
 #ifdef CPP_ROW_VECTOR_TIERS
   if (cpp_row_cpu_neon(here) || tiers[0].kernel == nullptr || tiers[1].kernel == nullptr) nfail++;
+#else
+  if (tiers[0].kernel != nullptr || tiers[1].kernel != nullptr) nfail++;
 #endif
   if (tiers[CPP_ROW_NUM_TIERS - 1].kernel != cpp_row_kernel_scalar) nfail++;
 }

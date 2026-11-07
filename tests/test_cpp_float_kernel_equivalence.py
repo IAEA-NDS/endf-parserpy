@@ -45,7 +45,10 @@ decimals, malformed fields): the position of the first field not
 converted and the bits of the values before it must agree. The selection
 of the tier from the value of the environment variable
 ENDF_PARSERPY_CPP_BULK_BODIES is checked for all combinations of the CPU
-features of the tiers.
+features of the tiers. test_float_kernel_without_vector_tiers builds the
+program with CPP_ROW_NO_VECTOR_TIERS, as the template does for compilers
+below the minimum versions of the vector tiers: only the scalar tier may
+be built, and the selection and the loops must work with it.
 
 test_float_kernel_sampled runs by default on a sample of fields (every byte
 value at every position of a few hundred valid fields, a few million random
@@ -132,17 +135,17 @@ def write_test_header(workdir):
     return header
 
 
-@pytest.fixture(scope="module")
-def kernel_test_program(tmp_path_factory):
+def _build_program(tmp_path_factory, name, flags=()):
     compiler = _find_compiler()
     if compiler is None:
         pytest.skip("no C++ compiler found (set CXX or install c++, g++ or clang++)")
-    workdir = tmp_path_factory.mktemp("float_kernel")
+    workdir = tmp_path_factory.mktemp(name)
     write_test_header(workdir)
     exe = workdir / "float_kernel_equivalence"
     cmd = compiler + [
         "-O2",
         "-std=c++11",
+        *flags,
         "-I",
         str(workdir),
         str(TEST_SOURCE),
@@ -154,6 +157,11 @@ def kernel_test_program(tmp_path_factory):
     return exe
 
 
+@pytest.fixture(scope="module")
+def kernel_test_program(tmp_path_factory):
+    return _build_program(tmp_path_factory, "float_kernel")
+
+
 def _run(exe, *args):
     res = subprocess.run([str(exe), *args], capture_output=True, text=True)
     return res.returncode, res.stdout + res.stderr
@@ -162,6 +170,19 @@ def _run(exe, *args):
 def test_float_kernel_sampled(kernel_test_program):
     rc, out = _run(kernel_test_program, "sampled")
     assert rc == 0 and "mismatches=0" in out, out
+
+
+def test_float_kernel_without_vector_tiers(tmp_path_factory):
+    # with CPP_ROW_NO_VECTOR_TIERS (as for a compiler below the minimum
+    # versions of the vector tiers) the template compiles with the scalar
+    # tier only, and the selection falls back to it
+    exe = _build_program(
+        tmp_path_factory, "float_kernel_scalar", ["-DCPP_ROW_NO_VECTOR_TIERS"]
+    )
+    for args in (("select",), ("rows", "20000", "1"), ("bodies", "2000", "1")):
+        rc, out = _run(exe, *args)
+        assert rc == 0 and "mismatches=0" in out, out
+        assert "tiers built and supported: scalar\n" in out, out
 
 
 def _bits(x):

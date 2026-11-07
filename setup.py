@@ -210,8 +210,33 @@ class CustomBuildExt(pybind11_build_ext):
 
 class OptionalBuildExt(CustomBuildExt):
     def run(self):
+        # the state before the first attempt: the options compiler and
+        # inplace (build_ext.run replaces the first by the compiler object,
+        # setuptools resets the second during the build) and the
+        # extensions (the build adds the objects of the shared translation
+        # units)
+        compiler_option, inplace = self.compiler, self.inplace
+        saved = [
+            (ext, list(ext.extra_objects or []), list(ext.define_macros or []))
+            for ext in self.extensions
+        ]
         try:
             logger.info("Attempting to compile C++ code for reading/writing ENDF files")
+            super().run()
+            return
+        except Exception as exc:
+            logger.warning("Failed to compile C++ read/write module code.")
+            logger.warning("Reason: %s", exc)
+        # Once more without the vector tiers of the row kernels (e.g. for a
+        # compiler that lacks some of their intrinsics), which then only
+        # costs speed, not the C++ modules.
+        logger.warning("Retrying without the vector tiers (CPP_ROW_NO_VECTOR_TIERS)")
+        for ext, extra_objects, define_macros in saved:
+            ext.extra_objects = extra_objects
+            ext.define_macros = define_macros + [("CPP_ROW_NO_VECTOR_TIERS", None)]
+        self.compiler, self.inplace = compiler_option, inplace
+        self.force = True
+        try:
             super().run()
         except Exception as exc:
             logger.warning(

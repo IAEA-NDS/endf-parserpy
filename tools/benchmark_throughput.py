@@ -43,18 +43,52 @@ source tree, which would shadow the installed package).
 import argparse
 import os
 import platform
+import subprocess
 import sys
 import time
 
 
 def cpu_model():
-    try:
-        with open("/proc/cpuinfo") as f:
-            for line in f:
-                if line.startswith("model name"):
-                    return line.split(":", 1)[1].strip()
-    except OSError:
-        pass
+    """Marketing name of the CPU, e.g. "Apple M1" or "Intel(R) Core(TM) ...".
+
+    Linux: /proc/cpuinfo; macOS: sysctl machdep.cpu.brand_string;
+    Windows: ProcessorNameString in the registry (the name shown by the
+    Task Manager). Falls back to platform.processor().
+    """
+    system = platform.system()
+    if system == "Linux":
+        try:
+            with open("/proc/cpuinfo") as f:
+                for line in f:
+                    if line.startswith("model name"):
+                        return line.split(":", 1)[1].strip()
+        except OSError:
+            pass
+    elif system == "Darwin":
+        try:
+            name = subprocess.run(
+                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+            if name:
+                return name
+        except (OSError, subprocess.CalledProcessError):
+            pass
+    elif system == "Windows":
+        try:
+            import winreg
+
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"HARDWARE\DESCRIPTION\System\CentralProcessor\0",
+            ) as key:
+                name = winreg.QueryValueEx(key, "ProcessorNameString")[0]
+            if name:
+                return name.strip()
+        except (ImportError, OSError):
+            pass
     return platform.processor() or platform.machine()
 
 

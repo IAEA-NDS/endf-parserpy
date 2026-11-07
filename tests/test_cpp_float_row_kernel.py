@@ -363,7 +363,14 @@ def test_row_kernel_selection(value, jobs_spec):
     }
     # auto takes every vector tier built except the NEON tier compiled by
     # GCC, which is selected only if requested
-    assert info["compiler"] in ("gcc", "clang", "msvc", "other")
+    assert info["compiler"] in (
+        "gcc",
+        "clang",
+        "apple-clang",
+        "clang-cl",
+        "msvc",
+        "other",
+    )
     for name in VECTOR_TIERS:
         assert tiers[name]["vector"]
         if tiers[name]["built"]:

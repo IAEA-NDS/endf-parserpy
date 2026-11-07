@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/24
-# Last modified:   2026/11/07
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -58,8 +58,10 @@ near-halfway cases. test_float_kernel_exhaustive enumerates all strings of
 both layouts of the first stage and of the layout d.dddd+ddd with
 three-digit exponents, every byte value at every position of 20,000
 fields, 10**9 random fields and about 10**9 significands for the direct
-comparison; it takes minutes and only runs with the option
---run-exhaustive. The tests are skipped if no C++ compiler is found
+comparison, and runs all strings of both layouts through the vector tiers
+(their kernels and LIST loops) once more without the reference (mode
+tiers_exhaustive, which the CI benchmark also runs with MSVC); it takes
+minutes and only runs with the option --run-exhaustive. The tests are skipped if no C++ compiler is found
 (environment variable CXX, otherwise c++, g++ or clang++).
 """
 
@@ -272,6 +274,7 @@ def test_float_kernel_exhaustive(kernel_test_program):
     jobs += [("negexp", "400000", str(seed)) for seed in range(1, 5)]
     jobs += [("rows", "20000000", str(seed)) for seed in range(1, 3)]
     jobs += [("bodies", "2000000", str(seed)) for seed in range(1, 3)]
+    jobs += [("tiers_exhaustive",)]
     if hasattr(os, "sched_getaffinity"):
         ncpu = len(os.sched_getaffinity(0))
     else:

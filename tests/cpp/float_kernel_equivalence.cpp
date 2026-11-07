@@ -42,7 +42,9 @@
 // "select"); both modes are part of "sampled". The vector tiers are also
 // run on the fields of all other modes, six at a time as a line (see
 // check_tier_line), so that mode "exhaustive" covers every string of the
-// two layouts their vector path converts. The conversion loops of LIST
+// two layouts their vector path converts; mode "tiers_exhaustive" runs the
+// same strings through the vector tiers only (kernels and LIST loops),
+// against cpp_fast_field_to_double, in about a minute. The conversion loops of LIST
 // bodies read as one byte range (cpp_list_convert_scalar,
 // cpp_list_convert_rows, the loops of the vector tiers and
 // cpp_list_convert) are checked on random bodies (mode "bodies", also
@@ -59,6 +61,7 @@
 //        float_kernel_equivalence rows <number of lines> <seed>
 //        float_kernel_equivalence bodies <number of bodies> <seed>
 //        float_kernel_equivalence select
+//        float_kernel_equivalence tiers_exhaustive
 // The exit status is 0 if no mismatch was found.
 
 #include <cctype>
@@ -450,8 +453,8 @@ static void make_general(char* f) {
   std::memcpy(f + lead, buf, n);
 }
 
-// all strings of both layouts with the given first character
-static void run_exhaustive(char c0) {
+// all strings of both layouts with the given first character, passed to fn
+static void for_each_layout_string(char c0, void (*fn)(const char*)) {
   char f[12];
   f[11] = '\0';
   for (int lay = 1; lay <= 2; lay++) {
@@ -476,11 +479,76 @@ static void run_exhaustive(char c0) {
             f[9] = static_cast<char>('0' + e / 10);
             f[10] = static_cast<char>('0' + e % 10);
           }
-          check(f);
+          fn(f);
         }
       }
     }
   }
+}
+
+static void run_exhaustive(char c0) {
+  for_each_layout_string(c0, check);
+}
+
+// Mode "tiers_exhaustive": every string of both layouts with each first
+// character, six fields per line (columns 67 to 80 as in
+// check_tier_line), through every vector tier built and supported, both
+// its kernel and its LIST loop (through cpp_list_convert), compared with
+// cpp_fast_field_to_double field by field: the mask of the converted
+// fields (for the loop the position of the first field not converted)
+// and the bits must agree. Unlike "exhaustive", which also compares every
+// field with the frozen reference and std::strtod, this mode takes about
+// a minute, so that CI can run it with the compiler of the wheels.
+static char xline[81];
+static int xfields = 0;
+static double xref[2][6];
+static unsigned xdone[2] = {0, 0};
+static long nxline = 0;
+
+static void check_xline() {
+  if (xfields == 0) return;
+  static const cpp_cpu_features cpu = cpp_detect_cpu_features();
+  const cpp_row_tier* tiers = cpp_row_tiers();
+  const unsigned want = (1u << xfields) - 1u;
+  for (int i = 66; i < 80; i++) xline[i] = "+1.2-34 5e7dD.9"[i - 66];
+  xline[80] = '\0';
+  for (int d = 0; d < 2; d++) {
+    int expect_pos = 0;
+    while (expect_pos < xfields && ((xdone[d] >> expect_pos) & 1u) != 0) expect_pos++;
+    for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
+      if (! tiers[t].vector || tiers[t].kernel == nullptr || ! tiers[t].supported(cpu)) continue;
+      double out[6], lout[6];
+      const unsigned done = tiers[t].kernel(xline, want, d != 0 ? CPP_ROW_ACCEPT_D_EXPONENT : 0u, out);
+      const int pos = cpp_list_convert(xline, 81, xfields, tiers[t].kernel, d != 0, lout);
+      nxline++;
+      bool ok = done == xdone[d] && pos == expect_pos;
+      for (int j = 0; ok && j < xfields; j++) {
+        if (((done >> j) & 1u) != 0 && ! same_bits(out[j], xref[d][j])) ok = false;
+        if (j < pos && ! same_bits(lout[j], xref[d][j])) ok = false;
+      }
+      if (! ok && nfail++ < 20) {
+        std::printf("MISMATCH tier %s accept_d_exponent=%d done=%02x expected=%02x"
+                    " loop position=%d expected=%d line \"%.66s\"\n",
+                    tiers[t].name, d, done, xdone[d], pos, expect_pos, xline);
+      }
+    }
+  }
+  xfields = 0;
+  xdone[0] = xdone[1] = 0;
+}
+
+static void tier_field(const char* f) {
+  for (int d = 0; d < 2; d++) {
+    if (cpp_fast_field_to_double(f, d == 1, xref[d][xfields])) xdone[d] |= 1u << xfields;
+  }
+  std::memcpy(xline + 11 * xfields, f, 11);
+  if (++xfields == 6) check_xline();
+}
+
+static void run_tiers_exhaustive() {
+  const char s0[] = " +-";
+  for (int i = 0; i < 3; i++) for_each_layout_string(s0[i], tier_field);
+  check_xline();
 }
 
 // every byte value at every position of valid fields
@@ -995,6 +1063,17 @@ static void run_select() {
 #else
   if (tiers[0].kernel != nullptr || tiers[1].kernel != nullptr) nfail++;
 #endif
+  // on x86-64 the CPU is queried (GCC, Clang and MSVC), and MSVC builds
+  // the x86 tiers from the minimum version on (unless disabled)
+#if defined(CPP_ROW_X86_64_GNU) || defined(CPP_ROW_X86_64_MSVC)
+  if (! here.detected) nfail++;
+#endif
+#if defined(CPP_ROW_X86_64_MSVC) && defined(CPP_ROW_SIMD_COMPILER) && ! defined(CPP_ROW_VECTOR_TIERS)
+  nfail++;
+#endif
+#if defined(CPP_ROW_X86_64_GNU) && defined(CPP_ROW_X86_64_MSVC)
+  nfail++;
+#endif
   if (tiers[CPP_ROW_NUM_TIERS - 1].kernel != cpp_row_kernel_scalar) nfail++;
   // the tiers taken by auto: all but the NEON tier compiled by GCC
   for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
@@ -1017,7 +1096,7 @@ static void run_select() {
 
 int main(int argc, char** argv) {
   if (argc < 2) {
-    std::fprintf(stderr, "usage: %s sampled|exhaustive|boundary|random|explicit|exhaustive3|negexp|list|rows|select ...\n", argv[0]);
+    std::fprintf(stderr, "usage: %s sampled|exhaustive|boundary|random|explicit|exhaustive3|negexp|list|rows|bodies|select|tiers_exhaustive ...\n", argv[0]);
     return 2;
   }
   const char* mode = argv[1];
@@ -1037,6 +1116,8 @@ int main(int argc, char** argv) {
     run_bodies(std::atol(argv[2]));
   } else if (std::strcmp(mode, "select") == 0) {
     run_select();
+  } else if (std::strcmp(mode, "tiers_exhaustive") == 0) {
+    run_tiers_exhaustive();
   } else if (std::strcmp(mode, "exhaustive3") == 0 && argc > 2) {
     const char s0[] = " +-";
     run_exhaustive3(s0[std::atoi(argv[2]) % 3]);
@@ -1073,11 +1154,24 @@ int main(int argc, char** argv) {
     }
     std::printf("\n");
     std::printf("automatic selection (%s): %s\n", cpp_row_compiler(), cpp_row_select(nullptr, cpu).tier);
+    // the branch of the template for the x86 tiers, and whether they are built
+#ifdef CPP_ROW_VECTOR_TIERS
+    const char* built = "built";
+#else
+    const char* built = "not built";
+#endif
+#if defined(CPP_ROW_X86_64_MSVC)
+    std::printf("x86-64 tiers: MSVC branch, %s (_MSC_FULL_VER %d)\n", built, _MSC_FULL_VER);
+#elif defined(CPP_ROW_X86_64_GNU)
+    std::printf("x86-64 tiers: GCC/Clang branch, %s\n", built);
+#else
+    std::printf("x86-64 tiers: none (%s)\n", built);
+#endif
   }
   std::printf("%s: checks=%ld first_stage=%ld negexp_converted=%ld not_converted=%ld decimal_checks=%ld"
               " negexp_direct=%ld row_checks=%ld row_tiers=%ld vector_tier_lines=%ld"
-              " body_checks=%ld mismatches=%ld\n",
+              " body_checks=%ld exhaustive_tier_lines=%ld mismatches=%ld\n",
               mode, nchk, nfirst, nneg, nleft, ndec, nnchk, nrow, nrowtier, ntierline,
-              nbody, nfail);
+              nbody, nxline, nfail);
   return nfail == 0 ? 0 : 1;
 }

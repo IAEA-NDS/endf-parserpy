@@ -1099,15 +1099,19 @@ inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, do
 // GCC and Clang on x86-64 (CPP_ROW_X86_64_GNU, which does not depend on
 // the instruction set the module is compiled for, so that the code of
 // such a tier has to be compiled with per-function target attributes)
-// and only used if the CPU supports them (cpp_cpu_features). One tier,
+// and only used if the CPU supports them (cpp_cpu_features), and for
+// AArch64 (CPP_ROW_NEON: GCC, Clang and MSVC; NEON is part of the
+// baseline instruction set there, so that this tier needs neither target
+// attributes nor a detection at run time). One tier,
 // or none, is selected once when the module is loaded
 // (cpp_row_selected), as given by the environment variable
 // ENDF_PARSERPY_CPP_BULK_BODIES:
 //   auto (also if unset or empty): the first vector tier of the table
 //     that is built and supported by the CPU, otherwise the scalar tier;
 //   off: none;
-//   scalar, avx2, avx512: this tier if it is built and supported by the
-//     CPU, otherwise as auto (with a warning when the module is loaded).
+//   scalar, avx2, avx512, neon: this tier if it is built and supported by
+//     the CPU, otherwise as auto (with a warning when the module is
+//     loaded).
 // Without a selected tier, the float values of the bodies of TAB1 and
 // LIST records are read field by field (the per-field form, as before
 // the kernels existed); with a selected tier, a TAB1 body is converted by
@@ -1151,12 +1155,25 @@ inline unsigned cpp_row_kernel_scalar(
 #define CPP_ROW_X86_64_GNU 1
 #endif
 
+// AArch64, where NEON (Advanced SIMD) is mandatory: the NEON tier is built
+// with GCC, Clang and MSVC for little-endian AArch64 (Linux, macOS,
+// Windows); not for ARM64EC (x64 code conventions on Windows) and not for
+// 32-bit ARM, whose NEON lacks the instructions the kernel uses.
+#if (defined(__aarch64__) || defined(_M_ARM64) || defined(_M_ARM64EC))
+#define CPP_ROW_AARCH64 1
+#endif
+#if defined(CPP_ROW_AARCH64) && ! defined(_M_ARM64EC) && ! defined(__ARM_BIG_ENDIAN) \
+    && ! defined(CPP_ROW_X86_64_GNU)
+#define CPP_ROW_NEON 1
+#endif
+
 // Features of the CPU relevant for the tiers, from cpuid and xgetbv (the
 // operating system must save the ymm and zmm registers). Only queried
 // with CPP_ROW_X86_64_GNU (GCC and Clang including MinGW and clang-cl
 // on x86-64); otherwise all false. The instructions are issued directly,
 // as __builtin_cpu_supports needs runtime support that not every
-// toolchain links.
+// toolchain links. `neon` is true on AArch64 (not queried: NEON is
+// mandatory there).
 struct cpp_cpu_features {
   bool detected;
   bool os_ymm;
@@ -1168,6 +1185,7 @@ struct cpp_cpu_features {
   bool avx512bw;
   bool avx512vl;
   bool avx512vbmi;
+  bool neon;
 };
 
 #ifdef CPP_ROW_X86_64_GNU
@@ -1179,7 +1197,10 @@ inline void cpp_cpuid(unsigned leaf, unsigned subleaf, unsigned regs[4]) {
 #endif
 
 inline cpp_cpu_features cpp_detect_cpu_features() {
-  cpp_cpu_features f = {false, false, false, false, false, false, false, false, false, false};
+  cpp_cpu_features f = {false, false, false, false, false, false, false, false, false, false, false};
+#ifdef CPP_ROW_AARCH64
+  f.neon = true;
+#endif
 #ifdef CPP_ROW_X86_64_GNU
   unsigned r[4];
   cpp_cpuid(0, 0, r);
@@ -1224,6 +1245,10 @@ inline bool cpp_row_cpu_avx512(const cpp_cpu_features& f) {
     && f.avx512bw && f.avx512vl && f.avx512vbmi;
 }
 
+inline bool cpp_row_cpu_neon(const cpp_cpu_features& f) {
+  return f.neon;
+}
+
 
 // The vector tiers (AVX2 and AVX-512), only built with CPP_ROW_VECTOR_TIERS:
 // GCC and Clang on x86-64 (CPP_ROW_X86_64_GNU), and for clang-cl only if
@@ -1261,6 +1286,41 @@ inline bool cpp_row_cpu_avx512(const cpp_cpu_features& f) {
 #endif
 #endif
 
+#if defined(CPP_ROW_VECTOR_TIERS) || defined(CPP_ROW_NEON)
+
+// index of the lowest set bit of x != 0
+inline int cpp_row_ctz(unsigned x) {
+#if defined(__GNUC__) || defined(__clang__)
+  return __builtin_ctz(x);
+#elif defined(_MSC_VER)
+  unsigned long j;
+  _BitScanForward(&j, x);
+  return static_cast<int>(j);
+#else
+  int j = 0;
+  while (((x >> j) & 1u) == 0) j++;
+  return j;
+#endif
+}
+
+// The fields of `todo` converted by cpp_fast_field_to_double (the fields
+// the vector path does not take); returns the mask of those converted.
+CPP_DECIMAL_NOINLINE inline unsigned cpp_row_vector_fallback(
+  const char* line, unsigned todo, bool accept_d_exponent, double* out
+) {
+  unsigned done = 0;
+  while (todo != 0) {
+    const int j = cpp_row_ctz(todo);
+    todo &= todo - 1;
+    if (cpp_fast_field_to_double(line + 11 * j, accept_d_exponent, out[j])) {
+      done |= 1u << j;
+    }
+  }
+  return done;
+}
+
+#endif
+
 #ifdef CPP_ROW_VECTOR_TIERS
 
 #define CPP_ROW_TARGET_AVX2 __attribute__((target("avx2,fma")))
@@ -1270,22 +1330,6 @@ inline bool cpp_row_cpu_avx512(const cpp_cpu_features& f) {
 #define CPP_ROW_INLINE_AVX2 __attribute__((always_inline, target("avx2,fma"))) inline
 #define CPP_ROW_INLINE_AVX512 __attribute__((always_inline, \
   target("avx2,fma,avx512f,avx512bw,avx512vl,avx512dq,avx512vbmi"))) inline
-
-// The fields of `todo` converted by cpp_fast_field_to_double (the fields
-// the vector path does not take); returns the mask of those converted.
-CPP_DECIMAL_NOINLINE inline unsigned cpp_row_vector_fallback(
-  const char* line, unsigned todo, bool accept_d_exponent, double* out
-) {
-  unsigned done = 0;
-  while (todo != 0) {
-    const int j = __builtin_ctz(todo);
-    todo &= todo - 1;
-    if (cpp_fast_field_to_double(line + 11 * j, accept_d_exponent, out[j])) {
-      done |= 1u << j;
-    }
-  }
-  return done;
-}
 
 // tables of the vector kernels (constant-initialized, shared by the
 // translation units of a module)
@@ -1615,6 +1659,288 @@ CPP_ROW_TARGET_AVX512 CPP_DECIMAL_NOINLINE inline unsigned cpp_row_kernel_avx512
 #endif  // CPP_ROW_VECTOR_TIERS
 
 
+// The NEON tier (AArch64), only built with CPP_ROW_NEON. NEON is part of
+// the baseline instruction set of AArch64, so that the module and this
+// tier are compiled for the same instructions and the tier is always
+// supported.
+//
+// The vector path converts the same two layouts as the x86 tiers (see
+// above) and takes a field only if it has one of them: each field is
+// loaded into its own register (bytes 0..10 of the field, bytes 11..15
+// ignored) and its bytes are classified with a nibble lookup (vqtbl1q);
+// a field is taken if all 11 bytes have the classes of layout A
+// (" d.dddddd+d") or of layout B (" d.ddddd+dd"), and if its decimal
+// exponent is in range (see below). The arithmetic does not depend on the
+// layout:
+// - significand: the digits of bytes 1, 3..7 and of byte 8 if it is a
+//   digit (layout A), else 0 (layout B), i.e. m = the significand for A
+//   and ten times the significand for B, an integer below 10^7 computed
+//   exactly with integer operations and converted exactly to a double;
+// - exponent: e = (10 * byte 9 if it is a digit) + byte 10, negative if
+//   byte 8 or byte 9 is '-' (only one of them is a sign), and
+//   k = +-e - 6: the decimal exponent of m (for B one less than that of
+//   the significand, so that m * 10^k is the same number). The field is
+//   taken if k is in -22..21: for A, k is in -15..3; for B this is the
+//   range -21..22 of the exponent of the significand, of which the
+//   scalar code converts -22..22, so that the rare B fields with exponent
+//   -22 go to the fallback (as in the AVX2 tier);
+// - value: for k >= 0, m * 10^k, one IEEE multiplication with the exact
+//   power of ten as in the scalar code (for B, the exact real number
+//   (10 m') * 10^(k'-1) of the scalar code's m' * 10^k', hence the same
+//   rounding). For k < 0, the quotient m / 10^-k as in the x86 tiers,
+//   without a division: q0 = m * y, r = fma(-q0, b, m), q1 = fma(r, y,
+//   q0) with b = 10^-k and y = 10^k rounded (vfmsq_f64, vfmaq_f64: fused,
+//   one rounding, as the FMA instructions of the x86 tiers, so the same
+//   bits), which equals the correctly rounded quotient that the scalar
+//   code computes by division for all m < 10^7 and -k = 1..22. Both cases
+//   are one sequence with three numbers per k from a table, {y1, b, y2}:
+//   {10^k, 0, 0} for k >= 0 (then q0 = m * 10^k rounded, r = m and
+//   q1 = q0 + r * 0 = q0 exactly) and {y, b, y} for k < 0. The table
+//   also holds the sign (+0.0 or -0.0 per entry, the index includes the
+//   first character), applied last by XOR, so that "-0.000000+0" gives
+//   -0.0 as in the scalar code.
+// No other floating-point operation is involved, and the multiplication
+// q0 = m * y1 cannot be contracted with another operation (its result is
+// a factor of the fused multiply-subtract), so -ffp-contract does not
+// change the result. The mode "exhaustive" of
+// tests/cpp/float_kernel_equivalence.cpp checks every string of both
+// layouts with this tier as with the x86 tiers.
+#ifdef CPP_ROW_NEON
+
+#include <arm_neon.h>
+
+#if defined(_MSC_VER) && ! defined(__clang__)
+#define CPP_ROW_INLINE_NEON __forceinline
+#else
+#define CPP_ROW_INLINE_NEON __attribute__((always_inline)) inline
+#endif
+
+// k = -22..21, as {y1, b, y2, sign} (see above)
+#define CPP_ROW_NEON_NEG(y, b, s) {y, b, y, s}
+#define CPP_ROW_NEON_POS(p, s) {p, 0.0, 0.0, s}
+#define CPP_ROW_NEON_POW(s) \
+  CPP_ROW_NEON_NEG(1e-22, 1e22, s), CPP_ROW_NEON_NEG(1e-21, 1e21, s), \
+  CPP_ROW_NEON_NEG(1e-20, 1e20, s), CPP_ROW_NEON_NEG(1e-19, 1e19, s), \
+  CPP_ROW_NEON_NEG(1e-18, 1e18, s), CPP_ROW_NEON_NEG(1e-17, 1e17, s), \
+  CPP_ROW_NEON_NEG(1e-16, 1e16, s), CPP_ROW_NEON_NEG(1e-15, 1e15, s), \
+  CPP_ROW_NEON_NEG(1e-14, 1e14, s), CPP_ROW_NEON_NEG(1e-13, 1e13, s), \
+  CPP_ROW_NEON_NEG(1e-12, 1e12, s), CPP_ROW_NEON_NEG(1e-11, 1e11, s), \
+  CPP_ROW_NEON_NEG(1e-10, 1e10, s), CPP_ROW_NEON_NEG(1e-9, 1e9, s), \
+  CPP_ROW_NEON_NEG(1e-8, 1e8, s), CPP_ROW_NEON_NEG(1e-7, 1e7, s), \
+  CPP_ROW_NEON_NEG(1e-6, 1e6, s), CPP_ROW_NEON_NEG(1e-5, 1e5, s), \
+  CPP_ROW_NEON_NEG(1e-4, 1e4, s), CPP_ROW_NEON_NEG(1e-3, 1e3, s), \
+  CPP_ROW_NEON_NEG(1e-2, 1e2, s), CPP_ROW_NEON_NEG(1e-1, 1e1, s), \
+  CPP_ROW_NEON_POS(1e0, s), CPP_ROW_NEON_POS(1e1, s), CPP_ROW_NEON_POS(1e2, s), \
+  CPP_ROW_NEON_POS(1e3, s), CPP_ROW_NEON_POS(1e4, s), CPP_ROW_NEON_POS(1e5, s), \
+  CPP_ROW_NEON_POS(1e6, s), CPP_ROW_NEON_POS(1e7, s), CPP_ROW_NEON_POS(1e8, s), \
+  CPP_ROW_NEON_POS(1e9, s), CPP_ROW_NEON_POS(1e10, s), CPP_ROW_NEON_POS(1e11, s), \
+  CPP_ROW_NEON_POS(1e12, s), CPP_ROW_NEON_POS(1e13, s), CPP_ROW_NEON_POS(1e14, s), \
+  CPP_ROW_NEON_POS(1e15, s), CPP_ROW_NEON_POS(1e16, s), CPP_ROW_NEON_POS(1e17, s), \
+  CPP_ROW_NEON_POS(1e18, s), CPP_ROW_NEON_POS(1e19, s), CPP_ROW_NEON_POS(1e20, s), \
+  CPP_ROW_NEON_POS(1e21, s)
+
+// classes of the bytes (bit 0x80 is set in every code, so that the
+// patterns accept any byte at the positions 11..15 of a register)
+enum {
+  CPP_ROW_N_D = 1, CPP_ROW_N_DOT = 2, CPP_ROW_N_S = 4, CPP_ROW_N_B = 8, CPP_ROW_N_ANY = 0x80
+};
+
+// tables of the NEON kernel (constant-initialized, shared by the
+// translation units of a module)
+struct cpp_row_neon_tables {
+  // index 44 * (first character is '-') + k + 22
+  alignas(16) double pow[88][4];
+  // class of a byte: lo[byte & 15] & hi[byte >> 4]
+  alignas(16) std::uint8_t lo[16];
+  alignas(16) std::uint8_t hi[16];
+  // the classes of the bytes 0..10 of the layouts A and B
+  alignas(16) std::uint8_t pat_a[16];
+  alignas(16) std::uint8_t pat_b[16];
+  // significand digits of two fields (fields in table registers 0, 1),
+  // one field per 64-bit lane, most significant first: 0, bytes 1, 3..8
+  alignas(16) std::uint8_t idx_m[16];
+  // bytes 9 and 10 of the six fields (fields 0..3 in a table of four
+  // registers, 4 and 5 in a table of two), and bytes 8 and 0
+  alignas(16) std::uint8_t idx_e[16];
+  alignas(16) std::uint8_t idx_ex[16];
+  alignas(16) std::uint8_t idx_s[16];
+  alignas(16) std::uint8_t idx_sx[16];
+  // the bit of a field in the mask of the converted fields (for the
+  // layouts A and B of each field, see cpp_row_neon_fast)
+  alignas(16) std::uint8_t bit8[16];
+  alignas(16) std::uint16_t bit16[8];
+};
+
+inline const cpp_row_neon_tables& cpp_row_neon_tab() {
+  static const cpp_row_neon_tables tab = {
+    {CPP_ROW_NEON_POW(0.0), CPP_ROW_NEON_POW(-0.0)},
+    {
+      CPP_ROW_N_ANY | CPP_ROW_N_D | CPP_ROW_N_B, CPP_ROW_N_ANY | CPP_ROW_N_D,
+      CPP_ROW_N_ANY | CPP_ROW_N_D, CPP_ROW_N_ANY | CPP_ROW_N_D, CPP_ROW_N_ANY | CPP_ROW_N_D,
+      CPP_ROW_N_ANY | CPP_ROW_N_D, CPP_ROW_N_ANY | CPP_ROW_N_D, CPP_ROW_N_ANY | CPP_ROW_N_D,
+      CPP_ROW_N_ANY | CPP_ROW_N_D, CPP_ROW_N_ANY | CPP_ROW_N_D, CPP_ROW_N_ANY,
+      CPP_ROW_N_ANY | CPP_ROW_N_S, CPP_ROW_N_ANY, CPP_ROW_N_ANY | CPP_ROW_N_S,
+      CPP_ROW_N_ANY | CPP_ROW_N_DOT, CPP_ROW_N_ANY
+    },
+    {
+      CPP_ROW_N_ANY, CPP_ROW_N_ANY,
+      CPP_ROW_N_ANY | CPP_ROW_N_DOT | CPP_ROW_N_S | CPP_ROW_N_B, CPP_ROW_N_ANY | CPP_ROW_N_D,
+      CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY,
+      CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY,
+      CPP_ROW_N_ANY, CPP_ROW_N_ANY
+    },
+    {
+      CPP_ROW_N_S | CPP_ROW_N_B, CPP_ROW_N_D, CPP_ROW_N_DOT, CPP_ROW_N_D, CPP_ROW_N_D,
+      CPP_ROW_N_D, CPP_ROW_N_D, CPP_ROW_N_D, CPP_ROW_N_D, CPP_ROW_N_S, CPP_ROW_N_D,
+      CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY
+    },
+    {
+      CPP_ROW_N_S | CPP_ROW_N_B, CPP_ROW_N_D, CPP_ROW_N_DOT, CPP_ROW_N_D, CPP_ROW_N_D,
+      CPP_ROW_N_D, CPP_ROW_N_D, CPP_ROW_N_D, CPP_ROW_N_S, CPP_ROW_N_D, CPP_ROW_N_D,
+      CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY
+    },
+    {0xFF, 1, 3, 4, 5, 6, 7, 8, 0xFF, 17, 19, 20, 21, 22, 23, 24},
+    {9, 10, 25, 26, 41, 42, 57, 58, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+    {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 9, 10, 25, 26, 0xFF, 0xFF, 0xFF, 0xFF},
+    {8, 0, 24, 16, 40, 32, 56, 48, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+    {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 8, 0, 24, 16, 0xFF, 0xFF, 0xFF, 0xFF},
+    {1, 2, 4, 8, 16, 32, 1, 2, 4, 8, 16, 32, 0, 0, 0, 0},
+    {1, 2, 4, 8, 16, 32, 0, 0}
+  };
+  return tab;
+}
+
+#undef CPP_ROW_NEON_NEG
+#undef CPP_ROW_NEON_POS
+#undef CPP_ROW_NEON_POW
+
+// the classes of the bytes of field f compared with the patterns of the
+// two layouts: 0xFF where a byte has the class of the layout
+CPP_ROW_INLINE_NEON void cpp_row_neon_class(
+  uint8x16_t f, uint8x16_t lo, uint8x16_t hi, uint8x16_t pat_a, uint8x16_t pat_b,
+  uint8x16_t& ta, uint8x16_t& tb
+) {
+  const uint8x16_t code = vandq_u8(vqtbl1q_u8(lo, vandq_u8(f, vdupq_n_u8(0x0F))),
+                                   vqtbl1q_u8(hi, vshrq_n_u8(f, 4)));
+  ta = vtstq_u8(code, pat_a);
+  tb = vtstq_u8(code, pat_b);
+}
+
+// the digits gathered by idx from fa and fb (see idx_m) as two integers,
+// converted to doubles
+CPP_ROW_INLINE_NEON float64x2_t cpp_row_neon_mant(uint8x16_t fa, uint8x16_t fb, uint8x16_t idx) {
+  uint8x16x2_t t;
+  t.val[0] = fa;
+  t.val[1] = fb;
+  uint8x16_t g = vsubq_u8(vqtbl2q_u8(t, idx), vdupq_n_u8('0'));
+  // bytes that are not digits (byte 8 of layout B, the lane start) as 0
+  g = vandq_u8(g, vcltq_u8(g, vdupq_n_u8(10)));
+  // pairs of digits, then four digits, then eight
+  const uint16x8_t d2 = vpaddlq_u8(vmulq_u8(g, vreinterpretq_u8_u16(vdupq_n_u16(0x010A))));
+  const uint32x4_t d4 = vpaddlq_u16(vmulq_u16(d2, vreinterpretq_u16_u32(vdupq_n_u32(0x00010064u))));
+  const uint64x2_t d8 = vpaddlq_u32(
+    vmulq_u32(d4, vreinterpretq_u32_u64(vdupq_n_u64(0x0000000100002710ULL))));
+  return vcvtq_f64_u64(d8);
+}
+
+// the floating-point stage of two fields with significands m and the
+// table entries pa, pb (see above)
+CPP_ROW_INLINE_NEON float64x2_t cpp_row_neon_fp(float64x2_t m, const double* pa, const double* pb) {
+  const float64x2_t a0 = vld1q_f64(pa), a1 = vld1q_f64(pa + 2);
+  const float64x2_t b0 = vld1q_f64(pb), b1 = vld1q_f64(pb + 2);
+  const float64x2_t y1 = vzip1q_f64(a0, b0);
+  const float64x2_t b = vzip2q_f64(a0, b0);
+  const float64x2_t y2 = vzip1q_f64(a1, b1);
+  const uint64x2_t sg = vreinterpretq_u64_f64(vzip2q_f64(a1, b1));
+  const float64x2_t q0 = vmulq_f64(m, y1);
+  const float64x2_t r = vfmsq_f64(m, q0, b);
+  const float64x2_t q1 = vfmaq_f64(q0, r, y2);
+  return vreinterpretq_f64_u64(veorq_u64(vreinterpretq_u64_f64(q1), sg));
+}
+
+// The vector path of the NEON kernel: stores six values in out[0..5] and
+// returns the mask of the fields it has converted (the other values are
+// undefined). Reads bytes 0..70 of the line.
+CPP_ROW_INLINE_NEON unsigned cpp_row_neon_fast(const char* s, double* out) {
+  const cpp_row_neon_tables& T = cpp_row_neon_tab();
+  const std::uint8_t* u = reinterpret_cast<const std::uint8_t*>(s);
+  const uint8x16_t f0 = vld1q_u8(u), f1 = vld1q_u8(u + 11), f2 = vld1q_u8(u + 22);
+  const uint8x16_t f3 = vld1q_u8(u + 33), f4 = vld1q_u8(u + 44), f5 = vld1q_u8(u + 55);
+  // the layouts
+  const uint8x16_t lo = vld1q_u8(T.lo), hi = vld1q_u8(T.hi);
+  const uint8x16_t pat_a = vld1q_u8(T.pat_a), pat_b = vld1q_u8(T.pat_b);
+  uint8x16_t a0, a1, a2, a3, a4, a5, b0, b1, b2, b3, b4, b5;
+  cpp_row_neon_class(f0, lo, hi, pat_a, pat_b, a0, b0);
+  cpp_row_neon_class(f1, lo, hi, pat_a, pat_b, a1, b1);
+  cpp_row_neon_class(f2, lo, hi, pat_a, pat_b, a2, b2);
+  cpp_row_neon_class(f3, lo, hi, pat_a, pat_b, a3, b3);
+  cpp_row_neon_class(f4, lo, hi, pat_a, pat_b, a4, b4);
+  cpp_row_neon_class(f5, lo, hi, pat_a, pat_b, a5, b5);
+  // minimum over the 16 bytes of each of the 12 results by pairwise
+  // minima: one byte each, in the order A0..A5, B0..B5 (then B2..B5 again)
+  const uint8x16_t x1 = vpminq_u8(vpminq_u8(a0, a1), vpminq_u8(a2, a3));
+  const uint8x16_t x2 = vpminq_u8(vpminq_u8(a4, a5), vpminq_u8(b0, b1));
+  const uint8x16_t x3 = vpminq_u8(vpminq_u8(b2, b3), vpminq_u8(b4, b5));
+  const uint8x16_t v = vpminq_u8(vpminq_u8(x1, x2), vpminq_u8(x3, x3));
+  // a byte cannot have the classes of both layouts at byte 8, so at most
+  // one of A_j, B_j is set and the sum is the mask of the valid fields
+  const unsigned valid = vaddvq_u8(vandq_u8(v, vld1q_u8(T.bit8)));
+  // the exponents: e = 10 * byte 9 (if a digit) + byte 10, per field in a
+  // 16-bit lane
+  uint8x16x4_t t4;
+  t4.val[0] = f0;
+  t4.val[1] = f1;
+  t4.val[2] = f2;
+  t4.val[3] = f3;
+  uint8x16x2_t t2;
+  t2.val[0] = f4;
+  t2.val[1] = f5;
+  const uint8x16_t ee = vqtbx2q_u8(vqtbl4q_u8(t4, vld1q_u8(T.idx_e)), t2, vld1q_u8(T.idx_ex));
+  const uint8x16_t es = vqtbx2q_u8(vqtbl4q_u8(t4, vld1q_u8(T.idx_s)), t2, vld1q_u8(T.idx_sx));
+  uint8x16_t ed = vsubq_u8(ee, vdupq_n_u8('0'));
+  ed = vandq_u8(ed, vcltq_u8(ed, vdupq_n_u8(10)));
+  const int16x8_t e = vreinterpretq_s16_u16(
+    vpaddlq_u8(vmulq_u8(ed, vreinterpretq_u8_u16(vdupq_n_u16(0x010A)))));
+  // signs: exponent negative if byte 8 or 9 is '-', value if byte 0 is
+  const uint16x8_t m9 = vreinterpretq_u16_u8(vceqq_u8(ee, vdupq_n_u8('-')));
+  const uint16x8_t m80 = vreinterpretq_u16_u8(vceqq_u8(es, vdupq_n_u8('-')));
+  const int16x8_t eneg = vreinterpretq_s16_u16(vtstq_u16(vorrq_u16(m9, m80), vdupq_n_u16(0x00FF)));
+  const uint16x8_t vneg = vtstq_u16(m80, vdupq_n_u16(0xFF00));
+  const int16x8_t k = vsubq_s16(vsubq_s16(veorq_s16(e, eneg), eneg), vdupq_n_s16(6));
+  const uint16x8_t rok = vandq_u16(vcgeq_s16(k, vdupq_n_s16(-22)), vcleq_s16(k, vdupq_n_s16(21)));
+  const unsigned inrange = vaddvq_u16(vandq_u16(rok, vld1q_u16(T.bit16)));
+  // the table index (0 for the fields out of range)
+  const uint16x8_t idx = vandq_u16(
+    vaddq_u16(vreinterpretq_u16_s16(vaddq_s16(k, vdupq_n_s16(22))),
+              vandq_u16(vneg, vdupq_n_u16(44))),
+    rok);
+  const std::uint64_t i03 = vgetq_lane_u64(vreinterpretq_u64_u16(idx), 0);
+  const std::uint32_t i45 = vgetq_lane_u32(vreinterpretq_u32_u16(idx), 2);
+  // the significands and values
+  const uint8x16_t im = vld1q_u8(T.idx_m);
+  vst1q_f64(out, cpp_row_neon_fp(cpp_row_neon_mant(f0, f1, im),
+                                 T.pow[i03 & 0xFFFFu], T.pow[(i03 >> 16) & 0xFFFFu]));
+  vst1q_f64(out + 2, cpp_row_neon_fp(cpp_row_neon_mant(f2, f3, im),
+                                     T.pow[(i03 >> 32) & 0xFFFFu], T.pow[i03 >> 48]));
+  vst1q_f64(out + 4, cpp_row_neon_fp(cpp_row_neon_mant(f4, f5, im),
+                                     T.pow[i45 & 0xFFFFu], T.pow[i45 >> 16]));
+  return valid & inrange;
+}
+
+// the row kernel of the tier (called through cpp_row_kernel_fn by the
+// line-by-line readers)
+CPP_DECIMAL_NOINLINE inline unsigned cpp_row_kernel_neon(
+  const char* line, unsigned want, unsigned flags, double* out
+) {
+  const unsigned fast = cpp_row_neon_fast(line, out) & want;
+  if (fast == want) return fast;
+  return fast | cpp_row_vector_fallback(
+    line, want & ~fast, (flags & CPP_ROW_ACCEPT_D_EXPONENT) != 0, out);
+}
+
+#endif  // CPP_ROW_NEON
+
+
 
 // Conversion of the float fields of the body of a LIST record read as
 // one byte range (see cpp_list_body_range and CppListBody): the first npl
@@ -1728,11 +2054,12 @@ struct cpp_row_tier {
   bool (*supported)(const cpp_cpu_features&);
 };
 
-#define CPP_ROW_NUM_TIERS 3
+#define CPP_ROW_NUM_TIERS 4
 
 // in the order of preference of the automatic selection, which takes the
 // scalar tier (the last one) if no vector tier is built and supported;
-// the vector tiers are only built with CPP_ROW_VECTOR_TIERS
+// the x86 vector tiers are only built with CPP_ROW_VECTOR_TIERS, the NEON
+// tier with CPP_ROW_NEON
 inline const cpp_row_tier* cpp_row_tiers() {
   static const cpp_row_tier tiers[CPP_ROW_NUM_TIERS] = {
 #ifdef CPP_ROW_VECTOR_TIERS
@@ -1741,6 +2068,11 @@ inline const cpp_row_tier* cpp_row_tiers() {
 #else
     {"avx512", nullptr, true, cpp_row_cpu_avx512},
     {"avx2", nullptr, true, cpp_row_cpu_avx2},
+#endif
+#ifdef CPP_ROW_NEON
+    {"neon", cpp_row_kernel_neon, true, cpp_row_cpu_neon},
+#else
+    {"neon", nullptr, true, cpp_row_cpu_neon},
 #endif
     {"scalar", cpp_row_kernel_scalar, false, cpp_row_cpu_any},
   };
@@ -1805,7 +2137,7 @@ inline cpp_row_selection cpp_row_select(const char* value, const cpp_cpu_feature
       if (! too_long && std::strcmp(name, tiers[i].name) == 0) tier = &tiers[i];
     }
     if (tier == nullptr) {
-      sel.warning = "unknown value (expected auto, off, scalar, avx2 or avx512); using auto";
+      sel.warning = "unknown value (expected auto, off, scalar, avx2, avx512 or neon); using auto";
     } else if (tier->kernel == nullptr) {
       sel.warning = "this tier is not built in this module; using auto";
     } else if (! tier->supported(cpu)) {

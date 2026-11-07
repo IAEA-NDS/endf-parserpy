@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2026/11/05
+# Last modified:   2026/11/07
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -79,6 +79,7 @@ def register_reading_options():
       cpu["avx512bw"] = sel.cpu.avx512bw;
       cpu["avx512vl"] = sel.cpu.avx512vl;
       cpu["avx512vbmi"] = sel.cpu.avx512vbmi;
+      cpu["neon"] = sel.cpu.neon;
       py::dict tiers;
       const cpp_row_tier* table = cpp_row_tiers();
       for (int i = 0; i < CPP_ROW_NUM_TIERS; i++) {

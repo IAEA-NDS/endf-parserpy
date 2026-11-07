@@ -99,16 +99,22 @@ processor:
 - ``avx512``: AVX-512 (the subsets F, BW, VL, DQ and VBMI, e.g. Intel
   processors since Ice Lake and Tiger Lake, AMD processors since Zen 4);
 - ``avx2``: AVX2 with FMA (most x86-64 processors since about 2013);
+- ``neon``: NEON (Advanced SIMD) of 64-bit ARM processors (AArch64,
+  e.g. Apple silicon and the ARM servers of cloud providers);
 - ``scalar``: the conversion field by field applied to a whole line, on
   every platform.
 
-The vector tiers are built on x86-64 with GCC and Clang (Linux, macOS on
-Intel processors, MinGW, and clang-cl if its headers declare the
-intrinsics without global compiler flags); the modules themselves are
-compiled for the baseline instruction set, and only the functions of a
-tier use its instructions, which are executed only if the processor and
-the operating system support them. With the Microsoft compiler (MSVC)
-and on other architectures (e.g. ARM), only the scalar tier is built.
+The ``avx2`` and ``avx512`` tiers are built on x86-64 with GCC and Clang
+(Linux, macOS on Intel processors, MinGW, and clang-cl if its headers
+declare the intrinsics without global compiler flags); the modules
+themselves are compiled for the baseline instruction set, and only the
+functions of a tier use its instructions, which are executed only if the
+processor and the operating system support them. The ``neon`` tier is
+built on 64-bit ARM (AArch64) with GCC, Clang and MSVC (Linux, macOS,
+Windows); NEON is part of the baseline instruction set there, so this
+tier is always supported. With the Microsoft compiler (MSVC) on x86-64
+and on other architectures (e.g. 32-bit ARM), only the scalar tier is
+built.
 The parse results do not depend on the form or the tier: a row kernel
 converts a field only if the conversion field by field would give the
 same value, every other field is converted field by field, and the
@@ -133,8 +139,9 @@ kernel:
 - ``scalar``: the bulk form with the scalar row kernel, the conversion
   field by field applied to a whole line, for all LIST bodies with a
   loop; it is also the reference for testing the vector tiers;
-- ``avx2``, ``avx512``: the bulk form with this vector tier (x86-64
-  only), if it is built and supported by the processor.
+- ``avx2``, ``avx512``, ``neon``: the bulk form with this vector tier
+  (``avx2`` and ``avx512`` on x86-64, ``neon`` on 64-bit ARM), if it is
+  built and supported by the processor.
 
 If the requested tier is not available, or the value is not one of
 these, the automatic choice is used and a ``RuntimeWarning`` is issued
@@ -146,8 +153,8 @@ under Linux or macOS:
    ENDF_PARSERPY_CPP_BULK_BODIES=off python my_script.py
 
 The function ``_bulk_body_info`` of each C++ module returns the
-selected tier (``selected``: ``avx512``, ``avx2``, ``scalar`` or
-``off``), the name and the value of the variable (``variable``,
+selected tier (``selected``: ``avx512``, ``avx2``, ``neon``,
+``scalar`` or ``off``), the name and the value of the variable (``variable``,
 ``requested``), the reason why a requested tier is not used
 (``warning``), for each tier whether it is built, supported by the
 processor and a vector tier (``tiers``), the detected processor features

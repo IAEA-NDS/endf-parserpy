@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/03
-# Last modified:   2026/11/07
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -61,9 +61,11 @@ one summary table.
 ``equivalence`` compiles the C++ test of the conversion kernels
 (tests/cpp/float_kernel_equivalence.cpp with the header extracted from the
 installed template, see tests/test_cpp_float_kernel_equivalence.py) with
-the compiler of the machine and runs it (mode ``sampled`` by default):
-every row kernel tier built and supported there must give the mask and
-the bits of the conversion field by field. The compiler is the one of the
+the compiler of the machine and runs it (mode ``sampled`` by default;
+``tiers_exhaustive`` runs every string of the two layouts of the vector
+path through the vector tiers): every row kernel tier built and
+supported there must give the mask and the bits of the conversion field
+by field. The compiler is the one of the
 wheels: MSVC on Windows (found by setuptools, which must be installed),
 otherwise CXX or c++, g++, clang++. Exits with status 1 on a mismatch.
 """

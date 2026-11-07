@@ -8,9 +8,9 @@ name: Benchmark bulk bodies
 # branches; this workflow is not part of testing or publishing.
 #
 # Before the timing, each job checks that every tier built and supported
-# on its runner (avx2/avx512 on x86-64 with GCC and Clang, neon on ARM64,
-# scalar everywhere) gives the results of the conversion field by field,
-# bit for bit; the job fails otherwise.
+# on its runner (avx2/avx512 on x86-64 with GCC, Clang and MSVC, neon on
+# ARM64, scalar everywhere) gives the results of the conversion field by
+# field, bit for bit; the job fails otherwise.
 #
 # ENDF files: four ENDF/B-VIII.1 neutron files (Fe56, H1, U233, Pu238),
 # zip archives in the private repository IAEA-NDS/ENDF-PENDF-File, checked
@@ -186,6 +186,28 @@ jobs:
             new/tests/test_cpp_float_row_kernel.py new/tests/test_cpp_list_bulk_form.py \
             | tee results/tier_tests.txt
           echo "Tier tests (each tier forced): $(tail -n 1 results/tier_tests.txt)" >> "$GITHUB_STEP_SUMMARY"
+
+      # Windows x64 (MSVC): the build under test must have the x86 tiers
+      # (MSVC builds them without target attributes or /arch), and every
+      # string of the two layouts of the vector path goes through the
+      # vector tiers the CPU supports, kernels and LIST loops, compiled by
+      # MSVC (a few minutes).
+      - name: Check the MSVC build of the x86 tiers
+        if: matrix.runner == 'windows-latest'
+        run: |
+          venv_new/Scripts/python -c "
+          import json
+          from endf_parserpy.cpp_parsers import endf6_ext as m
+          info = m._bulk_body_info()
+          print(json.dumps(info, indent=1))
+          tiers = info['tiers']
+          assert tiers['avx2']['built'] and tiers['avx512']['built'], 'x86 tiers not built by MSVC'
+          assert info['cpu']['detected'], 'CPU features not queried'
+          assert info['compiler'] == 'msvc', 'not reported as an MSVC build'
+          "
+          venv_new/Scripts/python new/tools/benchmark_bulk_bodies.py equivalence \
+            --tests new/tests --work-dir equivalence_exhaustive --mode tiers_exhaustive \
+            --summary "$GITHUB_STEP_SUMMARY"
 
       # Only the files of the public alternative are cached, never those
       # of the private data repository.

@@ -106,10 +106,11 @@ processor:
 
 The ``avx2`` and ``avx512`` tiers are built on x86-64 with GCC and Clang
 (Linux, macOS on Intel processors, MinGW, and clang-cl if its headers
-declare the intrinsics without global compiler flags); the modules
-themselves are compiled for the baseline instruction set, and only the
-functions of a tier use its instructions, which are executed only if the
-processor and the operating system support them. The ``neon`` tier is
+declare the intrinsics without global compiler flags) and with the
+Microsoft compiler (MSVC, Windows x64); the modules themselves are
+compiled for the baseline instruction set, and only the functions of a
+tier use its instructions, which are executed only if the processor and
+the operating system support them. The ``neon`` tier is
 built on 64-bit ARM (AArch64) with GCC, Clang and MSVC (Linux, macOS,
 Windows); NEON is part of the baseline instruction set there, so this
 tier is always supported. If the modules are compiled with GCC (e.g. the
@@ -119,13 +120,11 @@ requested: on a Neoverse N2 processor, parsing with it compiled by GCC
 13 was a few percent slower than with the ``scalar`` tier, while the
 same code compiled by Clang was 10–13% faster than the scalar tier
 (``array_type="numpy"``). Modules compiled with Clang (also Apple
-Clang) or MSVC choose ``neon``. With the Microsoft compiler (MSVC) on x86-64
-and on other architectures (e.g. 32-bit ARM), only the scalar tier is
-built.
+Clang) or MSVC choose ``neon``. On other architectures (e.g. 32-bit
+ARM, 32-bit x86), only the scalar tier is built.
 The vector tiers need GCC 8 or later, Clang 8 or later (Apple Clang 11
-or later) or, for ``neon`` on Windows, MSVC 19.30 (Visual Studio 2022) or
-later; with an older compiler the modules are built with the scalar tier
-only.
+or later) or MSVC 19.30 (Visual Studio 2022) or later; with an older
+compiler the modules are built with the scalar tier only.
 The parse results do not depend on the form or the tier: a row kernel
 converts a field only if the conversion field by field would give the
 same value, every other field is converted field by field, and the
@@ -171,7 +170,9 @@ selected tier (``selected``: ``avx512``, ``avx2``, ``neon``,
 (``warning``), for each tier whether it is built, supported by the
 processor, a vector tier and chosen by ``auto`` if available
 (``tiers``), the detected processor features (``cpu``), the compiler of
-the module (``compiler``: ``gcc``, ``clang``, ``msvc`` or ``other``), the number of lines converted by the scalar tier
+the module (``compiler``: ``gcc``, ``clang``, ``apple-clang``,
+``clang-cl``, ``msvc`` or ``other``), the number of lines converted by
+the scalar tier
 (``scalar_kernel_lines``), whether all LIST bodies
 with a loop are read in the bulk form (``bulk_all_list_bodies``) and the
 numbers of LIST bodies read in the bulk form (``bulk_list_bodies``:

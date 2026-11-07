@@ -1800,15 +1800,17 @@ struct cpp_row_neon_tables {
   // the classes of the bytes 0..10 of the layouts A and B
   alignas(16) std::uint8_t pat_a[16];
   alignas(16) std::uint8_t pat_b[16];
-  // significand digits of two fields (fields in table registers 0, 1),
-  // one field per 64-bit lane, most significant first: 0, bytes 1, 3..8
-  alignas(16) std::uint8_t idx_m[16];
-  // bytes 9 and 10 of the six fields (fields 0..3 in a table of four
-  // registers, 4 and 5 in a table of two), and bytes 8 and 0
-  alignas(16) std::uint8_t idx_e[16];
-  alignas(16) std::uint8_t idx_ex[16];
-  alignas(16) std::uint8_t idx_s[16];
-  alignas(16) std::uint8_t idx_sx[16];
+  // significand digits of two fields, one field per 64-bit lane, most
+  // significant first: 0, bytes 1, 3..8 (the first field in lane 0, the
+  // second in lane 1)
+  alignas(16) std::uint8_t idx_m0[16];
+  alignas(16) std::uint8_t idx_m1[16];
+  // bytes 9 and 10 (exponent) and bytes 8 and 0 (signs) of the six
+  // fields, two bytes per field, from the registers loaded at the bytes 8,
+  // 30 and 52 of the line (and at byte 0 for byte 0 of field 0), see
+  // cpp_row_neon_fast
+  alignas(16) std::uint8_t idx_e[3][16];
+  alignas(16) std::uint8_t idx_s[4][16];
   // the bit of a field in the mask of the converted fields (for the
   // layouts A and B of each field, see cpp_row_neon_fast)
   alignas(16) std::uint8_t bit8[16];
@@ -1843,11 +1845,19 @@ inline const cpp_row_neon_tables& cpp_row_neon_tab() {
       CPP_ROW_N_D, CPP_ROW_N_D, CPP_ROW_N_D, CPP_ROW_N_S, CPP_ROW_N_D, CPP_ROW_N_D,
       CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY, CPP_ROW_N_ANY
     },
-    {0xFF, 1, 3, 4, 5, 6, 7, 8, 0xFF, 17, 19, 20, 21, 22, 23, 24},
-    {9, 10, 25, 26, 41, 42, 57, 58, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
-    {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 9, 10, 25, 26, 0xFF, 0xFF, 0xFF, 0xFF},
-    {8, 0, 24, 16, 40, 32, 56, 48, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
-    {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 8, 0, 24, 16, 0xFF, 0xFF, 0xFF, 0xFF},
+    {0xFF, 1, 3, 4, 5, 6, 7, 8, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+    {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 1, 3, 4, 5, 6, 7, 8},
+    {
+      {1, 2, 12, 13, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+      {0xFF, 0xFF, 0xFF, 0xFF, 1, 2, 12, 13, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+      {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 1, 2, 12, 13, 0xFF, 0xFF, 0xFF, 0xFF}
+    },
+    {
+      {0, 0xFF, 11, 3, 0xFF, 14, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+      {0xFF, 0xFF, 0xFF, 0xFF, 0, 0xFF, 11, 3, 0xFF, 14, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+      {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0, 0xFF, 11, 3, 0xFF, 0xFF, 0xFF, 0xFF},
+      {0xFF, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+    },
     {1, 2, 4, 8, 16, 32, 1, 2, 4, 8, 16, 32, 0, 0, 0, 0},
     {1, 2, 4, 8, 16, 32, 0, 0}
   };
@@ -1870,13 +1880,12 @@ CPP_ROW_INLINE_NEON void cpp_row_neon_class(
   tb = vtstq_u8(code, pat_b);
 }
 
-// the digits gathered by idx from fa and fb (see idx_m) as two integers,
-// converted to doubles
-CPP_ROW_INLINE_NEON float64x2_t cpp_row_neon_mant(uint8x16_t fa, uint8x16_t fb, uint8x16_t idx) {
-  uint8x16x2_t t;
-  t.val[0] = fa;
-  t.val[1] = fb;
-  uint8x16_t g = vsubq_u8(vqtbl2q_u8(t, idx), vdupq_n_u8('0'));
+// the digits of fa and fb gathered by i0 and i1 (see idx_m0, idx_m1) as
+// two integers, converted to doubles
+CPP_ROW_INLINE_NEON float64x2_t cpp_row_neon_mant(
+  uint8x16_t fa, uint8x16_t fb, uint8x16_t i0, uint8x16_t i1
+) {
+  uint8x16_t g = vsubq_u8(vqtbx1q_u8(vqtbl1q_u8(fa, i0), fb, i1), vdupq_n_u8('0'));
   // bytes that are not digits (byte 8 of layout B, the lane start) as 0
   g = vandq_u8(g, vcltq_u8(g, vdupq_n_u8(10)));
   // pairs of digits, then four digits, then eight
@@ -1904,7 +1913,10 @@ CPP_ROW_INLINE_NEON float64x2_t cpp_row_neon_fp(float64x2_t m, const double* pa,
 
 // The vector path of the NEON kernel: stores six values in out[0..5] and
 // returns the mask of the fields it has converted (the other values are
-// undefined). Reads bytes 0..70 of the line.
+// undefined). Reads bytes 0..70 of the line. All table lookups are on
+// one register (vqtbl1q_u8, vqtbx1q_u8): GCC passes the register tuples
+// of the lookups on two or four registers through the stack at -O1, the
+// optimization level of the module builds.
 CPP_ROW_INLINE_NEON unsigned cpp_row_neon_fast(const char* s, double* out) {
   const cpp_row_neon_tables& T = cpp_row_neon_tab();
   const std::uint8_t* u = reinterpret_cast<const std::uint8_t*>(s);
@@ -1930,17 +1942,18 @@ CPP_ROW_INLINE_NEON unsigned cpp_row_neon_fast(const char* s, double* out) {
   // one of A_j, B_j is set and the sum is the mask of the valid fields
   const unsigned valid = vaddvq_u8(vandq_u8(v, vld1q_u8(T.bit8)));
   // the exponents: e = 10 * byte 9 (if a digit) + byte 10, per field in a
-  // 16-bit lane
-  uint8x16x4_t t4;
-  t4.val[0] = f0;
-  t4.val[1] = f1;
-  t4.val[2] = f2;
-  t4.val[3] = f3;
-  uint8x16x2_t t2;
-  t2.val[0] = f4;
-  t2.val[1] = f5;
-  const uint8x16_t ee = vqtbx2q_u8(vqtbl4q_u8(t4, vld1q_u8(T.idx_e)), t2, vld1q_u8(T.idx_ex));
-  const uint8x16_t es = vqtbx2q_u8(vqtbl4q_u8(t4, vld1q_u8(T.idx_s)), t2, vld1q_u8(T.idx_sx));
+  // 16-bit lane. Bytes 8..10 of field j and byte 0 of field j+1 are the
+  // bytes 11j+8..11j+11 of the line: those of the fields 0, 1 are in the
+  // register loaded at byte 8, of 2, 3 at byte 30, of 4, 5 at byte 52
+  // (bytes 0..3 and 11..14 of each); byte 0 of field 0 is taken from f0.
+  const uint8x16_t g8 = vld1q_u8(u + 8), g30 = vld1q_u8(u + 30), g52 = vld1q_u8(u + 52);
+  const uint8x16_t ee = vqtbx1q_u8(vqtbx1q_u8(vqtbl1q_u8(g8, vld1q_u8(T.idx_e[0])),
+                                              g30, vld1q_u8(T.idx_e[1])),
+                                   g52, vld1q_u8(T.idx_e[2]));
+  const uint8x16_t es = vqtbx1q_u8(vqtbx1q_u8(vqtbx1q_u8(vqtbl1q_u8(g8, vld1q_u8(T.idx_s[0])),
+                                                         g30, vld1q_u8(T.idx_s[1])),
+                                              g52, vld1q_u8(T.idx_s[2])),
+                                   f0, vld1q_u8(T.idx_s[3]));
   uint8x16_t ed = vsubq_u8(ee, vdupq_n_u8('0'));
   ed = vandq_u8(ed, vcltq_u8(ed, vdupq_n_u8(10)));
   const int16x8_t e = vreinterpretq_s16_u16(
@@ -1961,12 +1974,12 @@ CPP_ROW_INLINE_NEON unsigned cpp_row_neon_fast(const char* s, double* out) {
   const std::uint64_t i03 = vgetq_lane_u64(vreinterpretq_u64_u16(idx), 0);
   const std::uint32_t i45 = vgetq_lane_u32(vreinterpretq_u32_u16(idx), 2);
   // the significands and values
-  const uint8x16_t im = vld1q_u8(T.idx_m);
-  vst1q_f64(out, cpp_row_neon_fp(cpp_row_neon_mant(f0, f1, im),
+  const uint8x16_t im0 = vld1q_u8(T.idx_m0), im1 = vld1q_u8(T.idx_m1);
+  vst1q_f64(out, cpp_row_neon_fp(cpp_row_neon_mant(f0, f1, im0, im1),
                                  T.pow[i03 & 0xFFFFu], T.pow[(i03 >> 16) & 0xFFFFu]));
-  vst1q_f64(out + 2, cpp_row_neon_fp(cpp_row_neon_mant(f2, f3, im),
+  vst1q_f64(out + 2, cpp_row_neon_fp(cpp_row_neon_mant(f2, f3, im0, im1),
                                      T.pow[(i03 >> 32) & 0xFFFFu], T.pow[i03 >> 48]));
-  vst1q_f64(out + 4, cpp_row_neon_fp(cpp_row_neon_mant(f4, f5, im),
+  vst1q_f64(out + 4, cpp_row_neon_fp(cpp_row_neon_mant(f4, f5, im0, im1),
                                      T.pow[i45 & 0xFFFFu], T.pow[i45 >> 16]));
   return valid & inrange;
 }

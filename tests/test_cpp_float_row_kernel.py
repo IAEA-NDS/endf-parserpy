@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/03
-# Last modified:   2026/11/05
+# Last modified:   2026/11/07
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -45,7 +45,7 @@ import pytest
 
 
 ENV_VAR = "ENDF_PARSERPY_CPP_BULK_BODIES"
-VECTOR_TIERS = ("avx2", "avx512")
+VECTOR_TIERS = ("avx2", "avx512", "neon")
 TESTDATA = Path(__file__).parent / "testdata"
 FILES = [
     "n_2925_29-Cu-63.endf",
@@ -345,7 +345,8 @@ def _info_in_subprocess(value):
 
 
 @pytest.mark.parametrize(
-    "value", [None, "", "auto", "AUTO", "off", "scalar", "avx2", "avx512", "bogus"]
+    "value",
+    [None, "", "auto", "AUTO", "off", "scalar", "avx2", "avx512", "neon", "bogus"],
 )
 def test_row_kernel_selection(value, jobs_spec):
     out = _info_in_subprocess(value)
@@ -353,7 +354,7 @@ def test_row_kernel_selection(value, jobs_spec):
     tiers = info["tiers"]
     assert info["variable"] == ENV_VAR
     assert info["requested"] == value
-    assert set(tiers) == {"scalar", "avx2", "avx512"}
+    assert set(tiers) == {"scalar", "avx2", "avx512", "neon"}
     assert tiers["scalar"] == {"built": True, "supported": True, "vector": False}
     # a tier is only selected if it is built and supported by the CPU
     selected = info["selected"]
@@ -363,7 +364,7 @@ def test_row_kernel_selection(value, jobs_spec):
     auto = next(
         (
             name
-            for name in ("avx512", "avx2")
+            for name in ("avx512", "avx2", "neon")
             if tiers[name]["built"] and tiers[name]["supported"]
         ),
         "scalar",
@@ -394,6 +395,10 @@ def test_row_kernel_selection(value, jobs_spec):
         assert tiers["avx2"]["supported"]
     if tiers["avx2"]["supported"]:
         assert cpu["detected"] and cpu["avx2"] and cpu["fma"] and cpu["os_ymm"]
+    # NEON on AArch64 only, where it is always supported
+    assert tiers["neon"]["supported"] == cpu["neon"]
+    if cpu["neon"]:
+        assert not tiers["avx2"]["supported"] and not tiers["avx512"]["supported"]
 
 
 if __name__ == "__main__":

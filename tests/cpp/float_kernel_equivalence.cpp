@@ -31,7 +31,8 @@
 // included below, so that the test always checks the code that ships.
 //
 // The row kernels of the template (cpp_row_kernel_scalar and the other
-// tiers of cpp_row_tiers, which convert the fields of a line in one call)
+// tiers of cpp_row_tiers, which convert the fields of a line in one call:
+// AVX2 and AVX-512 on x86-64, NEON on AArch64)
 // are compared with cpp_fast_field_to_double field by field on random
 // lines and masks of the fields to convert (mode "rows"): the mask of the
 // converted fields and their bits must be those of the per-field
@@ -841,7 +842,7 @@ static void run_bodies(long nb) {
       // the variants: 0 the scalar loop, then per tier the loop with one
       // kernel call per line and cpp_list_convert, then the loops of the
       // vector tiers
-      for (int v = 0; v < 2 * CPP_ROW_NUM_TIERS + 3; v++) {
+      for (int v = 0; v < 2 * CPP_ROW_NUM_TIERS + 4; v++) {
         int got = -1;
         const char* name = "";
         if (v == 0) {
@@ -859,19 +860,31 @@ static void run_bodies(long nb) {
             name = "cpp_list_convert";
           }
         } else {
-#ifdef CPP_ROW_VECTOR_TIERS
           if (v == 2 * CPP_ROW_NUM_TIERS + 1) {
+#ifdef CPP_ROW_VECTOR_TIERS
             if (! cpp_row_cpu_avx2(cpu)) continue;
             got = cpp_list_convert_avx2(data, stride, n, accd, out);
             name = "avx2 loop";
-          } else {
+#else
+            continue;
+#endif
+          } else if (v == 2 * CPP_ROW_NUM_TIERS + 2) {
+#ifdef CPP_ROW_VECTOR_TIERS
             if (! cpp_row_cpu_avx512(cpu)) continue;
             got = cpp_list_convert_avx512(data, stride, n, accd, out);
             name = "avx512 loop";
-          }
 #else
-          continue;
+            continue;
 #endif
+          } else {
+#ifdef CPP_ROW_NEON
+            if (! cpp_row_cpu_neon(cpu)) continue;
+            got = cpp_list_convert_neon(data, stride, n, accd, out);
+            name = "neon loop";
+#else
+            continue;
+#endif
+          }
         }
         nbody++;
         bool ok = got == nref;
@@ -892,16 +905,16 @@ static void run_bodies(long nb) {
 // combinations of the CPU features of the tiers
 static void run_select() {
   const char* values[] = {
-    nullptr, "", "auto", "AUTO", "off", "Off", "scalar", "avx2", "avx512",
+    nullptr, "", "auto", "AUTO", "off", "Off", "scalar", "avx2", "avx512", "neon", "NEON",
     "bogus", "scalar ", "a_value_longer_than_fifteen_characters"
   };
   const int nvalues = sizeof(values) / sizeof(values[0]);
   const cpp_row_tier* tiers = cpp_row_tiers();
-  for (int bits = 0; bits < (1 << 9); bits++) {
+  for (int bits = 0; bits < (1 << 10); bits++) {
     cpp_cpu_features cpu = {
       true, (bits & 1) != 0, (bits & 2) != 0, (bits & 4) != 0, (bits & 8) != 0,
       (bits & 16) != 0, (bits & 32) != 0, (bits & 64) != 0, (bits & 128) != 0,
-      (bits & 256) != 0
+      (bits & 256) != 0, (bits & 512) != 0
     };
     // the automatic selection: the first vector tier built and supported,
     // otherwise the scalar tier
@@ -935,7 +948,7 @@ static void run_select() {
         ok = ok && sel.kernel == nullptr && sel.warning == nullptr;
       } else if (lower == "scalar") {
         ok = ok && sel.kernel == cpp_row_kernel_scalar && sel.warning == nullptr;
-      } else if (lower == "avx2" || lower == "avx512") {
+      } else if (lower == "avx2" || lower == "avx512" || lower == "neon") {
         const cpp_row_tier* req = nullptr;
         for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
           if (lower == tiers[t].name) req = &tiers[t];
@@ -962,10 +975,23 @@ static void run_select() {
     }
   }
   // the support of the tiers by the features
-  cpp_cpu_features none = {false, false, false, false, false, false, false, false, false, false};
-  if (! cpp_row_cpu_any(none) || cpp_row_cpu_avx2(none) || cpp_row_cpu_avx512(none)) nfail++;
-  cpp_cpu_features all = {true, true, true, true, true, true, true, true, true, true};
-  if (! cpp_row_cpu_avx2(all) || ! cpp_row_cpu_avx512(all)) nfail++;
+  cpp_cpu_features none = {false, false, false, false, false, false, false, false, false, false, false};
+  if (! cpp_row_cpu_any(none) || cpp_row_cpu_avx2(none) || cpp_row_cpu_avx512(none)
+      || cpp_row_cpu_neon(none)) nfail++;
+  cpp_cpu_features all = {true, true, true, true, true, true, true, true, true, true, true};
+  if (! cpp_row_cpu_avx2(all) || ! cpp_row_cpu_avx512(all) || ! cpp_row_cpu_neon(all)) nfail++;
+  // the tiers built for the architecture of this build
+  const cpp_cpu_features here = cpp_detect_cpu_features();
+#ifdef CPP_ROW_NEON
+  if (! cpp_row_cpu_neon(here) || tiers[2].kernel == nullptr
+      || std::strcmp(tiers[2].name, "neon") != 0) nfail++;
+#else
+  if (tiers[2].kernel != nullptr) nfail++;
+#endif
+#ifdef CPP_ROW_VECTOR_TIERS
+  if (cpp_row_cpu_neon(here) || tiers[0].kernel == nullptr || tiers[1].kernel == nullptr) nfail++;
+#endif
+  if (tiers[CPP_ROW_NUM_TIERS - 1].kernel != cpp_row_kernel_scalar) nfail++;
 }
 
 int main(int argc, char** argv) {
@@ -1016,6 +1042,16 @@ int main(int argc, char** argv) {
     return 2;
   }
   check_tier_line();
+  {
+    // the tiers of the row kernels checked by the modes rows and bodies
+    const cpp_cpu_features cpu = cpp_detect_cpu_features();
+    const cpp_row_tier* tiers = cpp_row_tiers();
+    std::printf("tiers built and supported:");
+    for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
+      if (tiers[t].kernel != nullptr && tiers[t].supported(cpu)) std::printf(" %s", tiers[t].name);
+    }
+    std::printf("\n");
+  }
   std::printf("%s: checks=%ld first_stage=%ld negexp_converted=%ld not_converted=%ld decimal_checks=%ld"
               " negexp_direct=%ld row_checks=%ld row_tiers=%ld vector_tier_lines=%ld"
               " body_checks=%ld mismatches=%ld\n",

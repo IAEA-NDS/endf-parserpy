@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/24
-# Last modified:   2026/11/05
+# Last modified:   2026/11/07
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -35,10 +35,10 @@ that are built and supported by the CPU, which convert the float fields
 of a line in one call) are compared in the same program with
 cpp_fast_field_to_double applied field by field, on random lines and
 masks of the fields to convert: the mask of the converted fields and
-their bits must agree. The vector tiers (AVX2, AVX-512) are in addition
-run on all fields of all other checks, six fields per line, so that the
-exhaustive test covers every string of the two layouts their vector path
-converts. The conversion loops of LIST bodies read as one byte range (the
+their bits must agree. The vector tiers (AVX2 and AVX-512 on x86-64, NEON
+on AArch64) are in addition run on all fields of all other checks, six
+fields per line, so that the exhaustive test covers every string of the
+two layouts their vector path converts. The conversion loops of LIST bodies read as one byte range (the
 scalar loop, one kernel call per line, the loops of the vector tiers) are
 compared on random bodies (lines of 75 to 80 columns with LF or CRLF; valid fields, plain
 decimals, malformed fields): the position of the first field not
@@ -119,18 +119,26 @@ def _extract_kernel():
     return text[start : end + 3] + "\n\n" + text[row_start : row_end + len(ROW_END)]
 
 
+def write_test_header(workdir):
+    # the header included by the test program (also used by
+    # tools/benchmark_bulk_bodies.py, which compiles the program with the
+    # compiler of a CI runner)
+    header = Path(workdir) / "float_kernel_under_test.hpp"
+    header.write_text(
+        "// extracted from module_header_reading.hpp by the test\n"
+        "#include <cctype>\n#include <cstdint>\n#include <cstdlib>\n"
+        "#include <cstring>\n\n" + _extract_kernel()
+    )
+    return header
+
+
 @pytest.fixture(scope="module")
 def kernel_test_program(tmp_path_factory):
     compiler = _find_compiler()
     if compiler is None:
         pytest.skip("no C++ compiler found (set CXX or install c++, g++ or clang++)")
     workdir = tmp_path_factory.mktemp("float_kernel")
-    header = workdir / "float_kernel_under_test.hpp"
-    header.write_text(
-        "// extracted from module_header_reading.hpp by the test\n"
-        "#include <cctype>\n#include <cstdint>\n#include <cstdlib>\n"
-        "#include <cstring>\n\n" + _extract_kernel()
-    )
+    write_test_header(workdir)
     exe = workdir / "float_kernel_equivalence"
     cmd = compiler + [
         "-O2",

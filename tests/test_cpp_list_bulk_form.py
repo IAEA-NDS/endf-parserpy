@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/04
-# Last modified:   2026/11/05
+# Last modified:   2026/11/07
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -419,7 +419,7 @@ def per_field_form(jobs_spec):
     return _run(spec, tmpdir, "off")
 
 
-@pytest.fixture(scope="module", params=[None, "scalar", "avx2", "avx512"])
+@pytest.fixture(scope="module", params=[None, "scalar", "avx2", "avx512", "neon"])
 def both_forms(request, jobs_spec, per_field_form):
     # the default (the bulk form with the tier selected automatically) and
     # each tier forced (bulk form for all bodies); the vector tiers only if

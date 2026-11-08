@@ -16,6 +16,7 @@ from .fortran_utils import (
     read_fort_floats,
     write_fort_floats,
     read_fort_int,
+    int_field_in_range,
 )
 
 # number of correlation values KIJ per INTG record for each NDIGIT
@@ -62,14 +63,18 @@ def _read_ctrl_fields(line, ofs):
     for name, start, length in _CTRL_FIELDS:
         text = content[ofs + start : ofs + start + length]
         m = _match_ctrl_field(text)
-        if m is None:
+        value = 0
+        if m is not None and m.group(1) is not None:
+            value = int(m.group(1))
+        # (a field of up to 9 columns, as here, is always within the
+        # range of a 32-bit integer; checked as by EndfParserCpp)
+        if m is None or not int_field_in_range(value):
             first = ofs + start + 1
             raise ValueError(
                 f'invalid {name} number field: "{escape_text(text)}" '
                 f"(columns {first}-{first + length - 1})"
             )
-        digits = m.group(1)
-        values.append(int(digits) if digits is not None else 0)
+        values.append(value)
     return values
 
 

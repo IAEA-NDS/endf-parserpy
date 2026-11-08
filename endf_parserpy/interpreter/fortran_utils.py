@@ -25,19 +25,31 @@ from endf_parserpy.utils.text_encoding import escape_text
 # may follow the field.
 _match_int_field = re.compile(" *([+-]?[0-9]+)? *\r?\n?").fullmatch
 
+# the range of an integer field: that of a 32-bit signed integer, as in
+# EndfParserCpp (an 11-column field holds up to 10 digits and a sign)
+INT_FIELD_MIN = -(2**31)
+INT_FIELD_MAX = 2**31 - 1
+
+
+def int_field_in_range(value):
+    """Whether value is within the range of a 32-bit signed integer."""
+    return INT_FIELD_MIN <= value <= INT_FIELD_MAX
+
 
 def read_fort_int(valstr):
-    # fast paths: digits, possibly with a sign, between blanks, and blank
+    # fast paths: up to 9 digits (always within the range of a 32-bit
+    # integer), possibly with a sign, between blanks, and blank
     number = valstr.strip(" ")
     if number.isdecimal() and number.isascii():
-        return int(number)
-    if not number:
-        return 0
-    if number[0] in "+-":
-        digits = number[1:]
-        if digits.isdecimal() and digits.isascii():
+        if len(number) < 10:
             return int(number)
-    # the general case: line endings and errors
+    elif not number:
+        return 0
+    elif number[0] in "+-":
+        digits = number[1:]
+        if digits.isdecimal() and digits.isascii() and len(digits) < 10:
+            return int(number)
+    # the general case: more digits, line endings and errors
     m = _match_int_field(valstr)
     if m is None:
         raise InvalidIntegerError(
@@ -45,7 +57,16 @@ def read_fort_int(valstr):
             "an optional sign, preceded and followed by blanks only, or blank)"
         )
     digits = m.group(1)
-    return int(digits) if digits is not None else 0
+    if digits is None:
+        return 0
+    value = int(digits)
+    if not int_field_in_range(value):
+        raise InvalidIntegerError(
+            f'invalid integer field: "{escape_text(valstr)}" (outside the '
+            f"range of a 32-bit signed integer, {INT_FIELD_MIN} to "
+            f"{INT_FIELD_MAX})"
+        )
+    return value
 
 
 def fortstr2float(valstr, read_opts=None):

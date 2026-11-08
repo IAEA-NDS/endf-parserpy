@@ -678,12 +678,15 @@ def split_sections(lines, read_opts=None):
     # whether a record that is not one of a section precedes the current
     # one; a record of a section after it starts a new section
     separated = True
+    # with ignore_send_records, blank lines may follow a TEND record
+    # anywhere after it
+    tend_seen = False
     ctrl_ofs = 6 * read_opts.get("width", 11)
     while ofs < len(lines) - 1:
         ofs += 1
         line = lines[ofs]
         if line.strip() == "" and is_blank_line(line):
-            if sec_level == -1:
+            if sec_level == -1 or tend_seen:
                 continue
             if ignore_blank_lines:
                 continue
@@ -769,6 +772,11 @@ def split_sections(lines, read_opts=None):
 
         separated = True
         if ignore_send_records:
+            # the position of the record is not checked, but its fields as
+            # those of any SEND, FEND, MEND or TEND record (see below)
+            read_send([line], read_opts=read_opts)
+            if mat == -1 and mf == 0 and mt == 0:
+                tend_seen = True
             continue
 
         # it is a section end record (SEND, FEND, MEND or TEND)

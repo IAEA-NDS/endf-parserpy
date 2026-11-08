@@ -206,12 +206,13 @@ class _Checker:
         self.materials = 0
         # the order of the sections (see order): the (MF, MT) sections of
         # the current material, the numbers of the last section, whether a
-        # record that is not one of a section followed it, and whether a
-        # FEND record followed it
+        # record that is not one of a section followed it, whether a FEND
+        # record followed it, and whether a TEND record was found
         self.sections = set()
         self.last_section = None
         self.separated = True
         self.after_fend = False
+        self.tend_seen = False
         # the numbers of the section if its SEND record was assumed for a
         # record with an invalid control field (see check_framing)
         self.assumed_send = None
@@ -557,11 +558,14 @@ def check_framing(
     The options relax the rules as the parser options of the same names
     do: ``ignore_send_records`` skips the checks of the position and the
     MAT/MF/MT numbers of the SEND, FEND, MEND and TEND records (missing
-    or additional records included), of the lines after the TEND record
-    and whether an MF ends with its FEND record, where a material ends
-    where the MAT number changes, but not those of their control fields,
-    their columns 1-66 (which EndfParserCpp checks also with this option)
-    and their characters, nor the order of the sections,
+    or additional records included): the lines after a TEND record are
+    checked as the others, blank lines may follow a TEND record anywhere
+    after it, a material ends where the MAT number changes, and that an
+    MF ends with its FEND record is not checked. The content of these
+    records is checked as without this option (control fields, columns
+    1-66, characters), and so is the order of the sections; a record
+    that is none of these records nor one of a section (e.g. MF=0 and
+    MT≠0) is a problem anywhere,
     ``ignore_blank_lines`` accepts blank lines anywhere,
     ``ignore_missing_tpid`` accepts a tape without a tape head (as
     :class:`TapeIndex`), ``accept_non_ascii`` accepts other characters,
@@ -587,16 +591,25 @@ def _check_framing_and_index(path, *, ignore_missing_tpid=False, **options):
     :func:`check_framing` with the same options, and the
     :class:`TapeIndex` of the file built by
     :meth:`TapeIndex.from_file` with ``ignore_missing_tpid``, or ``None``
-    and the :class:`TapeStructureError` that it raises.
+    and the :class:`TapeStructureError` that it raises. With
+    ``ignore_send_records``, the index is built as the parsers read the
+    file with this option: the scan does not end at a TEND record, and a
+    material ends where the MAT number changes, at a MEND record or at
+    the end of the file (see ``_ScanState``).
     """
     path = os.fspath(path)
     events = []
-    st = _ScanState(ignore_missing_tpid, events)
+    # with ignore_send_records, the parsers read the lines after a TEND
+    # record and do not rely on the MEND records, so that neither does
+    # the index (see _ScanState)
+    lenient = bool(options.get("ignore_send_records"))
+    st = _ScanState(ignore_missing_tpid, events, lenient=lenient)
     index = error = None
     with open(path, "rb") as fh:
         try:
             _scan_file_into(st, fh, _DEFAULT_CHUNK_BYTES)
-            index = TapeIndex._from_scan(path, *st.result())
+            end = os.fstat(fh.fileno()).st_size
+            index = TapeIndex._from_scan(path, *st.result(end))
         except TapeStructureError as exc:
             # e.g. no tape head: the event _EV_NO_TPID is the last one
             error = exc
@@ -639,7 +652,9 @@ def _check_events(
                         "the line holds whitespace other than blanks and tabs; "
                         "it is neither a blank line nor a record",
                     )
-            elif not ignore_blank_lines:
+            elif not ignore_blank_lines and not checker.tend_seen:
+                # (with ignore_send_records, blank lines may follow a TEND
+                # record anywhere after it, as in the parsers)
                 checker.problem(offset, "blank line")
             continue
         if kind == _EV_TPID:
@@ -669,9 +684,17 @@ def _check_events(
             continue
         checker.separated = True
         checker.check_line(offset, line, rec_kind)
-        if mat == -1:  # the index ends its scan with this record
+        if mat == -1 and check_structure:  # the index ends its scan here
             end_offset = offset + len(line) + 1
-        if not check_structure or (numbers is None and rec_kind == "other"):
+        if not check_structure:
+            # the position of the record is not checked; a record that is
+            # none of these records is a problem anywhere
+            if rec_kind == "other" and numbers is not None:
+                checker.problem(offset, f"found {_describe(rec_kind, numbers)}")
+            elif numbers == (-1, 0, 0):
+                checker.tend_seen = True
+            continue
+        if numbers is None and rec_kind == "other":
             continue
         if numbers is None:
             # an invalid field is reported; the record is taken as the one

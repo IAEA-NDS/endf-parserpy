@@ -2916,7 +2916,38 @@ inline std::string cpp_read_line(
 }
 
 
+// Whether the next line of the stream is a SEND record by its control
+// fields (MF not 0, MT 0); blank lines before it are skipped with
+// ignore_blank_lines. A blank line otherwise counts as a SEND record, so
+// that its reading reports it. The position of the stream is not changed.
+inline bool cpp_next_is_send(std::istream& cont, ParsingOptions &parse_opts) {
+  std::streampos pos = cont.tellg();
+  CppLine line(parse_opts);
+  bool is_send = false;
+  while (cpp_getline(cont, line)) {
+    if (cpp_is_blank_line(line)) {
+      if (parse_opts.ignore_blank_lines) continue;
+      is_send = true;
+      break;
+    }
+    cpp_pad_short_line(line);
+    is_send = (cpp_read_mt_number(line.data()) == 0 && cpp_read_mf_number(line.data()) != 0);
+    break;
+  }
+  cont.clear();
+  cont.seekg(pos);
+  return is_send;
+}
+
+
+// With ignore_send_records, a section need not end with a SEND record:
+// if the next line is not one (e.g. the first line of the next section,
+// a FEND record or the end of the data), it is not read. A SEND record
+// is checked as without this option.
 inline void cpp_read_send(std::istream& cont, int mat, int mf, ParsingOptions &parse_opts) {
+  if (parse_opts.ignore_send_records && ! cpp_next_is_send(cont, parse_opts)) {
+    return;
+  }
   CppLine line(parse_opts);
   cpp_read_line(line, cont, mat, mf, 0, parse_opts);
   int mtnum = cpp_read_mt_number(line.data());
@@ -2958,6 +2989,22 @@ inline bool cpp_is_fend_record(const CppLine& line, int mat, ParsingOptions &par
   bool cond = (c1 == 0.0 && c2 == 0.0 && n1 == 0 && n2 == 0);
   cond &= (l1 == 0 && l2 == 0 && mf == 0 && mt == 0);
   return cond;
+}
+
+
+// A SEND record outside a section, which is accepted with
+// ignore_send_records: MF not 0, MT 0 and the fields 1-6 zero.
+inline bool cpp_is_send_record(const CppLine& line, ParsingOptions &parse_opts) {
+  int mf = cpp_read_mf_number(line.data());
+  int mt = cpp_read_mt_number(line.data());
+  if (mf == 0 || mt != 0) return false;
+  double c1 = cpp_read_field<DOUBLE_TYPE>(line.data(), 0, parse_opts);
+  double c2 = cpp_read_field<DOUBLE_TYPE>(line.data(), 1, parse_opts);
+  int n1 = cpp_read_field<int>(line.data(), 2, parse_opts);
+  int n2 = cpp_read_field<int>(line.data(), 3, parse_opts);
+  int l1 = cpp_read_field<int>(line.data(), 4, parse_opts);
+  int l2 = cpp_read_field<int>(line.data(), 5, parse_opts);
+  return (c1 == 0.0 && c2 == 0.0 && n1 == 0 && n2 == 0 && l1 == 0 && l2 == 0);
 }
 
 
@@ -3585,6 +3632,25 @@ inline Tab1Body read_tab1_body(
 }
 
 
+// Whether a line that is not blank follows in the stream (blank lines
+// are skipped with ignore_blank_lines). The position of the stream is
+// not changed.
+inline bool cpp_lines_follow(std::istream& cont, ParsingOptions &parse_opts) {
+  std::streampos pos = cont.tellg();
+  CppLine line(parse_opts);
+  bool found = false;
+  while (cpp_getline(cont, line)) {
+    if (! cpp_is_blank_line(line) || ! parse_opts.ignore_blank_lines) {
+      found = true;
+      break;
+    }
+  }
+  cont.clear();
+  cont.seekg(pos);
+  return found;
+}
+
+
 // The lines of a section are returned as Python strings (see
 // cpp_bytes_to_pystr).
 inline py::list read_section_verbatim(
@@ -3597,7 +3663,15 @@ inline py::list read_section_verbatim(
   int curmf;
   int curmt;
   std::size_t content_size;
+  // with ignore_send_records, the section need not end with a SEND
+  // record (see cpp_read_send), also at the end of the data
+  const bool send_optional = parse_opts.ignore_send_records && ! is_first;
+  bool at_end = false;
   while (! cont.eof()) {
+    if (send_optional && ! cpp_lines_follow(cont, parse_opts)) {
+      at_end = true;
+      break;
+    }
     // the MF/MT numbers of every line are checked below
     cpp_read_line(line, cont, mat, mf, mt, parse_opts, &content_size, false);
     // a blank MF/MT field (e.g. of a tape header) reads as zero, as in
@@ -3612,7 +3686,13 @@ inline py::list read_section_verbatim(
     secvec.append(cpp_bytes_to_pystr(verbatim_line));
     curpos = cont.tellg();
   }
-  if (! is_first && (curmf != mf || curmt != 0)) {
+  if (send_optional) {
+    // a line that is not a SEND record (MF not 0, MT 0) is not read
+    if (! at_end && (curmf == 0 || curmt != 0)) {
+      cont.clear();
+      cont.seekg(curpos);
+    }
+  } else if (! is_first && (curmf != mf || curmt != 0)) {
      std::string errmsg = "expected SEND of MF/MT " +
                           std::to_string(mf) + "/" + std::to_string(mt);
      throw std::runtime_error(errmsg);

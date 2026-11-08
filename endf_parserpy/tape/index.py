@@ -198,10 +198,17 @@ class _ScanState:
         "ignore_missing_tpid",
         "done",
         "events",
+        "lenient",
     )
 
-    def __init__(self, ignore_missing_tpid=False, events=None):
+    def __init__(self, ignore_missing_tpid=False, events=None, lenient=False):
         self.ignore_missing_tpid = ignore_missing_tpid
+        # the positions of the MEND and TEND records are not relied upon
+        # (the scan of endf-cli validate with ignore_send_records, see
+        # framing.py): a TEND record does not end the scan, a section of
+        # another MAT number ends the open material, and so does the end
+        # of the file
+        self.lenient = lenient
         # a list to which the records that matter for the framing structure
         # are appended (see framing.py), or None (the index alone)
         self.events = events
@@ -226,14 +233,24 @@ class _ScanState:
             )
         self.sec_key = None
 
-    def result(self):
+    def close_material(self, end):
+        """Store the open material, which ends at the offset ``end``."""
+        self.flush_section()
+        self.cur.byte_length = end - self.cur.byte_offset
+        self.materials.append(self.cur)
+        self.cur = None
+
+    def result(self, end=None):
         """Return ``(materials, tpid)`` of a finished scan.
 
         ``tpid`` is ``None`` if the tape has no tape head and the scan
-        ran with ``ignore_missing_tpid``.
+        ran with ``ignore_missing_tpid``. ``end`` is the size of the
+        file, at which a lenient scan ends an open material.
         """
         if not self.head_done:
             raise TapeStructureError("the tape does not contain any records")
+        if self.cur is not None and self.lenient and end is not None:
+            self.close_material(end)
         if self.cur is not None:
             raise TapeStructureError(
                 "the tape ends in the middle of a material; the final MEND or "
@@ -256,10 +273,12 @@ def _consume_run(st, mat, mf, mt, offset, length, line_count, head_line):
     new material. The state ``st`` is updated in place and ``st.done``
     is set once the tape end (TEND) record is reached.
     """
-    if mat == -1:  # TEND: end of tape
+    if mat == -1 and not st.lenient:  # TEND: end of tape
         st.done = True
         return
     if mat > 0 and mf > 0 and mt > 0:  # regular section record(s)
+        if st.lenient and st.cur is not None and mat != st.cur.mat:
+            st.close_material(offset)
         if st.cur is None:
             za, awr = _read_za_awr(head_line)
             # built up field by field as the scan proceeds; byte_length
@@ -289,9 +308,7 @@ def _consume_run(st, mat, mf, mt, offset, length, line_count, head_line):
     elif mat == 0 and mf == 0 and mt == 0:  # MEND: end of material
         st.flush_section()
         if st.cur is not None:
-            st.cur.byte_length = offset + length - st.cur.byte_offset
-            st.materials.append(st.cur)
-            st.cur = None
+            st.close_material(offset + length)
     else:  # FEND (mat > 0, mf == 0, mt == 0), or any other record
         # a section cannot continue across such a record
         st.flush_section()

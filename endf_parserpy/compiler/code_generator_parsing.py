@@ -487,6 +487,20 @@ def generate_master_parsefun(name, recipefuns):
     sec_prep_code += cpp.statement("cont.seekg(curpos)")
     sec_prep_code += cpp.pureif("mt != 0", cpp.statement("is_firstline = false"))
 
+    # with ignore_send_records, a SEND record may also be outside a
+    # section (e.g. a second one); it is checked as a SEND record
+    conditions.append(
+        cpp.logical_and(
+            [
+                "parse_opts.ignore_send_records",
+                "mf != 0",
+                "mt == 0",
+                "cpp_is_send_record(cpp_line, parse_opts)",
+            ]
+        )
+    )
+    statements.append(cpp.line("// skipped"))
+
     for mf, mfdic in recipefuns.items():
         if isinstance(mfdic, str):
             varname = _mf_mt_dict_varname(mf, None)
@@ -531,14 +545,16 @@ def generate_master_parsefun(name, recipefuns):
     statements.append(curstat)
     conditions.append(curcond)
 
-    # tend record treatment
-    # (also as the first line, which is only possible with
+    # tend record treatment; with ignore_send_records, the TEND, MEND and
+    # FEND records may be anywhere outside the sections
+    # (a TEND record also as the first line, which is only possible with
     # ignore_missing_tpid, see above: a section after it is an error, as
     # after any TEND record, and the result is empty without one, as in
     # EndfParserPy)
+    position_ok = "parse_opts.ignore_send_records"
     curcond = cpp.logical_and(
         [
-            cpp.logical_or(["after_mend == true", "is_firstline"]),
+            cpp.logical_or(["after_mend == true", "is_firstline", position_ok]),
             aux.is_tend("parse_opts"),
         ]
     )
@@ -547,7 +563,9 @@ def generate_master_parsefun(name, recipefuns):
     conditions.append(curcond)
     statements.append(curstat)
     # mend record treatment
-    curcond = cpp.logical_and(["after_fend == true", aux.is_mend("parse_opts")])
+    curcond = cpp.logical_and(
+        [cpp.logical_or(["after_fend == true", position_ok]), aux.is_mend("parse_opts")]
+    )
     curstat = cpp.statement("after_fend = false")
     curstat += cpp.statement("after_mend = true")
     conditions.append(curcond)

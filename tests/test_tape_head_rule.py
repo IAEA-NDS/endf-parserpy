@@ -82,23 +82,10 @@ def _outcome(parser, text, kwargs):
         return "error", exc
 
 
-# A first line with MF=0, MT=0 and a negative MAT number but text in its
-# fields: with ignore_send_records, EndfParserPy does not look at end
-# records, while EndfParserCpp reads the fields of a line with MF=0 and
-# MT=0 as numbers to determine whether it is an end record, as for any
-# line with these numbers.
-_CPP_READS_TEND_FIELDS = {
-    ("mat_negative_text", "ignore_tpid_send"),
-    ("mat_negative_2", "ignore_tpid_send"),
-}
-
-
 @pytest.mark.parametrize("filt", sorted(FILTERS))
 @pytest.mark.parametrize("opts", sorted(OPTIONS))
 @pytest.mark.parametrize("variant", sorted(VARIANTS))
 def test_both_parsers_agree(variant, opts, filt):
-    if (variant, opts) in _CPP_READS_TEND_FIELDS:
-        pytest.skip("EndfParserPy does not read end records here")
     text = _text(VARIANTS[variant])
     kwargs = FILTERS[filt]
     res_cpp = _outcome(EndfParserCpp(**OPTIONS[opts]), text, kwargs)

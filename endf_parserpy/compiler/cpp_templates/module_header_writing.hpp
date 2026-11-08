@@ -651,18 +651,22 @@ inline std::string float2endfstr_decimal_helper(
   ss2 << std::fixed << std::setprecision(prec) << value;
   // strip insignificant trailing zeros for compatibility with Python output
   std::string sout = ss2.str();
-  commapos = numstr.find('.');
-  if (commapos != std::string::npos) {
-    int last_nonzero_pos = sout.substr(commapos).find_last_not_of('0');
-    sout.erase(commapos + last_nonzero_pos + 1);
+  // The decimal point of sout, not of numstr: without decimals (prec 0)
+  // sout has none, e.g. 1000000000 for 999999999.5, and a carry of the
+  // rounding into a new integer digit (9.99... to 10.0...) moves it.
+  size_t soutpointpos = sout.find('.');
+  if (soutpointpos != std::string::npos) {
+    // strip trailing zeros; at most up to the decimal point, which is kept
+    // if all decimals are zero and removed below
+    sout.erase(sout.find_last_not_of('0') + 1);
     if (sout.back() == '.') {
       sout.pop_back();
     } else if (is_intzero_case) {
       // strip unnecessary integer zero
-      if (numstr[commapos-1] != '0') {
+      if (sout[soutpointpos-1] != '0') {
         throw std::runtime_error("integer zero matching failed");
       }
-      sout.erase(commapos-1, 1);
+      sout.erase(soutpointpos-1, 1);
     }
   }
   if (! write_opts.abuse_signpos && value >= 0) {

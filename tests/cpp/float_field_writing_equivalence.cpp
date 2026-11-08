@@ -37,7 +37,13 @@
 // WRITER. They are verbatim copies of the iostream based conversion of
 // module_header_writing.hpp (normalize_exponent, get_scientific_numstr,
 // is_carried_mantissa, float2endfstr_helper, float2endfstr_decimal_helper,
-// float2endfstr; only the names differ).
+// float2endfstr; only the names differ). The one exception is the test
+// for the integer zero in ref_float2endfstr_decimal_helper: the copy had
+// static_cast<int>(value) == 0, which is undefined behaviour for
+// |value| >= 2^31 (reached with prefer_noexp and skip_intzero, e.g. for
+// 1e11); it is replaced by the equivalent std::fabs(value) < 1.0, as in
+// the writer. For the values where the cast is defined, both are true
+// exactly for -1 < value < 1.
 
 inline void ref_normalize_exponent(std::string& numstr) {
   size_t strsize = numstr.size();
@@ -127,7 +133,7 @@ inline std::string ref_float2endfstr_decimal_helper(
     throw std::runtime_error("error occured while converting float to string");
   }
   bool is_intzero_case = (
-    write_opts.skip_intzero && static_cast<int>(value) == 0
+    write_opts.skip_intzero && std::fabs(value) < 1.0
   );
   int prec = width - commapos - 1;
   if (value >= 0 && ! write_opts.abuse_signpos) {

@@ -500,7 +500,13 @@ def test_ignore_send_records(name, tmp_path):
     lines, line, text = CU_CASES[name]
     path = _write(tmp_path / "bad.endf", lines)
     problems = check_framing(path, ignore_send_records=True)
-    if name in _KEPT_WITH_IGNORE_SEND or name.startswith("blank_"):
+    # also blank lines and a section occurring twice (the order of the
+    # sections) remain problems
+    if (
+        name in _KEPT_WITH_IGNORE_SEND
+        or name.startswith("blank_")
+        or (name == "section_twice")
+    ):
         assert [(p.line, text in p.message) for p in problems] == [(line, True)]
     else:
         assert problems == []
@@ -649,6 +655,10 @@ def _pu_cases():
         "blank_before_tpid": [b""] + L,
         "section_twice": _duplicate_first_section(L, 1),
         "sections_descending": _swap_first_sections(L, 1),
+        # the order of the sections: MF8 before MF1, MF1 divided by a
+        # FEND record (MF1 after its FEND record)
+        "mf_descending": L[:1] + L[F + 1 : F2 + 1] + L[1 : F + 1] + L[F2 + 1 :],
+        "mf_split_by_fend": _insert(L, S + 1, L[F]),
     }
     return cases
 

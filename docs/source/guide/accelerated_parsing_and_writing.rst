@@ -112,7 +112,14 @@ functions of a tier use its instructions, which are executed only if the
 processor and the operating system support them. The ``neon`` tier is
 built on 64-bit ARM (AArch64) with GCC, Clang and MSVC (Linux, macOS,
 Windows); NEON is part of the baseline instruction set there, so this
-tier is always supported. With the Microsoft compiler (MSVC) on x86-64
+tier is always supported. If the modules are compiled with GCC (e.g. the
+Linux wheels and most installations from source under Linux), the
+``neon`` tier is built but not chosen automatically, only if it is
+requested: on a Neoverse N2 processor, parsing with it compiled by GCC
+13 was a few percent slower than with the ``scalar`` tier, while the
+same code compiled by Clang was 10–13% faster than the scalar tier
+(``array_type="numpy"``). Modules compiled with Clang (also Apple
+Clang) or MSVC choose ``neon``. With the Microsoft compiler (MSVC) on x86-64
 and on other architectures (e.g. 32-bit ARM), only the scalar tier is
 built.
 The vector tiers need GCC 8 or later, Clang 8 or later (Apple Clang 11
@@ -135,9 +142,10 @@ created in a Python process), selects the form and the tier of the row
 kernel:
 
 - ``auto`` (the default, also if the variable is unset or empty): the
-  bulk form with the fastest vector tier supported by the processor, or
-  with the scalar row kernel if there is none (then only for the LIST
-  bodies with a regular layout);
+  bulk form with the fastest vector tier supported by the processor (not
+  ``neon`` in modules compiled with GCC, see above), or with the scalar
+  row kernel if there is none (then only for the LIST bodies with a
+  regular layout);
 - ``off``: the per-field form, as in versions without the bulk form; for
   diagnosis and comparisons;
 - ``scalar``: the bulk form with the scalar row kernel, the conversion
@@ -161,8 +169,9 @@ selected tier (``selected``: ``avx512``, ``avx2``, ``neon``,
 ``scalar`` or ``off``), the name and the value of the variable (``variable``,
 ``requested``), the reason why a requested tier is not used
 (``warning``), for each tier whether it is built, supported by the
-processor and a vector tier (``tiers``), the detected processor features
-(``cpu``), the number of lines converted by the scalar tier
+processor, a vector tier and chosen by ``auto`` if available
+(``tiers``), the detected processor features (``cpu``), the compiler of
+the module (``compiler``: ``gcc``, ``clang``, ``msvc`` or ``other``), the number of lines converted by the scalar tier
 (``scalar_kernel_lines``), whether all LIST bodies
 with a loop are read in the bulk form (``bulk_all_list_bodies``) and the
 numbers of LIST bodies read in the bulk form (``bulk_list_bodies``:

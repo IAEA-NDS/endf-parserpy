@@ -3504,8 +3504,10 @@ inline py::list read_section_verbatim(
   while (! cont.eof()) {
     // the MF/MT numbers of every line are checked below
     cpp_read_line(line, cont, mat, mf, mt, parse_opts, &content_size, false);
-    curmf = std::stoi(line.substr(70, 2));
-    curmt = std::stoi(line.substr(72, 3));
+    // a blank MF/MT field (e.g. of a tape header) reads as zero, as in
+    // EndfParserPy and everywhere else in this parser
+    curmf = cpp_read_mf_number(line.data());
+    curmt = cpp_read_mt_number(line.data());
     if (curmf != mf || curmt != mt) break;
     // the line as read (without the blanks added to a short line), with
     // the newline for compatibility with the Python parser

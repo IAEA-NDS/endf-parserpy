@@ -595,16 +595,296 @@ def _floats(obj):
     return [repr(obj)] if isinstance(obj, float) else []
 
 
-@pytest.mark.parametrize("token", ["NaN", "nan", "Inf", "-Inf", "inf", "infinity"])
-def test_float_field_nan_inf_accepted_by_both(token):
-    # non-finite values are written as "NaN", "Inf" and "-Inf" and read
-    # back with the default accept_nan_inf=True (unchanged)
-    i, fieldnum = FLOAT_FIELDS["list_last"]
-    text = _with_field(i, fieldnum, token.rjust(11))
-    cpp, py = _parsers("list")
-    values = [_floats(parser.parse(text)[8][457]) for parser in (cpp, py)]
-    assert values[0] == values[1]
-    assert repr(float(token)) in values[0]
+# NaN and Inf: the spellings that float() of EndfParserPy and std::strtod
+# of EndfParserCpp both read (in any case, with an optional sign); the
+# writer emits "NaN", "Inf" and "-Inf" for non-finite values
+NAN_INF_TOKENS = [
+    "NaN",
+    "nan",
+    "NAN",
+    "nAn",
+    "-nan",
+    "+NaN",
+    "Inf",
+    "inf",
+    "INF",
+    "-Inf",
+    "-inf",
+    "+inf",
+    "infinity",
+    "Infinity",
+    "INFINITY",
+    "-infinity",
+    "+Infinity",
+    "iNfInItY",
+]
+
+# NaN and Inf with blanks inside: read with accept_spaces=True (the
+# default) by both parsers, rejected by both without it
+NAN_INF_SPACED = ["n a n", "N aN", "- inf", "-in f", "+ Infinity", "inf inity"]
+
+# forms that std::strtod reads but float() does not (hexadecimal numbers
+# and NaN with a payload), and incomplete or extended tokens: rejected by
+# both parsers, with or without accept_nan_inf
+NAN_INF_INVALID = [
+    "0x10",
+    "0X10",
+    "-0x1p3",
+    "0x1p3",
+    "-0X1.8P+1",
+    "0x1.8p1",
+    "0x1A",
+    "0x",
+    "nan(1)",
+    "nan()",
+    "NAN(abc)",
+    "-nan(0x1)",
+    "nan(",
+    "infin",
+    "infinityx",
+    "nann",
+    "in",
+    "na",
+    "inf1",
+    "1inf",
+    "+-inf",
+    "nan+1",
+]
+
+
+def _nan_inf_value(token):
+    # float() of the token without blanks, as repr ("nan", "inf", "-inf")
+    return repr(float(token.replace(" ", "")))
+
+
+@pytest.mark.parametrize("accept_nan_inf", [True, False])
+@pytest.mark.parametrize("token", NAN_INF_TOKENS + NAN_INF_SPACED)
+def test_float_field_nan_inf_by_both(token, accept_nan_inf):
+    # the full matrix: every spelling in every float field, with and
+    # without accept_nan_inf (validate turns it off), for both parsers
+    opts = {"accept_nan_inf": accept_nan_inf}
+    cpp = EndfParserCpp(array_type="list", **opts)
+    py = EndfParserPy(array_type="list", **opts)
+    for key in sorted(FLOAT_FIELDS):
+        i, fieldnum = FLOAT_FIELDS[key]
+        for text in (token.rjust(11), token.ljust(11), token.center(11)):
+            damaged = _with_field(i, fieldnum, text)
+            if accept_nan_inf:
+                values = [_floats(parser.parse(damaged)) for parser in (cpp, py)]
+                assert values[0] == values[1], (key, text)
+                assert _nan_inf_value(token) in values[0], (key, text)
+            else:
+                msg = _cpp_parse_error(cpp, damaged)
+                assert msg.startswith("non-finite value"), (key, text, msg)
+                with pytest.raises(InvalidFloatError, match="non-finite value"):
+                    py.parse(damaged)
+
+
+@pytest.mark.parametrize("token", NAN_INF_SPACED)
+def test_float_field_nan_inf_with_blanks_needs_accept_spaces(token):
+    opts = {"accept_spaces": False}
+    cpp = EndfParserCpp(**opts)
+    py = EndfParserPy(**opts)
+    for key in sorted(FLOAT_FIELDS):
+        i, fieldnum = FLOAT_FIELDS[key]
+        damaged = _with_field(i, fieldnum, token.rjust(11))
+        msg = _cpp_parse_error(cpp, damaged)
+        assert msg.startswith("encountered number with spaces"), (key, msg)
+        with pytest.raises(InvalidFloatError):
+            py.parse(damaged)
+
+
+@pytest.mark.parametrize("accept_nan_inf", [True, False])
+@pytest.mark.parametrize("token", NAN_INF_INVALID)
+def test_float_field_hex_and_nan_payload_rejected_by_both(token, accept_nan_inf):
+    # std::strtod read "0x10" as 16, "0x1p3" as 8 and "nan(1)" as NaN in
+    # the general code path of EndfParserCpp; float() rejects them
+    opts = {"accept_nan_inf": accept_nan_inf}
+    cpp = EndfParserCpp(**opts)
+    py = EndfParserPy(**opts)
+    for key in sorted(FLOAT_FIELDS):
+        i, fieldnum = FLOAT_FIELDS[key]
+        for text in (token.rjust(11), token.ljust(11)):
+            damaged = _with_field(i, fieldnum, text)
+            msg = _cpp_parse_error(cpp, damaged)
+            assert msg.startswith("malformed number field: "), (key, text, msg)
+            with pytest.raises(InvalidFloatError):
+                py.parse(damaged)
+
+
+@pytest.mark.parametrize("atype", ["dict", "numpy"])
+def test_float_field_hex_rejected_also_in_the_bulk_form(atype):
+    # every value of the LIST body in a hexadecimal form: the row kernels
+    # leave such fields to the general code path
+    i, _ = FLOAT_FIELDS["list_first"]
+    cpp, py = _parsers(atype)
+    for fieldnum in range(6):
+        damaged = _with_field(i, fieldnum, "0x1p3".rjust(11))
+        assert _cpp_parse_error(cpp, damaged).startswith("malformed number field: ")
+        with pytest.raises(InvalidFloatError):
+            py.parse(damaged)
+
+
+# integer fields: float forms of the NBT/INT values of TAB1 and TAB2
+# records (EndfParserPy read them as floats and converted them to int)
+
+
+def _float_forms_of_int(value):
+    v = str(value)
+    forms = [
+        v + ".000000+0",
+        v + ".0",
+        v + ".",
+        v + "e0",
+        v + ".0E+0",
+        v + "D0",
+        v + ".00000-0",
+        "0." + v + "+1",
+        "nan",
+        "inf",
+    ]
+    return [f.rjust(11) for f in forms] + [(" " + v + ".0").ljust(11)]
+
+
+# MF4/MT2 of Cu-63: a TAB2 record (NR=1, NE=22) followed by its
+# interpolation table "22 2" in the next line
+CU63_LINES = (TESTDATA / "n_2925_29-Cu-63.endf").read_text().splitlines()
+CU63_TAB2_BODY = next(
+    i for i, line in enumerate(CU63_LINES) if line[66:80] == "2925 4  2    4"
+)
+TAB2_FIELDS = {"tab2_NBT": 0, "tab2_INT": 1}
+
+
+def _cu63_with_field(fieldnum, text):
+    assert len(text) == 11
+    lines = list(CU63_LINES)
+    line = lines[CU63_TAB2_BODY]
+    lines[CU63_TAB2_BODY] = line[: 11 * fieldnum] + text + line[11 * fieldnum + 11 :]
+    return _text(lines)
+
+
+def test_tab2_body_line():
+    line = CU63_LINES[CU63_TAB2_BODY]
+    assert CU63_LINES[CU63_TAB2_BODY - 1][44:66].split() == ["1", "22"]
+    assert line[:22].split() == ["22", "2"]
+
+
+@pytest.mark.parametrize("key", ["tab1_NBT", "tab1_INT"])
+def test_tab1_interpolation_table_float_forms_rejected_by_both(key):
+    i, fieldnum = INT_FIELDS[key]
+    value = int(_field_text(i, fieldnum))
+    cpp, py = _parsers()
+    for text in _float_forms_of_int(value):
+        damaged = _with_field(i, fieldnum, text)
+        msg = _cpp_parse_error(cpp, damaged)
+        assert msg.startswith("invalid integer in field: "), (text, msg)
+        with pytest.raises(InvalidIntegerError, match="invalid integer field"):
+            py.parse(damaged)
+
+
+@pytest.mark.parametrize("key", sorted(TAB2_FIELDS))
+def test_tab2_interpolation_table_float_forms_rejected_by_both(key):
+    fieldnum = TAB2_FIELDS[key]
+    value = int(CU63_LINES[CU63_TAB2_BODY][11 * fieldnum : 11 * fieldnum + 11])
+    cpp, py = _parsers()
+    for text in _float_forms_of_int(value):
+        damaged = _cu63_with_field(fieldnum, text)
+        msg = _cpp_parse_error(cpp, damaged, include=[(4, 2)])
+        assert msg.startswith("invalid integer in field: "), (text, msg)
+        with pytest.raises(InvalidIntegerError, match="invalid integer field"):
+            py.parse(damaged, include=[(4, 2)])
+
+
+@pytest.mark.parametrize("atype", ["dict", "numpy"])
+@pytest.mark.parametrize("key", sorted(TAB2_FIELDS))
+def test_tab2_interpolation_table_valid_forms_accepted_by_both(key, atype):
+    fieldnum = TAB2_FIELDS[key]
+    value = CU63_LINES[CU63_TAB2_BODY][11 * fieldnum : 11 * fieldnum + 11].strip()
+    cpp, py = _parsers(atype)
+    reference = cpp.parse(_text(CU63_LINES), include=[(4, 2)])
+    forms = [
+        value.rjust(11),
+        value.ljust(11),
+        value.zfill(11),
+        (" +" + value).ljust(11),
+    ]
+    for text in forms:
+        damaged = _cu63_with_field(fieldnum, text)
+        res_cpp = cpp.parse(damaged, include=[(4, 2)])
+        assert compare_objects(res_cpp, reference, fail_on_diff=False), text
+        res_py = py.parse(damaged, include=[(4, 2)])
+        assert compare_objects(res_py, res_cpp, fail_on_diff=False), text
+
+
+# integer fields outside the range of a 32-bit signed integer, which
+# EndfParserCpp reads as int; an 11-column field holds up to 10 digits and
+# a sign
+
+OUT_OF_RANGE = [
+    "2147483648",
+    "+2147483648",
+    "-2147483649",
+    "9999999999",
+    "-9999999999",
+    "99999999999",
+    "02147483648",
+    "4294967296",
+]
+
+
+@pytest.mark.parametrize("key", sorted(INT_FIELDS))
+def test_int_field_out_of_range_rejected_by_both(key):
+    i, fieldnum = INT_FIELDS[key]
+    cpp, py = _parsers()
+    for number in OUT_OF_RANGE:
+        for text in (number.rjust(11), number.ljust(11)):
+            damaged = _with_field(i, fieldnum, text)
+            msg = _cpp_parse_error(cpp, damaged)
+            assert msg.startswith("invalid integer in field: "), (text, msg)
+            with pytest.raises(InvalidIntegerError, match="outside the range"):
+                py.parse(damaged)
+
+
+# fields whose value is not used further by the recipe of MF8/MT457: LIS
+# and LISO of its HEAD record (line index, field)
+RANGE_LIMIT_FIELDS = {"head_L1": (IDX["head"], 2), "head_L2": (IDX["head"], 3)}
+
+
+@pytest.mark.parametrize("atype", ["dict", "numpy"])
+@pytest.mark.parametrize("key", sorted(RANGE_LIMIT_FIELDS))
+@pytest.mark.parametrize(
+    "number", ["2147483647", "-2147483648", "+2147483647", "02147483647", "999999999"]
+)
+def test_int_field_range_limits_accepted_by_both(key, number, atype):
+    i, fieldnum = RANGE_LIMIT_FIELDS[key]
+    cpp, py = _parsers(atype)
+    for text in (number.rjust(11), number.ljust(11)):
+        damaged = _with_field(i, fieldnum, text)
+        res_cpp = cpp.parse(damaged)
+        res_py = py.parse(damaged)
+        assert compare_objects(res_py, res_cpp, fail_on_diff=False), text
+        assert int(number) in _ints(res_cpp[8][457])
+
+
+def _ints(obj):
+    if isinstance(obj, dict):
+        return [r for v in obj.values() for r in _ints(v)]
+    if isinstance(obj, (list, tuple)):
+        return [r for v in obj for r in _ints(v)]
+    return [int(obj)] if isinstance(obj, int) else []
+
+
+def test_read_fort_int_range():
+    from endf_parserpy.interpreter.fortran_utils import read_fort_int
+
+    assert read_fort_int("2147483647") == 2**31 - 1
+    assert read_fort_int(" -2147483648") == -(2**31)
+    assert read_fort_int("00000000005") == 5
+    assert read_fort_int("-0000000005") == -5
+    assert read_fort_int(" 999999999\n") == 999999999
+    for text in ("2147483648", "-2147483649", "9999999999 ", "99999999999"):
+        with pytest.raises(InvalidIntegerError, match="outside the range"):
+            read_fort_int(text)
 
 
 # a section given as a list of lines when writing

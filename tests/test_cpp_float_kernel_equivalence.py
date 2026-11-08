@@ -82,7 +82,9 @@ TEST_SOURCE = Path(__file__).parent / "cpp" / "float_kernel_equivalence.cpp"
 TEMPLATE = Path(cpp_templates.__file__).parent / "module_header_reading.hpp"
 
 KERNEL_START = (
-    "// Exact conversion of mant * 10^k for decimal exponents k below -22, the"
+    "#if defined(_MSC_VER) && ! defined(__clang__)"
+    " && (defined(_M_X64) || defined(_M_ARM64)) && ! defined(_M_ARM64EC)\n"
+    "#include <intrin.h>\n"
 )
 KERNEL_FUNCTION = "inline bool cpp_fast_field_to_double("
 ROW_START = "// Row kernels: the float fields of a line converted in one call."
@@ -103,8 +105,10 @@ def _find_compiler():
 
 
 def _extract_kernel():
-    # the code from cpp_decimal_to_double_negexp (with its table and helpers)
-    # to the end of cpp_fast_field_to_double, as it is in the template
+    # the code from the helpers of cpp_decimal_to_double_negexp (the
+    # include of <intrin.h> for MSVC, CPP_DECIMAL_NOINLINE, the 128-bit
+    # product and the leading zeros) to the end of cpp_fast_field_to_double,
+    # as it is in the template
     text = TEMPLATE.read_text()
     start = text.find(KERNEL_START)
     func = text.find(KERNEL_FUNCTION)

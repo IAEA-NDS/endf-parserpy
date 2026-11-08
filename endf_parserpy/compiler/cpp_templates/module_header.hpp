@@ -220,10 +220,18 @@ inline int cpp_to_integer(const EndfRational& x) {
 inline int cpp_to_integer(double x) {
   double rounded = std::round(x);
   double tolerance = std::max(1e-6, 1e-12 * std::fabs(x));
-  if (std::fabs(x - rounded) > tolerance) {
+  // (also for NaN and infinite values)
+  if (! (std::fabs(x - rounded) <= tolerance)) {
     std::ostringstream oss;
     oss << std::setprecision(17) << x;
     throw std::runtime_error("the value " + oss.str() + " is not an integer");
+  }
+  // the conversion of a double outside the range of int is undefined
+  if (! (rounded >= INT_MIN && rounded <= INT_MAX)) {
+    std::ostringstream oss;
+    oss << std::setprecision(17) << x;
+    throw std::runtime_error(
+      "the value " + oss.str() + " exceeds the range of an integer");
   }
   return static_cast<int>(rounded);
 }
@@ -236,12 +244,20 @@ inline int cpp_to_integer(const EndfFloatCpp& x) {
 
 // Lenient conversion to an integer, used for the solution of a field
 // equation within a lookahead: the records are only read there to decide
-// whether a branch applies, so the value need not be an integer.
+// whether a branch applies, so the value need not be an integer. A value
+// outside the range of int (whose conversion to int would be undefined)
+// gives the nearest bound, NaN gives 0.
 
 inline int cpp_round_to_int(int x) { return x; }
-inline int cpp_round_to_int(double x) { return static_cast<int>(std::round(x)); }
+inline int cpp_round_to_int(double x) {
+  double rounded = std::round(x);
+  if (rounded >= INT_MAX) return INT_MAX;
+  if (rounded <= INT_MIN) return INT_MIN;
+  if (rounded != rounded) return 0;
+  return static_cast<int>(rounded);
+}
 inline int cpp_round_to_int(const EndfRational& x) {
-  return static_cast<int>(std::round(static_cast<double>(x)));
+  return cpp_round_to_int(static_cast<double>(x));
 }
 
 

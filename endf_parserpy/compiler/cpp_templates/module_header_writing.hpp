@@ -631,8 +631,10 @@ inline std::string float2endfstr_decimal_helper(
   if (commapos == std::string::npos) {
     throw std::runtime_error("error occured while converting float to string");
   }
+  // the integer part is zero; a magnitude test, as the conversion of a
+  // double outside the range of int to int is undefined behaviour
   bool is_intzero_case = (
-    write_opts.skip_intzero && static_cast<int>(value) == 0
+    write_opts.skip_intzero && std::fabs(value) < 1.0
   );
   int prec = width - commapos - 1;
   if (value >= 0 && ! write_opts.abuse_signpos) {

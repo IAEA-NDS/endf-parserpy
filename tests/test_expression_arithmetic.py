@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/13
-# Last modified:   2026/10/13
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -206,6 +206,15 @@ def test_writing_non_integer_into_integer_field_rejected(ParserCls, mt, variable
     parser = _make_parser(ParserCls)
     with pytest.raises(Exception):
         parser.write(_section_dict(mt, **variables))
+
+
+@pytest.mark.parametrize("x", [1e11, -1e11, 1e300, float("inf"), float("nan")])
+def test_cpp_writing_integer_outside_int_range_rejected(x):
+    # 2*(X/4) does not fit into the 32-bit integers of EndfParserCpp (or
+    # is not a number); its conversion to int must not be attempted
+    parser = _make_parser(EndfParserCpp)
+    with pytest.raises(RuntimeError):
+        parser.write(_section_dict(20, X=x))
 
 
 @pytest.mark.parametrize("ParserCls", PARSER_CLASSES)

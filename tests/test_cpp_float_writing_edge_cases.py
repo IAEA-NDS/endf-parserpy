@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/20
-# Last modified:   2026/11/04
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -92,6 +92,10 @@ def _test_values():
     for exponent in range(-25, 25):
         for m in (9.9999995, 9.99999949, 9.999995, 9.9999949, 9.99999995):
             values.append(m * 10.0**exponent)
+    # magnitudes around the range of a 32-bit integer and around 1, where
+    # skip_intzero decides whether the integer part is zero
+    values += [2.0**31 - 0.5, 2.0**31, 2.0**31 + 1, 3.0e9, 1.0e11, 1.0e15]
+    values += [0.9999999, 0.999999999, 1.0, 1.0000001]
     values = [v for v in values if v != 0]
     return values + [-v for v in values]
 

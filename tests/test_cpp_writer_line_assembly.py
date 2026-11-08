@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/25
-# Last modified:   2026/11/04
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -17,7 +17,8 @@ which becomes the string returned by write() or the content of the file
 of writefile(). The tests compare the output with that of EndfParserPy
 for LIST and TAB1 records of various lengths, with and without line
 numbers, including the wrap of the line number after 99999, sections
-given as lists of lines, and the bytes of the file written by writefile().
+given as lists of lines, and the bytes of the file written by writefile()
+and by the C++ function that writes the file.
 """
 
 import pytest
@@ -155,9 +156,10 @@ def test_writefile_bytes_equal_write_output(tmp_path, include_linenum):
     assert content == "\n".join(lines).encode("latin-1")
 
 
-def test_writefile_keeps_lines_written_before_an_error(tmp_path):
-    # the lines written before an exception are in the file, as when the
-    # output went directly to the file stream
+def test_file_writing_keeps_lines_written_before_an_error(tmp_path):
+    # the lines written before an exception are in the file written by the
+    # C++ function, as when the output went directly to the file stream;
+    # writefile, which lets it write a temporary file, then leaves no file
     good = _mf3_tab1(3 * 50000)
     bad = _mf3_tab1(5, mt=2)
     bad["xstable"]["xs"] = bad["xstable"]["xs"][:4]
@@ -166,6 +168,9 @@ def test_writefile_keeps_lines_written_before_an_error(tmp_path):
     filename = tmp_path / "out.endf"
     with pytest.raises(Exception):
         parser.writefile(filename, tape)
+    assert not filename.exists()
+    with pytest.raises(Exception):
+        parser._write_endf_file(str(filename), tape, None, None, parser.write_opts)
     content = filename.read_bytes().decode("latin-1")
     expected = parser.write(_tape([good]))
     # lines of the first section with its SEND record, and the HEAD record

@@ -1790,7 +1790,13 @@ enum {
 };
 
 // tables of the NEON kernel (constant-initialized, shared by the
-// translation units of a module)
+// translation units of a module). The table object is not declared const,
+// so that the compiler loads the vectors from it instead of folding them
+// into constants: GCC at -O1 (the optimization level of the module
+// builds) turns each use of a folded vector into a load from the
+// constant pool with its own address computation, inside the loop of
+// cpp_list_convert_neon (about 35 instructions per line). The kernel
+// never writes to the table.
 struct cpp_row_neon_tables {
   // index 44 * (first character is '-') + k + 22
   alignas(16) double pow[88][4];
@@ -1815,10 +1821,16 @@ struct cpp_row_neon_tables {
   // layouts A and B of each field, see cpp_row_neon_fast)
   alignas(16) std::uint8_t bit8[16];
   alignas(16) std::uint16_t bit16[8];
+  // the multipliers that combine digits into pairs, four and eight
+  // digits (cpp_row_neon_mant; mul8 also for the exponents), here
+  // rather than as vector literals for the same reason
+  alignas(16) std::uint8_t mul8[16];
+  alignas(16) std::uint16_t mul16[8];
+  alignas(16) std::uint32_t mul32[4];
 };
 
 inline const cpp_row_neon_tables& cpp_row_neon_tab() {
-  static const cpp_row_neon_tables tab = {
+  static cpp_row_neon_tables tab = {
     {CPP_ROW_NEON_POW(0.0), CPP_ROW_NEON_POW(-0.0)},
     {
       CPP_ROW_N_ANY | CPP_ROW_N_D | CPP_ROW_N_B, CPP_ROW_N_ANY | CPP_ROW_N_D,
@@ -1859,7 +1871,10 @@ inline const cpp_row_neon_tables& cpp_row_neon_tab() {
       {0xFF, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
     },
     {1, 2, 4, 8, 16, 32, 1, 2, 4, 8, 16, 32, 0, 0, 0, 0},
-    {1, 2, 4, 8, 16, 32, 0, 0}
+    {1, 2, 4, 8, 16, 32, 0, 0},
+    {10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1},
+    {100, 1, 100, 1, 100, 1, 100, 1},
+    {10000, 1, 10000, 1}
   };
   return tab;
 }
@@ -1881,18 +1896,18 @@ CPP_ROW_INLINE_NEON void cpp_row_neon_class(
 }
 
 // the digits of fa and fb gathered by i0 and i1 (see idx_m0, idx_m1) as
-// two integers, converted to doubles
+// two integers, converted to doubles (c8, c16, c32: mul8, mul16, mul32)
 CPP_ROW_INLINE_NEON float64x2_t cpp_row_neon_mant(
-  uint8x16_t fa, uint8x16_t fb, uint8x16_t i0, uint8x16_t i1
+  uint8x16_t fa, uint8x16_t fb, uint8x16_t i0, uint8x16_t i1,
+  uint8x16_t c8, uint16x8_t c16, uint32x4_t c32
 ) {
   uint8x16_t g = vsubq_u8(vqtbx1q_u8(vqtbl1q_u8(fa, i0), fb, i1), vdupq_n_u8('0'));
   // bytes that are not digits (byte 8 of layout B, the lane start) as 0
   g = vandq_u8(g, vcltq_u8(g, vdupq_n_u8(10)));
   // pairs of digits, then four digits, then eight
-  const uint16x8_t d2 = vpaddlq_u8(vmulq_u8(g, vreinterpretq_u8_u16(vdupq_n_u16(0x010A))));
-  const uint32x4_t d4 = vpaddlq_u16(vmulq_u16(d2, vreinterpretq_u16_u32(vdupq_n_u32(0x00010064u))));
-  const uint64x2_t d8 = vpaddlq_u32(
-    vmulq_u32(d4, vreinterpretq_u32_u64(vdupq_n_u64(0x0000000100002710ULL))));
+  const uint16x8_t d2 = vpaddlq_u8(vmulq_u8(g, c8));
+  const uint32x4_t d4 = vpaddlq_u16(vmulq_u16(d2, c16));
+  const uint64x2_t d8 = vpaddlq_u32(vmulq_u32(d4, c32));
   return vcvtq_f64_u64(d8);
 }
 
@@ -1925,6 +1940,10 @@ CPP_ROW_INLINE_NEON unsigned cpp_row_neon_fast(const char* s, double* out) {
   // the layouts
   const uint8x16_t lo = vld1q_u8(T.lo), hi = vld1q_u8(T.hi);
   const uint8x16_t pat_a = vld1q_u8(T.pat_a), pat_b = vld1q_u8(T.pat_b);
+  // the multipliers, loaded once (the stores to out may alias the table)
+  const uint8x16_t c8 = vld1q_u8(T.mul8);
+  const uint16x8_t c16 = vld1q_u16(T.mul16);
+  const uint32x4_t c32 = vld1q_u32(T.mul32);
   uint8x16_t a0, a1, a2, a3, a4, a5, b0, b1, b2, b3, b4, b5;
   cpp_row_neon_class(f0, lo, hi, pat_a, pat_b, a0, b0);
   cpp_row_neon_class(f1, lo, hi, pat_a, pat_b, a1, b1);
@@ -1957,7 +1976,7 @@ CPP_ROW_INLINE_NEON unsigned cpp_row_neon_fast(const char* s, double* out) {
   uint8x16_t ed = vsubq_u8(ee, vdupq_n_u8('0'));
   ed = vandq_u8(ed, vcltq_u8(ed, vdupq_n_u8(10)));
   const int16x8_t e = vreinterpretq_s16_u16(
-    vpaddlq_u8(vmulq_u8(ed, vreinterpretq_u8_u16(vdupq_n_u16(0x010A)))));
+    vpaddlq_u8(vmulq_u8(ed, c8)));
   // signs: exponent negative if byte 8 or 9 is '-', value if byte 0 is
   const uint16x8_t m9 = vreinterpretq_u16_u8(vceqq_u8(ee, vdupq_n_u8('-')));
   const uint16x8_t m80 = vreinterpretq_u16_u8(vceqq_u8(es, vdupq_n_u8('-')));
@@ -1975,11 +1994,11 @@ CPP_ROW_INLINE_NEON unsigned cpp_row_neon_fast(const char* s, double* out) {
   const std::uint32_t i45 = vgetq_lane_u32(vreinterpretq_u32_u16(idx), 2);
   // the significands and values
   const uint8x16_t im0 = vld1q_u8(T.idx_m0), im1 = vld1q_u8(T.idx_m1);
-  vst1q_f64(out, cpp_row_neon_fp(cpp_row_neon_mant(f0, f1, im0, im1),
+  vst1q_f64(out, cpp_row_neon_fp(cpp_row_neon_mant(f0, f1, im0, im1, c8, c16, c32),
                                  T.pow[i03 & 0xFFFFu], T.pow[(i03 >> 16) & 0xFFFFu]));
-  vst1q_f64(out + 2, cpp_row_neon_fp(cpp_row_neon_mant(f2, f3, im0, im1),
+  vst1q_f64(out + 2, cpp_row_neon_fp(cpp_row_neon_mant(f2, f3, im0, im1, c8, c16, c32),
                                      T.pow[(i03 >> 32) & 0xFFFFu], T.pow[i03 >> 48]));
-  vst1q_f64(out + 4, cpp_row_neon_fp(cpp_row_neon_mant(f4, f5, im0, im1),
+  vst1q_f64(out + 4, cpp_row_neon_fp(cpp_row_neon_mant(f4, f5, im0, im1, c8, c16, c32),
                                      T.pow[i45 & 0xFFFFu], T.pow[i45 >> 16]));
   return valid & inrange;
 }

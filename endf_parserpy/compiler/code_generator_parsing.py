@@ -436,7 +436,7 @@ def generate_master_parsefun(name, recipefuns):
                 curcond = f"mf == {mf}"
             else:
                 curcond = f"mf == {mf} && mt == {mt}"
-            if mt == 0 and mt == 0:
+            if mf == 0 and mt == 0:
                 curcond = cpp.logical_and([curcond, "is_firstline"])
                 # in case of MF=0/MT=0, we want to register that the tpid record has been read
                 section_code += cpp.statement("found_tpid = true")

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/04
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -52,6 +52,20 @@ except ImportError:  # pragma: no cover - numpy is an optional accelerator
 # default read granularity for from_file(); bounds peak memory during
 # indexing to a small multiple of this regardless of the tape size
 _DEFAULT_CHUNK_BYTES = 16 << 20
+
+# The kinds of the records collected by a scan with ``_ScanState.events``
+# (see framing.py): the event ``(kind, offset, line, MAT, MF, MT)`` gives
+# the byte offset of the record, its bytes without the newline (or None
+# for a section event) and its control numbers as read by _control_int.
+# A section event stands for the first record of a run of records of a
+# section (MAT, MF and MT positive) with equal control fields; every
+# other record that is not blank is a record event, and a blank record a
+# blank event. The scan of the index alone collects no events.
+_EV_TPID = 0
+_EV_NO_TPID = 1
+_EV_BLANK = 2
+_EV_SECTION = 3
+_EV_RECORD = 4
 
 
 def _endf_float(field_text):
@@ -183,10 +197,14 @@ class _ScanState:
         "head_done",
         "ignore_missing_tpid",
         "done",
+        "events",
     )
 
-    def __init__(self, ignore_missing_tpid=False):
+    def __init__(self, ignore_missing_tpid=False, events=None):
         self.ignore_missing_tpid = ignore_missing_tpid
+        # a list to which the records that matter for the framing structure
+        # are appended (see framing.py), or None (the index alone)
+        self.events = events
         self.materials = []
         self.cur = None  # the MaterialIndexEntry under construction, or None
         self.sec_key = None  # (MF, MT) of the section under construction
@@ -297,12 +315,18 @@ def _scan_tpid(st, part, offset, byte_length):
             if st.ignore_missing_tpid:
                 st.head_done = True
                 return False
+            if st.events is not None:
+                st.events.append((_EV_NO_TPID, offset, part, mat, mf, mt))
             raise TapeStructureError(
                 "the tape does not begin with a tape head (TPID) "
                 f"record (found MAT={mat}, MF={mf}, MT={mt})"
             )
         st.tpid = (part.rstrip(b"\r").decode("latin-1"), offset, byte_length)
         st.head_done = True
+        if st.events is not None:
+            st.events.append((_EV_TPID, offset, part, mat, mf, mt))
+    elif st.events is not None:
+        st.events.append((_EV_BLANK, offset, part, 0, 0, 0))
     return True
 
 
@@ -324,10 +348,17 @@ def _scan_record(st, part, offset, byte_length):
         st.sec_lines += 1
         return
     if not part.strip():  # blank padding record
+        if st.events is not None:
+            st.events.append((_EV_BLANK, offset, part, 0, 0, 0))
         return
     mat = _control_int(ctrl[0:4])
     mf = _control_int(ctrl[4:6])
     mt = _control_int(ctrl[6:9])
+    if st.events is not None:
+        regular = mat > 0 and mf > 0 and mt > 0
+        st.events.append(
+            (_EV_SECTION if regular else _EV_RECORD, offset, part, mat, mf, mt)
+        )
     _consume_run(st, mat, mf, mt, offset, byte_length, 1, part.decode("latin-1"))
     # only a run of regular section records can be continued; after
     # any framing record the next record restarts
@@ -485,6 +516,8 @@ def _scan_rows(st, buf, pos, num_rows, width, starts, base):
         if mat > 0 and mf > 0 and mt > 0:
             head_line = buf[offset : offset + width].decode("latin-1")
             run_length = (end - start) * width
+            if st.events is not None:
+                st.events.append((_EV_SECTION, base + offset, None, mat, mf, mt))
             _consume_run(
                 st, mat, mf, mt, base + offset, run_length, end - start, head_line
             )
@@ -494,8 +527,13 @@ def _scan_rows(st, buf, pos, num_rows, width, starts, base):
         # them share the control field just parsed
         for row in range(start, end):
             offset = pos + row * width
-            if not buf[offset : offset + width - 1].strip():  # blank record
+            part = buf[offset : offset + width - 1]
+            if not part.strip():  # blank record
+                if st.events is not None:
+                    st.events.append((_EV_BLANK, base + offset, part, 0, 0, 0))
                 continue
+            if st.events is not None:
+                st.events.append((_EV_RECORD, base + offset, part, mat, mf, mt))
             _consume_run(st, mat, mf, mt, base + offset, width, 1, "")
             st.prev_ctrl = None
             if st.done:
@@ -561,6 +599,16 @@ def _scan_file(fh, chunk_bytes, ignore_missing_tpid=False):
     multiple of ``chunk_bytes`` unless a single record is longer.
     """
     st = _ScanState(ignore_missing_tpid)
+    _scan_file_into(st, fh, chunk_bytes)
+    return st.result()
+
+
+def _scan_file_into(st, fh, chunk_bytes):
+    """Apply the records of an open binary tape file to ``st``.
+
+    The scan of :func:`_scan_file`, which ends at the TEND record or at
+    the end of the file; the state is not checked for completeness.
+    """
     base = 0
     read_size = chunk_bytes
     while not st.done:
@@ -585,7 +633,6 @@ def _scan_file(fh, chunk_bytes, ignore_missing_tpid=False):
         base += end
         if end < len(buf):
             fh.seek(base)
-    return st.result()
 
 
 class TapeIndex:
@@ -658,6 +705,16 @@ class TapeIndex:
         path = os.fspath(path)
         with open(path, "rb") as fh:
             materials, tpid = _scan_file(fh, chunk_bytes, ignore_missing_tpid)
+        return cls._from_scan(path, materials, tpid)
+
+    @classmethod
+    def _from_scan(cls, path, materials, tpid):
+        """Build the index of the file ``path`` from the result of its scan.
+
+        ``materials`` and ``tpid`` are the result of :func:`_scan_file`
+        (or of ``_ScanState.result``) for the file, which is still as it
+        was scanned.
+        """
         stat = os.stat(path)
         tpid = tpid if tpid is not None else (None, None, None)
         return cls(

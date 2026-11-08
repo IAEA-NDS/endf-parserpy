@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/17
-# Last modified:   2026/05/17
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -15,7 +15,8 @@ This module is the single home for the *structural* knowledge of the
 ENDF-6 record layout that several tape submodules need:
 
 * the fixed columns of the MAT/MF/MT control fields,
-* parsing those control fields into integers,
+* parsing those control fields into integers (leniently for the
+  index, strictly for the check of the framing records),
 * building synthetic control-only records (FEND/MEND/TEND and the tape
   head), and
 * trimming the framing records (SEND, leading TPID, trailing TEND) off a
@@ -25,6 +26,8 @@ None of this consults an ENDF recipe or interprets a record body, so the
 helpers are cheap and independent of the parsing engine. Centralising
 them here keeps the column layout defined in exactly one place.
 """
+
+import re
 
 
 # The MAT/MF/MT control fields occupy fixed columns of every ENDF
@@ -48,6 +51,27 @@ def _control_int(field):
         return int(field)
     except ValueError:
         return 0
+
+
+# A MAT, MF or MT field as the parsers read it: blank (zero), or an
+# integer with an optional sign and blanks only before and after it
+_STRICT_INT = re.compile(rb" *[+-]?[0-9]+ *")
+
+
+def _strict_control_int(field):
+    """Parse a MAT/MF/MT control field strictly; ``None`` if invalid.
+
+    ``field`` is ``bytes``. A blank field reads as zero; otherwise the
+    field must consist of optional blanks, an optional sign, at least one
+    digit and optional blanks. This is the rule of the parsers for the
+    control fields; unlike :func:`_control_int`, which the structural
+    index uses, non-numeric text is not read as zero.
+    """
+    if _STRICT_INT.fullmatch(field) is not None:
+        return int(field)
+    if field.strip(b" ") == b"":
+        return 0
+    return None
 
 
 def _control_numbers(line):

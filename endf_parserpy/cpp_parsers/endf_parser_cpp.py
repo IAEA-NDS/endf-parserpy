@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/11/04
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -105,8 +105,19 @@ class EndfParserCpp(EndfParserBase):
             complaining. Otherwise, blank lines will lead to parsing failure.
             *(parsing)*
         ignore_send_records: bool
-            If ``True``, the correct positioning of SEND/FEND/MEND/TEND
-            to indicate the end of a section is not checked. *(parsing)*
+            If ``True``, the position of the SEND/FEND/MEND/TEND records,
+            which end the sections, the MFs, the materials and the tape,
+            is not checked: they may be missing or additional, their MAT
+            and MF numbers need not be those of the section or material
+            they end, and the lines after a TEND record are read. Their
+            content is checked as without this option: the fields 1-6
+            (columns 1-66) are zero or blank, the MAT/MF/MT fields are
+            read as those of the other records and, with
+            ``accept_non_ascii=False``, the characters are printable
+            ASCII characters. The
+            sections of a material must still be in ascending order of
+            MF, and of MT within an MF; a material then ends where the
+            MAT number changes. *(parsing)*
         ignore_missing_tpid: bool
             If ``True``, the parser will tolerate a missing TPID
             record at the beginning of the file, and :func:`write` and

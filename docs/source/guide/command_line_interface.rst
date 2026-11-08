@@ -176,14 +176,20 @@ of the whole file are checked once: every section must end with a SEND
 record ``[MAT, MF, 0]`` with the MAT and MF numbers of the section,
 every MF of a material with a FEND record ``[MAT, 0, 0]``, every
 material with a MEND record ``[0, 0, 0]``, and the file with a TEND
-record ``[-1, 0, 0]``, after which only blank lines may follow. A
-section must not occur twice in a material, the MAT/MF/MT fields of
-these records must be blank or hold an integer, and their columns 1-66
-must be zero or blank. The sequence numbers (columns 76-80) and the
-order of the sections are not checked. The flags ``ignore_send_records``
-(the position and the MAT/MF/MT numbers of these records are not
-checked), ``ignore_blank_lines``, ``ignore_missing_tpid`` and
-``accept_non_ascii`` relax this check as they relax the parsing. A problem is reported with
+record ``[-1, 0, 0]``, after which only blank lines may follow. The
+sections of a material must be in ascending order of MF, and of MT
+within an MF (so that a section does not occur twice), and an MF ends
+with its FEND record. The MAT/MF/MT fields of these records must be
+blank or hold an integer, and their columns 1-66 must be zero or blank.
+The sequence numbers (columns 76-80) are not checked. The flags
+``ignore_send_records``, ``ignore_blank_lines``, ``ignore_missing_tpid``
+and ``accept_non_ascii`` relax this check as they relax the parsing.
+With ``ignore_send_records``, the position and the MAT/MF numbers of
+the SEND, FEND, MEND and TEND records are not checked (they may also be
+missing or additional) and the sections after a TEND record are
+validated as well, while the content of these records and the order of
+the sections are still checked; a material then ends where the MAT
+number changes. A problem is reported with
 the line of the file at which it is found, e.g.
 
 .. code-block:: text

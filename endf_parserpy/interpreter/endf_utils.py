@@ -391,9 +391,7 @@ def write_list(dic, with_ctrl=True, write_opts=None):
 def read_tab2(lines, ofs=0, with_ctrl=True, read_opts=None):
     startline = lines[ofs]
     dic, ofs = read_cont(lines, ofs, read_opts=read_opts)
-    vals, ofs = read_endf_numbers(
-        lines, 2 * dic["N1"], ofs, to_int=True, read_opts=read_opts
-    )
+    vals, ofs = read_endf_ints(lines, 2 * dic["N1"], ofs, read_opts=read_opts)
     NBT = vals[::2]
     INT = vals[1::2]
     dic["table"] = {"NBT": NBT, "INT": INT}
@@ -454,10 +452,10 @@ def write_tab1(dic, with_ctrl=True, write_opts=None):
 
 
 def read_tab1_body_lines(lines, ofs, nr, np, read_opts=None):
-    vals, ofs = read_endf_numbers(lines, 2 * nr, ofs, to_int=True, read_opts=read_opts)
+    vals, ofs = read_endf_ints(lines, 2 * nr, ofs, read_opts=read_opts)
     NBT = vals[::2]
     INT = vals[1::2]
-    vals, ofs = read_endf_numbers(lines, 2 * np, ofs, to_int=False, read_opts=read_opts)
+    vals, ofs = read_endf_numbers(lines, 2 * np, ofs, read_opts=read_opts)
     xvals = vals[::2]
     yvals = vals[1::2]
     return {"NBT": NBT, "INT": INT, "X": xvals, "Y": yvals}, ofs
@@ -477,7 +475,7 @@ def write_tab1_body_lines(NBT, INT, xvals, yvals, write_opts=None):
     return lines
 
 
-def read_endf_numbers(lines, num, ofs, to_int=False, read_opts=None):
+def read_endf_numbers(lines, num, ofs, read_opts=None):
     vals = []
     while num > 0:
         l = lines[ofs]
@@ -485,12 +483,24 @@ def read_endf_numbers(lines, num, ofs, to_int=False, read_opts=None):
         vals += read_fort_floats(l, m, read_opts=read_opts)
         num -= 6
         ofs += 1
-    if to_int:
-        try:
-            vals = [int(v) for v in vals]
-        except ValueError:
-            pass
+    return vals, ofs
 
+
+def read_endf_ints(lines, num, ofs, read_opts=None):
+    """Read num integer fields (six per line), as the NBT/INT pairs of the
+    interpolation table of a TAB1 or TAB2 record.
+
+    Every field is an integer field (see read_fort_int), as in
+    EndfParserCpp: a float form such as ``4.000000+0`` is an error.
+    """
+    width = read_opts.get("width", 11)
+    vals = []
+    while num > 0:
+        line = lines[ofs]
+        m = min(6, num)
+        vals += [read_fort_int(line[i : i + width]) for i in range(0, m * width, width)]
+        num -= 6
+        ofs += 1
     return vals, ofs
 
 

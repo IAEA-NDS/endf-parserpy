@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/25
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -17,14 +17,35 @@ from ..utils.math_utils import EndfFloat
 from endf_parserpy.utils.text_encoding import escape_text
 
 
+# An integer field: blank (zero), or an integer with an optional sign,
+# preceded and followed by blanks only, as EndfParserCpp reads it (see
+# cpp_int_columns_to_int). int() would also accept other whitespace than
+# blanks (e.g. a tab), underscores between digits and digits outside ASCII.
+# The line ending of a short line (which EndfParserCpp pads with blanks)
+# may follow the field.
+_match_int_field = re.compile(" *([+-]?[0-9]+)? *\r?\n?").fullmatch
+
+
 def read_fort_int(valstr):
-    if valstr.strip() == "":
+    # fast paths: digits, possibly with a sign, between blanks, and blank
+    number = valstr.strip(" ")
+    if number.isdecimal() and number.isascii():
+        return int(number)
+    if not number:
         return 0
-    else:
-        try:
-            return int(valstr)
-        except ValueError as valerr:
-            raise InvalidIntegerError(escape_text(str(valerr)))
+    if number[0] in "+-":
+        digits = number[1:]
+        if digits.isdecimal() and digits.isascii():
+            return int(number)
+    # the general case: line endings and errors
+    m = _match_int_field(valstr)
+    if m is None:
+        raise InvalidIntegerError(
+            f'invalid integer field: "{escape_text(valstr)}" (an integer with '
+            "an optional sign, preceded and followed by blanks only, or blank)"
+        )
+    digits = m.group(1)
+    return int(digits) if digits is not None else 0
 
 
 def fortstr2float(valstr, read_opts=None):
@@ -79,6 +100,15 @@ _match_plain_number = re.compile(
 ).fullmatch
 
 
+# a blank field, possibly followed by the line ending of a short line
+_match_blank_field = re.compile(" *\r?\n?").fullmatch
+
+# a character that is not part of a float field: an underscore or a
+# character outside printable ASCII (the line ending of a short line is
+# removed before)
+_search_invalid_float_char = re.compile("[^ -~]|_").search
+
+
 def _fortstr2float(
     valstr,
     accept_spaces,
@@ -107,13 +137,23 @@ def _fortstr2float(
         if preserve_value_strings:
             return EndfFloat(valstr, orig_valstr)
         return val
-    if valstr.strip() == "":
+    if _match_blank_field(valstr) is not None:
         # a blank field is zero; with preserve_value_strings, the blank
         # string is kept, so that the field is written as it was read (as
         # by EndfParserCpp)
         if preserve_value_strings:
             return EndfFloat(0.0, orig_valstr)
         return 0.0
+    content = valstr[:-1] if valstr[-1:] == "\n" else valstr
+    content = content[:-1] if content[-1:] == "\r" else content
+    if _search_invalid_float_char(content) is not None:
+        # float() would accept a tab or other whitespace around the number,
+        # underscores between digits and digits outside ASCII
+        raise InvalidFloatError(
+            f"malformed number field: '{escape_text(orig_valstr)}' (a tab, an "
+            "underscore or a character outside printable ASCII is not part "
+            "of a number)"
+        )
     if accept_spaces:
         valstr = valstr.replace(" ", "")
     if accept_d_exponent:

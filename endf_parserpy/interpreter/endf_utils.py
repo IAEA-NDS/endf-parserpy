@@ -9,6 +9,7 @@
 #
 ############################################################
 
+import re
 from .fortran_utils import (
     float2fortstr,
     fortstr2float,
@@ -20,6 +21,7 @@ from .fortran_utils import (
 # number of correlation values KIJ per INTG record for each NDIGIT
 from endf_parserpy.utils.record_vectors import INTG_NUM_VALUES
 from endf_parserpy.utils.text_encoding import (
+    escape_text,
     line_content,
     check_line_ascii,
     long_line_hint,
@@ -35,36 +37,58 @@ from .custom_exceptions import (
 )
 
 
+# The MAT, MF and MT fields: blank (zero), or an integer with an optional
+# sign, preceded and followed by blanks only, as EndfParserCpp reads them
+# (see cpp_int_columns_to_int). For a string of printable ASCII characters
+# without underscores, int() accepts exactly these forms (if the field is
+# not blank); the other characters it accepts (e.g. a tab or an
+# underscore) are excluded before (_plain_ctrl_columns). The columns of a
+# short line after its line ending are blanks, as in EndfParserCpp.
+_match_ctrl_field = re.compile(" *([+-]?[0-9]+)? *").fullmatch
+
+_CTRL_FIELDS = (("MAT", 0, 4), ("MF", 4, 2), ("MT", 6, 3))
+
+
+def _plain_ctrl_columns(cols):
+    # the columns of the control fields hold only printable ASCII
+    # characters other than the underscore
+    return cols.isascii() and cols.isprintable() and "_" not in cols
+
+
+def _read_ctrl_fields(line, ofs):
+    # the general case of read_ctrl: blank fields, short lines and errors
+    content = line_content(line)
+    values = []
+    for name, start, length in _CTRL_FIELDS:
+        text = content[ofs + start : ofs + start + length]
+        m = _match_ctrl_field(text)
+        if m is None:
+            first = ofs + start + 1
+            raise ValueError(
+                f'invalid {name} number field: "{escape_text(text)}" '
+                f"(columns {first}-{first + length - 1})"
+            )
+        digits = m.group(1)
+        values.append(int(digits) if digits is not None else 0)
+    return values
+
+
 def read_ctrl(line, nofail=False, read_opts=None):
     width = read_opts.get("width", 11)
     ofs = 6 * width
-    if nofail:
+    try:
+        if not _plain_ctrl_columns(line[ofs : ofs + 9]):
+            raise ValueError
+        mat = int(line[ofs : ofs + 4])
+        mf = int(line[ofs + 4 : ofs + 6])
+        mt = int(line[ofs + 6 : ofs + 9])
+    except ValueError:
         try:
-            mat = int(line[ofs : ofs + 4])
-            mf = int(line[ofs + 4 : ofs + 6])
-            mt = int(line[ofs + 6 : ofs + 9])
-        except Exception:
-            mat = 0
-            mf = 0
-            mt = 0
-    else:
-        # int() ignores surrounding whitespace; for anything else
-        # (e.g. blank fields) the general case below applies
-        try:
-            return {
-                "MAT": int(line[ofs : ofs + 4]),
-                "MF": int(line[ofs + 4 : ofs + 6]),
-                "MT": int(line[ofs + 6 : ofs + 9]),
-            }
+            mat, mf, mt = _read_ctrl_fields(line, ofs)
         except ValueError:
-            pass
-        # blank fields are interpreted as zero
-        matstr = line[ofs : ofs + 4].strip()
-        mfstr = line[ofs + 4 : ofs + 6].strip()
-        mtstr = line[ofs + 6 : ofs + 9].strip()
-        mat = int(matstr) if matstr != "" else 0
-        mf = int(mfstr) if mfstr != "" else 0
-        mt = int(mtstr) if mtstr != "" else 0
+            if not nofail:
+                raise
+            mat = mf = mt = 0
     return {"MAT": mat, "MF": mf, "MT": mt}
 
 
@@ -631,6 +655,10 @@ def split_sections(lines, read_opts=None):
             )
         # same as read_ctrl (see there), without creating a dictionary
         try:
+            # (_plain_ctrl_columns inline)
+            cols = line[ctrl_ofs : ctrl_ofs + 9]
+            if not (cols.isascii() and cols.isprintable() and "_" not in cols):
+                raise ValueError
             mat = int(line[ctrl_ofs : ctrl_ofs + 4])
             mf = int(line[ctrl_ofs + 4 : ctrl_ofs + 6])
             mt = int(line[ctrl_ofs + 6 : ctrl_ofs + 9])

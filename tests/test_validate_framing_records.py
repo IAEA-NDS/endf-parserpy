@@ -28,6 +28,7 @@ from endf_parserpy.cli.actions import validate
 from endf_parserpy.cli.cmd_utils import add_common_cmd_parser_args, get_endf_parser
 from endf_parserpy.tape import FramingProblem, check_framing
 from endf_parserpy.tape import parse_tape_file, write_tape_file
+from endf_parserpy.utils.debugging_utils import compare_objects
 
 TESTDATA = Path(__file__).resolve().parent / "testdata"
 CU = TESTDATA / "n_2925_29-Cu-63.endf"
@@ -495,17 +496,36 @@ _KEPT_WITH_IGNORE_SEND = (
 )
 
 
+# the damages that are other problems with ignore_send_records: the text
+# after the TEND record is a record with non-zero columns 1-66, as the
+# parsers read it with this option, and a section occurring twice is
+# reported also if a TEND record precedes the second one, which does not
+# end the tape with this option
+_OTHER_WITH_IGNORE_SEND = {
+    "text_after_tend": (
+        len(CU_CASES["text_after_tend"][0]),
+        "the fields 1-6 (columns 1-66) of the MEND record must be zero or blank, "
+        'but field 1 is not: "some text"',
+    ),
+    "section_after_tend": (
+        len(CU_CASES["section_after_tend"][0]) - 3,
+        "section MF=1/MT=451 of MAT 2925 occurs a second time in the material",
+    ),
+}
+
+
 @pytest.mark.parametrize("name", sorted(CU_CASES))
 def test_ignore_send_records(name, tmp_path):
     lines, line, text = CU_CASES[name]
     path = _write(tmp_path / "bad.endf", lines)
     problems = check_framing(path, ignore_send_records=True)
+    line, text = _OTHER_WITH_IGNORE_SEND.get(name, (line, text))
     # also blank lines and a section occurring twice (the order of the
     # sections) remain problems
     if (
         name in _KEPT_WITH_IGNORE_SEND
-        or name.startswith("blank_")
-        or (name == "section_twice")
+        or name in _OTHER_WITH_IGNORE_SEND
+        or name.startswith(("blank_", "section_"))
     ):
         assert [(p.line, text in p.message) for p in problems] == [(line, True)]
     else:
@@ -659,6 +679,16 @@ def _pu_cases():
         # FEND record (MF1 after its FEND record)
         "mf_descending": L[:1] + L[F + 1 : F2 + 1] + L[1 : F + 1] + L[F2 + 1 :],
         "mf_split_by_fend": _insert(L, S + 1, L[F]),
+        # the lines after the TEND record: a section in ascending order
+        # (MF8 after MF1 of the same material), and MF1/MT451 again
+        "section_after_tend": L[: F + 1] + [L[M], L[T]] + L[F + 1 :],
+        "section_after_tend_twice": L + L[1 : S + 1] + [L[F], L[M], L[T]],
+        # the end of the data: without the MEND and TEND records, without
+        # the last SEND, FEND, MEND and TEND records
+        "mend_tend_missing": L[:M],
+        "end_records_missing": L[: F2 - 1],
+        # a record with MF=0 and MT≠0 between the sections
+        "record_mf0_mt451": _insert(L, S + 1, _ctrl(L[S], mf=b" 0", mt=b"451")),
     }
     return cases
 
@@ -666,27 +696,140 @@ def _pu_cases():
 PU_CASES = _pu_cases()
 
 
+# the options of validate, and with ignore_send_records
+_OPTION_ARGS = {"strict": (), "ignore_send_records": ("--ignore_send_records",)}
+
+# non-numeric control fields, which EndfParserCpp reads as numbers
+# (fix/strict-control-fields rejects them)
+_CPP_LENIENT_CONTROL_FIELDS = {
+    "send_mt_text",
+    "fend_mf_text",
+    "mend_mat_text",
+    "tend_mt_text",
+}
+
+
 @pytest.fixture(scope="module")
-def strict_parsers():
-    args = _args()
-    py_args = _args("--no-cpp")
-    return get_endf_parser(args), get_endf_parser(py_args)
+def full_parsers():
+    """The parsers of a full parse (C++, Python) and of validate (with the
+    parser of the fast path) for the options of validate and with
+    ignore_send_records."""
+    result = {}
+    for option, argv in _OPTION_ARGS.items():
+        args = _args(*argv)
+        py_args = _args("--no-cpp", *argv)
+        result[option] = (
+            (get_endf_parser(args), get_endf_parser(py_args)),
+            (get_endf_parser(args), validate.get_fast_parser(args)),
+        )
+    return result
 
 
+def _parses(parser, path, **kwargs):
+    try:
+        parser.parsefile(str(path), **kwargs)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+@pytest.mark.parametrize("option", sorted(_OPTION_ARGS))
 @pytest.mark.parametrize("name", sorted(PU_CASES))
-def test_agreement_with_full_parse(name, strict_parsers, tmp_path):
+def test_agreement_with_full_parse(name, option, full_parsers, tmp_path):
     """The check fails if and only if a full parse fails with one of the
-    parsers (with the options of validate), so that it finds everything
-    a full parse finds, and nothing else."""
+    parsers (with the options of validate, and with ignore_send_records),
+    so that it finds everything a full parse finds, and nothing else;
+    validate fails if and only if the check fails, as the sections are
+    valid. With ignore_send_records, both parsers give the same verdict,
+    except for non-numeric control fields."""
     path = _write(tmp_path / "bad.endf", PU_CASES[name])
-    verdicts = []
-    for parser in strict_parsers:
-        try:
-            parser.parsefile(str(path))
-            verdicts.append(True)
-        except Exception:  # noqa: BLE001
-            verdicts.append(False)
-    assert (check_framing(path) == []) == all(verdicts), verdicts
+    parsers, validate_parsers = full_parsers[option]
+    verdicts = [_parses(parser, path) for parser in parsers]
+    ignore_send_records = option == "ignore_send_records"
+    problems = check_framing(path, ignore_send_records=ignore_send_records)
+    assert (problems == []) == all(verdicts), (verdicts, problems)
+    ok, _ = validate._validate_file(validate_parsers[0], str(path), validate_parsers[1])
+    assert ok == all(verdicts)
+    if ignore_send_records and name not in _CPP_LENIENT_CONTROL_FIELDS:
+        assert verdicts[0] == verdicts[1]
+
+
+# the damages of the framing records that both parsers accept with
+# ignore_send_records, also with include and exclude, which read the
+# other sections verbatim
+_ACCEPTED_WITH_IGNORE_SEND = (
+    "send_missing",
+    "send_extra",
+    "send_wrong_mf",
+    "fend_missing",
+    "fend_wrong_mf",
+    "mend_extra",
+    "mf_split_by_fend",
+    "section_after_tend",
+    "mend_tend_missing",
+    "end_records_missing",
+    "blank_after_tend",
+)
+_FILTERS = {
+    "full": {},
+    "include": {"include": [8]},
+    "exclude": {"exclude": [1]},
+    "exclude_mt": {"exclude": [(1, 451)]},
+}
+
+
+@pytest.mark.parametrize("filt", sorted(_FILTERS))
+@pytest.mark.parametrize("name", _ACCEPTED_WITH_IGNORE_SEND)
+def test_ignore_send_records_parsers_agree(name, filt, full_parsers, tmp_path):
+    lines = PU_CASES[name]
+    path = _write(tmp_path / "bad.endf", lines)
+    cpp, py = full_parsers["ignore_send_records"][0]
+    kwargs = _FILTERS[filt]
+    res_cpp = cpp.parsefile(str(path), **kwargs)
+    res_py = py.parsefile(str(path), **kwargs)
+    assert compare_objects(res_cpp, res_py, fail_on_diff=False)
+    # the sections are those of the valid file
+    expected = cpp.parsefile(str(PU), **kwargs)
+    assert compare_objects(res_cpp, expected, fail_on_diff=False)
+    assert check_framing(path, ignore_send_records=True) == []
+
+
+@pytest.mark.parametrize("parser_kind", ["cpp", "python"])
+def test_sections_after_tend_with_ignore_send_records(parser_kind, tmp_path):
+    """With ignore_send_records, the parsers read the sections after a
+    TEND record, and validate validates them: the index does not end at
+    the TEND record, and a material without MEND record ends with the
+    file."""
+    from endf_parserpy.tape.framing import _check_framing_and_index
+
+    lines = PU_CASES["section_after_tend"]
+    tend = _index(lines, "TEND")
+    head = tend + 1  # the HEAD record of MF8/MT457 after the TEND record
+    bad = _edit(lines, head, _field(lines[head], 3, b"x"))
+    argv = ("--ignore_send_records",) + (
+        ("--no-cpp",) if parser_kind == "python" else ()
+    )
+    args = _args(*argv)
+    parser, fast_parser = get_endf_parser(args), validate.get_fast_parser(args)
+    path = _write(tmp_path / "valid.endf", lines)
+    assert validate._validate_file(parser, str(path), fast_parser) == (True, None)
+    problems, index, error = _check_framing_and_index(path, ignore_send_records=True)
+    assert (problems, error) == ([], None)
+    assert [sorted(m.sections) for m in index.materials] == [
+        [(1, 451), (1, 452)],
+        [(8, 457)],
+    ]
+    path = _write(tmp_path / "bad.endf", bad)
+    ok, detail = validate._validate_file(parser, str(path), fast_parser)
+    assert not ok
+    assert "section MF=8/MT=457:" in detail
+    assert not _parses(parser, path)
+    # without the MEND and TEND records
+    path = _write(tmp_path / "noend.endf", PU_CASES["mend_tend_missing"])
+    problems, index, error = _check_framing_and_index(path, ignore_send_records=True)
+    assert (problems, error) == ([], None)
+    assert index.materials[0].byte_length == path.stat().st_size - len(lines[0]) - 1
+    assert validate._validate_file(parser, str(path), fast_parser) == (True, None)
 
 
 # --- one scan --------------------------------------------------------------

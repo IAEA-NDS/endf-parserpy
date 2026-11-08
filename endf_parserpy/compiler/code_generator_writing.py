@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/04
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -761,6 +761,18 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
         )
         code += cpp.statement("cont.flush()", cpp.INDENT)
         code += cpp.statement("outfile.close()", cpp.INDENT)
+        # an error of the stream (e.g. a full disk) is an error of the
+        # writing, so that the caller does not keep an incomplete file
+        code += cpp.indent_code(
+            cpp.pureif(
+                "outfile.fail()",
+                cpp.statement(
+                    "throw std::ofstream::failure"
+                    + '("failed to write file " + filename)'
+                ),
+            ),
+            cpp.INDENT,
+        )
         code += cpp.close_block()
         code += cpp.line("")
     return code

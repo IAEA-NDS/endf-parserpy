@@ -600,6 +600,22 @@ def split_sections(lines, read_opts=None):
             + f"in control record of line {ofs}."
         )
 
+    def make_order_error_message(mat, mf, mt, after_fend, ofs):
+        if mf < order_mf or after_fend:
+            after = f"MF={order_mf}"
+            if mf == order_mf:
+                after = f"the FEND record of MF={order_mf}"
+            return (
+                "The sections of a material must be in ascending order of MF, "
+                + f"but encountered MF={mf} after {after} of MAT={mat} "
+                + f"in control record of line {ofs}."
+            )
+        return (
+            "The sections of an MF must be in ascending order of MT, "
+            + f"but encountered MT={mt} after MT={order_mt} in MF={mf} "
+            + f"of MAT={mat} in control record of line {ofs}."
+        )
+
     def make_eof_error_message(sectype, secnum):
         return (
             "Reached the End-Of-File but still in an open "
@@ -650,6 +666,18 @@ def split_sections(lines, read_opts=None):
     regular_sec = None
     regular_mf = None
     regular_mt = None
+    # the MAT/MF/MT numbers of the last section, for the check of their
+    # order: within a material, the sections are in ascending order of MF,
+    # and of MT within an MF, and an MF ends with its FEND record. A
+    # material ends with its MEND record or, with ignore_send_records,
+    # which does not check the position of the end records, where the MAT
+    # number changes.
+    order_mat = None
+    order_mf = None
+    order_mt = None
+    # whether a record that is not one of a section precedes the current
+    # one; a record of a section after it starts a new section
+    separated = True
     ctrl_ofs = 6 * read_opts.get("width", 11)
     while ofs < len(lines) - 1:
         ofs += 1
@@ -703,6 +731,30 @@ def split_sections(lines, read_opts=None):
 
         # dealing with regular records
         if is_regular_record:
+            if separated or mf != regular_mf or mt != regular_mt:
+                # a new section: the order of the sections
+                if (
+                    order_mat == mat
+                    and (ignore_send_records or sec_level != 0)
+                    and (
+                        mf < order_mf
+                        or (mf == order_mf and mt <= order_mt)
+                        or (
+                            mf == order_mf
+                            and sec_level == 1
+                            and not ignore_send_records
+                        )
+                    )
+                ):
+                    after_fend = sec_level == 1 and not ignore_send_records
+                    raise UnexpectedControlRecordError(
+                        make_order_error_message(mat, mf, mt, after_fend, ofs)
+                        + long_line_hint(line)
+                    )
+                order_mat = mat
+                order_mf = mf
+                order_mt = mt
+                separated = False
             if mf != regular_mf or mt != regular_mt or regular_sec is None:
                 regular_sec = mfdic.setdefault(mf, {}).setdefault(mt, [])
                 regular_mf = mf
@@ -715,6 +767,7 @@ def split_sections(lines, read_opts=None):
             last_mt = mt
             continue
 
+        separated = True
         if ignore_send_records:
             continue
 

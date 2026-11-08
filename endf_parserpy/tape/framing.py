@@ -16,7 +16,8 @@ section ends with a SEND record ``[MAT, MF, 0]``, every MF of a
 material with a FEND record ``[MAT, 0, 0]``, every material with a
 MEND record ``[0, 0, 0]``, and the tape with a TEND record
 ``[-1, 0, 0]``; only blank lines may follow it. The columns 1-66 of
-these records hold zeros or are blank.
+these records hold zeros or are blank. The sections of a material are
+in ascending order of MF, and of MT within an MF.
 
 :func:`check_framing` checks these rules for a whole file, as a full
 parse with :class:`~endf_parserpy.EndfParserPy` does, but for any
@@ -185,22 +186,32 @@ class _Checker:
     of EndfParserPy: 3 within a section, 2 after its SEND record, 1 after
     a FEND record, 0 after the tape head or a MEND record, -1 after the
     TEND record. ``mat``, ``mf`` and ``mt`` are the numbers of the last
-    section.
+    section. The level is only followed if the position of the framing
+    records is checked (``structure``, i.e. without the option
+    ``ignore_send_records``); the order of the sections is checked in
+    any case (see :meth:`order`).
     """
 
-    def __init__(self, check_ascii, number_opts):
+    def __init__(self, check_ascii, number_opts, structure=True):
         # the results of the checks of the control fields and of the
         # columns 1-66 by their text: framing records repeat a few forms
         self.ctrl_cache = {}
         self.content_cache = {}
         self.check_ascii = check_ascii
         self.number_opts = number_opts
+        self.structure = structure
         self.problems = []  # (offset, message)
         self.level = 0
         self.mat = self.mf = self.mt = None
         self.materials = 0
-        # the (MF, MT) sections of the current material
+        # the order of the sections (see order): the (MF, MT) sections of
+        # the current material, the numbers of the last section, whether a
+        # record that is not one of a section followed it, and whether a
+        # FEND record followed it
         self.sections = set()
+        self.last_section = None
+        self.separated = True
+        self.after_fend = False
         # the numbers of the section if its SEND record was assumed for a
         # record with an invalid control field (see check_framing)
         self.assumed_send = None
@@ -329,16 +340,53 @@ class _Checker:
             )
         if level == 0 or mat != self.mat:  # a new material
             self.materials += 1
-            self.sections = set()
-        elif (mf, mt) in self.sections:
+        self.mat, self.mf, self.mt = mat, mf, mt
+        self.level = 3
+
+    def order(self, offset, numbers):
+        """Check the order of the sections at a record of a section.
+
+        Within a material, the sections are in ascending order of MF,
+        and of MT within an MF, and an MF ends with its FEND record, as
+        the parsers check it. A record of a section starts a new section
+        if a record that is not one of a section precedes it or if its MF
+        or MT differs from those of the last section. A material ends
+        with its MEND record or, if the position of the framing records
+        is not checked (``ignore_send_records``), where the MAT number
+        changes. Must be called before :meth:`section`.
+        """
+        mat, mf, mt = numbers
+        last = self.last_section
+        if not self.separated and last is not None and (mf, mt) == last[1:]:
+            return  # the section continues
+        after_fend, self.after_fend = self.after_fend, False
+        self.separated = False
+        self.last_section = numbers
+        if last is None or mat != last[0] or (self.structure and self.level == 0):
+            self.sections = {(mf, mt)}  # a new material
+            return
+        _, last_mf, last_mt = last
+        if (mf, mt) in self.sections:
             self.problem(
                 offset,
                 f"section MF={mf}/MT={mt} of MAT {mat} occurs a second time "
                 "in the material",
             )
+        elif mf == last_mf and after_fend and self.structure:
+            self.problem(
+                offset,
+                f"section MF={mf}/MT={mt} of MAT {mat} follows the FEND record "
+                f"of MF={last_mf}; the FEND record ends the MF, so that the "
+                "next section must have a greater MF",
+            )
+        elif mf < last_mf or (mf == last_mf and mt < last_mt):
+            self.problem(
+                offset,
+                f"section MF={mf}/MT={mt} of MAT {mat} follows section "
+                f"MF={last_mf}/MT={last_mt}; the sections of a material must be "
+                "in ascending order of MF, and of MT within an MF",
+            )
         self.sections.add((mf, mt))
-        self.mat, self.mf, self.mt = mat, mf, mt
-        self.level = 3
 
     def end_record(self, offset, kind, numbers):
         """Apply a SEND, FEND, MEND or TEND record (or another one)."""
@@ -486,9 +534,12 @@ def check_framing(
       every material with a MEND record ``[0, 0, 0]``, and the tape with
       a TEND record ``[-1, 0, 0]``; the sections of an MF and the MFs of
       a material follow each other without other records in between;
-    * a section (MF/MT) occurs only once in a material (otherwise
-      :class:`EndfFile` would only see one of them); the order of the
-      sections is not checked, as by the parsers;
+    * the sections of a material are in ascending order of MF, and of
+      MT within an MF, and an MF ends with its FEND record, so that the
+      next section has a greater MF; in particular, a section (MF/MT)
+      occurs only once in a material (otherwise :class:`EndfFile` would
+      only see one of them). A record of a section after a record that
+      is not one of a section starts a new section;
     * only blank lines (blanks and tabs) may follow the TEND record, and
       no other line may be blank;
     * the MAT, MF and MT fields of the framing records and of the tape
@@ -506,10 +557,11 @@ def check_framing(
     The options relax the rules as the parser options of the same names
     do: ``ignore_send_records`` skips the checks of the position and the
     MAT/MF/MT numbers of the SEND, FEND, MEND and TEND records (missing
-    or additional records included), of the sequence of the sections and
-    of the lines after the TEND record, but not those of their control
-    fields, their columns 1-66 (which EndfParserCpp checks also with this
-    option) and their characters,
+    or additional records included), of the lines after the TEND record
+    and whether an MF ends with its FEND record, where a material ends
+    where the MAT number changes, but not those of their control fields,
+    their columns 1-66 (which EndfParserCpp checks also with this option)
+    and their characters, nor the order of the sections,
     ``ignore_blank_lines`` accepts blank lines anywhere,
     ``ignore_missing_tpid`` accepts a tape without a tape head (as
     :class:`TapeIndex`), ``accept_non_ascii`` accepts other characters,
@@ -566,6 +618,7 @@ def _check_events(
     checker = _Checker(
         check_ascii=not accept_non_ascii,
         number_opts=(accept_spaces, accept_d_exponent),
+        structure=check_structure,
     )
     end_offset = None  # the offset after the TEND record
     for kind, offset, line, mat, mf, mt in events:
@@ -600,6 +653,7 @@ def _check_events(
             )
             return _with_line_numbers(path, checker.problems)
         if kind == _EV_SECTION:
+            checker.order(offset, (mat, mf, mt))
             if check_structure:
                 checker.section(offset, (mat, mf, mt))
             continue
@@ -609,9 +663,11 @@ def _check_events(
         strict = numbers if numbers is not None else (mat, mf, mt)
         rec_kind = _kind(*strict)
         if rec_kind == "section":  # e.g. "+3" read as 3 by both
+            checker.order(offset, strict)
             if check_structure:
                 checker.section(offset, strict)
             continue
+        checker.separated = True
         checker.check_line(offset, line, rec_kind)
         if mat == -1:  # the index ends its scan with this record
             end_offset = offset + len(line) + 1
@@ -633,6 +689,8 @@ def _check_events(
                     "TEND": (-1, 0, 0),
                 }[expected]
         checker.end_record(offset, rec_kind, strict)
+        if rec_kind == "FEND":
+            checker.after_fend = True
         if numbers is None and rec_kind == "SEND":
             checker.assumed_send = numbers_send
     if check_structure:

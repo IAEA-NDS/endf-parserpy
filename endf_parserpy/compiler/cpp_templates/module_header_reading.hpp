@@ -2093,21 +2093,37 @@ inline EndfFloatCpp cpp_read_field_EndfFloatCpp(
 }
 
 
+// One specialization per type T instead of branches on std::is_same in
+// one function: the branches for the other types would be instantiated as
+// well, with conversions that are never executed, e.g. of the double of
+// endfstr2float to int (undefined behaviour outside the range of int).
 template<typename T>
 inline T cpp_read_field(const char *str, const char fieldnum, ParsingOptions &parse_opts) {
-  static_assert(
-    std::is_same<T, EndfFloatCpp>::value
-    || std::is_same<T, int>::value
-    || std::is_same<T, double>::value
-    , "T must be int or double"
-  );
-  if (std::is_same<T, double>::value) {
-    return endfstr2float(str+fieldnum*11, parse_opts, fieldnum);
-  } if (std::is_same<T, EndfFloatCpp>::value) {
-    return cpp_read_field_EndfFloatCpp(str, fieldnum, parse_opts);
-  } else {
-    return endfstr2int(str+fieldnum*11, parse_opts, fieldnum);
-  }
+  static_assert(sizeof(T) == 0, "T must be int, double or EndfFloatCpp");
+}
+
+
+template<>
+inline double cpp_read_field<double>(
+  const char *str, const char fieldnum, ParsingOptions &parse_opts
+) {
+  return endfstr2float(str+fieldnum*11, parse_opts, fieldnum);
+}
+
+
+template<>
+inline EndfFloatCpp cpp_read_field<EndfFloatCpp>(
+  const char *str, const char fieldnum, ParsingOptions &parse_opts
+) {
+  return cpp_read_field_EndfFloatCpp(str, fieldnum, parse_opts);
+}
+
+
+template<>
+inline int cpp_read_field<int>(
+  const char *str, const char fieldnum, ParsingOptions &parse_opts
+) {
+  return endfstr2int(str+fieldnum*11, parse_opts, fieldnum);
 }
 
 

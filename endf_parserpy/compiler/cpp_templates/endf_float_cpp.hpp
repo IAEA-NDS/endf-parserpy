@@ -3,7 +3,12 @@
 
 
 #include <pybind11/pybind11.h>
+#include <climits>
+#include <cmath>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <cstddef>
 #include <cstdint>
@@ -118,7 +123,18 @@ public:
         return _value;
     }
 
+    // truncates toward zero like static_cast<int>, whose result is
+    // undefined for a value outside the range of int; such values and
+    // NaN/inf give an error instead (as in cpp_to_integer)
     operator int() const {
+        // INT_MIN - 1.0 and INT_MAX + 1.0 are exact in double
+        if (! (_value > INT_MIN - 1.0 && _value < INT_MAX + 1.0)) {
+            std::ostringstream oss;
+            oss << std::setprecision(17) << _value;
+            throw std::runtime_error("the value " + oss.str() + (
+                std::isfinite(_value) ? " exceeds the range of an integer"
+                                      : " is not an integer"));
+        }
         return static_cast<int>(_value);
     }
 

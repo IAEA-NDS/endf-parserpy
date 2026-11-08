@@ -163,7 +163,10 @@ architecture and the compiler that translates recipes into C++ code,
 was designed and developed without AI assistance from its beginning
 in 2022 up to and including version 0.16 (May 2026). Starting with
 version 0.17, AI coding assistance (Claude Fable 5 and Claude Opus 5.5
-by Anthropic) has been used, in particular, but not exclusively, for
-finding and fixing bugs and for the performance optimization of the
-recipe compiler and the generated C++ backend. All AI-assisted changes
-were reviewed and tested before inclusion.
+by Anthropic) has been used extensively, in particular, but not
+exclusively, for the multi-material interface (`TapeIndex`, `EndfFile`
+and the multi-material support of `endf-cli`, version 0.17), the
+support for numpy arrays (`array_type="numpy"`, version 0.18), finding
+and fixing bugs, and the performance optimization of the recipe
+compiler and the generated C++ backend. All AI-assisted changes were
+reviewed and tested before inclusion.

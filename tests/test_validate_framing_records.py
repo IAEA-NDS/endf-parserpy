@@ -699,15 +699,6 @@ PU_CASES = _pu_cases()
 # the options of validate, and with ignore_send_records
 _OPTION_ARGS = {"strict": (), "ignore_send_records": ("--ignore_send_records",)}
 
-# non-numeric control fields, which EndfParserCpp reads as numbers
-# (fix/strict-control-fields rejects them)
-_CPP_LENIENT_CONTROL_FIELDS = {
-    "send_mt_text",
-    "fend_mf_text",
-    "mend_mat_text",
-    "tend_mt_text",
-}
-
 
 @pytest.fixture(scope="module")
 def full_parsers():
@@ -740,8 +731,7 @@ def test_agreement_with_full_parse(name, option, full_parsers, tmp_path):
     parsers (with the options of validate, and with ignore_send_records),
     so that it finds everything a full parse finds, and nothing else;
     validate fails if and only if the check fails, as the sections are
-    valid. With ignore_send_records, both parsers give the same verdict,
-    except for non-numeric control fields."""
+    valid. With ignore_send_records, both parsers give the same verdict."""
     path = _write(tmp_path / "bad.endf", PU_CASES[name])
     parsers, validate_parsers = full_parsers[option]
     verdicts = [_parses(parser, path) for parser in parsers]
@@ -750,7 +740,7 @@ def test_agreement_with_full_parse(name, option, full_parsers, tmp_path):
     assert (problems == []) == all(verdicts), (verdicts, problems)
     ok, _ = validate._validate_file(validate_parsers[0], str(path), validate_parsers[1])
     assert ok == all(verdicts)
-    if ignore_send_records and name not in _CPP_LENIENT_CONTROL_FIELDS:
+    if ignore_send_records:
         assert verdicts[0] == verdicts[1]
 
 

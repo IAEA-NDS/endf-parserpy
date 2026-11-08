@@ -14,7 +14,8 @@
 The fields II, JJ and KIJ of INTG records (and the MAT, MF and MT numbers)
 are read as EndfParserPy reads them (read_fort_int): a blank field is 0,
 otherwise the field must hold an integer with an optional sign, preceded
-and followed by blanks only; anything else is an error. They were
+and followed by blanks only; anything else (also a tab or an underscore,
+which int() accepts) is an error for both parsers. They were
 converted like the C function atoi before, which reads non-numeric text
 as 0 and stops at the first other character. The conversion of a field
 must not depend on its width or on its position in the line, and short
@@ -23,6 +24,7 @@ lines are padded with blanks.
 
 import pytest
 from endf_parserpy import EndfParserCpp, EndfParserPy
+from endf_parserpy.interpreter.custom_exceptions import InvalidIntegerError
 
 
 # R-Matrix Limited compact covariance (LCOMP=2) with INTG records; the
@@ -225,13 +227,26 @@ def test_intg_invalid_ii_jj_field_rejected(field, which):
 
 @pytest.mark.parametrize("ndigit", sorted(NUM_VALUES))
 def test_intg_fields_with_other_characters(ndigit):
-    # tabs and characters outside ASCII are not part of a number (int() of
-    # EndfParserPy accepts a tab before or after the number, which is not
-    # printable ASCII; see test_strict_control_fields.py)
+    # tabs and other whitespace than blanks around the number, underscores
+    # between digits and characters outside ASCII are not part of a number
+    # for either parser (int() accepts all but the last)
     n = NUM_VALUES[ndigit]
     w = ndigit + 1
-    cands = ["\t5".rjust(w), "\xe95".rjust(w), "5\xe9".rjust(w), "\t-2".rjust(w)]
+    cands = [
+        "\t5".rjust(w),
+        "5\t".rjust(w),
+        "\t-2".rjust(w),
+        "\x0b5".rjust(w),
+        "\x0c5".rjust(w),
+        "\xa05".rjust(w),
+        "5\x85".rjust(w),
+        "1_0".rjust(w),
+        "\t" * w,
+        "\xe95".rjust(w),
+        "5\xe9".rjust(w),
+    ]
     cands = [c for c in cands if len(c) == w]
+    assert len(cands) >= 7
     parser = EndfParserCpp(
         ignore_send_records=True,
         ignore_missing_tpid=True,
@@ -241,5 +256,15 @@ def test_intg_fields_with_other_characters(ndigit):
     for field in cands:
         kij = ["  1".rjust(w)] * n
         kij[1] = field
+        text = _text(ndigit, [("    1", "    2", kij)])
         with pytest.raises(RuntimeError, match="invalid integer field"):
-            parser.parse(_text(ndigit, [("    1", "    2", kij)]))
+            parser.parse(text)
+        with pytest.raises(InvalidIntegerError, match="invalid integer field"):
+            _py_parse(text)
+    for field in ["\t   1", "   1\t", "  1_0", "\xa0   1"]:
+        kij = ["  1".rjust(w)] * n
+        text = _text(ndigit, [(field, "    2", kij)])
+        with pytest.raises(RuntimeError, match="invalid integer field"):
+            parser.parse(text)
+        with pytest.raises(InvalidIntegerError, match="invalid integer field"):
+            _py_parse(text)

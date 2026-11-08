@@ -58,6 +58,10 @@ is a Markdown table (for ``$GITHUB_STEP_SUMMARY``).
 ``merge`` combines the JSON files of several machines into one file and
 one summary table.
 
+The summary of a machine notes every vector tier that is built but not
+supported by its CPU (e.g. ``avx512`` on a processor without AVX-512):
+such a tier is neither checked for bit-identity nor timed there.
+
 ``equivalence`` compiles the C++ test of the conversion kernels
 (tests/cpp/float_kernel_equivalence.cpp with the header extracted from the
 installed template, see tests/test_cpp_float_kernel_equivalence.py) with
@@ -283,6 +287,18 @@ def _median_ratios(records, variants):
     return result
 
 
+def _untested_tiers(probe):
+    # the vector tiers built but not supported by the CPU of the runner:
+    # the bit-identity checks skip them and they are not timed
+    if probe is None:
+        return []
+    return [
+        n
+        for n, t in probe["tiers"].items()
+        if t.get("vector", True) and t["built"] and not t["supported"]
+    ]
+
+
 def _summary(machine, variants, ratios, probe):
     names = [v[0] for v in variants if v[0] != "base"]
     lines = [f"### {machine}", ""]
@@ -297,6 +313,13 @@ def _summary(machine, variants, ratios, probe):
             )
         )
         lines.append("")
+        for n in _untested_tiers(probe):
+            lines.append(
+                f"**Note:** tier `{n}` is built but not supported by this "
+                "CPU; it was not tested on this runner (neither the "
+                "bit-identity checks nor the timing ran it)."
+            )
+            lines.append("")
     lines.append(
         "Median over rounds of the time ratio to `base` "
         "(lower is faster; `base:aa` is the noise floor):"
@@ -345,6 +368,14 @@ def cmd_run(args):
         json.dump(result, f, indent=1)
     text = _summary(machine, variants, ratios, probe)
     print(text)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        # the same note as an annotation of the run
+        for n in _untested_tiers(probe):
+            print(
+                f"::notice title=Tier {n} not tested::tier {n} is built but "
+                f"not supported by the CPU of {machine}; it was not tested "
+                "on this runner"
+            )
     if args.summary:
         with open(args.summary, "a") as f:
             f.write(text + "\n")

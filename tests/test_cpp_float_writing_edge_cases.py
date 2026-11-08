@@ -150,11 +150,6 @@ def _rounding_to_integer_values():
     for n in (2, 3, 9, 10, 99, 100, 12345, 99999999, 999999999, 1000000000):
         for d in (1e-9, 1e-10, 1e-11, 1e-12):
             values += [n - n * d, n + n * d]
-    # Not compared: a value in [999999999.5, 1e9) rounds to 1000000000
-    # without decimals; EndfParserPy writes this decimal form, while the
-    # decimal candidate of EndfParserCpp loses a digit, so that it writes
-    # the exponent form (1.000000+9).
-    values = [v for v in values if not 999999999.5 <= v < 1e9]
     # values that round to 0 in the decimal form
     values += [4e-10, 6e-10, 4e-11, 6e-11, 1e-12]
     return values + [-v for v in values]

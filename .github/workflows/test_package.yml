@@ -1,10 +1,27 @@
 name: Test package
 
+# Without inputs (push to main, workflow_dispatch, or a workflow_call
+# without `wheels`), each job builds the package from the checkout with
+# `pip install .` and runs the tests.
+#
+# With the workflow_call input `wheels: true` (publish_package.yml, after
+# build_wheels), each job instead installs the wheel built for its runner
+# and Python version from the artifact `wheels-<build runner>` of the
+# calling workflow run, removes the package directory of the checkout so
+# that only the installed wheel can be imported, checks that, and runs the
+# same tests against the wheel.
+
 on:
   push:
     branches: [main]
 
   workflow_call:
+    inputs:
+      wheels:
+        description: "Test the wheels of the calling run (artifacts wheels-<runner>) instead of a build from source"
+        type: boolean
+        required: false
+        default: false
 
   workflow_dispatch:
 
@@ -31,9 +48,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # In wheel mode, the ARM64 interpreter on windows-11-arm, so that the
+      # win_arm64 wheel is tested (as in benchmark_bulk_bodies.yml); the
+      # default otherwise.
       - uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.python-version}}
+          architecture: ${{ inputs.wheels && matrix.runner == 'windows-11-arm' && 'arm64' || '' }}
 
       - name: Install dependencies
         run: |
@@ -41,10 +62,40 @@ jobs:
           python -m pip install pytest lark numpy
 
       - name: Install package and dependencies
+        if: ${{ !inputs.wheels }}
         env:
           INSTALL_ENDF_PARSERPY_CPP: "yes"
         run: |
           python -m pip install . -vvv
+
+      # The wheels of build_wheels in publish_package.yml: the macOS arm64
+      # wheels are built on macos-14 and tested on macos-latest; every other
+      # runner tests the wheels built on the same runner type.
+      - name: Download the wheels of this runner
+        if: ${{ inputs.wheels }}
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-${{ matrix.runner == 'macos-latest' && 'macos-14' || matrix.runner }}
+          path: wheelhouse
+
+      # Only a wheel of the artifact can be installed (no index, no source
+      # build); pip picks the one whose tags match this interpreter and
+      # fails if there is none.
+      - name: Install the wheel
+        if: ${{ inputs.wheels }}
+        shell: bash
+        run: |
+          ls -l wheelhouse
+          python -m pip install --no-index --find-links wheelhouse --only-binary :all: --no-deps endf-parserpy
+          # only the installed wheel can be imported from here on
+          rm -rf endf_parserpy
+
+      - name: Check the installed wheel
+        if: ${{ inputs.wheels }}
+        shell: bash
+        run: |
+          cd tests
+          python ../tools/check_installed_package.py --not-under "$GITHUB_WORKSPACE"
 
       - name: Run all tests
         run: |

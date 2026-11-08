@@ -1,9 +1,15 @@
 name: Publish Python package
 
+# A push of a tag v*.*.* builds, tests and publishes the package. A manual
+# run (workflow_dispatch, on any branch or tag) runs the same jobs, including
+# the tests of the built wheels, but not the upload to PyPI (see upload_all).
+
 on:
   push:
     tags:
       - "v*.*.*"
+
+  workflow_dispatch:
 
 jobs:
   test_package:
@@ -72,11 +78,18 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install cibuildwheel==3.3.1
 
+      # cibuildwheel installs every wheel into a fresh environment and
+      # checks it: the package imports from that environment, and all C++
+      # modules import and select a row kernel tier that is built and
+      # supported. For the wheels that no job of test_wheels installs
+      # (musllinux, win32, Python versions other than 3.12 and 3.14) this
+      # is the only test.
       - name: Build wheels
         env:
           INSTALL_ENDF_PARSERPY_CPP: yes
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
           CIBW_BUILD_VERBOSITY: 3
+          CIBW_TEST_COMMAND: python {project}/tools/check_installed_package.py --not-under {project}
         run: |
           python cibuildhack.py
           python -m cibuildwheel --output-dir wheelhouse
@@ -94,11 +107,22 @@ jobs:
           name: wheels-${{ matrix.runner }}
           path: wheelhouse/*.whl
 
+  # The tests of test_package.yml against the built wheels: each runner
+  # and Python version of its matrix installs the wheel built for it.
+  test_wheels:
+    needs: build_wheels
+    uses: ./.github/workflows/test_package.yml
+    with:
+      wheels: true
+
+  # Only for a pushed tag v*.*.*, never in a manual run.
   upload_all:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs:
       - test_package
       - make_sdist
       - build_wheels
+      - test_wheels
 
     runs-on: ubuntu-latest
     environment: pypi

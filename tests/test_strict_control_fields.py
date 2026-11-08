@@ -121,9 +121,9 @@ def test_base_file_parses_identically():
 
 # fields that are neither blank nor an integer between blanks
 INVALID = {
-    "MAT": ["ab  ", "35x4", "3 64", "-   ", "+-1 ", "35\t4", "1_00"],
+    "MAT": ["ab  ", "35x4", "3 64", "-   ", "+-1 ", "35\t4"],
     "MF": ["8x", "x8", "- ", "1.", "++", "\t\t"],
-    "MT": ["ab ", " x ", "4 7", "45-", "- 1", "4\t5", "1e2", "4_5"],
+    "MT": ["ab ", " x ", "4 7", "45-", "- 1", "4\t5", "1e2"],
 }
 
 # the cases tested for all records and filters (one per field and kind)
@@ -289,6 +289,17 @@ def test_tab_around_number(record, field, text):
     ):
         with pytest.raises(Exception, match="not a printable ASCII character"):
             parser.parse(damaged)
+
+
+def test_underscore_between_digits():
+    # int() of EndfParserPy accepts an underscore between digits (e.g. as
+    # the MT number 0 of the tape head written as "0_0"), EndfParserCpp
+    # does not
+    damaged = _damaged("tape_head", "MT", "0_0")
+    cpp, py = _parsers()
+    msg = _cpp_parse_error(cpp, damaged)
+    assert 'invalid MT number field: "0_0" (columns 73-75)' in msg
+    assert 0 in py.parse(damaged)
 
 
 # a section given as a list of lines when writing

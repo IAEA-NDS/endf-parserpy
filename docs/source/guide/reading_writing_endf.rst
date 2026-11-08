@@ -66,13 +66,25 @@ are output in the usual ENDF-6 notation, e.g. ``5.438673-4`` (or
 strings are written verbatim.
 
 An integer field, i.e. the MAT, MF and MT numbers, the integer fields
-of CONT, HEAD, TAB1, TAB2 and LIST records and the fields of INTG
+of CONT, HEAD, TAB1, TAB2 and LIST records, the interpolation tables
+(NBT and INT) of TAB1 and TAB2 records and the fields of INTG
 records, must be blank (read as zero) or hold an integer with an
 optional sign, preceded and followed by blanks only, e.g. ``12``,
-``-3`` or ``+7``. In integer and float fields, blanks are the only
-whitespace accepted: both parsers reject a tab or other whitespace,
-an underscore between digits (e.g. ``1_0``) and characters outside
-printable ASCII, although Python's ``int()`` and ``float()`` accept them.
+``-3`` or ``+7``; a float form such as ``4.0`` or ``4.000000+0`` is
+not an integer. The value must be within the range of a 32-bit
+signed integer (-2147483648 to 2147483647). In integer and float
+fields, blanks are the only whitespace accepted: both parsers reject
+a tab or other whitespace, an underscore between digits (e.g. ``1_0``)
+and characters outside printable ASCII, although Python's ``int()``
+and ``float()`` accept them.
+
+A float field may also hold a non-finite value, ``NaN``, ``Inf`` or
+``Infinity`` with an optional sign and in any case (e.g. ``nan``,
+``-inf``), which the writer emits for non-finite values. These are
+accepted by default and rejected with ``accept_nan_inf=False``, as
+for :ref:`format validation <format_validation_sec>`. Hexadecimal
+numbers (e.g. ``0x10``) and ``NaN`` with a payload (e.g. ``nan(1)``)
+are rejected by both parsers.
 
 An ENDF-6 file begins with the tape head (TPID), a TEXT record
 ``[NTAPE, 0, 0 / HL]``. Both parsers, and the tape index used by

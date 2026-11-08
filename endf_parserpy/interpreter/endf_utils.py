@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/26
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -585,10 +585,16 @@ def split_sections(lines, read_opts=None):
     th_mat = th["MAT"]
     th_mf = th["MF"]
     th_mt = th["MT"]
-    if th_mf != 0 or th_mt != 0:
+    # the first record is the tape head if its MF and MT numbers are 0 and
+    # its MAT number (the tape number) is not negative: a first record
+    # with MAT=-1, MF=0, MT=0 is a TEND record. The tape number and the
+    # text are not checked otherwise (as in the tape index and in
+    # EndfParserCpp).
+    if th_mat < 0 or th_mf != 0 or th_mt != 0:
         if not ignore_missing_tpid:
             raise UnexpectedControlRecordError(
-                "tape head (TPID) must contain MF=0, MT=0 in control record "
+                "tape head (TPID) must contain MF=0, MT=0 and a MAT number "
+                + "that is not negative in control record "
                 + f"but contains MAT={th_mat}, MF={th_mf}, MT={th_mt}."
             )
         ofs -= 1

@@ -391,6 +391,24 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement(f"mat = {matval}", cpp.INDENT)
     body += cpp.statement(f"mf = {mfval}", cpp.INDENT)
     body += cpp.statement(f"mt = {mtval}", cpp.INDENT)
+    # The first (non-blank) line is the tape head (TPID) if its MF and MT
+    # numbers are 0 and its MAT number (the tape number) is not negative
+    # (a line with MAT=-1, MF=0, MT=0 is a TEND record); the tape number
+    # and the text are not checked otherwise. As in EndfParserPy and the
+    # tape index, any other first line is an error unless the option
+    # ignore_missing_tpid is set.
+    body += cpp.indent_code(
+        cpp.pureif(
+            cpp.logical_and(
+                [
+                    "is_firstline",
+                    "parse_opts.ignore_missing_tpid == false",
+                    "! (mat >= 0 && mf == 0 && mt == 0)",
+                ]
+            ),
+            cpp.throw_runtime_error("Tape ID (TPID) record missing in first line"),
+        )
+    )
 
     conditions = []
     statements = []
@@ -437,7 +455,8 @@ def generate_master_parsefun(name, recipefuns):
             else:
                 curcond = f"mf == {mf} && mt == {mt}"
             if mf == 0 and mt == 0:
-                curcond = cpp.logical_and([curcond, "is_firstline"])
+                # the tape head (see above)
+                curcond = cpp.logical_and([curcond, "mat >= 0", "is_firstline"])
                 # in case of MF=0/MT=0, we want to register that the tpid record has been read
                 section_code += cpp.statement("found_tpid = true")
 
@@ -463,7 +482,16 @@ def generate_master_parsefun(name, recipefuns):
     conditions.append(curcond)
 
     # tend record treatment
-    curcond = cpp.logical_and(["after_mend == true", aux.is_tend("parse_opts")])
+    # (also as the first line, which is only possible with
+    # ignore_missing_tpid, see above: a section after it is an error, as
+    # after any TEND record, and the result is empty without one, as in
+    # EndfParserPy)
+    curcond = cpp.logical_and(
+        [
+            cpp.logical_or(["after_mend == true", "is_firstline"]),
+            aux.is_tend("parse_opts"),
+        ]
+    )
     curstat = cpp.statement("after_mend = false")
     curstat += cpp.statement("after_tend = true")
     conditions.append(curcond)

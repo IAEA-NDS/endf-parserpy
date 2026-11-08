@@ -31,7 +31,8 @@ The records are taken from the structural scan of the tape index (see
 framing (the first record of every run of section records, every other
 record and the blank lines) in its bulk scan; the check then looks at
 these records only. The control fields of the framing records are
-read strictly here (see :func:`.records._strict_control_int`), while
+read strictly here, as the parsers read them (see
+:func:`endf_parserpy.interpreter.endf_utils.ctrl_field_value`), while
 the index reads them leniently.
 """
 
@@ -52,7 +53,8 @@ from .index import (
     _ScanState,
     _scan_file_into,
 )
-from .records import _MAT_COLS, _MF_COLS, _MT_COLS, _strict_control_int
+from ..interpreter.endf_utils import ctrl_field_value
+from .records import _MAT_COLS, _MF_COLS, _MT_COLS
 
 
 @dataclass(frozen=True)
@@ -256,9 +258,9 @@ class _Checker:
             numbers = []
             invalid = []
             for name, cols, columns in _CTRL_FIELDS:
-                value = _strict_control_int(line[cols])
+                field = line[cols].decode("latin-1")
+                value = ctrl_field_value(field)
                 if value is None:
-                    field = line[cols].decode("latin-1")
                     invalid.append(
                         f'invalid {name} field "{field}" (columns {columns})'
                     )

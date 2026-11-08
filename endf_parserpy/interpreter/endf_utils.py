@@ -50,6 +50,20 @@ _match_ctrl_field = re.compile(" *([+-]?[0-9]+)? *").fullmatch
 _CTRL_FIELDS = (("MAT", 0, 4), ("MF", 4, 2), ("MT", 6, 3))
 
 
+def ctrl_field_value(text):
+    """The value of a MAT, MF or MT field, or ``None`` if it is invalid.
+
+    A blank field reads as zero; otherwise the field must consist of
+    optional blanks, an optional sign, at least one digit and optional
+    blanks (see ``_match_ctrl_field``). Also used by the check of the
+    framing records (:func:`endf_parserpy.tape.check_framing`).
+    """
+    m = _match_ctrl_field(text)
+    if m is None:
+        return None
+    return 0 if m.group(1) is None else int(m.group(1))
+
+
 def _plain_ctrl_columns(cols):
     # the columns of the control fields hold only printable ASCII
     # characters other than the underscore
@@ -62,13 +76,10 @@ def _read_ctrl_fields(line, ofs):
     values = []
     for name, start, length in _CTRL_FIELDS:
         text = content[ofs + start : ofs + start + length]
-        m = _match_ctrl_field(text)
-        value = 0
-        if m is not None and m.group(1) is not None:
-            value = int(m.group(1))
+        value = ctrl_field_value(text)
         # (a field of up to 9 columns, as here, is always within the
         # range of a 32-bit integer; checked as by EndfParserCpp)
-        if m is None or not int_field_in_range(value):
+        if value is None or not int_field_in_range(value):
             first = ofs + start + 1
             raise ValueError(
                 f'invalid {name} number field: "{escape_text(text)}" '

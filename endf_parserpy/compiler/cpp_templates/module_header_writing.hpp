@@ -704,9 +704,13 @@ inline std::string float2endfstr(double value, WritingOptions &write_opts) {
   if (! write_opts.keep_E) {
       effwidth++;
   }
-  numstr = float2endfstr_helper(
-    value, effwidth, write_opts
+  // the same characters as float2endfstr_helper(value, effwidth, write_opts),
+  // including the character e, which is still needed by std::strtod below
+  char expbuf[64];
+  int explen = cpp_float2endfstr_helper_chars(
+    expbuf, value, effwidth, write_opts.abuse_signpos
   );
+  numstr.assign(expbuf, explen);
   if (write_opts.prefer_noexp) {
     std::string numstr_noexp = float2endfstr_decimal_helper(
       value, width, write_opts

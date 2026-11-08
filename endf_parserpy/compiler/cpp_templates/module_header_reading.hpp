@@ -1917,6 +1917,42 @@ inline bool cpp_fast_field_to_int(const char* str, int &result) {
 }
 
 
+// The integer in the length columns of str starting at start_pos (counting
+// from 0) as the MAT/MF/MT numbers and the fields of INTG records are
+// read: a blank field reads as zero, otherwise the field must hold an
+// integer with an optional sign, preceded and followed by blanks only
+// (e.g. " 3", "-1  ", "+12"), as read_ctrl and read_fort_int of
+// EndfParserPy read it. Returns false for anything else (e.g. "ab", "8x",
+// "1 2", a tab, "1_0"), and for a number outside the range of int.
+inline bool cpp_int_columns_to_int(const char* str, int start_pos, int length, int& value) {
+  const char* p = str + start_pos;
+  const char* const e = p + length;
+  while (p < e && *p == ' ') p++;
+  if (p == e) {
+    value = 0;
+    return true;
+  }
+  bool neg = false;
+  if (*p == '+' || *p == '-') {
+    neg = (*p == '-');
+    p++;
+  }
+  const char* const d = p;
+  long long v = 0;
+  for (; p < e && static_cast<unsigned char>(*p - '0') < 10; p++) {
+    // beyond the range of int (also with more digits), but no overflow
+    if (v < 10000000000LL) v = v * 10 + (*p - '0');
+  }
+  if (p == d) return false;
+  while (p < e && *p == ' ') p++;
+  if (p != e) return false;
+  if (neg) v = -v;
+  if (v < INT_MIN || v > INT_MAX) return false;
+  value = static_cast<int>(v);
+  return true;
+}
+
+
 // Raise the error for an invalid number field: the message is
 // what + the field in quotes + a description of the field (see
 // cpp_field_description) if fieldnum (counting from 0) is not negative
@@ -1959,6 +1995,12 @@ inline double endfstr2float(const char* str, ParsingOptions &parse_opts, int fie
   }
   for (int i=0; i <= last_nonspace_pos; i++) {
     char c = str[i];
+    // a tab or another control character is not part of a number (as in
+    // EndfParserPy); std::strtod would skip it before the number and stop
+    // at a NUL character after it
+    if (static_cast<unsigned char>(c) < 0x20 || c == 0x7f) {
+      cpp_throw_field_error("malformed number field: ", str, fieldnum, parse_opts);
+    }
     if (c == ' ') {
       if (parse_opts.accept_spaces || ! in_number) {
         continue;
@@ -2015,35 +2057,20 @@ inline double endfstr2float(const char* str, ParsingOptions &parse_opts, int fie
 }
 
 
-// See endfstr2float for the arguments.
+// See endfstr2float for the arguments. The field is read as the MAT/MF/MT
+// numbers (see cpp_int_columns_to_int): blank (zero), or an integer with
+// an optional sign, preceded and followed by blanks only; anything else
+// (e.g. "0.000000+0", "4x", a tab or an underscore) is an error, as for
+// read_fort_int of EndfParserPy. The fast path covers up to 9 digits.
 inline int endfstr2int(const char* str, ParsingOptions &parse_opts, int fieldnum = -1) {
-  int fast_value;
-  if (cpp_fast_field_to_int(str, fast_value)) {
-    return fast_value;
+  int value;
+  if (cpp_fast_field_to_int(str, value)) {
+    return value;
   }
-  // Locate first/last non-space so we can both detect blank fields
-  // (ENDF convention: blank == 0) and detect trailing garbage like "0.0".
-  int start = 0;
-  while (start < 11 && str[start] == ' ') start++;
-  if (start == 11) return 0;
-  int end = 10;
-  while (end > start && str[end] == ' ') end--;
-  char buf[12];
-  int len = end - start + 1;
-  std::memcpy(buf, str + start, len);
-  buf[len] = '\0';
-  // Strict integer parse: reject anything `std::atoi` would have silently
-  // truncated (e.g. "0.000000+0" -> 0, "4.000000-6" -> 4). Mirrors the
-  // Python parser's read_fort_int, which calls int(valstr) and rejects
-  // any float-shaped string.
-  errno = 0;
-  char *endptr;
-  long val = std::strtol(buf, &endptr, 10);
-  if (endptr == buf || *endptr != '\0' || errno == ERANGE
-      || val < INT_MIN || val > INT_MAX) {
+  if (! cpp_int_columns_to_int(str, 0, 11, value)) {
     cpp_throw_field_error("invalid integer in field: ", str, fieldnum, parse_opts, ".");
   }
-  return static_cast<int>(val);
+  return value;
 }
 
 // case for EndfFloatCpp
@@ -2168,44 +2195,6 @@ cpp_validate_field(
 }
 
 // we are done with the cpp_validate_field related functionality
-
-// The integer in the length columns of str starting at start_pos (counting
-// from 0) as the MAT/MF/MT numbers and the fields of INTG records are
-// read: a blank field reads as zero, otherwise the field must hold an
-// integer with an optional sign, preceded and followed by blanks only
-// (e.g. " 3", "-1  ", "+12"), as int() of EndfParserPy accepts it
-// (which also accepts some forms not accepted here: other whitespace
-// than blanks, such as tabs, around the number and underscores between
-// digits). Returns false for anything else (e.g. "ab", "8x", "1 2"),
-// and for a number outside the range of int.
-inline bool cpp_int_columns_to_int(const char* str, int start_pos, int length, int& value) {
-  const char* p = str + start_pos;
-  const char* const e = p + length;
-  while (p < e && *p == ' ') p++;
-  if (p == e) {
-    value = 0;
-    return true;
-  }
-  bool neg = false;
-  if (*p == '+' || *p == '-') {
-    neg = (*p == '-');
-    p++;
-  }
-  const char* const d = p;
-  long long v = 0;
-  for (; p < e && static_cast<unsigned char>(*p - '0') < 10; p++) {
-    // beyond the range of int (also with more digits), but no overflow
-    if (v < 10000000000LL) v = v * 10 + (*p - '0');
-  }
-  if (p == d) return false;
-  while (p < e && *p == ' ') p++;
-  if (p != e) return false;
-  if (neg) v = -v;
-  if (v < INT_MIN || v > INT_MAX) return false;
-  value = static_cast<int>(v);
-  return true;
-}
-
 
 // The message of the error for a field that cpp_int_columns_to_int does
 // not accept, e.g. `invalid MF number field: "8x" (columns 71-72)`; what

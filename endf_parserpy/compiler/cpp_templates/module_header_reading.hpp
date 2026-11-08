@@ -2022,9 +2022,16 @@ inline double endfstr2float(const char* str, ParsingOptions &parse_opts, int fie
         }
       }
     } else {
-      if (c == '.' || (c >= '0' && c <= '9') || c == '-' || c == '+') {
-        in_number = true;
-      }
+      // any other character than a blank starts the number (also a
+      // letter, e.g. of "nan"), so that a blank within it is an error
+      // without accept_spaces, as in EndfParserPy
+      in_number = true;
+    }
+    // std::strtod also reads hexadecimal numbers ("0x10", "0x1p3") and
+    // "nan" with a payload ("nan(1)"), which float() of EndfParserPy
+    // does not; neither has a place in a number field
+    if (c == 'x' || c == 'X' || c == '(') {
+      cpp_throw_field_error("malformed number field: ", str, fieldnum, parse_opts);
     }
     tbuf[j++] = c;
   }

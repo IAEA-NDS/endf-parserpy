@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/25
-# Last modified:   2026/10/25
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -12,16 +12,17 @@
 """Reading the integer fields of INTG records with EndfParserCpp.
 
 The fields II, JJ and KIJ of INTG records (and the MAT, MF and MT numbers)
-are converted like the C function atoi: leading whitespace is skipped,
-then an optional sign and the digits up to the first other character are
-read; a field without digits is 0. The conversion of a field must not
-depend on its width or on its position in the line, and short lines are
-padded with blanks.
+are read as EndfParserPy reads them (read_fort_int): a blank field is 0,
+otherwise the field must hold an integer with an optional sign, preceded
+and followed by blanks only; anything else is an error. They were
+converted like the C function atoi before, which reads non-numeric text
+as 0 and stops at the first other character. The conversion of a field
+must not depend on its width or on its position in the line, and short
+lines are padded with blanks.
 """
 
-import re
 import pytest
-from endf_parserpy import EndfParserCpp
+from endf_parserpy import EndfParserCpp, EndfParserPy
 
 
 # R-Matrix Limited compact covariance (LCOMP=2) with INTG records; the
@@ -53,10 +54,17 @@ TRAILER = (
 NUM_VALUES = {2: 18, 3: 13, 4: 11, 5: 9, 6: 8}
 
 
-def _atoi(field):
-    # the conversion of the C function atoi for the values that fit
-    m = re.match(r"[ \t\n\v\f\r]*([+-]?[0-9]+)", field)
-    return int(m.group(1)) if m else 0
+def _int(field):
+    # the value of a field accepted by both parsers (read_fort_int)
+    return int(field) if field.strip() != "" else 0
+
+
+def _is_valid(field):
+    # blanks, or blanks, an optional sign, digits and blanks
+    body = field.strip(" ")
+    if body[:1] in "+-":
+        body = body[1:]
+    return field.strip(" ") == "" or (body.isdigit() and body.isascii())
 
 
 def _text(ndigit, rows):
@@ -125,43 +133,113 @@ def _fields(ndigit):
     return [c for c in cands if len(c) == w]
 
 
+def _split(cands):
+    valid = [c for c in cands if _is_valid(c)]
+    invalid = [c for c in cands if not _is_valid(c)]
+    return valid, invalid
+
+
+II_FIELDS = ["    5", "   -1", "99999", "  +12", "-9999", "1    ", "00042", "     "]
+II_INVALID = [" -  3", "  7x ", "1\t2  ", "1 2  ", "  +-1"]
+
+
+def _py_parse(text):
+    # (the text ends without a TEND record, after which EndfParserPy
+    # would accept the empty line after the last line ending)
+    parser = EndfParserPy(
+        ignore_send_records=True, ignore_missing_tpid=True, ignore_blank_lines=True
+    )
+    return parser.parse(text)[32][151]
+
+
+def test_field_candidates():
+    for ndigit in NUM_VALUES:
+        valid, invalid = _split(_fields(ndigit))
+        assert len(valid) >= 7 and len(invalid) >= 5
+    assert all(_is_valid(f) for f in II_FIELDS)
+    assert not any(_is_valid(f) for f in II_INVALID)
+
+
 @pytest.mark.parametrize("atype", ["numpy", "list", "dict"])
 @pytest.mark.parametrize("ndigit", sorted(NUM_VALUES))
-def test_intg_fields_like_atoi(ndigit, atype):
+def test_intg_fields_like_python(ndigit, atype):
     n = NUM_VALUES[ndigit]
-    cands = _fields(ndigit)
+    cands, _ = _split(_fields(ndigit))
     rows = []
     for k in range(12):
         kij = [cands[(k * n + m) % len(cands)] for m in range(n)]
-        ii = ["    5", "   -1", "99999", "  +12", "-9999", "1    "][k % 6]
-        jj = ["    1", "    0", "     ", " -  3", "  7x ", "00042"][k % 6]
+        ii = II_FIELDS[k % len(II_FIELDS)]
+        jj = II_FIELDS[(k + 3) % len(II_FIELDS)]
         rows.append((ii, jj, kij))
-    rng = _parse(_text(ndigit, rows), atype)
+    text = _text(ndigit, rows)
+    rng = _parse(text, atype)
     ii, jj, kij = _as_lists(rng, atype)
-    assert ii == [_atoi(r[0]) for r in rows]
-    assert jj == [_atoi(r[1]) for r in rows]
-    assert kij == [[_atoi(f) for f in r[2]] for r in rows]
+    assert ii == [_int(r[0]) for r in rows]
+    assert jj == [_int(r[1]) for r in rows]
+    assert kij == [[_int(f) for f in r[2]] for r in rows]
+    # the same values as EndfParserPy
+    rng_py = _py_parse(text)["isotope"][1]["range"][1]
+    assert ii == [rng_py["II"][k] for k in sorted(rng_py["II"])]
+    assert jj == [rng_py["JJ"][k] for k in sorted(rng_py["JJ"])]
+
+
+def _rejected(text):
+    parser = EndfParserCpp(ignore_send_records=True, ignore_missing_tpid=True)
+    with pytest.raises(RuntimeError) as excinfo:
+        parser.parse(text)
+    with pytest.raises(Exception):
+        _py_parse(text)
+    return str(excinfo.value)
+
+
+@pytest.mark.parametrize("ndigit", sorted(NUM_VALUES))
+def test_intg_invalid_kij_field_rejected(ndigit):
+    n = NUM_VALUES[ndigit]
+    w = ndigit + 1
+    start = 11 if ndigit <= 5 else 10
+    valid, invalid = _split(_fields(ndigit))
+    for field in invalid:
+        for pos in (0, n - 1):
+            kij = [valid[1]] * n
+            kij[pos] = field
+            msg = _rejected(_text(ndigit, [("    1", "    1", kij)]))
+            col = start + pos * w + 1
+            assert (
+                f'invalid integer field: "{field}" (columns {col}-{col + w - 1})' in msg
+            )
+            assert "INTG" in msg
+
+
+@pytest.mark.parametrize("field", II_INVALID)
+@pytest.mark.parametrize("which", ["II", "JJ"])
+def test_intg_invalid_ii_jj_field_rejected(field, which):
+    ndigit = 3
+    kij = [" " * (ndigit + 1)] * NUM_VALUES[ndigit]
+    row = (field, "    1", kij) if which == "II" else ("    1", field, kij)
+    msg = _rejected(_text(ndigit, [row]))
+    cols = "1-5" if which == "II" else "6-10"
+    assert (
+        f'invalid integer field: "{field}" (columns {cols})'.replace("\t", "\\t") in msg
+    )
 
 
 @pytest.mark.parametrize("ndigit", sorted(NUM_VALUES))
 def test_intg_fields_with_other_characters(ndigit):
-    # tabs are whitespace for atoi; other characters end the number
+    # tabs and characters outside ASCII are not part of a number (int() of
+    # EndfParserPy accepts a tab before or after the number, which is not
+    # printable ASCII; see test_strict_control_fields.py)
     n = NUM_VALUES[ndigit]
     w = ndigit + 1
     cands = ["\t5".rjust(w), "\xe95".rjust(w), "5\xe9".rjust(w), "\t-2".rjust(w)]
     cands = [c for c in cands if len(c) == w]
-    rows = []
-    for k in range(4):
-        kij = [cands[(k + m) % len(cands)] for m in range(n)]
-        rows.append(("\t  -3", " \xe9  4", kij))
     parser = EndfParserCpp(
         ignore_send_records=True,
         ignore_missing_tpid=True,
         array_type="list",
         accept_non_ascii=True,
     )
-    sec = parser.parse(_text(ndigit, rows))[32][151]
-    rng = sec["isotope"][0]["range"][0]
-    assert rng["II"] == [-3] * 4
-    assert rng["JJ"] == [0] * 4
-    assert rng["KIJ"] == [[_atoi(f) for f in r[2]] for r in rows]
+    for field in cands:
+        kij = ["  1".rjust(w)] * n
+        kij[1] = field
+        with pytest.raises(RuntimeError, match="invalid integer field"):
+            parser.parse(_text(ndigit, [("    1", "    2", kij)]))

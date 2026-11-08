@@ -2169,40 +2169,134 @@ cpp_validate_field(
 
 // we are done with the cpp_validate_field related functionality
 
-// The integer in the field of the given length starting at start_pos,
-// converted by std::atoi, or 0 if the field is blank. The field is
-// copied into a terminated buffer for std::atoi; the fields read with
-// this function (MAT/MF/MT numbers and the fields of INTG records) are
-// short, so the buffer is on the stack and only longer fields need a
-// heap allocation.
-inline int cpp_read_custom_int_field(const char *str, int start_pos, int length) {
-  const char* field = str + start_pos;
-  int i = 0;
-  while (i < length && field[i] == ' ') i++;
-  if (i >= length) return 0;
-  char buf[32];
-  if (length < static_cast<int>(sizeof(buf))) {
-    std::memcpy(buf, field, length);
-    buf[length] = '\0';
-    return std::atoi(buf);
+// The integer in the length columns of str starting at start_pos (counting
+// from 0) as the MAT/MF/MT numbers and the fields of INTG records are
+// read: a blank field reads as zero, otherwise the field must hold an
+// integer with an optional sign, preceded and followed by blanks only
+// (e.g. " 3", "-1  ", "+12"), as int() of EndfParserPy accepts it
+// (which also accepts some forms not accepted here: other whitespace
+// than blanks, such as tabs, around the number and underscores between
+// digits). Returns false for anything else (e.g. "ab", "8x", "1 2"),
+// and for a number outside the range of int.
+inline bool cpp_int_columns_to_int(const char* str, int start_pos, int length, int& value) {
+  const char* p = str + start_pos;
+  const char* const e = p + length;
+  while (p < e && *p == ' ') p++;
+  if (p == e) {
+    value = 0;
+    return true;
   }
-  std::string longfield(field, static_cast<std::size_t>(length));
-  return std::atoi(longfield.c_str());
+  bool neg = false;
+  if (*p == '+' || *p == '-') {
+    neg = (*p == '-');
+    p++;
+  }
+  const char* const d = p;
+  long long v = 0;
+  for (; p < e && static_cast<unsigned char>(*p - '0') < 10; p++) {
+    // beyond the range of int (also with more digits), but no overflow
+    if (v < 10000000000LL) v = v * 10 + (*p - '0');
+  }
+  if (p == d) return false;
+  while (p < e && *p == ' ') p++;
+  if (p != e) return false;
+  if (neg) v = -v;
+  if (v < INT_MIN || v > INT_MAX) return false;
+  value = static_cast<int>(v);
+  return true;
 }
 
 
+// The message of the error for a field that cpp_int_columns_to_int does
+// not accept, e.g. `invalid MF number field: "8x" (columns 71-72)`; what
+// names the field.
+CPP_DECIMAL_NOINLINE inline std::string cpp_int_columns_error_message(
+  const char* what, const char* str, int start_pos, int length
+) {
+  std::ostringstream errmsg;
+  errmsg << "invalid " << what << " field: \""
+         << std::string(str + start_pos, static_cast<std::size_t>(length))
+         << "\" (columns " << start_pos + 1 << "-" << start_pos + length << ")";
+  return errmsg.str();
+}
+
+
+// Raise the error for a field that cpp_int_columns_to_int does not
+// accept while parsing; the template of the record and the line are
+// added to the message by cpp_rethrow_parse_error. Kept out of line, so
+// that the error path does not add code to the reading functions.
+[[noreturn]] CPP_DECIMAL_NOINLINE inline void cpp_throw_int_columns_error(
+  const char* what, const char* str, int start_pos, int length
+) {
+  throw std::runtime_error(
+    cpp_int_columns_error_message(what, str, start_pos, length) + "\n"
+  );
+}
+
+
+// The integer in the field of the given length starting at start_pos
+// (see cpp_int_columns_to_int); used for the fields of INTG records.
+// Raises an error if the field holds anything else than a blank field
+// or an integer.
+inline int cpp_read_custom_int_field(const char *str, int start_pos, int length) {
+  int value;
+  if (! cpp_int_columns_to_int(str, start_pos, length, value)) {
+    cpp_throw_int_columns_error("integer", str, start_pos, length);
+  }
+  return value;
+}
+
+
+// The MAT, MF and MT numbers of a line (columns 67-70, 71-72 and 73-75),
+// see cpp_int_columns_to_int. Raise an error for a field holding
+// anything else than a blank field or an integer, as EndfParserPy.
 inline int cpp_read_mat_number(const char *str) {
-  return cpp_read_custom_int_field(str, 66, 4);
+  int value;
+  if (! cpp_int_columns_to_int(str, 66, 4, value)) {
+    cpp_throw_int_columns_error("MAT number", str, 66, 4);
+  }
+  return value;
 }
 
 
 inline int cpp_read_mf_number(const char *str) {
-  return cpp_read_custom_int_field(str, 70, 2);
+  int value;
+  if (! cpp_int_columns_to_int(str, 70, 2, value)) {
+    cpp_throw_int_columns_error("MF number", str, 70, 2);
+  }
+  return value;
 }
 
 
 inline int cpp_read_mt_number(const char *str) {
-  return cpp_read_custom_int_field(str, 72, 3);
+  int value;
+  if (! cpp_int_columns_to_int(str, 72, 3, value)) {
+    cpp_throw_int_columns_error("MT number", str, 72, 3);
+  }
+  return value;
+}
+
+
+// Raise an error if one of the MAT, MF and MT fields of a line is not
+// accepted by cpp_int_columns_to_int (see cpp_read_mat_number), for a
+// line whose numbers are not needed otherwise.
+inline void cpp_check_control_fields(const char *str) {
+  cpp_read_mat_number(str);
+  cpp_read_mf_number(str);
+  cpp_read_mt_number(str);
+}
+
+
+// The leading integer of a field as std::atoi reads it (0 if there is
+// none), only for the MAT/MF/MT numbers in the message of an error about
+// another problem of the line (see cpp_check_line_ascii), as
+// _lenient_int of EndfParserPy.
+inline int cpp_read_lenient_int_field(const char *str, int start_pos, int length) {
+  char buf[32];
+  if (length >= static_cast<int>(sizeof(buf))) length = sizeof(buf) - 1;
+  std::memcpy(buf, str + start_pos, length);
+  buf[length] = '\0';
+  return std::atoi(buf);
 }
 
 
@@ -2743,9 +2837,10 @@ inline void cpp_check_line_ascii(
     std::size_t length;
     cpp_last_line_info(cont, lineno, length);
     // the MAT/MF/MT columns (the line is at least 75 characters long)
-    int mat = cpp_read_custom_int_field(line.data(), 66, 4);
-    int mf = cpp_read_custom_int_field(line.data(), 70, 2);
-    int mt = cpp_read_custom_int_field(line.data(), 72, 3);
+    // (read leniently: the error is about the character)
+    int mat = cpp_read_lenient_int_field(line.data(), 66, 4);
+    int mf = cpp_read_lenient_int_field(line.data(), 70, 2);
+    int mt = cpp_read_lenient_int_field(line.data(), 72, 3);
     cpp_text_encoding_function("raise_non_ascii_line_error")(
       lineno, i + 1, mat, mf, mt, static_cast<int>(c)
     );
@@ -2771,8 +2866,9 @@ inline std::string cpp_read_raw_line(std::istream& cont) {
 
 // content_size (if given) receives the length of the line before the
 // padding of a short line (see cpp_pad_short_line).
-// The MAT/MF/MT numbers of a line are checked with
-// validate_control_records=true and, if check_long_line is true, for a
+// The MAT/MF/MT fields of every line must hold numbers (see
+// cpp_read_mat_number). The MAT/MF/MT numbers of a line are compared
+// with mat, mf and mt with validate_control_records=true and, if check_long_line is true, for a
 // line longer than 80 columns: such a line is not valid, and a non-ASCII
 // character that occupies several bytes (e.g. in UTF-8) in a TEXT record
 // shifts the MAT/MF/MT columns, which EndfParserPy, which divides a file
@@ -2807,6 +2903,10 @@ inline void cpp_read_line(
       throw_mismatch_error("MF", mf, curmf);
     if (curmt != mt)
       throw_mismatch_error("MT", mt, curmt);
+  } else {
+    // the MAT/MF/MT fields must hold numbers also if they are not
+    // compared, as EndfParserPy reads them for every line
+    cpp_check_control_fields(line.data());
   }
 }
 

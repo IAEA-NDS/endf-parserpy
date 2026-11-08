@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/05
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -384,9 +384,10 @@ def generate_master_parsefun(name, recipefuns):
         "cpp_check_line_ascii(cpp_line, cpp_content_size, cont, parse_opts)",
         cpp.INDENT,
     )
-    matval = aux.get_custom_int_field(66, 4)
-    mfval = aux.get_custom_int_field(70, 2)
-    mtval = aux.get_custom_int_field(72, 3)
+    # (an error for a field that is neither blank nor a number)
+    matval = aux.get_mat_number("cpp_line")
+    mfval = aux.get_mf_number("cpp_line")
+    mtval = aux.get_mt_number("cpp_line")
     body += cpp.statement(f"mat = {matval}", cpp.INDENT)
     body += cpp.statement(f"mf = {mfval}", cpp.INDENT)
     body += cpp.statement(f"mt = {mtval}", cpp.INDENT)

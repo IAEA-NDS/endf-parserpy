@@ -1164,6 +1164,45 @@ inline std::string cpp_verbatim_line_from_pyobj(
 }
 
 
+// The MAT, MF and MT numbers of a line of a section given as a list of
+// strings (lineno counting from 1, mf and mt the keys of the section in
+// the dictionary). A field must be blank (zero) or hold an integer (see
+// cpp_int_columns_to_int); the columns missing from a short line are
+// blanks. Otherwise a ValueError is raised, as by EndfParserPy, which
+// reads the MAT/MF/MT numbers of the first and the last line of such a
+// section with int().
+inline void cpp_verbatim_control_numbers(
+  const std::string& line, int lineno, int mf, int mt,
+  int& line_mat, int& line_mf, int& line_mt
+) {
+  std::size_t size = line.size();
+  if (size > 0 && line[size-1] == '\n') size--;
+  if (size > 0 && line[size-1] == '\r') size--;
+  if (size > 75) size = 75;
+  char cols[76];
+  std::memset(cols, ' ', 75);
+  std::memcpy(cols, line.data(), size);
+  cols[75] = '\0';
+  const char* what = nullptr;
+  int start = 0;
+  int length = 0;
+  if (! cpp_int_columns_to_int(cols, 66, 4, line_mat)) {
+    what = "MAT number"; start = 66; length = 4;
+  } else if (! cpp_int_columns_to_int(cols, 70, 2, line_mf)) {
+    what = "MF number"; start = 70; length = 2;
+  } else if (! cpp_int_columns_to_int(cols, 72, 3, line_mt)) {
+    what = "MT number"; start = 72; length = 3;
+  }
+  if (what != nullptr) {
+    std::string msg = cpp_int_columns_error_message(what, cols, start, length);
+    msg += " in line " + std::to_string(lineno) + " of the section MF="
+        + std::to_string(mf) + "/MT=" + std::to_string(mt)
+        + " given as a list of lines";
+    throw py::value_error(cpp_escape_message(msg.c_str()));
+  }
+}
+
+
 inline int get_mat_from_mfmt_section(py::object mfmt_section, int mf, int mt) {
   int mat;
   if (py::isinstance<py::dict>(mfmt_section)) {
@@ -1181,12 +1220,9 @@ inline int get_mat_from_mfmt_section(py::object mfmt_section, int mf, int mt) {
     throw std::runtime_error("list representing section is empty");
   }
   std::string first_line = cpp_verbatim_line_from_pyobj(mfmt_section_list[0], 1, mf, mt);
-  std::string matstr = (first_line.size() > 66) ? first_line.substr(66, 4) : "";
   // a blank MAT field (e.g. of a TPID record) reads as zero, as in EndfParserPy
-  if (matstr.find_first_not_of(" \r\n") == std::string::npos) {
-    return 0;
-  }
-  mat = std::stoi(matstr);
+  int line_mf, line_mt;
+  cpp_verbatim_control_numbers(first_line, 1, mf, mt, mat, line_mf, line_mt);
   return mat;
 }
 
@@ -1199,9 +1235,20 @@ inline void write_section_verbatim(
     throw std::runtime_error("an MF/MT section must not be represented by an empty list");
   }
   std::string first_line = cpp_verbatim_line_from_pyobj(mfmt_section[0], 1, dict_mf, dict_mt);
-  int mat = cpp_read_mat_number(first_line.c_str());
-  int mf = cpp_read_mf_number(first_line.c_str());
-  int mt = cpp_read_mt_number(first_line.c_str());
+  int mat, mf, mt;
+  cpp_verbatim_control_numbers(first_line, 1, dict_mf, dict_mt, mat, mf, mt);
+  // the numbers of the last line must be numbers too (EndfParserPy
+  // reads them for the SEND record)
+  const int nlines = static_cast<int>(mfmt_section.size());
+  if (nlines > 1) {
+    int last_mat, last_mf, last_mt;
+    std::string last_line = cpp_verbatim_line_from_pyobj(
+      mfmt_section[nlines - 1], nlines, dict_mf, dict_mt
+    );
+    cpp_verbatim_control_numbers(
+      last_line, nlines, dict_mf, dict_mt, last_mat, last_mf, last_mt
+    );
+  }
   int linenum = (mf != 0) ? 0 : -1;  // first written number is 0 for tape head
   int lineno = 0;
   for (const auto& item : mfmt_section) {

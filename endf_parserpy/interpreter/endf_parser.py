@@ -107,6 +107,7 @@ from ..endf_parser_base import (
     EndfParserBase,
     _record_init_kwargs,
     _check_array_type,
+    _write_via_temporary_file,
 )
 
 
@@ -1514,6 +1515,13 @@ class EndfParserPy(EndfParserBase):
         overwrite : bool
             Existing files will only be overwritten if this argument
             is ``True``, otherwise this function will abort.
+
+        If an error occurs, the file is neither created nor changed. The
+        text is composed first and written into a temporary file next to
+        the file, which then becomes the file (a new file) or whose
+        content is copied into it (an existing file, which thus keeps its
+        permissions, owner and links); a symbolic link is followed, as by
+        :func:`open`.
         """
         if file_exists(filename) and not overwrite:
             raise FileExistsError(
@@ -1523,11 +1531,17 @@ class EndfParserPy(EndfParserBase):
             )
         else:
             lines = self.write(endf_dic, exclude, include, zero_as_blank)
-            # newline="" disables newline translation: the ENDF text is
-            # written with LF on every platform, never CRLF on Windows;
-            # each character is written as the byte with the same code
-            with open(filename, "w", newline="", encoding=ENDF_ENCODING) as fout:
-                fout.write("\n".join(lines))
+
+            def write_to_path(path):
+                # newline="" disables newline translation: the ENDF text is
+                # written with LF on every platform, never CRLF on Windows;
+                # each character is written as the byte with the same code
+                with open(path, "w", newline="", encoding=ENDF_ENCODING) as fout:
+                    fout.write("\n".join(lines))
+
+            # as by EndfParserCpp: an error of the writing (e.g. a full disk)
+            # leaves no incomplete file
+            _write_via_temporary_file(filename, write_to_path)
 
 
 # DEPRECATED NAME

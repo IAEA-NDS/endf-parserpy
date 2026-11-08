@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/10/21
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -12,6 +12,10 @@
 import typing
 import inspect
 import functools
+import os
+import secrets
+import shutil
+import tempfile
 from typing import Optional, Union
 from typing import Dict, List, Tuple
 from abc import ABC, abstractmethod
@@ -72,6 +76,65 @@ EndfSectionType = Union[ParsedEndfSectionType, UnparsedEndfSectionType]
 
 MtDictType = Dict[int, EndfSectionType]
 MfMtDictType = Dict[int, MtDictType]
+
+
+def _create_temporary_file(filename, target, target_exists):
+    # An empty file next to the target, created with the mode 0o666 that
+    # open() uses, so that the operating system applies the umask (and the
+    # default ACL of the directory) as for a file created by open().
+    dirname, basename = os.path.split(target)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    for _ in range(100):
+        tmp = os.path.join(dirname, f".{basename}.{secrets.token_hex(4)}.tmp")
+        try:
+            fd = os.open(tmp, flags, 0o666)
+        except FileExistsError:
+            continue
+        except OSError as exc:
+            if target_exists:
+                # an existing file in a directory without write
+                # permission: its content is replaced by a copy, for which
+                # the temporary file can be anywhere
+                fd, tmp = tempfile.mkstemp(suffix=".endf.tmp")
+                os.close(fd)
+                return tmp
+            # the error open() gives for the target, e.g. for a missing
+            # directory
+            raise OSError(exc.errno, exc.strerror, os.fspath(filename)) from None
+        os.close(fd)
+        return tmp
+    raise FileExistsError(f"no temporary file could be created in {dirname}")
+
+
+def _write_via_temporary_file(filename, write_to_path):
+    """Write a file with ``write_to_path(path)`` and keep it only on success.
+
+    ``write_to_path`` writes the file at ``path``, a temporary file; if it
+    raises an exception, the temporary file is removed and ``filename``
+    is neither created nor changed. Otherwise the result is the same as if
+    ``write_to_path`` had written ``filename`` with :func:`open`: a symbolic
+    link is followed, a new file gets the permissions given by the umask,
+    and an existing file keeps its inode, permissions, owner and links, as
+    its content is replaced by a copy of the temporary file (for a new
+    file, the temporary file is renamed, in the same directory).
+    """
+    # open() follows a symbolic link, also a dangling one
+    target = os.path.realpath(os.fsdecode(os.fspath(filename)))
+    target_exists = os.path.exists(target)
+    tmp = _create_temporary_file(filename, target, target_exists)
+    try:
+        write_to_path(tmp)
+        if target_exists:
+            shutil.copyfile(tmp, target)
+        else:
+            os.replace(tmp, target)
+    finally:
+        # the temporary file is gone after a successful os.replace; an
+        # error of the cleanup must not mask the error of the writing
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
 
 
 class EndfParserBase(ABC):

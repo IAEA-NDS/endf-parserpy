@@ -16,6 +16,7 @@ from ..endf_parser_base import (
     EndfParserBase,
     _record_init_kwargs,
     _check_array_type,
+    _write_via_temporary_file,
 )
 
 
@@ -440,6 +441,13 @@ class EndfParserCpp(EndfParserBase):
         overwrite : bool
             Existing files will only be overwritten if this argument
             is ``True``, otherwise this function will abort.
+
+        If an error occurs, the file is neither created nor changed. The
+        text is streamed into a temporary file next to the file, which
+        then becomes the file (a new file) or whose content is copied
+        into it (an existing file, which thus keeps its permissions,
+        owner and links); a symbolic link is followed, as by
+        :func:`open`.
         """
         if isinstance(endf_dict, EndfDict):
             endf_dict = endf_dict.unwrap()
@@ -449,6 +457,9 @@ class EndfParserCpp(EndfParserBase):
                 "Change overwrite option to True if you "
                 "really want to overwrite this file."
             )
-        return self._write_endf_file(
-            str(filename), endf_dict, exclude, include, self.write_opts
+        _write_via_temporary_file(
+            filename,
+            lambda path: self._write_endf_file(
+                path, endf_dict, exclude, include, self.write_opts
+            ),
         )

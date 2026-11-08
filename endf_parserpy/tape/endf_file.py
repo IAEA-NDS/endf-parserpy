@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/04
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -332,7 +332,11 @@ class EndfFile:
         check_edits="eager",
         verify_source=False,
         ignore_missing_tpid=False,
+        _index=None,
     ):
+        # _index: the TapeIndex of the file if it was built before, from the
+        # same scan as the check of its framing records (see
+        # endf-cli validate), with the same ignore_missing_tpid
         if mode not in _VALID_MODES:
             raise ValueError(f"mode must be one of {_VALID_MODES}, got {mode!r}")
         if on_error not in _VALID_ON_ERROR:
@@ -354,9 +358,11 @@ class EndfFile:
         self._on_error = on_error
         self._check_edits = check_edits
         self._verify_source = verify_source
-        self._index = TapeIndex.from_file(
-            self._path, ignore_missing_tpid=ignore_missing_tpid
-        )
+        if _index is None:
+            _index = TapeIndex.from_file(
+                self._path, ignore_missing_tpid=ignore_missing_tpid
+            )
+        self._index = _index
         self._materials = [
             _MaterialSlot(e.position, e.mat, e.za, e.awr) for e in self._index
         ]

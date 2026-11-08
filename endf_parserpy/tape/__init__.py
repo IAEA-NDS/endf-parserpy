@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/05/16
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -33,6 +33,7 @@ from .index import TapeIndex, MaterialIndexEntry, SectionIndexEntry
 from .address import EndfMaterialPath
 from .material import MaterialView
 from .endf_file import EndfFile, FailedSection
+from .framing import check_framing, FramingProblem
 
 __all__ = (
     "parse_tape",
@@ -50,6 +51,8 @@ __all__ = (
     "EndfMaterialPath",
     "MaterialView",
     "FailedSection",
+    "check_framing",
+    "FramingProblem",
     "TapeError",
     "TapeStructureError",
     "AmbiguousMaterialError",

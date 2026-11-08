@@ -229,13 +229,23 @@ def test_rejected_mf_falls_back_alone(parsers, tmp_path, per_section_parsing):
 
 def test_file_framing_not_checked(parsers, tmp_path, no_per_section_parsing):
     """As the per-section validation, the fast path ignores the framing
-    records of the file, here a FEND record with a nonzero field."""
+    records of the file, here a FEND record with a nonzero field: the
+    sections parse in the fast path. The framing records are checked
+    separately, once per file (see test_validate_framing_records.py)."""
     parser, fast = parsers
     lines = _lines(CU)
     i = next(k for k, line in enumerate(lines) if k > 0 and line[66:75] == b"2925 0  0")
     lines[i] = b"%11d" % 7 + lines[i][11:]
     path = _write(tmp_path / "fend.endf", lines)
-    assert validate._validate_file(parser, str(path), fast) == (True, None)
+    assert validate._validate_sections(parser, str(path), fast) == (True, None)
+    ok, detail = validate._validate_file(parser, str(path), fast)
+    assert not ok
+    assert detail == (
+        "framing records (SEND/FEND/MEND/TEND):\n"
+        f"line {i + 1}: the fields 1-6 (columns 1-66) of the FEND record must "
+        "be zero or blank, but field 1 is not: "
+        f'"{lines[i][:66].decode().rstrip()}"'
+    )
 
 
 def test_sections_tape_matches_mini_tapes(parsers, tmp_path):

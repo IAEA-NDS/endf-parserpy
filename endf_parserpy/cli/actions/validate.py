@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/01
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -16,6 +16,7 @@ from ..cmd_utils import (
 )
 from endf_parserpy import EndfParserCpp
 from endf_parserpy.tape import SectionParseError
+from endf_parserpy.tape.framing import _check_framing_and_index
 from glob import glob
 from itertools import groupby
 import sys
@@ -100,8 +101,9 @@ def _sections_parse_at_once(endf_file, material, keys, fast_parser):
     The sections are parsed as one tape built by
     :meth:`EndfFile._sections_tape`: every section has exactly the text
     with which the per-section validation parses it alone, and the
-    framing records are generated as there, so the framing records of
-    the file are not checked here either. As the C++ parser of the fast
+    FEND/MEND/TEND records are generated as there, so the framing
+    records of the file are not checked here either; they are checked
+    once per file by :func:`_framing_detail`. As the C++ parser of the fast
     path checks the MAT/MF/MT numbers of every line, the parsing of a
     section cannot read the lines of another one; all sections must be
     present in the result.
@@ -114,14 +116,62 @@ def _sections_parse_at_once(endf_file, material, keys, fast_parser):
         return False
 
 
+# the number of problems with the framing records given in a report
+MAX_FRAMING_PROBLEMS = 10
+
+# the options of the parsers that the check of the framing records follows
+_FRAMING_OPTIONS = (
+    "ignore_send_records",
+    "ignore_blank_lines",
+    "ignore_missing_tpid",
+    "accept_non_ascii",
+    "accept_spaces",
+    "accept_d_exponent",
+)
+
+
+def _framing_detail(parser, file):
+    """Describe the problems with the framing records of ``file``.
+
+    Return ``(detail, index)``: ``detail`` is ``None`` if there is no
+    problem (or if the file cannot be read, which opening it reports).
+    The framing records (SEND, FEND, MEND and TEND) are checked as by
+    :func:`~endf_parserpy.tape.check_framing`, with the options of
+    ``parser`` that relax these checks in a full parse (e.g.
+    ``ignore_send_records``). At most :data:`MAX_FRAMING_PROBLEMS`
+    problems are listed, with the line of the file at which they are
+    found. The check runs in the scan that builds the
+    :class:`~endf_parserpy.tape.TapeIndex` of the file, which is
+    returned as ``index`` for opening the file (``None`` if the scan
+    fails, e.g. for a missing file or a tape without a tape head).
+    """
+    opts = getattr(parser, "read_opts", None) or {}
+    kwargs = {name: bool(opts.get(name) or False) for name in _FRAMING_OPTIONS}
+    try:
+        problems, index, _ = _check_framing_and_index(file, **kwargs)
+    except OSError:
+        return None, None
+    if not problems:
+        return None, index
+    lines = [str(problem) for problem in problems[:MAX_FRAMING_PROBLEMS]]
+    more = len(problems) - MAX_FRAMING_PROBLEMS
+    if more > 0:
+        lines.append(f"... and {more} more")
+    detail = "framing records (SEND/FEND/MEND/TEND):\n" + "\n".join(lines)
+    return detail, index
+
+
 def _validate_file(parser, file, fast_parser=None):
-    """Validate every section of every material of ``file``.
+    """Validate the framing records and every section of ``file``.
 
     Returns ``(ok, detail)``; ``detail`` is ``None`` on success and a
-    human-readable failure description otherwise. The file is opened as
-    an :class:`EndfFile`, so single- and multi-material files are
-    validated the same way -- a tape is valid only if every section of
-    every material parses.
+    human-readable failure description otherwise. The framing records
+    of the whole file are checked first (see :func:`_framing_detail`).
+    Then the file is opened as an :class:`EndfFile`, so single- and
+    multi-material files are validated the same way -- a tape is valid
+    only if its framing records are valid and every section of every
+    material parses. If both fail, the report gives the problems with
+    the framing records, followed by the first failure of the sections.
 
     If ``fast_parser`` is given, all sections of an MF of a material are
     first parsed by it in a single call (see
@@ -132,8 +182,27 @@ def _validate_file(parser, file, fast_parser=None):
     order as without ``fast_parser``, the first failing section is the
     same.
     """
+    framing, index = _framing_detail(parser, file)
+    ok, detail = _validate_sections(parser, file, fast_parser, index)
+    if framing is None:
+        return ok, detail
+    if detail is None:
+        return False, framing
+    return False, framing + "\n\n" + detail
+
+
+def _validate_sections(parser, file, fast_parser, index=None):
+    """Validate every section of every material of ``file``.
+
+    The part of :func:`_validate_file` that opens the file as an
+    :class:`EndfFile` and parses the sections; returns ``(ok, detail)``.
+    ``index`` is the :class:`~endf_parserpy.tape.TapeIndex` of the file
+    built by :func:`_framing_detail`, or ``None`` to build it here (with
+    the error of the index if it cannot be built).
+    """
+    kwargs = {} if index is None else {"_index": index}
     try:
-        endf_file = open_endf_file(file, parser, on_error="raise")
+        endf_file = open_endf_file(file, parser, on_error="raise", **kwargs)
     except Exception as exc:  # noqa: BLE001
         return False, str(exc)
     multi = len(endf_file) > 1

@@ -281,8 +281,22 @@ def generate_cpp_parsefun(
 
 
 def _generate_check_end_records_fun(funname):
-    checker_body = ""
+    """The checks made before a section (or the tape head) is read.
 
+    ``mat``, ``mf`` and ``mt`` are the numbers of the section to be
+    read, ``last_mat``, ``last_mf`` and ``last_mt`` those of the last
+    section read before it (``last_mf`` is 0 before the first section
+    and after the tape head), which are set to those of the section to
+    be read. ``after_fend`` tells whether a FEND record was read since
+    the last section.
+
+    The sections of a material must be in ascending order of MF, and of
+    MT within an MF; a section with another MAT number than the last
+    one starts a new material. A FEND record ends its MF: the section
+    after it must have a greater MF. With ``ignore_send_records``, the
+    position of the FEND records is not checked, so that this last rule
+    does not apply, but the order of the sections is still checked.
+    """
     end_record_checks = cpp.pureif(
         cpp.logical_or(["after_mend == true", "after_tend == true"]),
         cpp.throw_runtime_error("No MF/MT section allowed after MEND/TEND record"),
@@ -293,9 +307,39 @@ def _generate_check_end_records_fun(funname):
             "FEND record without preceding MF/MT section encountered"
         ),
     )
-    end_record_checks += cpp.pureif(
-        cpp.logical_and(["after_fend == true", "last_mf >= mf"]),
-        cpp.throw_runtime_error("MF sections must be in ascending order"),
+
+    mf_error = cpp.throw_runtime_error(
+        '"MF sections must be in ascending order, but MF=" + '
+        'std::to_string(mf) + " follows MF=" + std::to_string(last_mf) + '
+        '(mf == last_mf ? " and its FEND record" : "")',
+        quote=False,
+    )
+    mt_error = cpp.throw_runtime_error(
+        '"MT sections must be in ascending order within an MF, but MF=" + '
+        'std::to_string(mf) + "/MT=" + std::to_string(mt) + '
+        '" follows MF=" + std::to_string(last_mf) + "/MT=" + '
+        "std::to_string(last_mt)",
+        quote=False,
+    )
+    mf_descending = cpp.logical_or(
+        [
+            "mf < last_mf",
+            cpp.logical_and(
+                [
+                    "mf == last_mf",
+                    "after_fend == true",
+                    "parse_opts.ignore_send_records == false",
+                ]
+            ),
+        ]
+    )
+    order_checks = cpp.conditional_branches(
+        [mf_descending, cpp.logical_and(["mf == last_mf", "mt <= last_mt"])],
+        [mf_error, mt_error],
+    )
+    order_check = cpp.pureif(
+        cpp.logical_and(["mf != 0", "last_mf != 0", "mat == last_mat"]),
+        order_checks,
     )
 
     tpid_record_check = cpp.pureif(
@@ -308,21 +352,26 @@ def _generate_check_end_records_fun(funname):
     checker_body = cpp.pureif(
         "parse_opts.ignore_send_records == false", end_record_checks
     )
+    checker_body += order_check
     checker_body += tpid_record_check
+    # the section becomes the last section
+    checker_body += cpp.statement("last_mat = mat")
+    checker_body += cpp.statement("last_mf = mf")
+    checker_body += cpp.statement("last_mt = mt")
 
     args = (
         ("bool", "after_fend"),
         ("bool", "after_mend"),
         ("bool", "after_tend"),
-        ("bool", "mat"),
-        ("bool", "mf"),
-        ("bool", "mt"),
-        ("bool", "last_mat"),
-        ("bool", "last_mf"),
-        ("bool", "last_mt"),
+        ("int", "mat"),
+        ("int", "mf"),
+        ("int", "mt"),
+        ("int&", "last_mat"),
+        ("int&", "last_mf"),
+        ("int&", "last_mt"),
         ("bool", "section_encountered"),
         ("bool", "found_tpid"),
-        ("ParsingOptions", "parse_opts"),
+        ("const ParsingOptions&", "parse_opts"),
     )
 
     checker_fun = cpp.function(funname, checker_body, "void", *args)
@@ -344,9 +393,10 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.statement("int mf")
     body += cpp.statement("int mt")
     body += cpp.statement("bool section_encountered = false")
-    body += cpp.statement("int last_mat")
-    body += cpp.statement("int last_mf")
-    body += cpp.statement("int last_mt")
+    # the MAT/MF/MT numbers of the last section (see _check_end_records)
+    body += cpp.statement("int last_mat = 0")
+    body += cpp.statement("int last_mf = 0")
+    body += cpp.statement("int last_mt = 0")
     body += cpp.statement("CppLine cpp_line(parse_opts)")
     body += cpp.statement("py::list verbatim_section")
     body += cpp.statement("bool found_tpid = false")
@@ -516,9 +566,6 @@ def generate_master_parsefun(name, recipefuns):
     body += cpp.indent_code(
         cpp.conditional_branches(conditions, statements, default=default_code)
     )
-    body += cpp.statement("last_mat = mat", cpp.INDENT)
-    body += cpp.statement("last_mf = mf", cpp.INDENT)
-    body += cpp.statement("last_mt = mt", cpp.INDENT)
     body += cpp.statement("curpos = cont.tellg()", cpp.INDENT)
     body += cpp.statement("is_firstline = false", cpp.INDENT)
     body += cpp.close_block()

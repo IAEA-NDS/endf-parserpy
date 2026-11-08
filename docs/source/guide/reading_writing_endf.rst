@@ -65,6 +65,19 @@ are output in the usual ENDF-6 notation, e.g. ``5.438673-4`` (or
 ``preserve_value_strings=True`` is used, in which case the original
 strings are written verbatim.
 
+An ENDF-6 file begins with the tape head (TPID), a TEXT record
+``[NTAPE, 0, 0 / HL]``. Both parsers, and the tape index used by
+:class:`~endf_parserpy.EndfFile`, treat the first non-blank line as
+the tape head if its MF and MT numbers are 0 (or blank) and its MAT
+number, the tape number NTAPE, is not negative. As the format does not
+prescribe a value for the tape number, files use blank, 1 or other
+numbers there; the tape number and the text are not checked otherwise.
+A first line with MAT=-1 (a TEND record) or with other MF/MT numbers
+is not a tape head: this is an error unless ``ignore_missing_tpid=True``
+is given, with which the line is read as the first record of the data.
+As in every other line, the MAT, MF and MT fields must be blank or hold
+an integer.
+
 
 When only one part of the ENDF-6 file is relevant to the user,
 the :func:`~endf_parserpy.EndfParserPy.parsefile()` method

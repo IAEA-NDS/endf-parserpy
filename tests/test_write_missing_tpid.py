@@ -67,9 +67,12 @@ def test_write_without_tpid_raises_by_default(ParserCls, tmp_path):
         parser.write(endf_dict)
     assert "TPID" in str(excinfo.value)
     assert "ignore_missing_tpid" in str(excinfo.value)
+    path = tmp_path / "should_not_be_written.endf"
     with pytest.raises(Exception) as excinfo:
-        parser.writefile(tmp_path / "should_not_be_written.endf", endf_dict)
+        parser.writefile(path, endf_dict)
     assert "TPID" in str(excinfo.value)
+    # writefile of both parsers leaves no file after an error
+    assert not path.exists()
 
 
 @pytest.mark.parametrize("ParserCls", [EndfParserCpp, EndfParserPy])

@@ -224,8 +224,10 @@ def float2basicnumstr(val, write_opts=None):
         floatwidth = max(effwidth - 1 - len_intpart, 0)
         numstr = f"{{:.{floatwidth}f}}".format(val)
         if "." in numstr:
-            if should_skip_zero:
-                dotpos = numstr.index(".")
+            dotpos = numstr.index(".")
+            # the rounding may carry into the integer part, e.g.
+            # 0.99999999999 -> 1.000000000, whose 1 must be kept
+            if should_skip_zero and numstr[dotpos - 1] == "0":
                 numstr = numstr[: dotpos - 1] + numstr[dotpos:]
             numstr = numstr.rstrip("0").rstrip(".")
             # next line to deal with case -.00 and .00

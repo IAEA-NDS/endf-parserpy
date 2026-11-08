@@ -17,7 +17,9 @@ arithmetic and falls back to std::snprintf for values close to a rounding
 tie and for very large or very small magnitudes. The values below
 concentrate on these cases and on the transitions between them; the output
 must be identical to that of EndfParserPy for all combinations of the
-formatting options.
+formatting options. The same holds for the decimal form of prefer_noexp
+for values that round to an integer (with skip_intzero, a value below 1
+in magnitude may round to 1) and for random values.
 """
 
 import itertools
@@ -130,3 +132,90 @@ def test_cpp_writer_agrees_with_python_writer(options):
     assert len(lines_py) == len(lines_cpp)
     differing = [(a, b) for a, b in zip(lines_py, lines_cpp) if a != b]
     assert differing == []
+
+
+def _rounding_to_integer_values():
+    # values whose decimal form (prefer_noexp) rounds up to an integer: the
+    # decimal form of a value below 1 in magnitude has 9 decimals, or 10
+    # for a non-negative value with abuse_signpos and skip_intzero, so that
+    # values within 5e-10 or 5e-11 of 1 round to 1; with skip_intzero, the
+    # integer part 1 that the rounding produced must be kept
+    values = []
+    for one_minus in (5e-10, 5e-11):
+        tie = 1 - one_minus
+        values += [tie] + _neighbours(tie)
+    values += [1 - k * 1e-12 for k in (1, 3, 10, 30, 49, 51, 100, 499, 501)]
+    values += _neighbours(1.0)[:1] + [1 - 2.0**-30, 1 - 2.0**-33, 1 - 2.0**-36]
+    # the same for larger integers, where fewer decimals are available
+    for n in (2, 3, 9, 10, 99, 100, 12345, 99999999, 999999999, 1000000000):
+        for d in (1e-9, 1e-10, 1e-11, 1e-12):
+            values += [n - n * d, n + n * d]
+    # Not compared: a value in [999999999.5, 1e9) rounds to 1000000000
+    # without decimals; EndfParserPy writes this decimal form, while the
+    # decimal candidate of EndfParserCpp loses a digit, so that it writes
+    # the exponent form (1.000000+9).
+    values = [v for v in values if not 999999999.5 <= v < 1e9]
+    # values that round to 0 in the decimal form
+    values += [4e-10, 6e-10, 4e-11, 6e-11, 1e-12]
+    return values + [-v for v in values]
+
+
+def _random_values(n, seed):
+    rng = random.Random(seed)
+    values = []
+    for _ in range(n):
+        kind = rng.randrange(4)
+        if kind == 0:  # magnitudes where both forms compete
+            values.append(rng.uniform(1, 10) * 10.0 ** rng.randint(-12, 11))
+        elif kind == 1:  # below 1 in magnitude, the case of skip_intzero
+            values.append(rng.random())
+        elif kind == 2:  # close to an integer
+            k = rng.randint(0, 1000)
+            values.append(k + rng.choice([-1, 1]) * 10.0 ** rng.uniform(-13, -7))
+        else:  # few significant digits
+            values.append(round(rng.uniform(0, 100), rng.randint(0, 9)))
+    values = [v for v in values if v != 0]
+    return values + [-v for v in values]
+
+
+@pytest.mark.parametrize("options", OPTION_COMBINATIONS, ids=_option_id)
+@pytest.mark.parametrize("kind", ["rounding_to_integer", "random"])
+def test_cpp_writer_agrees_with_python_writer_noexp(options, kind):
+    if kind == "random":
+        values = _random_values(1500, seed=11)
+    else:
+        values = _rounding_to_integer_values()
+    section = _mf3_section(values)
+    lines_py = _lines(
+        EndfParserPy(**{"ignore_missing_tpid": True, **options}).write(section)
+    )
+    lines_cpp = _lines(
+        EndfParserCpp(**{"ignore_missing_tpid": True, **options}).write(section)
+    )
+    assert len(lines_py) == len(lines_cpp)
+    differing = [(a, b) for a, b in zip(lines_py, lines_cpp) if a != b]
+    assert differing == []
+
+
+@pytest.mark.parametrize(
+    "options",
+    [o for o in OPTION_COMBINATIONS if o["prefer_noexp"] and o["skip_intzero"]],
+    ids=_option_id,
+)
+@pytest.mark.parametrize("ParserCls", [EndfParserCpp, EndfParserPy])
+def test_skip_intzero_keeps_carried_one(ParserCls, options):
+    # 0.99999999999 rounds to 1 in the decimal form; the 1 is no integer
+    # zero to be skipped
+    values = [0.99999999999, -0.99999999999, 0.9999999996, -0.9999999996]
+    lines = _lines(
+        ParserCls(**{"ignore_missing_tpid": True, **options}).write(
+            _mf3_section(values)
+        )
+    )
+    # the third line holds the pairs (1, x1), (2, x2), (3, x3)
+    fields = [lines[3][11 * i : 11 * (i + 1)] for i in range(6)]
+    # 0.9999999996 has a tenth decimal only with abuse_signpos
+    expected_third = ".9999999996" if options["abuse_signpos"] else "1".rjust(11)
+    assert fields[1] == "1".rjust(11)
+    assert fields[3] == "-1".rjust(11)
+    assert fields[5] == expected_third

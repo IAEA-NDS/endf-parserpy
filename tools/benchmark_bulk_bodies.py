@@ -9,14 +9,15 @@
 #
 ############################################################
 
-"""Interleaved parse timing of two builds and of the row kernel tiers.
+"""Interleaved parse (and write) timing of two builds and of the row kernel tiers.
 
 usage:
   python tools/benchmark_bulk_bodies.py prepare --data-dir <checkout> \\
       --out-dir <dir>
   python tools/benchmark_bulk_bodies.py run --base-python <python> \\
       --new-python <python> --files <file>... --out <results.json> \\
-      [--rounds 11] [--reps 3] [--summary <summary.md>]
+      [--rounds 11] [--reps 3] [--summary <summary.md>] [--write] \\
+      [--write-noexp] [--validate <file>...]
   python tools/benchmark_bulk_bodies.py merge --out <merged.json> \\
       [--summary <summary.md>] <results.json>...
   python tools/benchmark_bulk_bodies.py equivalence --tests <tests dir> \\
@@ -54,6 +55,28 @@ round; with ``base`` against itself (``base:aa``, a second process of the
 base build) as the noise floor. The JSON file contains the CPU
 information of the machine, the selected tiers and all times; the summary
 is a Markdown table (for ``$GITHUB_STEP_SUMMARY``).
+
+With ``--write``, each worker process also times the writing of the
+parsed result after its parse timing: ``parser.write`` of the result of
+its last parse, once as a warm-up and then ``--reps`` times (minimum,
+same timer), with the default write options (task ``write``), in the
+array type of the parse. ``--write-noexp`` adds the same with
+``prefer_noexp=True`` (task ``write:noexp``; much slower than the default
+write today, so not part of ``--write``). The variants, their order in
+each round and the median of the ratios to ``base`` are those of the
+parse timing; the parse timing itself is unchanged. The results are in
+``write_records`` and ``write_ratios`` of the JSON file and in a second
+table of the summary (with the median time of ``base`` in ms).
+
+With ``--validate``, each round also times ``endf-cli validate <file>``
+for each given file and variant, in the same rotated order: a fresh
+process calls the command line interface once as a warm-up and then
+``--reps`` times (minimum, same timer; the time of the command, not of
+starting the interpreter and importing the package). The results are in
+``validate_records`` and ``validate_ratios`` and in a third table.
+Without these options, the timing, the JSON file and the summary are
+those of the parse timing alone, as before; ``merge`` takes files with
+and without the write and validate results.
 
 ``merge`` combines the JSON files of several machines into one file and
 one summary table.
@@ -106,6 +129,9 @@ WORKER = r"""
 import importlib, json, sys, time
 from endf_parserpy import EndfParserCpp
 path, mode, reps = sys.argv[1], sys.argv[2], int(sys.argv[3])
+# the write tasks to time after the parse timing (none by default)
+tasks = sys.argv[4].split(",") if len(sys.argv) > 4 else []
+write = bool(tasks)
 p = EndfParserCpp(array_type=mode)
 mod = importlib.import_module(p._parse_endf.__module__)
 # None for a build without _bulk_body_info (e.g. a base build before it)
@@ -119,16 +145,77 @@ info = mod._bulk_body_info() if hasattr(mod, "_bulk_body_info") else None
 timer = time.perf_counter if sys.platform == "win32" else time.thread_time
 p.parsefile(path)
 ts = []
-for _ in range(reps):
+for i in range(reps):
     t0 = timer()
     d = p.parsefile(path)
     ts.append(timer() - t0)
-    del d
-print(json.dumps({"times": ts, "info": info}))
+    # the result of the last parse is kept for the write timing
+    if not write or i < reps - 1:
+        del d
+out = {"times": ts, "info": info}
+if write:
+    # the writing of the parsed result: default options, and prefer_noexp
+    # (None for a build without that option)
+    out["write"] = {}
+    for task, opts in (("write", {}), ("write:noexp", {"prefer_noexp": True})):
+        if task not in tasks:
+            continue
+        try:
+            w = EndfParserCpp(array_type=mode, **opts)
+        except TypeError:
+            out["write"][task] = None
+            continue
+        w.write(d)
+        wts = []
+        for _ in range(reps):
+            t0 = timer()
+            lines = w.write(d)
+            wts.append(timer() - t0)
+            del lines
+        out["write"][task] = wts
+print(json.dumps(out))
+"""
+
+VALIDATE_WORKER = r"""
+import contextlib, json, os, sys, time
+from endf_parserpy.cli.cmd import cli_interface
+path, reps = sys.argv[1], int(sys.argv[2])
+# the timer of the parse timing (see WORKER)
+timer = time.perf_counter if sys.platform == "win32" else time.thread_time
+
+
+def validate():
+    # one run of `endf-cli validate <path>`, its output discarded
+    sys.argv = ["endf-cli", "validate", path]
+    with open(os.devnull, "w") as devnull, contextlib.redirect_stdout(devnull):
+        try:
+            cli_interface()
+        except SystemExit as exc:
+            code = exc.code
+    if code not in (0, None):
+        raise SystemExit(f"endf-cli validate {path}: exit status {code}")
+
+
+validate()
+ts = []
+for _ in range(reps):
+    t0 = timer()
+    validate()
+    ts.append(timer() - t0)
+print(json.dumps({"times": ts}))
 """
 
 
-def _run_worker(python, value, path, mode, reps):
+def _run_worker(python, value, path, mode, reps, write_tasks=()):
+    args = [path, mode, str(reps)] + ([",".join(write_tasks)] if write_tasks else [])
+    return _run_script(python, value, WORKER, args)
+
+
+def _run_validate_worker(python, value, path, reps):
+    return _run_script(python, value, VALIDATE_WORKER, [path, str(reps)])
+
+
+def _run_script(python, value, script, args):
     env = dict(os.environ)
     # one thread for the BLAS and OpenMP libraries numpy may load, so that
     # no idle thread pool runs next to the parse
@@ -138,7 +225,7 @@ def _run_worker(python, value, path, mode, reps):
     if value is not None:
         env[ENV_VAR] = value
     res = subprocess.run(
-        [python, "-c", WORKER, path, mode, str(reps)],
+        [python, "-c", script] + args,
         env=env,
         capture_output=True,
         text=True,
@@ -262,10 +349,10 @@ def _variants(args):
     return variants, probe
 
 
-def _median_ratios(records, variants):
+def _median_ratios(records, variants, fields=("file", "mode")):
     table = {}
     for rec in records:
-        key = (rec["file"], rec["mode"])
+        key = tuple(rec[f] for f in fields)
         table.setdefault(key, []).append(rec)
     result = {}
     for key, recs in table.items():
@@ -337,23 +424,106 @@ def _summary(machine, variants, ratios, probe):
     return "\n".join(lines)
 
 
+def _base_ms(records, fields, key):
+    # the median time of base over the rounds, in ms
+    ts = [
+        r["t"]["base"]
+        for r in records
+        if tuple(r[f] for f in fields) == key and "base" in r["t"]
+    ]
+    return f"{1000 * statistics.median(ts):.2f}" if ts else ""
+
+
+def _task_summary(title, columns, variants, ratios, records, fields):
+    # a table of ratios as in _summary, for the write or validate timing;
+    # the last column is the median time of base in ms
+    names = [v[0] for v in variants if v[0] != "base"]
+    lines = [title, ""]
+    lines.append("| " + " | ".join(columns + names) + " | base [ms] |")
+    lines.append("|" + "---|" * (len(columns) + len(names) + 1))
+    for key, r in sorted(ratios.items()):
+        cells = [
+            f"{r[n][0]:.3f} [{r[n][1]:.2f}..{r[n][2]:.2f}]" if n in r else ""
+            for n in names
+        ]
+        base = _base_ms(records, fields, key) if records is not None else ""
+        lines.append("| " + " | ".join(list(key) + cells) + f" | {base} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+WRITE_FIELDS = ("file", "mode", "task")
+VALIDATE_FIELDS = ("file",)
+
+
+def _write_summary(variants, ratios, records=None):
+    return _task_summary(
+        "Writing (`parser.write` of the parsed result, in the array type "
+        "of the parse; `write:noexp` with `prefer_noexp=True`), median "
+        "ratio to `base`:",
+        ["file", "mode", "task"],
+        variants,
+        ratios,
+        records,
+        WRITE_FIELDS,
+    )
+
+
+def _validate_summary(variants, ratios, records=None):
+    return _task_summary(
+        "`endf-cli validate`, median ratio to `base`:",
+        ["file"],
+        variants,
+        ratios,
+        records,
+        VALIDATE_FIELDS,
+    )
+
+
 def cmd_run(args):
     variants, probe = _variants(args)
     records = []
+    write_records = []
+    validate_records = []
+    write_tasks = (["write"] if args.write else []) + (
+        ["write:noexp"] if args.write_noexp else []
+    )
     for rnd in range(args.rounds):
+        k = rnd % len(variants)
+        order = variants[k:] + variants[:k]
         for path in args.files:
             for mode in MODES:
-                k = rnd % len(variants)
-                order = variants[k:] + variants[:k]
                 t = {}
+                tw = {}
                 for name, python, value in order:
-                    out = _run_worker(python, value, path, mode, args.reps)
+                    out = _run_worker(python, value, path, mode, args.reps, write_tasks)
                     t[name] = min(out["times"])
+                    for task, wts in out.get("write", {}).items():
+                        if wts:
+                            tw.setdefault(task, {})[name] = min(wts)
                 records.append(
                     {"round": rnd, "file": _label(path), "mode": mode, "t": t}
                 )
+                for task, tt in tw.items():
+                    write_records.append(
+                        {
+                            "round": rnd,
+                            "file": _label(path),
+                            "mode": mode,
+                            "task": task,
+                            "t": tt,
+                        }
+                    )
+        for path in args.validate or ():
+            t = {}
+            for name, python, value in order:
+                out = _run_validate_worker(python, value, path, args.reps)
+                t[name] = min(out["times"])
+            validate_records.append({"round": rnd, "file": _label(path), "t": t})
         print(f"round {rnd + 1}/{args.rounds} done", flush=True)
     ratios = _median_ratios(records, variants)
+    write_ratios = _median_ratios(write_records, variants, WRITE_FIELDS)
+    validate_ratios = _median_ratios(validate_records, variants, VALIDATE_FIELDS)
     machine = args.machine or platform.platform()
     result = {
         "machine": machine,
@@ -364,9 +534,16 @@ def cmd_run(args):
         "ratios": {f"{f}|{m}": r for (f, m), r in ratios.items()},
         "time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
+    # only with --write / --validate, so that the file is as before otherwise
+    if write_tasks:
+        result["write_records"] = write_records
+        result["write_ratios"] = {"|".join(k): r for k, r in write_ratios.items()}
+    if args.validate:
+        result["validate_records"] = validate_records
+        result["validate_ratios"] = {"|".join(k): r for k, r in validate_ratios.items()}
     with open(args.out, "w") as f:
         json.dump(result, f, indent=1)
-    text = _summary(machine, variants, ratios, probe)
+    text = _results_summary(result)
     print(text)
     if os.environ.get("GITHUB_ACTIONS") == "true":
         # the same note as an annotation of the run
@@ -381,6 +558,21 @@ def cmd_run(args):
             f.write(text + "\n")
 
 
+def _results_summary(res):
+    # the summary of the results of one machine (a JSON file of run, with
+    # or without the write and validate results)
+    variants = [(n, None, None) for n in res["variants"]]
+    ratios = {tuple(k.split("|")): v for k, v in res["ratios"].items()}
+    text = _summary(res["machine"], variants, ratios, res["bulk_body_info"])
+    if "write_ratios" in res:
+        ratios = {tuple(k.split("|")): v for k, v in res["write_ratios"].items()}
+        text += "\n" + _write_summary(variants, ratios, res.get("write_records"))
+    if "validate_ratios" in res:
+        ratios = {tuple(k.split("|")): v for k, v in res["validate_ratios"].items()}
+        text += "\n" + _validate_summary(variants, ratios, res.get("validate_records"))
+    return text
+
+
 def cmd_merge(args):
     merged = []
     texts = []
@@ -388,9 +580,7 @@ def cmd_merge(args):
         with open(path) as f:
             res = json.load(f)
         merged.append(res)
-        variants = [(n, None, None) for n in res["variants"]]
-        ratios = {tuple(k.split("|")): v for k, v in res["ratios"].items()}
-        texts.append(_summary(res["machine"], variants, ratios, res["bulk_body_info"]))
+        texts.append(_results_summary(res))
     with open(args.out, "w") as f:
         json.dump(merged, f, indent=1)
     text = "\n".join(texts)
@@ -485,6 +675,23 @@ def main():
     run.add_argument("--reps", type=int, default=3)
     run.add_argument("--machine", default=None)
     run.add_argument("--summary", default=None)
+    run.add_argument(
+        "--write",
+        action="store_true",
+        help="also time parser.write of the parsed result",
+    )
+    run.add_argument(
+        "--write-noexp",
+        action="store_true",
+        help="also time parser.write with prefer_noexp=True",
+    )
+    run.add_argument(
+        "--validate",
+        nargs="+",
+        default=None,
+        metavar="FILE",
+        help="also time endf-cli validate of these files",
+    )
     merge = sub.add_parser("merge")
     merge.add_argument("--out", required=True)
     merge.add_argument("--summary", default=None)

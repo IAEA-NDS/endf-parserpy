@@ -386,6 +386,7 @@ inline int cpp_sci_numstr_snprintf(char* buf, double value, int precision, bool 
   char* p = buf;
   if (! abuse_signpos && value >= 0) *p++ = ' ';
   int n = std::snprintf(p, 48, "%.*e", precision, value);
+  n = cpp_snprintf_c_decimal_point(p, n);
   char* end = p + n;
   char* e = static_cast<char*>(std::memchr(p, 'e', n));
   if (e == nullptr) {
@@ -711,8 +712,8 @@ inline std::string float2endfstr(double value, WritingOptions &write_opts) {
       // for subnormal numbers; the representation that reproduces the
       // value more closely is used, preferring the one without exponent
       // in case of a tie (as by the Python writer)
-      double recon_value = std::strtod(numstr.c_str(), nullptr);
-      double recon_value_noexp = std::strtod(numstr_noexp.c_str(), nullptr);
+      double recon_value = cpp_strtod_c(numstr.c_str(), nullptr);
+      double recon_value_noexp = cpp_strtod_c(numstr_noexp.c_str(), nullptr);
       double recon_value_diff = std::abs(recon_value - value);
       double recon_value_noexp_diff = std::abs(recon_value_noexp - value);
       if (recon_value_diff >= recon_value_noexp_diff) {

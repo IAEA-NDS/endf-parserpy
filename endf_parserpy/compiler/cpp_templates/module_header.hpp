@@ -47,6 +47,121 @@ namespace py = pybind11;
 #endif
 
 
+// Conversion of numbers independent of the locale.
+// std::strtod and std::snprintf use the decimal point of the C locale
+// (LC_NUMERIC), which a program can change for the whole process, e.g.
+// Python with locale.setlocale(locale.LC_ALL, "de_DE.UTF-8"), after which
+// the decimal point is a comma. The numbers of ENDF-6 files always have a
+// period. The functions below give the results of the "C" locale in any
+// locale. They do not change the locale (which is not thread-safe) and
+// use only the standard library (strtod_l is not available everywhere).
+// In the "C" locale, they only add a check of the characters converted by
+// std::strtod and of the character written by std::snprintf after the
+// integer part. (C++ streams use their own C++
+// locale, which setlocale does not change.)
+
+#if defined(__GNUC__) || defined(__clang__)
+#define CPP_LOCALE_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define CPP_LOCALE_NOINLINE __declspec(noinline)
+#else
+#define CPP_LOCALE_NOINLINE
+#endif
+
+// The decimal point of the current C locale (one or more bytes), as
+// written by std::snprintf and read by std::strtod; returns its length.
+inline int cpp_locale_decimal_point(char (&point)[16]) {
+  char buf[32];
+  // "0", the decimal point, "5"
+  const int n = std::snprintf(buf, sizeof(buf), "%.1f", 0.5);
+  if (n < 3 || n - 2 >= static_cast<int>(sizeof(point))
+      || buf[0] != '0' || buf[n - 1] != '5') {
+    point[0] = '.';
+    point[1] = '\0';
+    return 1;
+  }
+  std::memcpy(point, buf + 1, n - 2);
+  point[n - 2] = '\0';
+  return n - 2;
+}
+
+// whether the byte c can be part of a number read by std::strtod in the
+// "C" locale (white space, sign, digits, period, letters of exponents,
+// hexadecimal numbers, inf and nan, characters of nan(...))
+inline bool cpp_c_number_char(char ch) {
+  const unsigned char c = static_cast<unsigned char>(ch);
+  return (c >= '0' && c <= '9') || ((c | 0x20) >= 'a' && (c | 0x20) <= 'z')
+    || c == '+' || c == '-' || c == '.' || c == '(' || c == ')' || c == '_'
+    || c == ' ' || (c >= '\t' && c <= '\r');
+}
+
+// std::strtod(s, end) in the "C" locale for the case that std::strtod in
+// the current locale may give another result (see cpp_strtod_c)
+CPP_LOCALE_NOINLINE inline double cpp_strtod_c_locale_retry(const char* s, char** end) {
+  // In the "C" locale, the conversion stops at the first byte that cannot
+  // be part of a number, so that only the bytes before it matter. They
+  // are read in the same way in every locale, except for the decimal
+  // point: the period is replaced by the decimal point of the locale.
+  size_t len = 0;
+  while (s[len] != '\0' && cpp_c_number_char(s[len])) len++;
+  std::string t(s, len);
+  const size_t dotpos = t.find('.');
+  int plen = 1;
+  if (dotpos != std::string::npos) {
+    char point[16];
+    plen = cpp_locale_decimal_point(point);
+    t.replace(dotpos, 1, point, plen);
+  }
+  char* tend;
+  const double res = std::strtod(t.c_str(), &tend);
+  size_t used = static_cast<size_t>(tend - t.c_str());
+  // the decimal point is either converted as a whole or not at all
+  if (dotpos != std::string::npos && used > dotpos) {
+    used -= plen - 1;
+  }
+  *end = const_cast<char*>(s) + used;
+  return res;
+}
+
+// std::strtod in the "C" locale. In another locale, std::strtod gives
+// another result only if a period (a decimal point in the "C" locale)
+// remains unconverted (as in "1.5", ".5" or "0x.8p1" there) or if it
+// converts a byte that cannot be part of a number in the "C" locale (such
+// as a comma as decimal point); only then is the conversion repeated.
+inline double cpp_strtod_c(const char* s, char** end) {
+  char* e;
+  double v = std::strtod(s, &e);
+  bool retry = (std::strchr(e, '.') != nullptr);
+  for (const char* q = s; q < e && ! retry; q++) {
+    retry = ! cpp_c_number_char(*q);
+  }
+  if (retry) {
+    v = cpp_strtod_c_locale_retry(s, &e);
+  }
+  if (end != nullptr) {
+    *end = e;
+  }
+  return v;
+}
+
+// Replaces the decimal point of the current C locale by a period in the
+// output of std::snprintf for a double with the conversion %e or %f (the
+// n characters at s, followed by a null character); returns the new length.
+inline int cpp_snprintf_c_decimal_point(char* s, int n) {
+  int i = 0;
+  while (i < n && (s[i] < '0' || s[i] > '9')) i++;  // sign
+  while (i < n && s[i] >= '0' && s[i] <= '9') i++;  // integer part
+  if (i >= n || s[i] == '.' || s[i] == 'e' || s[i] == 'E') {
+    return n;
+  }
+  int j = i + 1;
+  while (j < n && (s[j] < '0' || s[j] > '9') && s[j] != 'e' && s[j] != 'E') j++;
+  s[i] = '.';
+  std::memmove(s + i + 1, s + j, n - j + 1);
+  return n - (j - i - 1);
+}
+
+
 // Arithmetic of ENDF recipe expressions.
 // The generated code calls these functions instead of using the C++
 // operators `/` and `%` directly, so that the results agree with those

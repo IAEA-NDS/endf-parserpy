@@ -2050,7 +2050,7 @@ inline double endfstr2float(const char* str, ParsingOptions &parse_opts, int fie
     return v;
   }
   char* end = nullptr;
-  v = std::strtod(tbuf, &end);
+  v = cpp_strtod_c(tbuf, &end);
   if (end == tbuf || *end != '\0') {
     cpp_throw_field_error("malformed number field: ", str, fieldnum, parse_opts);
   }

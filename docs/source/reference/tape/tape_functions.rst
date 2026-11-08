@@ -27,3 +27,12 @@ on a file path.
 
 .. autoclass:: FailedMaterial
    :members:
+
+The framing records of a tape (SEND, FEND, MEND and TEND) can be
+checked on their own, for any number of materials, without parsing the
+sections; ``endf-cli validate`` does so for every file:
+
+.. autofunction:: endf_parserpy.tape.check_framing
+
+.. autoclass:: endf_parserpy.tape.FramingProblem
+   :members:

@@ -170,6 +170,27 @@ relaxed individually on the command line, e.g.
 
    endf-cli validate --accept_spaces --ignore_blank_lines file.endf
 
+The sections of a file are parsed one by one, so that ``validate`` also
+handles files with several materials. In addition, the framing records
+of the whole file are checked once: every section must end with a SEND
+record ``[MAT, MF, 0]`` with the MAT and MF numbers of the section,
+every MF of a material with a FEND record ``[MAT, 0, 0]``, every
+material with a MEND record ``[0, 0, 0]``, and the file with a TEND
+record ``[-1, 0, 0]``, after which only blank lines may follow. A
+section must not occur twice in a material, the MAT/MF/MT fields of
+these records must be blank or hold an integer, and their columns 1-66
+must be zero or blank. The sequence numbers (columns 76-80) and the
+order of the sections are not checked. The flags ``ignore_send_records``
+(the position and the MAT/MF/MT numbers of these records are not
+checked), ``ignore_blank_lines``, ``ignore_missing_tpid`` and
+``accept_non_ascii`` relax this check as they relax the parsing. A problem is reported with
+the line of the file at which it is found, e.g.
+
+.. code-block:: text
+
+   framing records (SEND/FEND/MEND/TEND):
+   line 603: expected a section of MF=1 of MAT 2925 or the FEND record (MAT/MF/MT 2925/0/0), found a FEND record (MAT/MF/MT 2926/0/0)
+
 
 By default, the faster C++ parser (:class:`~endf_parserpy.EndfParserCpp`) is used,
 which yields less detailed logging output in case of failure. For easier debugging,

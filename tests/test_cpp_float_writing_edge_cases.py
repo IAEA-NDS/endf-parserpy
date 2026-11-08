@@ -96,6 +96,14 @@ def _test_values():
     # skip_intzero decides whether the integer part is zero
     values += [2.0**31 - 0.5, 2.0**31, 2.0**31 + 1, 3.0e9, 1.0e11, 1.0e15]
     values += [0.9999999, 0.999999999, 1.0, 1.0000001]
+    # values whose decimal form (prefer_noexp) has no decimals and rounds
+    # up to an integer with one more digit: 1000000000 for a magnitude in
+    # [999999999.5, 1e9) (negative values, and non-negative ones without
+    # abuse_signpos), 10000000000 for [9999999999.5, 1e10) (non-negative
+    # ones with abuse_signpos); and the integers around them
+    for n in (1e8, 1e9, 1e10):
+        for d in (-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5):
+            values += [n + d] + _neighbours(n + d)
     values = [v for v in values if v != 0]
     return values + [-v for v in values]
 

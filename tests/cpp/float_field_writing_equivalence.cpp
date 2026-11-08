@@ -43,7 +43,15 @@
 // |value| >= 2^31 (reached with prefer_noexp and skip_intzero, e.g. for
 // 1e11); it is replaced by the equivalent std::fabs(value) < 1.0, as in
 // the writer. For the values where the cast is defined, both are true
-// exactly for -1 < value < 1.
+// exactly for -1 < value < 1. The other exception is the stripping of the
+// trailing zeros in the same function: the copy looked up the decimal
+// point in the 16-decimal string instead of the rounded one, which has
+// none without decimals, and then cut the last digit of the decimal
+// candidate of 999999999.5 <= |value| < 1e9 (negative values,
+// non-negative ones without abuse_signpos) and 9999999999.5 <= value <
+// 1e10 (with abuse_signpos), so that the exponent form was written
+// instead of the decimal form of EndfParserPy; the copy now strips them
+// as the writer, only if the rounded string has a decimal point.
 
 inline void ref_normalize_exponent(std::string& numstr) {
   size_t strsize = numstr.size();
@@ -149,18 +157,17 @@ inline std::string ref_float2endfstr_decimal_helper(
   ss2 << std::fixed << std::setprecision(prec) << value;
   // strip insignificant trailing zeros for compatibility with Python output
   std::string sout = ss2.str();
-  commapos = numstr.find('.');
-  if (commapos != std::string::npos) {
-    int last_nonzero_pos = sout.substr(commapos).find_last_not_of('0');
-    sout.erase(commapos + last_nonzero_pos + 1);
+  size_t soutpointpos = sout.find('.');
+  if (soutpointpos != std::string::npos) {
+    sout.erase(sout.find_last_not_of('0') + 1);
     if (sout.back() == '.') {
       sout.pop_back();
     } else if (is_intzero_case) {
       // strip unnecessary integer zero
-      if (numstr[commapos-1] != '0') {
+      if (sout[soutpointpos-1] != '0') {
         throw std::runtime_error("integer zero matching failed");
       }
-      sout.erase(commapos-1, 1);
+      sout.erase(soutpointpos-1, 1);
     }
   }
   if (! write_opts.abuse_signpos && value >= 0) {
@@ -383,6 +390,14 @@ static void run_sampled() {
     if (n % 8 == 0) check_both_signs(v, 4, 7);
     if (n % 16 == 0 && std::fabs(v) < 1e25) check_both_signs(v, 8, 15);
     n++;
+  }
+  // the decimal form of prefer_noexp without decimals, rounding up to
+  // 1e9 or 1e10, and the integers around these values
+  for (double n : {1e8, 1e9, 1e10}) {
+    for (double d : {-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5}) {
+      uint64_t bits = to_bits(n + d);
+      for (int k = -2; k <= 2; k++) check_both_signs(from_bits(bits + k), 0, 15);
+    }
   }
   for (int e = -12; e <= 12; e++) {
     for (int i = 0; i < 500; i++) {

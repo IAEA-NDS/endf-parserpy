@@ -1107,7 +1107,9 @@ inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, do
 // (cpp_row_selected), as given by the environment variable
 // ENDF_PARSERPY_CPP_BULK_BODIES:
 //   auto (also if unset or empty): the first vector tier of the table
-//     that is built and supported by the CPU, otherwise the scalar tier;
+//     that is built and supported by the CPU and taken by the automatic
+//     selection (all except the NEON tier of GCC builds, see
+//     CPP_ROW_NEON_NOT_AUTO), otherwise the scalar tier;
 //   off: none;
 //   scalar, avx2, avx512, neon: this tier if it is built and supported by
 //     the CPU, otherwise as auto (with a warning when the module is
@@ -1209,6 +1211,16 @@ inline unsigned cpp_row_kernel_scalar(
 #if defined(CPP_ROW_AARCH64) && ! defined(_M_ARM64EC) && ! defined(__ARM_BIG_ENDIAN) \
     && ! defined(CPP_ROW_X86_64_GNU) && defined(CPP_ROW_SIMD_COMPILER)
 #define CPP_ROW_NEON 1
+#endif
+
+// The NEON tier compiled by GCC (not Clang) is built but not selected by
+// auto, only if requested (ENDF_PARSERPY_CPP_BULK_BODIES=neon): on a
+// Neoverse-N2 CPU (Linux, GCC 13.3, the flags of setup.py), parsing with
+// it was 2-5% slower than with the scalar tier compiled by GCC, while the
+// same code compiled by Clang 18 on the same CPU was 10-13% faster than
+// its scalar tier (numpy mode). Apple Clang and MSVC builds take it.
+#if defined(CPP_ROW_NEON) && defined(__GNUC__) && ! defined(__clang__)
+#define CPP_ROW_NEON_NOT_AUTO 1
 #endif
 
 // Features of the CPU relevant for the tiers, from cpuid and xgetbv (the
@@ -2149,7 +2161,8 @@ struct cpp_row_tier {
   const char* name;
   // nullptr if the tier is not built (e.g. for another architecture)
   cpp_row_kernel_fn kernel;
-  // whether the tier is a candidate of the automatic selection
+  // whether the tier is a vector tier, a candidate of the automatic
+  // selection (see cpp_row_tier_auto)
   bool vector;
   bool (*supported)(const cpp_cpu_features&);
 };
@@ -2179,6 +2192,29 @@ inline const cpp_row_tier* cpp_row_tiers() {
   return tiers;
 }
 
+// whether the automatic selection takes tier i of the table (of
+// cpp_row_tiers) if it is built and supported: the vector tiers (except
+// the NEON tier with CPP_ROW_NEON_NOT_AUTO) and the scalar tier, the last
+// one
+inline bool cpp_row_tier_auto(const cpp_row_tier* tiers, int i) {
+#ifdef CPP_ROW_NEON_NOT_AUTO
+  if (tiers[i].kernel == cpp_row_kernel_neon) return false;
+#endif
+  return tiers[i].vector || i == CPP_ROW_NUM_TIERS - 1;
+}
+
+// the compiler of the module, for diagnostics
+inline const char* cpp_row_compiler() {
+#if defined(__clang__)
+  return "clang";
+#elif defined(__GNUC__)
+  return "gcc";
+#elif defined(_MSC_VER)
+  return "msvc";
+#else
+  return "other";
+#endif
+}
 
 struct cpp_row_selection {
   // the kernel of the selected tier, nullptr for the per-field form
@@ -2250,6 +2286,10 @@ inline cpp_row_selection cpp_row_select(const char* value, const cpp_cpu_feature
     }
   }
   for (int i = 0; i < CPP_ROW_NUM_TIERS; i++) {
+    // as cpp_row_tier_auto
+#ifdef CPP_ROW_NEON_NOT_AUTO
+    if (tiers[i].kernel == cpp_row_kernel_neon) continue;
+#endif
     if ((tiers[i].vector || i == CPP_ROW_NUM_TIERS - 1)
         && tiers[i].kernel != nullptr && tiers[i].supported(cpu)) {
       sel.kernel = tiers[i].kernel;

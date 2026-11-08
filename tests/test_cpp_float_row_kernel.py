@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/03
-# Last modified:   2026/11/07
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -355,7 +355,20 @@ def test_row_kernel_selection(value, jobs_spec):
     assert info["variable"] == ENV_VAR
     assert info["requested"] == value
     assert set(tiers) == {"scalar", "avx2", "avx512", "neon"}
-    assert tiers["scalar"] == {"built": True, "supported": True, "vector": False}
+    assert tiers["scalar"] == {
+        "built": True,
+        "supported": True,
+        "vector": False,
+        "auto": True,
+    }
+    # auto takes every vector tier built except the NEON tier compiled by
+    # GCC, which is selected only if requested
+    assert info["compiler"] in ("gcc", "clang", "msvc", "other")
+    for name in VECTOR_TIERS:
+        assert tiers[name]["vector"]
+        if tiers[name]["built"]:
+            expected = name != "neon" or info["compiler"] != "gcc"
+            assert tiers[name]["auto"] == expected
     # a tier is only selected if it is built and supported by the CPU
     selected = info["selected"]
     assert selected == "off" or (
@@ -365,7 +378,7 @@ def test_row_kernel_selection(value, jobs_spec):
         (
             name
             for name in ("avx512", "avx2", "neon")
-            if tiers[name]["built"] and tiers[name]["supported"]
+            if tiers[name]["built"] and tiers[name]["supported"] and tiers[name]["auto"]
         ),
         "scalar",
     )

@@ -916,11 +916,13 @@ static void run_select() {
       (bits & 16) != 0, (bits & 32) != 0, (bits & 64) != 0, (bits & 128) != 0,
       (bits & 256) != 0, (bits & 512) != 0
     };
-    // the automatic selection: the first vector tier built and supported,
-    // otherwise the scalar tier
+    // the automatic selection: the first vector tier built, supported and
+    // taken by auto (not the NEON tier of GCC builds), otherwise the
+    // scalar tier
     cpp_row_kernel_fn auto_kernel = cpp_row_kernel_scalar;
     for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
-      if (tiers[t].vector && tiers[t].kernel != nullptr && tiers[t].supported(cpu)) {
+      if (tiers[t].vector && cpp_row_tier_auto(tiers, t) && tiers[t].kernel != nullptr
+          && tiers[t].supported(cpu)) {
         auto_kernel = tiers[t].kernel;
         break;
       }
@@ -994,6 +996,23 @@ static void run_select() {
   if (tiers[0].kernel != nullptr || tiers[1].kernel != nullptr) nfail++;
 #endif
   if (tiers[CPP_ROW_NUM_TIERS - 1].kernel != cpp_row_kernel_scalar) nfail++;
+  // the tiers taken by auto: all but the NEON tier compiled by GCC
+  for (int t = 0; t < CPP_ROW_NUM_TIERS; t++) {
+    bool expected = true;
+#if defined(CPP_ROW_NEON) && defined(__GNUC__) && ! defined(__clang__)
+    if (t == 2) expected = false;
+#endif
+    if (cpp_row_tier_auto(tiers, t) != expected) nfail++;
+  }
+#ifdef CPP_ROW_NEON
+  {
+    // on AArch64: auto gives neon, or scalar for GCC builds; neon if
+    // requested
+    const char* expected = std::strcmp(cpp_row_compiler(), "gcc") == 0 ? "scalar" : "neon";
+    if (std::strcmp(cpp_row_select(nullptr, here).tier, expected) != 0) nfail++;
+    if (cpp_row_select("neon", here).kernel != cpp_row_kernel_neon) nfail++;
+  }
+#endif
 }
 
 int main(int argc, char** argv) {
@@ -1053,6 +1072,7 @@ int main(int argc, char** argv) {
       if (tiers[t].kernel != nullptr && tiers[t].supported(cpu)) std::printf(" %s", tiers[t].name);
     }
     std::printf("\n");
+    std::printf("automatic selection (%s): %s\n", cpp_row_compiler(), cpp_row_select(nullptr, cpu).tier);
   }
   std::printf("%s: checks=%ld first_stage=%ld negexp_converted=%ld not_converted=%ld decimal_checks=%ld"
               " negexp_direct=%ld row_checks=%ld row_tiers=%ld vector_tier_lines=%ld"

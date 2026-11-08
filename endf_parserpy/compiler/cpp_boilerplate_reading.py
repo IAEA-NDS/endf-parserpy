@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2026/11/07
+# Last modified:   2026/11/08
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -87,6 +87,7 @@ def register_reading_options():
         tier["built"] = table[i].kernel != nullptr;
         tier["supported"] = table[i].supported(sel.cpu);
         tier["vector"] = table[i].vector;
+        tier["auto"] = cpp_row_tier_auto(table, i);
         tiers[table[i].name] = tier;
       }
       py::dict info;
@@ -96,6 +97,7 @@ def register_reading_options():
       info["warning"] = sel.warning != nullptr ? py::object(py::str(sel.warning)) : py::object(py::none());
       info["tiers"] = tiers;
       info["cpu"] = cpu;
+      info["compiler"] = cpp_row_compiler();
       info["scalar_kernel_lines"] = cpp_row_scalar_lines();
       // the LIST bodies read in the bulk form (see CppListBody)
       const cpp_list_bulk_counts& bulk = cpp_list_bulk_counter();

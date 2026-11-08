@@ -59,7 +59,7 @@ def _make_tape(with_tpid=True):
 
 
 @pytest.mark.parametrize("ParserCls", [EndfParserCpp, EndfParserPy])
-def test_write_without_tpid_raises_by_default(ParserCls):
+def test_write_without_tpid_raises_by_default(ParserCls, tmp_path):
     parser = ParserCls()
     endf_dict = parser.parse(_make_tape())
     del endf_dict[0]
@@ -67,8 +67,9 @@ def test_write_without_tpid_raises_by_default(ParserCls):
         parser.write(endf_dict)
     assert "TPID" in str(excinfo.value)
     assert "ignore_missing_tpid" in str(excinfo.value)
-    with pytest.raises(Exception):
-        parser.writefile("should_not_be_written.endf", endf_dict)
+    with pytest.raises(Exception) as excinfo:
+        parser.writefile(tmp_path / "should_not_be_written.endf", endf_dict)
+    assert "TPID" in str(excinfo.value)
 
 
 @pytest.mark.parametrize("ParserCls", [EndfParserCpp, EndfParserPy])

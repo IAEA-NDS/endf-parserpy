@@ -54,7 +54,11 @@ jobs:
           - windows-latest
           - windows-11-arm
           - macos-15-intel
-          - macos-14
+          # Apple Silicon: the current image, so that the job does not fail
+          # when a pinned image is retired (as macos-14 was); the oldest macOS
+          # supported by the wheels is set by cibuildwheel's deployment target,
+          # not by the image
+          - macos-latest
 
     steps:
       - uses: actions/checkout@v4

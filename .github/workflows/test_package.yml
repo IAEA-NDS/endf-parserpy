@@ -68,14 +68,13 @@ jobs:
         run: |
           python -m pip install . -vvv
 
-      # The wheels of build_wheels in publish_package.yml: the macOS arm64
-      # wheels are built on macos-14 and tested on macos-latest; every other
-      # runner tests the wheels built on the same runner type.
+      # The wheels of build_wheels in publish_package.yml, built on the same
+      # runner type as this job.
       - name: Download the wheels of this runner
         if: ${{ inputs.wheels }}
         uses: actions/download-artifact@v4
         with:
-          name: wheels-${{ matrix.runner == 'macos-latest' && 'macos-14' || matrix.runner }}
+          name: wheels-${{ matrix.runner }}
           path: wheelhouse
 
       # Only a wheel of the artifact can be installed (no index, no source

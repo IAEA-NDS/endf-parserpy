@@ -3,9 +3,9 @@
 # Author(s):       Georg Schnabel & Daniel L. Aldama
 # Email:           g.schnabel@iaea.org, dlopezaldama@gmail.com
 # Creation date:   2022/05/30
-# Last modified:   2024/12/07
+# Last modified:   2026/11/09
 # License:         MIT
-# Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
+# Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ##############################################################
 
@@ -194,7 +194,7 @@ for i=1 to NK:
             elif LAW == 2:
                 [MAT, 6, MT/ 0.0, 0.0, 0, 0, NR, NE/ Eint ]TAB2
                 for j=1 to NE:
-                    [MAT, 6, MT/ 0.0, E[j], LANG, 0, NLW[j], NL[j] / {A[j,l]}{l=1 to NLW[j]} ]LIST
+                    [MAT, 6, MT/ 0.0, E[j], LANG[j], 0, NLW[j], NL[j] / {A[j,l]}{l=1 to NLW[j]} ]LIST
                 endfor
 
             # Charged-Particle Elastic Scattering (LAW=5)

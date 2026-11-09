@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/12/14
-# Last modified:   2026/10/10
+# Last modified:   2026/11/09
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -32,11 +32,11 @@ for i=1 to NK:
         elif LAW == 2:
             [MAT, 26, MT/ 0.0, 0.0, 0, 0, NR, NE/ Eint ]TAB2
             for j=1 to NE:
-                [MAT, 26, MT/ 0.0, E[j], LANG, 0, NLW[j], NL[j] / {A[j,l]}{l=1 to NLW[j]} ]LIST
+                [MAT, 26, MT/ 0.0, E[j], LANG[j], 0, NLW[j], NL[j] / {A[j,l]}{l=1 to NLW[j]} ]LIST
+                if LANG[j] < 11 or LANG[j] > 15:
+                    stop("Only 11 <= LANG <= 15 is permitted in MF26/LAW2")
+                endif
             endfor
-            if LANG < 11 or LANG > 15:
-                stop("Only 11 <= LANG <= 15 is permitted in MF26/LAW2")
-            endif
         elif LAW == 8:
             [MAT,26, MT/ 0.0, 0.0, 0, 0, NR, NP/ Eint / ET] TAB1
         else:

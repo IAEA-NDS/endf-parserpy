@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/03
-# Last modified:   2026/11/05
+# Last modified:   2026/11/09
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -197,6 +197,9 @@ def _generation_counts(flavor):
 
 # The expected counts per flavor. A change of the generator that changes
 # them (e.g. a body that loses its strided copies) must be confirmed here.
+# The type checks kept include four of LANG in MF6 and MF26 (two each), a
+# scalar in the TAB2 record of LAW=1 and an array in the LIST records of
+# LAW=2 (one per incident energy) within the same subsection block.
 GOLDEN_COUNTS = {
     "endf6-ext": {
         "bulk": 98,
@@ -214,8 +217,8 @@ GOLDEN_COUNTS = {
             "index expression": 1,
             "variable assigned or checked": 2,
         },
-        "type_checks_removed": 2631,
-        "type_checks_kept": 29,
+        "type_checks_removed": 2627,
+        "type_checks_kept": 33,
     },
     "endf6": {
         "bulk": 96,
@@ -233,8 +236,8 @@ GOLDEN_COUNTS = {
             "index expression": 1,
             "variable assigned or checked": 2,
         },
-        "type_checks_removed": 2583,
-        "type_checks_kept": 29,
+        "type_checks_removed": 2579,
+        "type_checks_kept": 33,
     },
     "jendl": {
         "bulk": 97,
@@ -252,8 +255,8 @@ GOLDEN_COUNTS = {
             "index expression": 1,
             "variable assigned or checked": 2,
         },
-        "type_checks_removed": 2615,
-        "type_checks_kept": 29,
+        "type_checks_removed": 2611,
+        "type_checks_kept": 33,
     },
     "pendf": {
         "bulk": 100,
@@ -271,8 +274,8 @@ GOLDEN_COUNTS = {
             "index expression": 1,
             "variable assigned or checked": 3,
         },
-        "type_checks_removed": 2692,
-        "type_checks_kept": 29,
+        "type_checks_removed": 2688,
+        "type_checks_kept": 33,
     },
     "errorr": {
         "bulk": 3,

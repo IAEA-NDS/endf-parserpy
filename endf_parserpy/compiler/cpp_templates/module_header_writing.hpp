@@ -620,22 +620,49 @@ inline std::string float2endfstr_helper(double value, size_t width, WritingOptio
 }
 
 
+// The decimal form of a field for prefer_noexp: the value with as many
+// decimals as fit into the width, without trailing zeros (and without
+// the integer zero with skip_intzero), right-adjusted. It was computed
+// with string streams (std::fixed with std::setprecision), whose
+// conversion the C++ standard defines as that of std::printf with %.*f;
+// std::snprintf with %.*f gives the same characters, apart from the
+// decimal point of the C locale, which cpp_snprintf_c_decimal_point
+// replaces by a period.
 inline std::string float2endfstr_decimal_helper(
   double value, int width, WritingOptions &write_opts
 ) {
-  std::stringstream ss;
-  std::string numstr;
-  int commapos;
-  ss << std::fixed << std::setprecision(16) << value;
-  numstr = ss.str();
-  commapos = numstr.find('.');
-  if (commapos == std::string::npos) {
+  // the string stream writes nan or inf without a decimal point
+  if (! std::isfinite(value)) {
     throw std::runtime_error("error occured while converting float to string");
+  }
+  // Position of the decimal point in the 16-decimal string (%.16f): the
+  // sign and the integer digits. They are those of |value|: the rounding
+  // to 16 decimals cannot carry into the integer part, as the distance
+  // of a magnitude from 0.5 below 10^k (k >= 0) to 10^k is at least its
+  // spacing, 2^-53 or more, i.e. more than 0.5e-16, and magnitudes below
+  // 0.5 round to at most 0.5. The comparisons with the powers of ten
+  // (exact doubles) are exact.
+  static const double p10[] = {
+    1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14
+  };
+  const double absval = std::fabs(value);
+  int commapos = std::signbit(value) ? 1 : 0;
+  // %.16f and the rounded string below have at most 309 integer digits,
+  // a sign, and 17 resp. width + 1 more characters
+  char buf[400];
+  if (absval < 1e15) {
+    int ndig = 1;
+    while (ndig < 15 && absval >= p10[ndig-1]) ndig++;
+    commapos += ndig;
+  } else {
+    // (rare) the integer digits of the 16-decimal string itself
+    std::snprintf(buf, sizeof(buf), "%.16f", absval);
+    commapos += static_cast<int>(std::strspn(buf, "0123456789"));
   }
   // the integer part is zero; a magnitude test, as the conversion of a
   // double outside the range of int to int is undefined behaviour
   bool is_intzero_case = (
-    write_opts.skip_intzero && std::fabs(value) < 1.0
+    write_opts.skip_intzero && absval < 1.0
   );
   int prec = width - commapos - 1;
   if (value >= 0 && ! write_opts.abuse_signpos) {
@@ -647,35 +674,39 @@ inline std::string float2endfstr_decimal_helper(
   if (prec < 0) {
     prec = 0;
   }
-  std::stringstream ss2;
-  ss2 << std::fixed << std::setprecision(prec) << value;
+  int n = std::snprintf(buf, sizeof(buf), "%.*f", prec, value);
+  n = cpp_snprintf_c_decimal_point(buf, n);
   // strip insignificant trailing zeros for compatibility with Python output
-  std::string sout = ss2.str();
-  // The decimal point of sout, not of numstr: without decimals (prec 0)
-  // sout has none, e.g. 1000000000 for 999999999.5, and a carry of the
+  // The decimal point of the rounded string: without decimals (prec 0)
+  // it has none, e.g. 1000000000 for 999999999.5, and a carry of the
   // rounding into a new integer digit (9.99... to 10.0...) moves it.
-  size_t soutpointpos = sout.find('.');
-  if (soutpointpos != std::string::npos) {
+  const char* point = static_cast<const char*>(std::memchr(buf, '.', n));
+  if (point != nullptr) {
     // strip trailing zeros; at most up to the decimal point, which is kept
     // if all decimals are zero and removed below
-    sout.erase(sout.find_last_not_of('0') + 1);
-    if (sout.back() == '.') {
-      sout.pop_back();
+    while (buf[n-1] == '0') {
+      n--;
+    }
+    const int pointpos = static_cast<int>(point - buf);
+    if (buf[n-1] == '.') {
+      n--;
     } else if (is_intzero_case) {
       // strip unnecessary integer zero
-      if (sout[soutpointpos-1] != '0') {
+      if (buf[pointpos-1] != '0') {
         throw std::runtime_error("integer zero matching failed");
       }
-      sout.erase(soutpointpos-1, 1);
+      std::memmove(buf + pointpos - 1, buf + pointpos, n - pointpos);
+      n--;
     }
   }
-  if (! write_opts.abuse_signpos && value >= 0) {
-    sout.insert(0, " ");
+  // a blank in the sign column, then right-adjusted to the width
+  int lead = (! write_opts.abuse_signpos && value >= 0) ? 1 : 0;
+  if (n + lead < width) {
+    lead = width - n;
   }
-  // right-adjust the number
-  std::ostringstream oss3;
-  oss3 << std::right << std::setw(width) << sout;
-  return oss3.str();
+  std::string sout(lead, ' ');
+  sout.append(buf, n);
+  return sout;
 }
 
 

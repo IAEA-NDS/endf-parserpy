@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/25
-# Last modified:   2026/11/08
+# Last modified:   2026/11/10
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -46,6 +46,7 @@ import endf_parserpy.compiler.cpp_templates as cpp_templates
 TEST_SOURCE = Path(__file__).parent / "cpp" / "float_field_writing_equivalence.cpp"
 TEMPLATE = Path(cpp_templates.__file__).parent / "module_header_writing.hpp"
 HEADER = Path(cpp_templates.__file__).parent / "module_header.hpp"
+READING = Path(cpp_templates.__file__).parent / "module_header_reading.hpp"
 
 INCLUDES = """#include <algorithm>
 #include <cmath>
@@ -86,16 +87,23 @@ def _extract(text, start, end="\n}\n", after=None):
 
 def _extract_writer():
     # the conversion functions independent of the locale (module_header.hpp),
-    # the options, the integer formatting and the code from the float
-    # formatting functions to the end of cpp_write_field_double_at, as
-    # they are in the templates
+    # the exact decimal conversion of the reader (module_header_reading.hpp,
+    # used by the choice of the prefer_noexp form), the options, the
+    # integer formatting and the code from the float formatting functions
+    # to the end of cpp_write_field_double_at, as they are in the templates
     header = HEADER.read_text()
+    reading = READING.read_text()
     text = TEMPLATE.read_text()
     parts = [
         _extract(
             header,
             "// Conversion of numbers independent of the locale.",
             after="inline int cpp_snprintf_c_decimal_point(",
+        ),
+        _extract(
+            reading,
+            "#if defined(_MSC_VER) && ! defined(__clang__) && (defined(_M_X64)",
+            after="inline bool cpp_fast_decimal_to_double(",
         ),
         _extract(text, "struct WritingOptions {", end="\n};\n"),
         _extract(text, "inline int cpp_int_to_padded_chars("),

@@ -710,6 +710,27 @@ inline std::string float2endfstr_decimal_helper(
 }
 
 
+// std::strtod in the "C" locale (cpp_strtod_c) of a candidate of
+// float2endfstr: blanks followed by a number. The exact conversion of the
+// reader, cpp_fast_decimal_to_double, gives the same double as
+// std::strtod for the numbers it accepts: a significand of at most 15
+// digits times 10^k, for |k| <= 22 with a single multiplication or
+// division of exact operands, which is correctly rounded, and for
+// k < -22 with cpp_decimal_to_double_negexp. Both candidates have at most
+// 11 digits, so that only decimal exponents above 22 and the rare cases
+// in which the product of cpp_decimal_to_double_negexp does not decide
+// the rounding are left to std::strtod.
+inline double cpp_writer_read_candidate(const char* s) {
+  const char* p = s;
+  while (*p == ' ') p++;
+  double v;
+  if (cpp_fast_decimal_to_double(p, v)) {
+    return v;
+  }
+  return cpp_strtod_c(s, nullptr);
+}
+
+
 inline std::string float2endfstr(double value, WritingOptions &write_opts) {
   std::ostringstream oss;
   std::string numstr;
@@ -748,11 +769,12 @@ inline std::string float2endfstr(double value, WritingOptions &write_opts) {
     );
     if (numstr_noexp.size() <= width) {
       // std::strtod instead of std::stod, which throws std::out_of_range
-      // for subnormal numbers; the representation that reproduces the
-      // value more closely is used, preferring the one without exponent
-      // in case of a tie (as by the Python writer)
-      double recon_value = cpp_strtod_c(numstr.c_str(), nullptr);
-      double recon_value_noexp = cpp_strtod_c(numstr_noexp.c_str(), nullptr);
+      // for subnormal numbers (see cpp_writer_read_candidate); the
+      // representation that reproduces the value more closely is used,
+      // preferring the one without exponent in case of a tie (as by the
+      // Python writer)
+      double recon_value = cpp_writer_read_candidate(numstr.c_str());
+      double recon_value_noexp = cpp_writer_read_candidate(numstr_noexp.c_str());
       double recon_value_diff = std::abs(recon_value - value);
       double recon_value_noexp_diff = std::abs(recon_value_noexp - value);
       if (recon_value_diff >= recon_value_noexp_diff) {

@@ -91,7 +91,10 @@ class EndfParserCpp(EndfParserBase):
             *(parsing)*
         ignore_zero_mismatch: bool
             Tolerate non-zero numbers in ENDF-6 formatted data that
-            are required to be zero according to ENDF-6 recipes.
+            are required to be zero according to ENDF-6 recipes, i.e.
+            in the fields given as ``0`` or ``0.0`` in the recipe. A
+            variable read before with the value zero and another value
+            in a later field is an error, as for any other value.
             *(parsing)*
         ignore_varspec_mismatch: bool
             Tolerate distinct numbers that are supposed to be mapped

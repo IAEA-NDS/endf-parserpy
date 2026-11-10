@@ -3,14 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2026/10/25
+# Last modified:   2026/11/10
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
-from endf_parserpy.utils.tree_utils import is_token, get_name, get_value
-from .tree_analysis import search_name
+from endf_parserpy.utils.tree_utils import is_token, is_tree, get_name, get_value
+from .tree_analysis import search_name, reconstruct_tree_str
 from endf_parserpy.utils.math_utils import math_allclose
 from .logging_utils import logging, abbreviate_valstr, should_skip_logging_info
 from endf_parserpy.utils.text_encoding import check_text_value, escape_text
@@ -48,6 +48,65 @@ def create_variable_exists_error_msg(varname, prev_val, cur_val):
         + f"{varname} may be an array, in which case this statement would "
         + "apply to one of the variables in that array"
     )
+
+
+def create_field_inconsistency_error_msg(
+    exprstr, single_var, expval, realval, sourcekey
+):
+    msg = create_variable_wrong_value_error_msg(realval, expval, sourcekey) + ". "
+    if single_var:
+        return msg + create_variable_exists_error_msg(exprstr, expval, realval)
+    return msg + (
+        f"The expression {exprstr} in the ENDF recipe evaluates to {expval} "
+        + "with the values of its variables determined before. Either the "
+        + "ENDF recipe is wrong or the ENDF file contains inconsistent data"
+    )
+
+
+def field_contains_variable(expr, datadic):
+    """Whether the expression of a field contains a variable.
+
+    A variable is any variable name, also a loop counter or a variable
+    with indices (e.g. ``E[i]``); an abbreviation counts as the
+    expression it stands for. The same as ``contains_variable`` of
+    ``cpp_validate_field`` in the code generated for EndfParserCpp.
+    """
+    if not search_name(expr, "extvarname"):
+        return False
+    abbrevs = datadic.get("__abbrevs", ())
+    if len(abbrevs) == 0:
+        return True
+    return _contains_variable_with_abbrevs(expr, datadic, abbrevs)
+
+
+def _contains_variable_with_abbrevs(expr, datadic, abbrevs):
+    if not is_tree(expr):
+        return False
+    if get_name(expr) == "extvarname":
+        if len(expr.children) == 1 and str(expr.children[0]) in abbrevs:
+            abbrev_expr = datadic[str(expr.children[0])]
+            return field_contains_variable(abbrev_expr, datadic)
+        return True
+    return any(
+        _contains_variable_with_abbrevs(c, datadic, abbrevs) for c in expr.children
+    )
+
+
+def _is_single_variable(expr):
+    # e.g. AWR, E[i] or AWR? (possibly in brackets)
+    while is_tree(expr) and get_name(expr) not in (
+        "extvarname",
+        "inconsistent_varspec",
+    ):
+        children = [
+            c
+            for c in expr.children
+            if not (is_token(c) and get_name(c) in ("LPAR", "RPAR"))
+        ]
+        if len(children) != 1:
+            return False
+        expr = children[0]
+    return is_tree(expr)
 
 
 def create_variable_wrong_value_error_msg(realval, expval, sourcekey):
@@ -119,7 +178,7 @@ def map_recorddic_to_datadic(
         # in the datadic back to an an ENDF-6 file.
         # NOTE: This branch is also entered if all variables
         # appearing in an expression have already been read in
-        # before.
+        # before; a mismatch is then an inconsistency of the variables.
         if targetkey is None:
             assert expr_vv[1] == 0
             # If we have a DESIRED_NUMBER in the expression,
@@ -149,19 +208,33 @@ def map_recorddic_to_datadic(
                 value_mismatch_occurred = not math_allclose(
                     srcval, expval, atol=1e-7, rtol=1e-5
                 )
-            msg = create_variable_wrong_value_error_msg(
-                record_dic[sourcekey], expr_vv[0], sourcekey
-            )
             if value_mismatch_occurred and not ignore_all_mismatches:
                 # `ignore_all_mismatches` active means we are in lookahead
                 # and number mismatches are expected to occur.
-                if ignore_zero_mismatch and expr_vv[0] == 0:
-                    logger.warning(msg)
-                    log_offending_line(record_dic, "warning", logger)
-                elif ignore_number_mismatch and contains_desired_number:
-                    logger.warning(msg)
-                    log_offending_line(record_dic, "warning", logger)
-                elif ignore_varspec_mismatch and contains_inconsistent_varspec:
+                # As in EndfParserCpp (cpp_validate_field), the options for
+                # zeros and desired numbers (e.g. 0.0?) only apply to a field
+                # without variables, ignore_varspec_mismatch only to a field
+                # with a variable marked by ?. A variable already read with
+                # another value is an error, also if that value was zero.
+                if not field_contains_variable(curexpr, datadic):
+                    msg = create_variable_wrong_value_error_msg(
+                        record_dic[sourcekey], expr_vv[0], sourcekey
+                    )
+                    tolerated = (ignore_zero_mismatch and expr_vv[0] == 0) or (
+                        ignore_number_mismatch and contains_desired_number
+                    )
+                else:
+                    msg = create_field_inconsistency_error_msg(
+                        reconstruct_tree_str(curexpr).replace(" ", ""),
+                        _is_single_variable(curexpr),
+                        expr_vv[0],
+                        record_dic[sourcekey],
+                        sourcekey,
+                    )
+                    tolerated = (
+                        ignore_varspec_mismatch and contains_inconsistent_varspec
+                    )
+                if tolerated:
                     logger.warning(msg)
                     log_offending_line(record_dic, "warning", logger)
                 else:

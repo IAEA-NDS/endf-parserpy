@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/26
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -342,10 +342,12 @@ def map_list_dic(
                     )
                 # maybe a bit hacky and clunky, but the method can do the job
                 # of assigning a value of the list body to the appropriate variable in datadic
+                # the line of the value, counted from the line of the
+                # record, for the summary of tolerated mismatches
                 map_record_helper(
                     [node],
                     ("val",),
-                    {"val": vals[val_idx]},
+                    {"val": vals[val_idx], "__line_offset": 1 + val_idx // 6},
                     datadic,
                     loop_vars,
                     rwmode,

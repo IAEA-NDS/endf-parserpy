@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2026/11/10
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -14,6 +14,11 @@ from .tree_analysis import search_name, reconstruct_tree_str
 from endf_parserpy.utils.math_utils import math_allclose
 from .logging_utils import logging, abbreviate_valstr, should_skip_logging_info
 from endf_parserpy.utils.text_encoding import check_text_value, escape_text
+from endf_parserpy.utils.tolerated_mismatches import (
+    BODY_FIELD,
+    field_variables,
+    plain_value,
+)
 from .custom_exceptions import (
     NumberMismatchError,
     InvalidIntegerError,
@@ -153,6 +158,9 @@ def map_recorddic_to_datadic(
     zipit = zip(basekeys, expr_list)
     found_unbound = False
     varnames = []
+    # the mismatches tolerated in this record (see _tolerated_mismatch),
+    # only added to the collector of the parse if all fields are mapped
+    tolerated_here = None
     for sourcekey, curexpr in zipit:
         try:
             expr_vv = eval_expr(
@@ -220,9 +228,12 @@ def map_recorddic_to_datadic(
                     msg = create_variable_wrong_value_error_msg(
                         record_dic[sourcekey], expr_vv[0], sourcekey
                     )
-                    tolerated = (ignore_zero_mismatch and expr_vv[0] == 0) or (
-                        ignore_number_mismatch and contains_desired_number
-                    )
+                    if ignore_zero_mismatch and expr_vv[0] == 0:
+                        tolerated = "zero"
+                    elif ignore_number_mismatch and contains_desired_number:
+                        tolerated = "number"
+                    else:
+                        tolerated = None
                 else:
                     msg = create_field_inconsistency_error_msg(
                         reconstruct_tree_str(curexpr).replace(" ", ""),
@@ -232,11 +243,29 @@ def map_recorddic_to_datadic(
                         sourcekey,
                     )
                     tolerated = (
-                        ignore_varspec_mismatch and contains_inconsistent_varspec
+                        "varspec"
+                        if ignore_varspec_mismatch and contains_inconsistent_varspec
+                        else None
                     )
-                if tolerated:
-                    logger.warning(msg)
-                    log_offending_line(record_dic, "warning", logger)
+                if tolerated is not None:
+                    # reported in the summary at the end of the parse
+                    # (see EndfParserPy.parse); the details only at DEBUG
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.debug(msg)
+                        log_offending_line(record_dic, "debug", logger)
+                    if tolerated_here is None:
+                        tolerated_here = []
+                    tolerated_here.append(
+                        _tolerated_mismatch(
+                            tolerated,
+                            sourcekey,
+                            curexpr,
+                            expval,
+                            srcval,
+                            record_dic,
+                            loop_vars,
+                        )
+                    )
                 else:
                     log_offending_line(record_dic, "error", logger)
                     raise NumberMismatchError(msg)
@@ -269,11 +298,30 @@ def map_recorddic_to_datadic(
             )
 
     if found_unbound:
+        # the record is mapped again (see map_record_helper), which finds
+        # the mismatches again
         raise SeveralUnboundVariablesError(
             "Found several unbound variables in this line"
         )
-    else:
-        return datadic
+    if tolerated_here is not None:
+        collector = parse_opts.get("tolerated_mismatches")
+        if collector is not None:
+            collector.extend(tolerated_here)
+    return datadic
+
+
+def _tolerated_mismatch(kind, sourcekey, expr, expval, srcval, record_dic, loop_vars):
+    # A tolerated mismatch of a field as a tuple (kind, field, variables,
+    # line, expected, found), see ToleratedMismatch. The line counts the
+    # lines of the section from 0 (that of the record plus the offset of
+    # a value of the body of a LIST record, see map_list_dic); it is
+    # translated to the line of the input by EndfParserPy.parse.
+    field = BODY_FIELD if sourcekey == "val" else sourcekey
+    variable = None
+    if kind == "varspec":
+        variable = field_variables(reconstruct_tree_str(expr))
+    line = loop_vars.get("__ofs", 0) + record_dic.get("__line_offset", 0)
+    return (kind, field, variable, line, plain_value(expval), plain_value(srcval))
 
 
 def map_datadic_to_recorddic(

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/08
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -597,7 +597,10 @@ def _get_linenum_strings(n):
     return numstrs
 
 
-def split_sections(lines, read_opts=None):
+def split_sections(lines, read_opts=None, line_numbers=None):
+    # line_numbers: if a dictionary, it receives the indices in lines of
+    # the lines of each section, as lists in the same nesting by MF and MT
+    # as the lines of the sections in the result
     def make_control_error_message(sectype, secnum, expsecnum, ofs):
         return (
             f"Currently in {sectype}={expsecnum} section but encountered "
@@ -667,6 +670,8 @@ def split_sections(lines, read_opts=None):
     else:
         cursec = mfdic.setdefault(th_mf, {}).setdefault(th_mt, [])
         cursec.append(lines[0])
+        if line_numbers is not None:
+            line_numbers.setdefault(th_mf, {}).setdefault(th_mt, []).append(ofs)
 
     # sec_levels: TAPE=0, MAT=1, MF=2, MT=3
     sec_level = 0
@@ -775,6 +780,8 @@ def split_sections(lines, read_opts=None):
                 regular_mt = mt
             cursec = regular_sec
             cursec.append(line)
+            if line_numbers is not None:
+                line_numbers.setdefault(mf, {}).setdefault(mt, []).append(ofs)
             sec_level = 3
             last_mat = mat
             last_mf = mf

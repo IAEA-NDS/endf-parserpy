@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/08
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -641,12 +641,34 @@ def _split_wrapper_names(entry):
     return entry, entry
 
 
-def _return_parsed(callcode, stream):
+def _tolerated_log_setup(stream):
+    """The log of the tolerated mismatches of a call (see
+    cpp_report_tolerated), used if the argument ``tolerated`` is a list."""
+    code = cpp.statement("cpp_tolerated_log cpp_tolerated")
+    code += cpp.statement(f"cpp_tolerated.stream = &{stream}")
+    code += cpp.statement("cpp_tolerated.memory = parse_opts.memory_input")
+    code += cpp.pureif(
+        "! tolerated.is_none()",
+        cpp.statement("parse_opts.tolerated = &cpp_tolerated"),
+    )
+    return code
+
+
+def _return_parsed(callcode, stream, report_tolerated=False):
     """Return the result of a parse function; an error message gets the
     template of the record and the line being read and is escaped (see
-    cpp_rethrow_parse_error)."""
+    cpp_rethrow_parse_error). With ``report_tolerated``, the mismatches
+    tolerated (see :func:`_tolerated_log_setup`) are appended to the list
+    ``tolerated`` after a successful parse."""
     code = cpp.line("try {")
-    code += cpp.statement(f"return {callcode}", cpp.INDENT)
+    if report_tolerated:
+        code += cpp.statement(f"py::dict cpp_result = {callcode}", cpp.INDENT)
+        code += cpp.statement(
+            f"cpp_report_tolerated(cpp_tolerated, {stream}, tolerated)", cpp.INDENT
+        )
+        code += cpp.statement("return cpp_result", cpp.INDENT)
+    else:
+        code += cpp.statement(f"return {callcode}", cpp.INDENT)
     code += cpp.line("} catch (const py::error_already_set&) {")
     code += cpp.statement("throw", cpp.INDENT)
     code += cpp.line("} catch (const std::runtime_error& cpp_exc) {")
@@ -657,13 +679,19 @@ def _return_parsed(callcode, stream):
     return code
 
 
-def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
-    # the parsing options (set below) must be among the arguments
+def generate_cpp_parsefun_wrappers_string(
+    parsefuns, *extra_args, report_tolerated=False
+):
+    # the parsing options (set below) must be among the arguments;
+    # report_tolerated: the function has the last argument `tolerated`, a
+    # list to which the tolerated mismatches are appended (or None)
     assert any(arg[1] == "parse_opts" for arg in extra_args)
     args_str = ", ".join(arg[0] + " " + arg[1] for arg in extra_args)
-    args_str = ", " + args_str if args_str != "" else args_str
     args_str2 = ", ".join(arg[1] for arg in extra_args)
     args_str2 = ", " + args_str2 if args_str2 != "" else args_str2
+    if report_tolerated:
+        args_str += ", py::object tolerated"
+    args_str = ", " + args_str if args_str != "" else args_str
     code = ""
     for entry in parsefuns:
         outer, inner = _split_wrapper_names(entry)
@@ -685,8 +713,14 @@ def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
         code += cpp.statement("std::istream cpp_instream(&cpp_membuf)", cpp.INDENT)
         # lines are read as views into the data (see CppLine)
         code += cpp.statement("parse_opts.memory_input = &cpp_membuf", cpp.INDENT)
+        if report_tolerated:
+            code += cpp.indent_code(_tolerated_log_setup("cpp_instream"), cpp.INDENT)
         code += cpp.indent_code(
-            _return_parsed(f"{inner}_istream(cpp_instream{args_str2})", "cpp_instream"),
+            _return_parsed(
+                f"{inner}_istream(cpp_instream{args_str2})",
+                "cpp_instream",
+                report_tolerated,
+            ),
             cpp.INDENT,
         )
         code += cpp.close_block()
@@ -694,13 +728,16 @@ def generate_cpp_parsefun_wrappers_string(parsefuns, *extra_args):
     return code
 
 
-def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
-    # the parsing options (read below) must be among the arguments
+def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args, report_tolerated=False):
+    # the parsing options (read below) must be among the arguments; for
+    # report_tolerated, see generate_cpp_parsefun_wrappers_string
     assert any(arg[1] == "parse_opts" for arg in extra_args)
     args_str = ", ".join(arg[0] + " " + arg[1] for arg in extra_args)
-    args_str = ", " + args_str if args_str != "" else args_str
     args_str2 = ", ".join(arg[1] for arg in extra_args)
     args_str2 = ", " + args_str2 if args_str2 != "" else args_str2
+    if report_tolerated:
+        args_str += ", py::object tolerated"
+    args_str = ", " + args_str if args_str != "" else args_str
     code = ""
     for entry in parsefuns:
         outer, inner = _split_wrapper_names(entry)
@@ -720,7 +757,11 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
                 "throw std::ifstream::failure" + '("failed to open file " + filename)'
             ),
         )
-        stream_code += _return_parsed(f"{inner}_istream(inpfile{args_str2})", "inpfile")
+        if report_tolerated:
+            stream_code += _tolerated_log_setup("inpfile")
+        stream_code += _return_parsed(
+            f"{inner}_istream(inpfile{args_str2})", "inpfile", report_tolerated
+        )
         code += cpp.indent_code(
             cpp.pureif(
                 cpp.logical_not("parse_opts.load_file_into_memory"), stream_code
@@ -735,8 +776,14 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args):
         code += cpp.statement("std::istream cpp_instream(&cpp_membuf)", cpp.INDENT)
         # lines are read as views into the data (see CppLine)
         code += cpp.statement("parse_opts.memory_input = &cpp_membuf", cpp.INDENT)
+        if report_tolerated:
+            code += cpp.indent_code(_tolerated_log_setup("cpp_instream"), cpp.INDENT)
         code += cpp.indent_code(
-            _return_parsed(f"{inner}_istream(cpp_instream{args_str2})", "cpp_instream"),
+            _return_parsed(
+                f"{inner}_istream(cpp_instream{args_str2})",
+                "cpp_instream",
+                report_tolerated,
+            ),
             cpp.INDENT,
         )
         code += cpp.close_block()
@@ -816,17 +863,21 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
     )
     # special case for the master function calling the other mf/mt parser funs
     master_parsefun_code = generate_master_parsefun("parse_endf_istream", recipefuns)
+    # the mismatches tolerated are appended to the list given as the
+    # argument `tolerated` (see cpp_report_tolerated)
     parsefun_wrappers_code1 += generate_cpp_parsefun_wrappers_string(
         ["parse_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),
         ("ParsingOptions", "parse_opts"),
+        report_tolerated=True,
     )
     parsefun_wrappers_code2 += generate_cpp_parsefun_wrappers_file(
         ["parse_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),
         ("ParsingOptions", "parse_opts"),
+        report_tolerated=True,
     )
     pybind_glue = ""
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
@@ -836,6 +887,7 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
         'py::arg("parse_opts") = default_parsing_options()',
+        'py::arg("tolerated") = py::none()',
     )
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
         ["parse_endf_file"],
@@ -844,6 +896,7 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
         'py::arg("parse_opts") = default_parsing_options()',
+        'py::arg("tolerated") = py::none()',
     )
 
     all_parsefun_codes = (

@@ -14,6 +14,8 @@
 
 
 class cpp_memory_streambuf;
+class CppListBody;
+struct cpp_tolerated_log;
 
 
 struct ParsingOptions {
@@ -42,6 +44,10 @@ struct ParsingOptions {
   // the body of a TAB1, TAB2 or LIST record are read, it points to the
   // template preceded by CPP_BODY_MARK (see cpp_template_text).
   const char* current_template;
+  // Not an option: the log of the mismatches tolerated in the call
+  // (see cpp_tolerated_log), set by the functions called from Python
+  // that report them, otherwise nullptr (no mismatch is recorded).
+  cpp_tolerated_log* tolerated;
 };
 
 
@@ -62,7 +68,8 @@ inline ParsingOptions default_parsing_options() {
     true,   // load_file_into_memory
     "dict",  // array_type
     nullptr,  // memory_input
-    nullptr  // current_template
+    nullptr,  // current_template
+    nullptr  // tolerated
   };
 }
 
@@ -116,6 +123,7 @@ namespace pybind11 { namespace detail {
       ParsingOptions default_opts = default_parsing_options();
       value.memory_input = nullptr;
       value.current_template = nullptr;
+      value.tolerated = nullptr;
 
       if (! d.contains("ignore_number_mismatch")) {
         value.ignore_number_mismatch = default_opts.ignore_number_mismatch;
@@ -386,6 +394,17 @@ inline void throw_number_mismatch_error(
 #else
 #define CPP_DECIMAL_NOINLINE
 #define CPP_DECIMAL_FORCEINLINE inline
+#endif
+
+// CPP_TOLERATED_COLD: for the functions recording a tolerated mismatch
+// (see cpp_validate_field), which are only called for a mismatch and are
+// kept out of the code of the reading functions.
+#if defined(__GNUC__) || defined(__clang__)
+#define CPP_TOLERATED_COLD __attribute__((noinline, cold)) inline
+#elif defined(_MSC_VER)
+#define CPP_TOLERATED_COLD __declspec(noinline) inline
+#else
+#define CPP_TOLERATED_COLD inline
 #endif
 
 // high and low 64 bits of the product of a and b
@@ -2722,6 +2741,63 @@ inline bool cpp_values_equal(const EndfRational& x, int y) { return x == y; }
 inline bool cpp_values_equal(int x, const EndfRational& y) { return x == y; }
 
 
+// A mismatch tolerated by the options ignore_zero_mismatch,
+// ignore_number_mismatch and ignore_varspec_mismatch (see
+// cpp_validate_field): the kind ('z', 'n' or 'v'), the field of the line
+// (0 to 5, -1 if unknown), whether the value is one of the body of a
+// record, the expression of the field in the recipe, the expected and the
+// actual value (as double, and whether they are integers) and the
+// position in the input after the line holding the value. The line and
+// the MAT/MF/MT numbers are determined from the position when the
+// mismatches are reported (see cpp_report_tolerated).
+struct cpp_tolerated_mismatch {
+  char kind = 0;
+  int fieldnum;
+  bool in_body;
+  const char* exprstr;
+  double expected;
+  double actual;
+  bool expected_int;
+  bool actual_int;
+  std::streamoff end_pos;
+  // for a value of a LIST body delivered by CppListBody: the beginning of
+  // the body in the memory of the input and the index of the value, which
+  // identify the value if it is checked again (see cpp_record_tolerated)
+  const char* body_start;
+  int body_index;
+};
+
+
+// The mismatches tolerated in a call from Python, created by the function
+// called (see generate_cpp_parsefun_wrappers_string), which sets
+// ParsingOptions::tolerated. stream is the stream being parsed.
+struct cpp_tolerated_log {
+  std::istream* stream;
+  // the input held in memory, if the stream reads from it
+  const cpp_memory_streambuf* memory;
+  std::vector<cpp_tolerated_mismatch> entries;
+};
+
+
+// Defined after CppListBody.
+CPP_TOLERATED_COLD void cpp_record_tolerated(
+  ParsingOptions& parse_opts, char kind, int fieldnum, const char* exprstr,
+  double expected, bool expected_int, double actual, bool actual_int,
+  const CppListBody* body, int body_index
+);
+
+
+// The value of a mismatch as a double and whether it is an integer, for
+// cpp_record_tolerated.
+template<typename T>
+inline double cpp_tolerated_number(const T& value) { return static_cast<double>(value); }
+
+template<typename T>
+inline bool cpp_tolerated_is_int(const T&) { return std::is_integral<T>::value; }
+
+inline bool cpp_tolerated_is_int(const EndfRational& value) { return value.is_integer(); }
+
+
 template<typename U, typename V>
 typename std::enable_if<
   !is_validation_scalar<U>::value || !is_validation_scalar<V>::value, void
@@ -2734,7 +2810,9 @@ cpp_validate_field(
   bool contains_inconsistent_varspec,
   const char* exprstr,
   int fieldnum,
-  ParsingOptions &parse_opts
+  ParsingOptions &parse_opts,
+  const CppListBody* body = nullptr,
+  int body_index = -1
 ) {
   std::stringstream errmsg;
   errmsg << "Both the expected and actual value are vectors --- "
@@ -2743,6 +2821,61 @@ cpp_validate_field(
 }
 
 
+// The handling of a field whose value (actual_value) differs from the
+// value given by the recipe (expected_value), see cpp_validate_field:
+// either the mismatch is tolerated by the options and recorded (see
+// cpp_record_tolerated), or an error is raised. Kept out of line, so that
+// a check adds only the comparison and one call to the reading functions.
+template<typename U, typename V>
+CPP_TOLERATED_COLD void cpp_field_mismatch(
+  const U& expected_value,
+  const V& actual_value,
+  bool contains_variable,
+  bool contains_desired_number,
+  bool contains_inconsistent_varspec,
+  const char* exprstr,
+  int fieldnum,
+  ParsingOptions &parse_opts,
+  const CppListBody* body,
+  int body_index
+) {
+  char kind;
+  if (! contains_variable) {
+    // dealing with a number
+    // ignore zero mismatch only active for scalar data types
+    if (is_zero_check(expected_value) && parse_opts.ignore_zero_mismatch) {
+      kind = 'z';
+    } else if (contains_desired_number && parse_opts.ignore_number_mismatch) {
+      kind = 'n';
+    } else {
+      throw_number_mismatch_error(expected_value, actual_value, fieldnum, parse_opts);
+      return;
+    }
+  } else {
+    // dealing with an expression with variables
+    if (contains_inconsistent_varspec && parse_opts.ignore_varspec_mismatch) {
+      kind = 'v';
+    } else {
+      throw_mismatch_error(exprstr, expected_value, actual_value);
+      return;
+    }
+  }
+  cpp_record_tolerated(
+    parse_opts, kind, fieldnum, exprstr,
+    cpp_tolerated_number(expected_value), cpp_tolerated_is_int(expected_value),
+    cpp_tolerated_number(actual_value), cpp_tolerated_is_int(actual_value),
+    body, body_index
+  );
+}
+
+
+// The value of a field (actual_value) is checked against the value given
+// by the recipe (expected_value); a mismatch is handled by
+// cpp_field_mismatch. For a value of the body of a LIST record delivered
+// by CppListBody (whose lines have all been read), body is the object and
+// body_index the index of the value in the body, otherwise body is
+// nullptr and body_index the index of a value of a LIST body (-1 for a
+// field of another kind).
 template<typename U, typename V>
 typename std::enable_if<
   is_validation_scalar<U>::value && is_validation_scalar<V>::value, void
@@ -2755,22 +2888,15 @@ cpp_validate_field(
   bool contains_inconsistent_varspec,
   const char* exprstr,
   int fieldnum,
-  ParsingOptions &parse_opts
+  ParsingOptions &parse_opts,
+  const CppListBody* body = nullptr,
+  int body_index = -1
 ) {
   if (cpp_values_equal(expected_value, actual_value)) return;
-
-  // inconsistency detected
-  if (! contains_variable) {
-    // dealing with a number
-    // ignore zero mismatch only active for scalar data types
-    if (is_zero_check(expected_value) && parse_opts.ignore_zero_mismatch) return;
-    if (contains_desired_number && parse_opts.ignore_number_mismatch) return;
-    throw_number_mismatch_error(expected_value, actual_value, fieldnum, parse_opts);
-  } else {
-    // dealing with an expression with variables
-    if (contains_inconsistent_varspec && parse_opts.ignore_varspec_mismatch) return;
-    throw_mismatch_error(exprstr, expected_value, actual_value);
-  }
+  cpp_field_mismatch(
+    expected_value, actual_value, contains_variable, contains_desired_number,
+    contains_inconsistent_varspec, exprstr, fieldnum, parse_opts, body, body_index
+  );
 }
 
 // we are done with the cpp_validate_field related functionality
@@ -3029,7 +3155,8 @@ public:
     setg(begin, begin, begin + size);
   }
 
-  // the read position and the end of the memory
+  // the beginning, the read position and the end of the memory
+  const char* begin() const { return eback(); }
   const char* current() const { return gptr(); }
   const char* end() const { return egptr(); }
 
@@ -3824,6 +3951,9 @@ class CppListBody {
     // whether all values of the body are converted (also if NPL <= 0)
     bool complete() const { return ! failed_ && nconv_ == (npl_ > 0 ? npl_ : 0); }
 
+    // the beginning of the body in the memory of the input
+    const char* start() const { return start_; }
+
     int nconv() const { return nconv_; }
 
     const double* values() const { return buf_; }
@@ -3970,6 +4100,188 @@ class CppListBody {
     CppListBody(const CppListBody&) = delete;
     CppListBody& operator=(const CppListBody&) = delete;
 };
+
+
+// The position in the input after the line of the body of a LIST record
+// read by CppListBody (whose lines have all been read) that holds the
+// value with the given index; the lines are counted as cpp_read_line
+// reads them, i.e. without the blank lines skipped with
+// ignore_blank_lines.
+inline std::streamoff cpp_body_value_end(
+  const CppListBody& body, int index, const ParsingOptions& parse_opts
+) {
+  const cpp_memory_streambuf* mb = parse_opts.memory_input;
+  const char* p = body.start();
+  const char* e = mb->end();
+  const int target = index / 6;
+  int l = 0;
+  while (p < e) {
+    const char* nl = static_cast<const char*>(std::memchr(p, '\n', e - p));
+    const char* line_end = nl != nullptr ? nl : e;
+    std::size_t len = static_cast<std::size_t>(line_end - p);
+    if (len > 0 && p[len-1] == '\r') len--;
+    const bool blank = cpp_is_blank_line(p, len);
+    p = nl != nullptr ? nl + 1 : e;
+    if (blank && parse_opts.ignore_blank_lines) continue;
+    if (l == target) break;
+    l++;
+  }
+  return static_cast<std::streamoff>(p - mb->begin());
+}
+
+
+// The position of the stream being parsed (after the line last read).
+inline std::streamoff cpp_tolerated_stream_offset(
+  std::istream& cont, const ParsingOptions& parse_opts
+) {
+  const cpp_memory_streambuf* mb = parse_opts.memory_input;
+  if (mb != nullptr && cont.rdbuf() == mb) {
+    return static_cast<std::streamoff>(mb->current() - mb->begin());
+  }
+  // tellg fails if a flag is set, e.g. eofbit after the last line
+  std::ios_base::iostate state = cont.rdstate();
+  cont.clear();
+  std::streamoff pos = static_cast<std::streamoff>(cont.tellg());
+  cont.clear(state);
+  return pos;
+}
+
+
+CPP_TOLERATED_COLD void cpp_record_tolerated(
+  ParsingOptions& parse_opts, char kind, int fieldnum, const char* exprstr,
+  double expected, bool expected_int, double actual, bool actual_int,
+  const CppListBody* body, int body_index
+) {
+  cpp_tolerated_log* log = parse_opts.tolerated;
+  if (log == nullptr) return;
+  cpp_tolerated_mismatch m;
+  m.kind = kind;
+  m.fieldnum = fieldnum;
+  m.in_body = body_index >= 0;
+  m.exprstr = exprstr;
+  m.expected = expected;
+  m.actual = actual;
+  m.expected_int = expected_int;
+  m.actual_int = actual_int;
+  m.body_start = nullptr;
+  m.body_index = body_index;
+  if (body != nullptr) {
+    // A value delivered by CppListBody is checked again by the code of
+    // the per-field form if the strided delivery is given up after the
+    // checks (see ListBulkForm in endf2cpp_aux.py); it is recorded once.
+    // The mismatches of a body are the last ones recorded.
+    const char* start = body->start();
+    for (auto it = log->entries.rbegin();
+         it != log->entries.rend() && it->body_start == start; ++it) {
+      if (it->body_index == body_index && it->exprstr == exprstr) return;
+    }
+    m.body_start = start;
+    m.end_pos = cpp_body_value_end(*body, body_index, parse_opts);
+  } else {
+    m.end_pos = cpp_tolerated_stream_offset(*log->stream, parse_opts);
+  }
+  log->entries.push_back(m);
+}
+
+
+inline py::object cpp_tolerated_pyvalue(double value, bool is_int) {
+  if (is_int) return py::int_(static_cast<long long>(value));
+  return py::float_(value);
+}
+
+
+// Append the mismatches recorded in log while parsing cont (see
+// cpp_record_tolerated) to the Python list `tolerated`, as tuples (MAT,
+// MF, MT, field (0 to 5, -1 if unknown), whether in the body of a
+// record, expression of the field, kind ('zero', 'number' or 'varspec'),
+// line (counting from 1), expected value, actual value), in the order of
+// their positions in the input and, within a line, of the fields (as
+// EndfParserPy finds them; the checks of the strided delivery of a LIST
+// body visit the values in another order). The line and the MAT/MF/MT
+// numbers of a
+// mismatch are those of the line holding the value, determined in one
+// pass over the input, which is only read for this if there are
+// mismatches.
+inline void cpp_report_tolerated(
+  cpp_tolerated_log& log, std::istream& cont, py::object tolerated
+) {
+  if (log.entries.empty() || tolerated.is_none()) return;
+  const std::size_t n = log.entries.size();
+  std::vector<std::size_t> order(n);
+  for (std::size_t i = 0; i < n; i++) order[i] = i;
+  std::stable_sort(order.begin(), order.end(), [&log](std::size_t a, std::size_t b) {
+    const cpp_tolerated_mismatch& x = log.entries[a];
+    const cpp_tolerated_mismatch& y = log.entries[b];
+    if (x.end_pos != y.end_pos) return x.end_pos < y.end_pos;
+    return x.body_index < y.body_index;
+  });
+  // the line holding the value ends before end_pos: its number is one
+  // more than the number of line breaks before its last character, and
+  // it starts after the last of them
+  std::vector<long> line_numbers(n);
+  std::vector<std::streamoff> line_starts(n);
+  // the input in memory is read directly, a file in chunks
+  const cpp_memory_streambuf* mb = log.memory;
+  const bool in_memory = mb != nullptr && cont.rdbuf() == mb;
+  cont.clear();
+  cont.seekg(0);
+  std::vector<char> buf(in_memory ? 0 : 1 << 16);
+  std::streamoff done = 0;
+  long breaks = 0;
+  std::streamoff last_start = 0;
+  for (std::size_t k = 0; k < n; k++) {
+    const std::size_t i = order[k];
+    const std::streamoff target = log.entries[i].end_pos - 1;
+    while (done < target) {
+      const char* chunk;
+      std::streamoff got = target - done;
+      if (in_memory) {
+        const std::streamoff avail = mb->end() - mb->begin() - done;
+        if (got > avail) got = avail;
+        chunk = mb->begin() + done;
+      } else {
+        if (! cont) break;
+        if (got > static_cast<std::streamoff>(buf.size())) got = buf.size();
+        cont.read(buf.data(), static_cast<std::streamsize>(got));
+        got = cont.gcount();
+        chunk = buf.data();
+      }
+      if (got <= 0) break;
+      const char* p = chunk;
+      const char* e = chunk + got;
+      while ((p = static_cast<const char*>(std::memchr(p, '\n', e - p))) != nullptr) {
+        breaks++;
+        p++;
+        last_start = done + (p - chunk);
+      }
+      done += got;
+    }
+    line_numbers[i] = breaks + 1;
+    line_starts[i] = last_start;
+  }
+  static const char* kinds[] = {"zero", "number", "varspec"};
+  py::list result = tolerated.cast<py::list>();
+  std::string line;
+  for (std::size_t k = 0; k < n; k++) {
+    const std::size_t i = order[k];
+    const cpp_tolerated_mismatch& m = log.entries[i];
+    cont.clear();
+    cont.seekg(line_starts[i]);
+    line.clear();
+    std::getline(cont, line);
+    if (! line.empty() && line[line.size()-1] == '\r') line.erase(line.size()-1);
+    if (line.size() < 75) line.append(75 - line.size(), ' ');
+    const int mat = cpp_read_lenient_int_field(line.data(), 66, 4);
+    const int mf = cpp_read_lenient_int_field(line.data(), 70, 2);
+    const int mt = cpp_read_lenient_int_field(line.data(), 72, 3);
+    const char* kind = kinds[m.kind == 'z' ? 0 : (m.kind == 'n' ? 1 : 2)];
+    result.append(py::make_tuple(
+      mat, mf, mt, m.fieldnum, m.in_body, m.exprstr, kind, line_numbers[i],
+      cpp_tolerated_pyvalue(m.expected, m.expected_int),
+      cpp_tolerated_pyvalue(m.actual, m.actual_int)
+    ));
+  }
+}
 
 
 // The number of iterations of a loop over the indices a to b, and the

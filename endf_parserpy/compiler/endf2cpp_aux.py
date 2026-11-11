@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2026/11/05
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -168,15 +168,28 @@ def validate_field(
     cont_incons_var = _map_bool(contains_inconsistent_varspec)
     # the field of the value for error messages (-1 if not a single field)
     fieldnum = get_numeric_field_position(actual_value)
+    # a value of the body of a LIST record (cpp_i is its index in the
+    # body): delivered by CppListBody (see list_body_field) or read from
+    # the current line (field cpp_j); only used for a tolerated mismatch
+    body_args = ""
+    if actual_value.startswith("cpp_body."):
+        body_args = ", &cpp_body, cpp_i"
+    elif _BODY_FIELD_RE.search(actual_value):
+        body_args = ", nullptr, cpp_i"
     code = cpp.statement(
         f"cpp_validate_field({expected_value}, {actual_value}, "
         + f" {cont_var}, {cont_des_num}, {cont_incons_var}, "
         + f"{exprstr},"
         + "\n"
         + " " * cpp.INDENT
-        + f"{fieldnum}, {parse_opts})"
+        + f"{fieldnum}, {parse_opts}{body_args})"
     )
     return code
+
+
+# the reading of a field of the body of a LIST record in the per-field
+# form (see cpp_read_field and ListBodyRecorder)
+_BODY_FIELD_RE = re.compile(r"\(cpp_line\.data\(\), cpp_j, ")
 
 
 def get_tab1_body(xvar, yvar, nr, np, mat, mf, mt, parse_opts):

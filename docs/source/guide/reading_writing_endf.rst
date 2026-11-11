@@ -254,7 +254,11 @@ are allowed to consume the first character slot usually
 reserved for the sign.
 The argument ``prefer_noexp=True`` will switch to a decimal
 notation (i.e. without exponent) if the number can be
-represented with more significant digits. The choice
+represented with more significant digits. The writer
+reads both notations back and keeps the one closer to the
+number; if both are equally close, e.g. both exact, it uses
+the decimal notation, so that ``␣3.007000+3`` becomes ``3007``.
+The choice
 ``skip_intzero=True`` will skip the zero of a number
 in decimal notation if the integer part is zero, e.g.,
 ``0.1234`` will become ``.12345``, giving in some situations
@@ -264,7 +268,45 @@ initialize the :class:`~endf_parserpy.EndfParserPy` instance like this:
 
 .. code::
 
-   parser = EndfParserPy(abuse_signpose=True, prefer_noexp=True, skip_intzero=True)
+   parser = EndfParserPy(abuse_signpos=True, prefer_noexp=True, skip_intzero=True)
+
+These options also change the text of numbers that the
+standard form ``␣1.234567+8`` already represents exactly, e.g.
+``␣3.007000+3`` becomes ``3007`` with ``prefer_noexp=True`` and
+``3.0070000+3`` with ``abuse_signpos=True``. With
+``standard_form_on_tie=True`` in addition, the special forms of
+``prefer_noexp``, ``abuse_signpos`` and ``skip_intzero`` are only used
+where they represent a number more closely than the standard form,
+i.e. the form written with these three options ``False``. The writer
+compares the number written with the options as given and the standard
+form after reading both back, and writes the standard form if it is at
+least as close:
+
+.. code::
+
+   parser = EndfParserPy(
+       abuse_signpos=True,
+       prefer_noexp=True,
+       skip_intzero=True,
+       standard_form_on_tie=True,
+   )
+
+With this parser, ``3007.0`` is written as ``␣3.007000+3``,
+``13.7740142`` as ``13.7740142`` (decimal notation, as the standard form
+``␣1.377401+1`` is not exact), ``1.0621998e-5`` as ``1.0621998-5`` (sign
+column) and ``0.0010184826`` as ``.0010184826`` (without the integer
+zero). With ``abuse_signpos=True`` and ``standard_form_on_tie=True``
+only, the first column is used only for positive numbers that need the
+eighth digit, e.g. ``1062199.8`` becomes ``1.0621998+6``, whereas
+``3007.0`` stays ``␣3.007000+3``. Without any of the three options,
+``standard_form_on_tie`` has no effect. The option ``keep_E`` is
+respected by both forms.
+
+The same options are accepted by :class:`~endf_parserpy.EndfParserCpp`,
+which writes the same characters, and by ``endf-cli``
+(e.g. ``--standard_form_on_tie``).
+See :ref:`Perfect precision control <guide_perfect_precision>` for what
+these options preserve when the ENDF/B libraries are read and written.
 
 
 If you want to increase compatibility with programming

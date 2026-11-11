@@ -83,6 +83,55 @@ Comparisons between :class:`~endf_parserpy.EndfFloat` objects and  Python numeri
    assert endf_float_obj < 10
 
 
+Lossless writing with the global options
+----------------------------------------
+
+Even without the original strings, the global formatting options
+can reproduce every value read from an ENDF file and keep the text
+of every number that is already written in the standard form
+``␣1.234567+8``. With
+
+.. code:: Python
+
+   from endf_parserpy import EndfParserCpp
+   parser = EndfParserCpp(
+       prefer_noexp=True,
+       abuse_signpos=True,
+       skip_intzero=True,
+       standard_form_on_tie=True,
+   )
+
+(or the same arguments of :class:`~endf_parserpy.EndfParserPy`,
+which writes the same characters), every value of all 4513 files of the
+ENDF/B-VIII.1 neutron sublibrary and of the ENDF/B-VIII.0 thermal
+scattering, decay data and electro-atomic sublibraries was written and
+read back without any change: every float equal bit for bit, and the
+integers, strings and the structure unchanged. In addition, each of the
+111,975,026 float fields of these files that is in the standard form
+kept its text. Of the 115.5 million float fields, 341,436 are written in
+decimal notation and 26,229 as integers, e.g. ``13.7740142`` or
+``218588031``, because the standard form does not represent them
+exactly, and all others in the standard form. The fields that change
+their text are those of other spellings of the same number, e.g.
+``3007.00000`` or ``1.00000E-5``, which become ``␣3.007000+3`` and
+``␣1.000000-5``, and blank fields, which become ``␣0.000000+0``.
+
+Without ``standard_form_on_tie=True``, the values are also preserved,
+but ``prefer_noexp=True`` writes numbers in decimal notation wherever
+this is as exact as the standard form (``␣3.007000+3`` becomes
+``3007``) and ``abuse_signpos=True`` writes positive numbers with eight
+digits from the first column (``3.0070000+3``): 103.8 million of the
+112.0 million fields in the standard form then change their text.
+With the default options, 367,665 float fields of these files change
+their value, because they have more than seven significant digits.
+With ``abuse_signpos=True`` and ``standard_form_on_tie=True`` only,
+282,804 still do, because they need more than eight digits, while no
+field in the standard form changes its text.
+
+To keep the original text of every field, read the file with
+``preserve_value_strings=True``, as explained below.
+
+
 Perfect precision control for writing
 -------------------------------------
 

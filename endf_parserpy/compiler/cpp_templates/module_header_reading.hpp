@@ -374,12 +374,18 @@ inline void throw_number_mismatch_error(
 #include <intrin.h>
 #endif
 
+// CPP_DECIMAL_FORCEINLINE: for cpp_decimal_finish, the last step of the
+// conversion of almost every float field, which must not depend on the
+// inlining heuristics (GCC -O1 inlines only functions it finds small).
 #if defined(__GNUC__) || defined(__clang__)
 #define CPP_DECIMAL_NOINLINE __attribute__((noinline))
+#define CPP_DECIMAL_FORCEINLINE __attribute__((always_inline)) inline
 #elif defined(_MSC_VER)
 #define CPP_DECIMAL_NOINLINE __declspec(noinline)
+#define CPP_DECIMAL_FORCEINLINE __forceinline
 #else
 #define CPP_DECIMAL_NOINLINE
+#define CPP_DECIMAL_FORCEINLINE inline
 #endif
 
 // high and low 64 bits of the product of a and b
@@ -833,20 +839,44 @@ CPP_DECIMAL_NOINLINE inline bool cpp_decimal_to_double_negexp(std::uint64_t mant
 }
 
 
-// Fast exact conversion of a plain decimal number of the form
-// [+-]digits[.digits][(e|E)[+-]digits] (as assembled by endfstr2float)
-// to double. If the significand has at most 15 digits and the decimal
-// exponent is at most 22 in magnitude, both the significand and the
-// power of ten are exactly representable and a single IEEE multiplication
-// or division yields the correctly rounded result, i.e. the same value as
-// std::strtod; decimal exponents below -22 are converted exactly with
-// cpp_decimal_to_double_negexp. Returns false for anything else, in which
-// case std::strtod must be used.
-inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
+// The common last step of cpp_fast_decimal_to_double, cpp_fast_field_swar
+// and cpp_fast_field_to_double: the double for the decimal significand
+// mant (the digits of the number as an integer, at most 15 significant
+// digits), the decimal exponent k (the exponent of the number minus the
+// number of digits after the decimal point, so that the value is
+// mant * 10^k) and the sign neg. A significand of at most 15 digits is
+// below 2^53, and 10^|k| is exactly representable for |k| <= 22, so for
+// -22 <= k <= 22 both operands are exact and the single IEEE
+// multiplication or division gives the correctly rounded result, i.e. the
+// same value as std::strtod. The sign is applied last, so that a negative
+// zero gives -0.0. Decimal exponents below -22 are converted exactly with
+// cpp_decimal_to_double_negexp. Returns false, leaving result unchanged,
+// for k > 22 and in the rare cases cpp_decimal_to_double_negexp leaves to
+// the general code path.
+CPP_DECIMAL_FORCEINLINE bool cpp_decimal_finish(std::uint64_t mant, int k, bool neg, double &result) {
   static const double p10[] = {
     1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
     1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22
   };
+  double v = static_cast<double>(mant);
+  if (mant != 0) {
+    if (k < -22) return cpp_decimal_to_double_negexp(mant, k, neg, result);
+    if (k > 22) return false;
+    if (k > 0) v *= p10[k];
+    else if (k < 0) v /= p10[-k];
+  }
+  result = neg ? -v : v;
+  return true;
+}
+
+
+// Fast exact conversion of a plain decimal number of the form
+// [+-]digits[.digits][(e|E)[+-]digits] (as assembled by endfstr2float)
+// to double, the same value as std::strtod (see cpp_decimal_finish).
+// Returns false for more than 15 significant digits, decimal exponents
+// above 22, the rare cases cpp_decimal_to_double_negexp declines and
+// anything else, in which case std::strtod must be used.
+inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
   const char* p = s;
   bool neg = false;
   if (*p == '+' || *p == '-') {
@@ -890,16 +920,7 @@ inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
     if (eneg) expo = -expo;
   }
   if (*p != '\0') return false;
-  int k = expo - nfrac;
-  double v = static_cast<double>(mant);
-  if (mant != 0) {
-    if (k < -22) return cpp_decimal_to_double_negexp(mant, k, neg, result);
-    if (k > 22) return false;
-    if (k > 0) v *= p10[k];
-    else if (k < 0) v /= p10[-k];
-  }
-  result = neg ? -v : v;
-  return true;
+  return cpp_decimal_finish(mant, expo - nfrac, neg, result);
 }
 
 
@@ -914,18 +935,14 @@ inline bool cpp_fast_decimal_to_double(const char* s, double &result) {
 // First stage: the two layouts of almost all float fields in ENDF-6 files,
 // " d.dddddd+d" and " d.ddddd+dd" (first character blank, '+' or '-';
 // exponent sign '+' or '-'), checked and decoded with 64-bit integer
-// operations on two overlapping loads of the 11 bytes of the field.
-// Decimal exponents below -22 are converted with
-// cpp_decimal_to_double_negexp. Returns 1 if converted, -1 if the field
-// has one of these layouts but its decimal exponent is above 22 or
-// cpp_decimal_to_double_negexp leaves it to std::strtod (the common path
-// rejects it as well), and 0 for any other content.
+// operations on two overlapping loads of the 11 bytes of the field, and
+// converted with cpp_decimal_finish. Returns 1 if converted, -1 if the
+// field has one of these layouts but cpp_decimal_finish does not convert
+// it (decimal exponent above 22, or left to std::strtod by
+// cpp_decimal_to_double_negexp; the common path rejects it as well), and
+// 0 for any other content.
 inline int cpp_fast_field_swar(const char* str, double &result) {
 #ifdef CPP_FIELD_SWAR_LE
-  static const double p10[] = {
-    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
-    1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22
-  };
   const std::uint64_t ones = 0x0101010101010101ULL;
   std::uint64_t a, b;
   std::memcpy(&a, str, 8);       // bytes 0..7
@@ -970,15 +987,7 @@ inline int cpp_fast_field_swar(const char* str, double &result) {
   const unsigned long long mant = static_cast<std::uint32_t>(w);
   const bool neg = (c0 == '-');
   const int k = (eneg ? -expo : expo) - nfrac;
-  double v = static_cast<double>(mant);
-  if (mant != 0) {
-    if (k < -22) return cpp_decimal_to_double_negexp(mant, k, neg, result) ? 1 : -1;
-    if (k > 22) return -1;
-    if (k > 0) v *= p10[k];
-    else if (k < 0) v /= p10[-k];
-  }
-  result = neg ? -v : v;
-  return 1;
+  return cpp_decimal_finish(mant, k, neg, result) ? 1 : -1;
 #else
   (void) str;
   (void) result;
@@ -990,25 +999,17 @@ inline int cpp_fast_field_swar(const char* str, double &result) {
 // Single-pass conversion of the 11 characters of a float field for the
 // common case: leading spaces, a decimal number of the form
 // [+-]digits[.digits] optionally followed by an exponent introduced by
-// e/E (or d/D if accepted) or directly by its sign, and trailing spaces.
-// If the significand has at most 15 significant digits and the decimal
-// exponent is at most 22 in magnitude, both the significand and the
-// power of ten are exactly representable and a single IEEE multiplication
-// or division gives the correctly rounded result, i.e. the same value as
-// std::strtod; decimal exponents below -22 are converted exactly with
-// cpp_decimal_to_double_negexp (same value as std::strtod). Returns false
-// for any other content of the field, more significant digits, decimal
-// exponents above 22 and the rare cases cpp_decimal_to_double_negexp
-// leaves to std::strtod; these are then handled by the general code path. The two layouts of almost
-// all fields are first tried with cpp_fast_field_swar, which gives the
-// same result for them.
+// e/E (or d/D if accepted) or directly by its sign, and trailing spaces,
+// converted with cpp_decimal_finish to the same value as std::strtod.
+// Returns false for any other content of the field, more than 15
+// significant digits, decimal exponents above 22 and the rare cases
+// cpp_decimal_to_double_negexp leaves to std::strtod; these are then
+// handled by the general code path. The two layouts of almost all fields
+// are first tried with cpp_fast_field_swar, which gives the same result
+// for them.
 inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, double &result) {
   const int swar = cpp_fast_field_swar(str, result);
   if (swar != 0) return swar > 0;
-  static const double p10[] = {
-    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
-    1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22
-  };
   const char* p = str;
   const char* const e = str + 11;
   while (p < e && *p == ' ') p++;
@@ -1066,16 +1067,7 @@ inline bool cpp_fast_field_to_double(const char* str, bool accept_d_exponent, do
   for (; p < e; p++) {
     if (*p != ' ') return false;
   }
-  int k = expo - nfrac;
-  double v = static_cast<double>(mant);
-  if (mant != 0) {
-    if (k < -22) return cpp_decimal_to_double_negexp(mant, k, neg, result);
-    if (k > 22) return false;
-    if (k > 0) v *= p10[k];
-    else if (k < 0) v /= p10[-k];
-  }
-  result = neg ? -v : v;
-  return true;
+  return cpp_decimal_finish(mant, expo - nfrac, neg, result);
 }
 
 

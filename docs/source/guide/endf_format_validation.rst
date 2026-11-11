@@ -112,3 +112,83 @@ issues requires strong knowledge of the format and some detective
 skills. However, if you :ref:`create ENDF-6 files from scratch
 <create_endf_file_sec>` with the endf-parserpy package, you will obtain a
 correctly formatted file by design.
+
+
+.. _tolerated_mismatches_sec:
+
+Tolerated mismatches
+--------------------
+
+With their default options, both parsers accept some values that differ
+from the values given by the ENDF-6 recipe:
+
+- ``ignore_zero_mismatch=True``: a value other than zero in a field given
+  as ``0`` or ``0.0`` in the recipe (kind ``zero``);
+- ``ignore_varspec_mismatch=True``: a value of a variable marked with
+  ``?`` in the recipe, e.g. ``AWR?``, that differs from the value read
+  before (kind ``varspec``);
+- ``ignore_number_mismatch=True`` (``False`` by default): a value other
+  than a desired number such as ``0.0?`` (kind ``number``).
+
+The values found in these fields are not kept, so that writing the data
+gives the values expected by the recipe instead. Each call of
+:func:`~endf_parserpy.EndfParserPy.parse` or
+:func:`~endf_parserpy.EndfParserPy.parsefile` (of
+:class:`~endf_parserpy.EndfParserPy` as of
+:class:`~endf_parserpy.EndfParserCpp`) that tolerates mismatches issues
+one :class:`~endf_parserpy.EndfToleratedMismatchWarning` at its end. The
+warning gives the number of mismatches of each kind and lists them
+grouped by material, section, field (and variable) and kind, each group
+with the number of its mismatches and the first of them, i.e. the line
+of the input and the expected and the found value. A long list is
+truncated after ten groups. The text is the same for both parsers, e.g.
+
+.. code:: text
+
+   2 field mismatches tolerated in n-005_B_011.endf (zero: 2
+   (ignore_zero_mismatch)), in 2 groups; the values found are not kept,
+   writing the data gives the expected values:
+     MAT 528 MF3/MT1 L2: 1 zero mismatch, e.g. line 290: expected 0, found 99
+     MAT 528 MF3/MT16 L2: 1 zero mismatch, e.g. line 1974: expected 0, found 99
+
+(the first line is a single line in the warning). A mismatch found while
+the parser looks ahead to decide which branch of the recipe applies is
+not counted; only the record as finally read is. A parse that fails with
+an error gives no warning. :class:`~endf_parserpy.EndfFile` parses the
+sections one by one and issues a warning for each section with
+mismatches when it is parsed, and the tape functions such as
+:func:`~endf_parserpy.parse_tape_file` one for each material; their line
+numbers are those of the file.
+
+The warning can be filtered with the :mod:`warnings` module, e.g. to
+turn it into an error or to silence it:
+
+.. code:: Python
+
+   import warnings
+   from endf_parserpy import EndfParserCpp, EndfToleratedMismatchWarning
+
+   parser = EndfParserCpp()
+   with warnings.catch_warnings():
+       warnings.simplefilter("error", EndfToleratedMismatchWarning)
+       endf_dict = parser.parsefile("input.endf")
+
+   warnings.filterwarnings("ignore", category=EndfToleratedMismatchWarning)
+
+The attribute ``mismatches`` of the warning holds the mismatches as
+:class:`~endf_parserpy.utils.tolerated_mismatches.ToleratedMismatch`
+records, e.g. for a survey of a library:
+
+.. code:: Python
+
+   with warnings.catch_warnings(record=True) as caught:
+       warnings.simplefilter("always", EndfToleratedMismatchWarning)
+       parser.parsefile("input.endf")
+   for w in caught:
+       for m in w.message.mismatches:
+           print(m.mf, m.mt, m.field, m.kind, m.line, m.expected, m.found)
+
+With the strict options shown above, a mismatch is an error, not a
+warning. :class:`~endf_parserpy.EndfParserPy` logs the details of each
+tolerated mismatch (message, record template and line) at the level
+``logging.DEBUG``.

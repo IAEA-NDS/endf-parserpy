@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/05/17
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -54,11 +54,20 @@ def split_materials(lines):
     -----
     Blank lines (e.g. padding between materials) are not preserved.
     """
-    line_iter = iter(lines)
+    for chunk, _ in _split_materials_with_lines(lines):
+        yield chunk
+
+
+def _split_materials_with_lines(lines):
+    """Yield the single-material tapes of :func:`split_materials`, each
+    with the list of the numbers (counting from 1) of the lines of the
+    tape ``lines`` given by its lines between the TPID and the TEND
+    record."""
+    line_iter = enumerate(lines, start=1)
 
     # locate the tape head (TPID): the first non-blank record
     tpid = None
-    for raw in line_iter:
+    for _, raw in line_iter:
         line = raw.rstrip("\r\n")
         if line.strip() == "":
             continue
@@ -76,7 +85,8 @@ def split_materials(lines):
         )
 
     current = []
-    for raw in line_iter:
+    numbers = []
+    for number, raw in line_iter:
         line = raw.rstrip("\r\n")
         if line.strip() == "":
             # inter-material and padding blank lines are not preserved
@@ -86,11 +96,13 @@ def split_materials(lines):
             # tape end (TEND) record: nothing meaningful follows
             break
         current.append(line)
+        numbers.append(number)
         if mat == 0 and mf == 0 and mt == 0:
             # MEND record: the current material is complete
             if len(current) > 1:
-                yield [tpid] + current + [TEND_LINE]
+                yield [tpid] + current + [TEND_LINE], numbers
             current = []
+            numbers = []
 
     if current:
         raise TapeStructureError(

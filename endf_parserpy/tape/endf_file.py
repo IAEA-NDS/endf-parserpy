@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/08
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -37,6 +37,7 @@ from collections.abc import Mapping
 from ..endf_parser_factory import EndfParserFactory
 from ..endf_parser_base import EndfParserBase
 from ..utils.accessories import is_numpy_array, recursive_equality_check
+from ..utils.tolerated_mismatches import parse_and_collect, warn_tolerated_mismatches
 from .address import (
     EndfMaterialPath,
     parse_index_spec,
@@ -1150,7 +1151,7 @@ class EndfFile:
         sep = "\n" if raw and not raw.endswith("\n") else ""
         return "".join((_tpid_or_default(self._index), "\n", raw, sep, tail))
 
-    def _sections_tape(self, position, keys):
+    def _sections_tape(self, position, keys, starts=None):
         """Return one single-material tape holding several sections.
 
         ``keys`` lists ``(MF, MT)`` sections of the material at
@@ -1163,32 +1164,41 @@ class EndfFile:
         records at the end -- the framing is generated as for
         :meth:`_mini_tape`, the framing records of the file are not
         used. The raw text is read from disk without being cached.
+        If ``starts`` is a dictionary, it receives the line of the tape
+        (counting from 1) at which each section starts, by ``(MF, MT)``.
         """
         entry = self._index[position]
         fend = _control_line(entry.mat, 0, 0) + "\n"
         parts = [_tpid_or_default(self._index), "\n"]
         prev_mf = None
+        tape_line = 2
         with self._read_session():
             for mf, mt in keys:
                 if prev_mf is not None and mf != prev_mf:
                     parts.append(fend)
+                    tape_line += 1
                 prev_mf = mf
                 sec_entry = entry.sections[(mf, mt)]
                 raw = self._read_span(sec_entry.offset, sec_entry.length)
+                if starts is not None:
+                    starts[(mf, mt)] = tape_line
                 if "\r" in raw:
                     lines = _split_lines(raw)
                     parts.append("".join(line + "\n" for line in lines))
+                    tape_line += len(lines)
                 else:
                     parts.append(raw)
+                    tape_line += raw.count("\n")
                     if raw and not raw.endswith("\n"):
                         parts.append("\n")
+                        tape_line += 1
         parts.append(fend + _control_line(0, 0, 0) + "\n" + TEND_LINE)
         return "".join(parts)
 
     def _parse_section(self, entry, mf, mt, raw):
         try:
             mini_tape = self._mini_tape(entry, raw)
-            result = self._parser.parse(mini_tape)
+            result, mismatches = parse_and_collect(self._parser, mini_tape)
             section = result[mf][mt]
         except Exception as exc:
             if self._on_error == "raise":
@@ -1202,9 +1212,30 @@ class EndfFile:
                     _split_lines(raw),
                 ) from exc
             return FailedSection(exc, _split_lines(raw), entry.position, mf, mt)
+        if mismatches:
+            warn_tolerated_mismatches(
+                self._mismatches_in_file_lines(entry.position, mf, mt, mismatches),
+                source=self._path,
+            )
         if isinstance(section, Mapping):
             return _Section(section)
         return section  # a section without a recipe stays a list of strings
+
+    def _mismatches_in_file_lines(self, position, mf, mt, mismatches, first=2):
+        """The tolerated mismatches of the section MF/MT of the material
+        at ``position`` with the lines counted in the file.
+
+        The lines of ``mismatches`` are those of a tape in which the
+        section starts at line ``first``, e.g. the tape of
+        :meth:`_mini_tape` (``first=2``, after the TPID record). If the
+        line of the file at which the section starts is not known (see
+        :meth:`_section_first_line`), the lines are counted from the
+        first line of the section (counting from 1).
+        """
+        start = self._section_first_line(position, mf, mt)
+        if start is None:
+            start = 1
+        return [m._replace(line=start + m.line - first) for m in mismatches]
 
     def _section_parse_error(self, message, position, mf, mt, exc, lines):
         """Return the :class:`SectionParseError` for a section of the file.

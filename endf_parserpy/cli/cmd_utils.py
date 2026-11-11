@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/04
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -53,6 +53,7 @@ ENDF_PARSER_ARGS = (
     ("prefer_noexp", bool, True, False, True, True, True),
     ("skip_intzero", bool, True, False, True, True, True),
     ("abuse_signpos", bool, True, False, True, True, True),
+    ("standard_form_on_tie", bool, True, False, True, True, True),
     ("keep_E", bool, True, False, True, True, True),
     ("array_type", str, None, None, True, True, True),
 )

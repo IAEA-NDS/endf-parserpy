@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/11/08
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -68,6 +68,7 @@ class EndfParserCpp(EndfParserBase):
         skip_intzero=False,
         prefer_noexp=False,
         endf_format="endf6-ext",
+        standard_form_on_tie=False,
     ):
         """Initializaton of options for parsing and writing ENDF-6 data.
 
@@ -221,7 +222,23 @@ class EndfParserCpp(EndfParserBase):
         prefer_noexp: bool
             Switch to decimal representation (i.e. non-scientific) if it leads
             to an increase of accuracy, e.g. `1.234567-1` becomes `0.12345678`.
-            *(writing)*
+            If both representations are equally accurate, e.g. both exact,
+            the decimal one is used as well (`3.007000+3` becomes `3007`),
+            unless ``standard_form_on_tie=True``. *(writing)*
+        standard_form_on_tie: bool
+            Use the special forms of ``prefer_noexp``, ``abuse_signpos``
+            and ``skip_intzero`` only where they reproduce the value more
+            closely than the standard form, the field written with these
+            three options ``False`` (and the other options as given). If
+            the standard form is as close, e.g. both are exact, it is
+            written instead: 3007 is written as `3.007000+3` rather than
+            `3007` (``prefer_noexp``) or `3.0070000+3`
+            (``abuse_signpos``), whereas 1062199.8 is still written as
+            `1.0621998+6` with ``abuse_signpos=True``. With
+            ``prefer_noexp``, ``abuse_signpos`` and ``skip_intzero``,
+            every field that is exact in the standard form is written in
+            it. Without any of these three options, this option has no
+            effect. *(writing)*
         endf_format : str
             Allow the user to pick specific ENDF format flavors.
             The default `endf6-ext` tolerates deviations from the
@@ -280,6 +297,7 @@ class EndfParserCpp(EndfParserBase):
             "include_linenum": include_linenum,
             "skip_intzero": skip_intzero,
             "prefer_noexp": prefer_noexp,
+            "standard_form_on_tie": standard_form_on_tie,
             "preserve_value_strings": preserve_value_strings,
             "accept_non_ascii": accept_non_ascii,
             "array_type": array_type,

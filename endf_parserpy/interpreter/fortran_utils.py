@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/08
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -347,7 +347,7 @@ def float2fortstr(val, write_opts=None):
         pairs to influence conversion process.
         Supported field names are ``prefer_noexp``,
         ``width``, ``abuse_signpos``, ``keep_E``,
-        and ``skip_intzero``. Consider the equally
+        ``skip_intzero`` and ``standard_form_on_tie``. Consider the equally
         named arguments of the :class:`~endf_parserpy.EndfParserPy`
         constructor for an explanation of these options.
 
@@ -388,17 +388,62 @@ def float2fortstr(val, write_opts=None):
         val = 0.0
     prefer_noexp = write_opts.get("prefer_noexp", False)
     valstr_exp = float2expformstr(val, write_opts=write_opts)
+    # With standard_form_on_tie, the field written by the options as given
+    # (the candidate) is replaced by the standard form, the field of the
+    # default writer (prefer_noexp, abuse_signpos and skip_intzero False),
+    # if it reads back at least as close to the value. The exponent form
+    # valstr_exp is the standard form unless abuse_signpos is set and the
+    # value is not negative (the sign column); otherwise both are the same
+    # text and need no comparison.
     if not prefer_noexp:
+        if (
+            val >= 0
+            and write_opts.get("abuse_signpos", False)
+            and write_opts.get("standard_form_on_tie", False)
+        ):
+            delta2 = abs(fortstr2float(valstr_exp) - val)
+            return _standard_form_if_as_close(val, valstr_exp, delta2, write_opts)
         return valstr_exp
     valstr_basic = float2basicnumstr(val, write_opts=write_opts)
     if len(valstr_basic) > width:
-        return valstr_exp
-    delta1 = abs(fortstr2float(valstr_basic) - val)
-    delta2 = abs(fortstr2float(valstr_exp) - val)
-    if delta2 < delta1:
-        return valstr_exp
-    valstr_basic = valstr_basic.rjust(width)
-    return valstr_basic
+        delta2 = None
+    else:
+        delta1 = abs(fortstr2float(valstr_basic) - val)
+        delta2 = abs(fortstr2float(valstr_exp) - val)
+        # the form that reproduces the value more closely; in case of a tie
+        # (e.g. both exact) the decimal form
+        if delta2 >= delta1:
+            valstr_basic = valstr_basic.rjust(width)
+            if not write_opts.get("standard_form_on_tie", False):
+                return valstr_basic
+            # the candidate is the decimal form
+            if val >= 0 and write_opts.get("abuse_signpos", False):
+                return _standard_form_if_as_close(val, valstr_basic, delta1, write_opts)
+            # valstr_exp is the standard form
+            return valstr_exp if delta2 <= delta1 else valstr_basic
+    # the candidate is the exponent form valstr_exp
+    if (
+        val >= 0
+        and write_opts.get("abuse_signpos", False)
+        and write_opts.get("standard_form_on_tie", False)
+    ):
+        if delta2 is None:
+            delta2 = abs(fortstr2float(valstr_exp) - val)
+        return _standard_form_if_as_close(val, valstr_exp, delta2, write_opts)
+    return valstr_exp
+
+
+def _standard_form_if_as_close(val, candidate, cand_delta, write_opts):
+    # standard_form_on_tie: the standard form of val, the field of the
+    # default writer (the exponent form without abuse_signpos), if it reads
+    # back at least as close to val as the candidate, whose read-back
+    # differs from val by cand_delta; otherwise the candidate
+    std_opts = dict(write_opts)
+    std_opts["abuse_signpos"] = False
+    valstr_std = float2expformstr(val, write_opts=std_opts)
+    if abs(fortstr2float(valstr_std) - val) <= cand_delta:
+        return valstr_std
+    return candidate
 
 
 def read_fort_floats(line, n=6, read_opts=None):

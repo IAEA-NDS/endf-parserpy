@@ -427,36 +427,46 @@ inline int cpp_leading_zeros_64(std::uint64_t x) {
 #endif
 }
 
-// Exact conversion of mant * 10^k for decimal exponents k below -22, the
-// range of the single division in cpp_fast_decimal_to_double, i.e. of
-// values below about 1e-16, which occur in many ENDF-6 files (14% of the
-// float fields of tsl-HinH2O of ENDF/B-VIII.0). It uses the algorithm of
-// Eisel and Lemire as in the fast_float library (D. Lemire, "Number
-// parsing at a gigabyte per second", Software: Practice and Experience
-// 51(8), 2021): the significand, shifted so that its most significant bit
-// is set, is multiplied with a 128-bit approximation of 5^k; the upper
-// bits of the product give the significand of the double, its exponent
-// follows from k and the shift. The result is the correctly rounded
-// double (round half to even), subnormal numbers and underflow to zero
-// included, i.e. the same value as std::strtod. The algorithm is valid
-// for any significand below 2^64; the callers pass at most 15 decimal
-// digits (an ENDF-6 field of 11 characters holds at most 10). An exact
-// tie between two doubles is impossible for k < -22, as its decimal
+// Exact conversion of mant * 10^k for decimal exponents k below -22,
+// below the range of the single division in cpp_decimal_finish, i.e. of
+// magnitudes below 10^(n-23) for a significand of n digits (below 1e-17
+// for the usual layout " d.ddddd-dd"), which occur in many ENDF-6 files
+// (14% of the float fields of tsl-HinH2O of ENDF/B-VIII.0). It uses the
+// algorithm of Eisel and Lemire as in the fast_float library (D. Lemire,
+// "Number parsing at a gigabyte per second", Software: Practice and
+// Experience 51(8), 2021): the significand, shifted so that its most
+// significant bit is set, is multiplied with a 128-bit approximation of
+// 5^k; the upper bits of the product give the significand of the double,
+// its exponent follows from k and the shift. The result is the correctly
+// rounded double (round half to even), subnormal numbers and underflow to
+// zero included, i.e. the same value as std::strtod. The algorithm is
+// valid for any significand below 2^64; the callers pass at most 15
+// decimal digits (an ENDF-6 field of 11 characters holds at most 10). An
+// exact tie between two doubles is impossible for k < -22, as its decimal
 // significand would need more than 20 digits.
 //
 // Sets result to the double nearest to mant * 10^k (ties to even),
 // negated if neg, for 0 < mant < 2^64 and k < -22. Returns false, leaving
 // result unchanged, for k >= -22 and in the rare cases in which the
 // 128-bit product does not determine the rounding; these are left to the
-// general code path (std::strtod).
+// general code path (cpp_strtod_c, std::strtod in the C locale).
 //
 // The table holds the entries of fast_float for 5^q, q = -342 ... -23:
 // 2^b / 5^-q rounded down, incremented by one, and truncated to 128 bits
 // with the most significant bit set. A significand below 2^64 times 10^q
 // is below half the smallest subnormal number for q < -342, hence zero.
-// Decimal exponents above 22 (values above about 1e22) are not covered:
-// they do not occur in the ENDF/B-VIII.0 and VIII.1 libraries and are
-// left to std::strtod.
+// Decimal exponents above 22 are not covered (cpp_decimal_finish returns
+// false for them) and are left to the general code path, cpp_strtod_c.
+// As k counts all digits written after the decimal point, a field whose
+// significand has n digits (leading zeros not counted, trailing zeros
+// counted) has k > 22 exactly if its magnitude is at least 10^(n+22):
+// from 1e28 for the usual layout " d.ddddd+dd" (" 1.23456+28" has
+// k = 23), from 1e23 for a single digit ("1+23"), while "1.000000+25"
+// (mant = 1000000, k = 19) is converted by cpp_decimal_finish. Such
+// fields do not occur in the ENDF/B-VIII.0 sublibraries of neutrons,
+// thermal scattering, decay data and electro-atomic data and in the
+// ENDF/B-VIII.1 neutron sublibrary: the largest k of their float fields
+// is 22 (" 5.36000+27", the half-life of W-186 in seconds).
 CPP_DECIMAL_NOINLINE inline bool cpp_decimal_to_double_negexp(std::uint64_t mant, int k, bool neg, double &result) {
   static const std::uint64_t pow5[] = {
     0xeef453d6923bd65aULL, 0x113faa2906a13b3fULL,   // 5^-342

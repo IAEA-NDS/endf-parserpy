@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/25
-# Last modified:   2026/11/10
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -20,7 +20,9 @@ tests/cpp/float_field_writing_equivalence.cpp compares the characters
 written into the line, extracted from the template as it ships, with a
 frozen copy of the iostream based conversion that the writer used before,
 for all combinations of the options abuse_signpos, keep_E, skip_intzero
-and prefer_noexp.
+and prefer_noexp, each without and with standard_form_on_tie (the
+reference of this option, added after the copy was frozen, is composed of
+the frozen conversion with and without the special-form options).
 
 test_float_field_writing_sampled runs by default on a sample of values
 (values close to rounding ties and to a carry into the next decade at

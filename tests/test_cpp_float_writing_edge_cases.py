@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/20
-# Last modified:   2026/11/08
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -19,7 +19,10 @@ concentrate on these cases and on the transitions between them; the output
 must be identical to that of EndfParserPy for all combinations of the
 formatting options. The same holds for the decimal form of prefer_noexp
 for values that round to an integer (with skip_intzero, a value below 1
-in magnitude may round to 1) and for random values.
+in magnitude may round to 1) and for random values. The combinations
+include standard_form_on_tie, which matters with prefer_noexp or
+abuse_signpos (the standard form, if it is as close to the value as the
+field with these options).
 """
 
 import itertools
@@ -29,7 +32,13 @@ import pytest
 from endf_parserpy import EndfParserCpp, EndfParserPy
 
 
-OPTION_NAMES = ("abuse_signpos", "keep_E", "skip_intzero", "prefer_noexp")
+OPTION_NAMES = (
+    "abuse_signpos",
+    "keep_E",
+    "skip_intzero",
+    "prefer_noexp",
+    "standard_form_on_tie",
+)
 OPTION_COMBINATIONS = [
     dict(zip(OPTION_NAMES, values))
     for values in itertools.product([False, True], repeat=len(OPTION_NAMES))
@@ -194,13 +203,19 @@ def test_cpp_writer_agrees_with_python_writer_noexp(options, kind):
 
 @pytest.mark.parametrize(
     "options",
-    [o for o in OPTION_COMBINATIONS if o["prefer_noexp"] and o["skip_intzero"]],
+    [
+        o
+        for o in OPTION_COMBINATIONS
+        if o["prefer_noexp"] and o["skip_intzero"] and not o["standard_form_on_tie"]
+    ],
     ids=_option_id,
 )
 @pytest.mark.parametrize("ParserCls", [EndfParserCpp, EndfParserPy])
 def test_skip_intzero_keeps_carried_one(ParserCls, options):
     # 0.99999999999 rounds to 1 in the decimal form; the 1 is no integer
-    # zero to be skipped
+    # zero to be skipped (with standard_form_on_tie, the standard form
+    # 1.000000+0, equally close, is written instead; see
+    # tests/test_standard_form_on_tie.py)
     values = [0.99999999999, -0.99999999999, 0.9999999996, -0.9999999996]
     lines = _lines(
         ParserCls(**{"ignore_missing_tpid": True, **options}).write(

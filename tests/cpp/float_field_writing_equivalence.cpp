@@ -7,7 +7,11 @@
 // based conversion (ref_float2endfstr below), which the writer produced
 // before its formatting was reimplemented without iostreams, for every
 // combination of the options abuse_signpos, keep_E, skip_intzero and
-// prefer_noexp. The other characters of the line must stay unchanged.
+// prefer_noexp, each with standard_form_on_tie false and true. The option
+// standard_form_on_tie was added after the copy was made; its reference
+// (ref_standard_form_on_tie, after the frozen copy) is composed of the
+// frozen conversion. The other characters of the line must stay
+// unchanged.
 //
 // The functions under test are not copied here: the test driver
 // (tests/test_cpp_float_field_writing.py) extracts them from the template
@@ -228,8 +232,45 @@ inline std::string ref_float2endfstr(double value, WritingOptions &write_opts) {
 // END OF FROZEN REFERENCE
 
 
+// The reference of standard_form_on_tie (not part of the frozen copy,
+// which does not know the option): the candidate C, the frozen conversion
+// with the options as given, and the standard form S, the frozen
+// conversion with prefer_noexp, abuse_signpos and skip_intzero false; S
+// if it reads back with std::strtod at least as close to the value as C,
+// otherwise C. With none of the three options, S and C are the same.
+inline double ref_read_field(const std::string& field) {
+  // the character e before the sign of the exponent, a sign after a digit
+  std::string s = field;
+  if (s.find('e') == std::string::npos) {
+    for (size_t i = s.size(); i-- > 1;) {
+      if ((s[i] == '+' || s[i] == '-') && s[i-1] >= '0' && s[i-1] <= '9') {
+        s.insert(i, 1, 'e');
+        break;
+      }
+    }
+  }
+  return std::strtod(s.c_str(), nullptr);
+}
+
+inline std::string ref_standard_form_on_tie(double value, WritingOptions& write_opts) {
+  std::string cand = ref_float2endfstr(value, write_opts);
+  WritingOptions std_opts = write_opts;
+  std_opts.prefer_noexp = false;
+  std_opts.abuse_signpos = false;
+  std_opts.skip_intzero = false;
+  std::string stdf = ref_float2endfstr(value, std_opts);
+  if (stdf == cand) {
+    return cand;
+  }
+  double v = value == 0.0 ? 0.0 : value;
+  double std_diff = std::abs(ref_read_field(stdf) - v);
+  double cand_diff = std::abs(ref_read_field(cand) - v);
+  return std_diff <= cand_diff ? stdf : cand;
+}
+
+
 static long nchk = 0, nfail = 0, nfast = 0, nfinite = 0;
-static WritingOptions opts_all[16];
+static WritingOptions opts_all[32];
 
 static void check(double v, int first_opt, int last_opt) {
   if (first_opt == 0 && std::isfinite(v)) {
@@ -240,7 +281,8 @@ static void check(double v, int first_opt, int last_opt) {
   }
   for (int k = first_opt; k <= last_opt; k++) {
     WritingOptions& opts = opts_all[k];
-    std::string ref = ref_float2endfstr(v, opts);
+    std::string ref = opts.standard_form_on_tie
+      ? ref_standard_form_on_tie(v, opts) : ref_float2endfstr(v, opts);
     // the field in the middle of a line whose other characters must stay
     std::string line(81, '#');
     std::string got_err;
@@ -258,8 +300,9 @@ static void check(double v, int first_opt, int last_opt) {
     if (! ok) {
       if (nfail < 20) {
         std::printf(
-          "MISMATCH value=%.17g opts=%d%d%d%d ref=[%s] got=[%s] err=[%s]\n", v,
+          "MISMATCH value=%.17g opts=%d%d%d%d%d ref=[%s] got=[%s] err=[%s]\n", v,
           opts.abuse_signpos, opts.keep_E, opts.skip_intzero, opts.prefer_noexp,
+          opts.standard_form_on_tie,
           ref.c_str(), line.size() >= 33 ? line.substr(22, 11).c_str() : line.c_str(),
           got_err.c_str());
       }
@@ -269,9 +312,11 @@ static void check(double v, int first_opt, int last_opt) {
 }
 
 // default options and the formatting options that use the same code path
-// (all combinations without prefer_noexp) come first
+// (all combinations without prefer_noexp) come first (0 to 7), then
+// prefer_noexp (8 to 15); the same with standard_form_on_tie (16 to 31)
 static void init_opts() {
   int k = 0;
+  for (int tie = 0; tie < 2; tie++)
   for (int noexp = 0; noexp < 2; noexp++)
     for (int bits = 0; bits < 8; bits++) {
       WritingOptions& o = opts_all[k++];
@@ -279,6 +324,7 @@ static void init_opts() {
       o.keep_E = (bits >> 1) & 1;
       o.skip_intzero = (bits >> 2) & 1;
       o.prefer_noexp = noexp;
+      o.standard_form_on_tie = tie;
       o.preserve_value_strings = false;
       o.include_linenum = true;
       o.accept_non_ascii = true;
@@ -286,9 +332,15 @@ static void init_opts() {
     }
 }
 
-static void check_both_signs(double v, int first_opt, int last_opt) {
+// the options first_opt to last_opt, without and with standard_form_on_tie
+static void check_tie(double v, int first_opt, int last_opt) {
   check(v, first_opt, last_opt);
-  check(-v, first_opt, last_opt);
+  check(v, first_opt + 16, last_opt + 16);
+}
+
+static void check_both_signs(double v, int first_opt, int last_opt) {
+  check_tie(v, first_opt, last_opt);
+  check_tie(-v, first_opt, last_opt);
 }
 
 static uint64_t rng_state = 1;
@@ -383,7 +435,7 @@ static void run_sampled() {
   // skip_intzero only matters with prefer_noexp: the combinations with
   // it (options 4 to 7) on a sample; prefer_noexp (options 8 to 15), whose
   // reference is slow for large magnitudes, on a sample of the values with
-  // magnitudes up to 1e25
+  // magnitudes up to 1e25; each also with standard_form_on_tie
   long n = 0;
   for (double v : vals) {
     check_both_signs(v, 0, 3);
@@ -430,8 +482,8 @@ static void run_random(long n) {
       v = std::strtod((std::to_string(m) + "e" + std::to_string(e)).c_str(), nullptr);
       if (r & 4) v = -v;
     }
-    check(v, 0, 7);
-    if (r % 16 == 3) check(v, 8, 15);
+    check_tie(v, 0, 7);
+    if (r % 16 == 3) check_tie(v, 8, 15);
   }
 }
 

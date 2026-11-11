@@ -18,6 +18,7 @@ struct WritingOptions {
   bool keep_E;
   bool prefer_noexp;
   bool skip_intzero;
+  bool standard_form_on_tie;
   bool preserve_value_strings;
   bool include_linenum;
   bool accept_non_ascii;
@@ -32,6 +33,7 @@ inline WritingOptions default_writing_options() {
     false,  // keep_E
     false,  // prefer_noexp
     false,  // skip_intzero
+    false,  // standard_form_on_tie
     false,  // preserve_value_strings
     true,   // include_linenum
     true,   // accept_non_ascii
@@ -62,6 +64,8 @@ namespace pybind11 { namespace detail {
           value.prefer_noexp = d["prefer_noexp"].cast<bool>();
         else if (key_str == "skip_intzero")
           value.skip_intzero = d["skip_intzero"].cast<bool>();
+        else if (key_str == "standard_form_on_tie")
+          value.standard_form_on_tie = d["standard_form_on_tie"].cast<bool>();
         else if (key_str == "include_linenum")
           value.include_linenum = d["include_linenum"].cast<bool>();
         else if (key_str == "preserve_value_strings")
@@ -91,6 +95,9 @@ namespace pybind11 { namespace detail {
       if (! d.contains("skip_intzero")) {
         value.skip_intzero = default_opts.skip_intzero;
       }
+      if (! d.contains("standard_form_on_tie")) {
+        value.standard_form_on_tie = default_opts.standard_form_on_tie;
+      }
       if (! d.contains("preserve_value_strings")) {
         value.preserve_value_strings = default_opts.preserve_value_strings;
       }
@@ -116,6 +123,7 @@ namespace pybind11 { namespace detail {
       d["keep_E"] = src.keep_E;
       d["prefer_noexp"] = src.prefer_noexp;
       d["skip_intzero"] = src.skip_intzero;
+      d["standard_form_on_tie"] = src.standard_form_on_tie;
       d["preserve_value_strings"] = src.preserve_value_strings;
       d["include_linenum"] = src.include_linenum;
       d["accept_non_ascii"] = src.accept_non_ascii;
@@ -731,6 +739,67 @@ inline double cpp_writer_read_candidate(const char* s) {
 }
 
 
+// standard_form_on_tie: the exponent form with the sign column of a value
+// that is not negative and its standard form (without abuse_signpos) at
+// the same width have the same value if the last digit of the mantissa
+// of the former is 0. The former is the value rounded to p decimals, the
+// largest precision that fits, and the latter has one column less for
+// the blank, i.e. p - 1 decimals: the rounding to p - 1 decimals is the
+// same number if the p-th decimal is 0 (the value is less than half a
+// unit of the p-th decimal from it, and it cannot carry into the next
+// decade), with the same exponent, so that the standard form is the
+// former without this digit, after a blank. Returns the position of
+// this digit in the field f of length len (with or without the
+// character e), or -1 if it is not 0, the field is padded with blanks
+// or its mantissa has fewer than two decimals.
+inline int cpp_sign_column_zero_digit(const char* f, int len) {
+  if (f[0] == ' ' || f[1] != '.') {
+    return -1;
+  }
+  // the sign of the exponent, the last sign of the field
+  int s = len - 1;
+  while (s > 2 && f[s] != '+' && f[s] != '-') s--;
+  if (f[s-1] == 'e') s--;
+  const int last = s - 1;
+  return (last >= 3 && f[last] == '0') ? last : -1;
+}
+
+
+// the field f of length len without the digit at position last, after a
+// blank (see cpp_sign_column_zero_digit), and without the character e if
+// drop_e, written to dst; returns the length
+inline int cpp_standard_form_from_sign_column(
+  char* dst, const char* f, int len, int last, bool drop_e
+) {
+  dst[0] = ' ';
+  std::memcpy(dst + 1, f, last);
+  int start = last + 1;
+  if (drop_e && f[start] == 'e') start++;
+  std::memcpy(dst + 1 + last, f + start, len - start);
+  return 1 + last + (len - start);
+}
+
+
+// standard_form_on_tie: replaces the field numstr (with the character e)
+// by the standard form of value at the width effwidth, the field of the
+// default writer (cpp_float2endfstr_helper_chars without abuse_signpos),
+// if the standard form reads back at least as close to the value as the
+// candidate, whose read-back differs from the value by cand_diff. Returns
+// whether it was replaced.
+inline bool cpp_standard_form_if_as_close(
+  std::string& numstr, double value, int effwidth, double cand_diff
+) {
+  char stdbuf[64];
+  int stdlen = cpp_float2endfstr_helper_chars(stdbuf, value, effwidth, false);
+  double std_diff = std::abs(cpp_writer_read_candidate(stdbuf) - value);
+  if (std_diff <= cand_diff) {
+    numstr.assign(stdbuf, stdlen);
+    return true;
+  }
+  return false;
+}
+
+
 inline std::string float2endfstr(double value, WritingOptions &write_opts) {
   std::ostringstream oss;
   std::string numstr;
@@ -763,6 +832,16 @@ inline std::string float2endfstr(double value, WritingOptions &write_opts) {
     expbuf, value, effwidth, write_opts.abuse_signpos
   );
   numstr.assign(expbuf, explen);
+  // With standard_form_on_tie, the field written by the options as given
+  // (the candidate) is replaced by the standard form, the field of the
+  // default writer (prefer_noexp, abuse_signpos and skip_intzero false),
+  // if it reads back at least as close to the value. The exponent form
+  // numstr is the standard form unless abuse_signpos is set and the value
+  // is not negative (the sign column); otherwise both are the same text
+  // and need no comparison.
+  const bool sign_column = write_opts.abuse_signpos && value >= 0;
+  bool have_exp_diff = false;
+  double exp_diff = 0.0;
   if (write_opts.prefer_noexp) {
     std::string numstr_noexp = float2endfstr_decimal_helper(
       value, width, write_opts
@@ -778,8 +857,57 @@ inline std::string float2endfstr(double value, WritingOptions &write_opts) {
       double recon_value_diff = std::abs(recon_value - value);
       double recon_value_noexp_diff = std::abs(recon_value_noexp - value);
       if (recon_value_diff >= recon_value_noexp_diff) {
+        if (! write_opts.standard_form_on_tie) {
           return numstr_noexp;
+        }
+        // the candidate is the decimal form
+        const int last = sign_column
+          ? cpp_sign_column_zero_digit(numstr.data(), static_cast<int>(numstr.size()))
+          : -1;
+        if (sign_column && last < 0) {
+          if (! cpp_standard_form_if_as_close(
+                numstr, value, effwidth, recon_value_noexp_diff)) {
+            return numstr_noexp;
+          }
+        } else {
+          // the standard form is numstr, or has its value
+          if (recon_value_diff > recon_value_noexp_diff) {
+            return numstr_noexp;
+          }
+          if (last >= 0) {
+            char stdbuf[64];
+            const int stdlen = cpp_standard_form_from_sign_column(
+              stdbuf, numstr.data(), static_cast<int>(numstr.size()), last,
+              ! write_opts.keep_E);
+            return std::string(stdbuf, stdlen);
+          }
+        }
+        // numstr is now the standard form
+        if (! write_opts.keep_E) {
+          numstr.erase(numstr.find('e'), 1);
+        }
+        return numstr;
       }
+      have_exp_diff = true;
+      exp_diff = recon_value_diff;
+    }
+  }
+  // the candidate is the exponent form numstr
+  if (sign_column && write_opts.standard_form_on_tie) {
+    const int last = cpp_sign_column_zero_digit(
+      numstr.data(), static_cast<int>(numstr.size()));
+    if (last >= 0) {
+      // the standard form has the same value
+      char stdbuf[64];
+      const int stdlen = cpp_standard_form_from_sign_column(
+        stdbuf, numstr.data(), static_cast<int>(numstr.size()), last,
+        ! write_opts.keep_E);
+      return std::string(stdbuf, stdlen);
+    } else {
+      if (! have_exp_diff) {
+        exp_diff = std::abs(cpp_writer_read_candidate(numstr.c_str()) - value);
+      }
+      cpp_standard_form_if_as_close(numstr, value, effwidth, exp_diff);
     }
   }
   // delete exp character if demanded
@@ -801,7 +929,10 @@ inline std::string int2endfstr(int value) {
 // Same characters as float2endfstr(value, write_opts); writes into buf
 // (>= 64 bytes) and returns the length.
 inline int float2endfstr_chars(char* buf, double value, WritingOptions &write_opts) {
-  if (! std::isfinite(value) || write_opts.prefer_noexp) {
+  // standard_form_on_tie with abuse_signpos (see float2endfstr) as well
+  if (! std::isfinite(value) || write_opts.prefer_noexp
+      || (write_opts.abuse_signpos && write_opts.standard_form_on_tie
+          && value >= 0)) {
     std::string numstr = float2endfstr(value, write_opts);
     size_t n = std::min(numstr.size(), static_cast<size_t>(63));
     std::memcpy(buf, numstr.data(), n);
@@ -937,6 +1068,57 @@ inline bool cpp_float_field_fast(char* dst, double value, bool abuse_signpos, bo
 }
 
 
+// The read-back (cpp_writer_read_candidate) of an 11-character field of
+// cpp_float_field_fast(); without keep_E, the character e is inserted
+// before the sign of the exponent, the last sign of the field (the sign
+// of the number is in the first two columns, that of the exponent after
+// at least two digits and the decimal point).
+inline double cpp_read_fast_field(const char* field, bool keep_E) {
+  char buf[16];
+  if (keep_E) {
+    std::memcpy(buf, field, 11);
+    buf[11] = '\0';
+  } else {
+    int s = 10;
+    while (field[s] != '+' && field[s] != '-') s--;
+    std::memcpy(buf, field, s);
+    buf[s] = 'e';
+    std::memcpy(buf + s + 1, field + s, 11 - s);
+    buf[12] = '\0';
+  }
+  return cpp_writer_read_candidate(buf);
+}
+
+
+// standard_form_on_tie with abuse_signpos and without prefer_noexp, for
+// a value that is not negative: the field of cpp_float_field_fast() in
+// the standard form (without abuse_signpos) if it reads back at least as
+// close to the value as the field with the sign column, otherwise the
+// latter; the same characters as float2endfstr_chars(). Returns false
+// without writing anything if cpp_float_field_fast() does not handle the
+// value.
+inline bool cpp_float_field_fast_standard_on_tie(char* dst, double value, bool keep_E) {
+  char cand[16];
+  char stdf[16];
+  if (! cpp_float_field_fast(cand, value, true, keep_E)) {
+    return false;
+  }
+  const int last = cpp_sign_column_zero_digit(cand, 11);
+  if (last >= 0) {
+    // the standard form has the same value
+    cpp_standard_form_from_sign_column(dst, cand, 11, last, false);
+    return true;
+  }
+  if (! cpp_float_field_fast(stdf, value, false, keep_E)) {
+    return false;
+  }
+  const double cand_diff = std::abs(cpp_read_fast_field(cand, keep_E) - value);
+  const double std_diff = std::abs(cpp_read_fast_field(stdf, keep_E) - value);
+  std::memcpy(dst, std_diff <= cand_diff ? stdf : cand, 11);
+  return true;
+}
+
+
 inline void field_size_check(const std::string& field) {
   if (field.size() != 11) {
     throw std::runtime_error(
@@ -953,9 +1135,14 @@ inline void cpp_write_field_double_at(
   std::string& line, std::size_t pos, const double& value,
   WritingOptions& write_opts
 ) {
-  if (! write_opts.prefer_noexp && pos + 11 <= line.size() && std::isfinite(value)
-      && cpp_float_field_fast(&line[pos], value, write_opts.abuse_signpos, write_opts.keep_E)) {
-    return;
+  if (! write_opts.prefer_noexp && pos + 11 <= line.size() && std::isfinite(value)) {
+    if (! write_opts.abuse_signpos || ! write_opts.standard_form_on_tie || value < 0) {
+      if (cpp_float_field_fast(&line[pos], value, write_opts.abuse_signpos, write_opts.keep_E)) {
+        return;
+      }
+    } else if (cpp_float_field_fast_standard_on_tie(&line[pos], value, write_opts.keep_E)) {
+      return;
+    }
   }
   char buf[64];
   int n = float2endfstr_chars(buf, value, write_opts);

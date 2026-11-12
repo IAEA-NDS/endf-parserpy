@@ -52,13 +52,13 @@ This functionality in combination with Python's
 powerful facilities for data handling enables you to
 perform various actions on ENDF files, such as:
 
-- Easily access any information
-- Modify, delete and insert data
+- Access any information easily
+- Modify, delete, and insert data
 - Perform format validation
-- Convert from and to other file formats, such as JSON
-- Merge data from various ENDF-6 files into a single one
-- Read and write files that bundle several materials
-- Compare ENDF-6 files with meaningful reporting on differences
+- Convert to and from other file formats, such as JSON
+- Merge data from multiple ENDF-6 files into a single file
+- Read and write files containing multiple materials (tapes)
+- Compare ENDF-6 files and generate meaningful reports of their differences
 - Construct ENDF-6 files from scratch
 
 

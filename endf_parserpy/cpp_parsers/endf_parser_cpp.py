@@ -525,6 +525,8 @@ class EndfParserCpp(EndfParserBase):
             Existing files will only be overwritten if this argument
             is ``True``, otherwise this function will abort.
 
+        Notes
+        -----
         If an error occurs, the file is neither created nor changed. The
         text is streamed into a temporary file next to the file, which
         then becomes the file (a new file) or whose content is copied

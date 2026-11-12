@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/11
+# Last modified:   2026/11/12
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -1136,6 +1136,8 @@ class EndfParserPy(EndfParserBase):
             See explanation of parameter ``nofail`` in
             :func:`parsefile` for details.
 
+        Notes
+        -----
         Mismatches tolerated by the options ``ignore_zero_mismatch``,
         ``ignore_number_mismatch`` and ``ignore_varspec_mismatch`` are
         reported in one
@@ -1617,6 +1619,8 @@ class EndfParserPy(EndfParserBase):
             Existing files will only be overwritten if this argument
             is ``True``, otherwise this function will abort.
 
+        Notes
+        -----
         If an error occurs, the file is neither created nor changed. The
         text is composed first and written into a temporary file next to
         the file, which then becomes the file (a new file) or whose

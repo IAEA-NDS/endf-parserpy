@@ -96,7 +96,7 @@ implemented selection logic for a moment, this function is equivalent to
    from endf_parserpy import EndfParserPy
    parser = EndfParserPy(...)
 
-if the Python parser (:class:`~endf_paserpy.EndfParserPy`) is selected or
+if the Python parser (:class:`~endf_parserpy.EndfParserPy`) is selected or
 
 .. code:: Python
 

@@ -197,7 +197,7 @@ please use the following reference:
 
 This code is distributed under the MIT license augmented
 by an IAEA clause, see the accompanying license file for more information.
-Copyright (c) International Atomic Energy Agency (IAEA).
+Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA).
 
 Daniel Lopez Aldama made significant contributions
 to the development of this package. He debugged the

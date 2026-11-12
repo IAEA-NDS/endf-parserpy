@@ -4,7 +4,7 @@
 ENDF-6 Format Validation
 ========================
 
-.. _ENDF-6 format specification: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
+.. _ENDF-6 format specification: https://doi.org/10.2172/2007538
 
 A contributor to a nuclear data library project
 wants to be sure that their ENDF-6 file conforms

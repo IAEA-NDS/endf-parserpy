@@ -143,7 +143,7 @@ For :ref:`validating the structural correctness of ENDF files <format_validation
 
 The usual wildcards can be used for filenames, e.g. ``endf-cli validate *.endf``.
 By default, syntactically valid files need to obey the format description provided
-in the `ENDF-6 formats manual <https://doi.org/10.2172/1425114>`_, with some allowed
+in the `ENDF-6 formats manual <https://doi.org/10.2172/2007538>`_, with some allowed
 extensions for a proper parsing of some JENDL files. However,  this default
 can be overriden by providing a specific ENDF format flavor as
 ``--endf_format`` argument. For example, for strict adherence to the ENDF-6 format,
@@ -404,7 +404,7 @@ a material selector, e.g. ``endf-cli show '#0/3/1' file.endf``; a bare
 Updating the MF1/MT451 directory
 --------------------------------
 
-The directory listing in MF1/MT451 of an ENDF file (see :endf6manshort:`57`)
+The directory listing in MF1/MT451 of an ENDF file (see :endf6manshort:`60`)
 can be updated to be in sync with the file content
 by running
 

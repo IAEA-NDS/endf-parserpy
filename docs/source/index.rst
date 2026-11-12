@@ -41,13 +41,13 @@
    reference/related_software
 
 
-.. _ENDF-6 format: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
+.. _ENDF-6 format: https://doi.org/10.2172/2007538
 
 Welcome to endf-parserpy's documentation!
 =========================================
 
 endf-parserpy is a Python package for reading
-and writing `ENDF <https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf>`_ files.
+and writing `ENDF <https://doi.org/10.2172/2007538>`_ files.
 This functionality in combination with Python's
 powerful facilities for data handling enables you to
 perform various actions on ENDF files, such as:

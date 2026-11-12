@@ -1,4 +1,4 @@
-.. _ENDF-6 formats manual: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
+.. _ENDF-6 formats manual: https://doi.org/10.2172/2007538
 
 Reading & Writing ENDF-6
 ========================
@@ -218,7 +218,7 @@ non-excluded sections will be written.
 If data in the ``endf_dict`` dictionary
 have been added or deleted, it is important to
 update the directory listing in MF1/MT451 first
-before writing to an ENDF-6 file (see :endf6manshort:`57`).
+before writing to an ENDF-6 file (see :endf6manshort:`60`).
 This can be achieved with the
 :func:`~endf_parserpy.update_directory` function.
 

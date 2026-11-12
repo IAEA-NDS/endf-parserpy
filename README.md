@@ -6,7 +6,7 @@
 [![Documentation](https://readthedocs.org/projects/endf-parserpy/badge/?version=latest)](https://endf-parserpy.readthedocs.io/en/latest/)
 
 `endf-parserpy` is a Python package for reading
-and writing [ENDF-6](https://doi.org/10.2172/1425114) files.
+and writing [ENDF-6](https://doi.org/10.2172/2007538) files.
 This functionality in combination with Python's
 powerful facilities for data handling enables you to
 perform various actions on ENDF-6 files, such as:
@@ -82,7 +82,7 @@ parser.writefile('output.endf', endf_dict)
 Support for the ENDF-6 format in `endf-parserpy` is not hand-coded
 section by section. The format is described by *recipes*, written in a
 formal language that mirrors the record layout of the
-[ENDF-6 formats manual](https://doi.org/10.2172/1425114). This is the
+[ENDF-6 formats manual](https://doi.org/10.2172/2007538). This is the
 complete recipe for an MF3 section (cross sections):
 
 ```

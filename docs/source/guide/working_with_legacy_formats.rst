@@ -66,7 +66,7 @@ would be necessary to augment the ``recipes`` dictionary with
 additional recipe definitions. For example, see `here
 <https://github.com/IAEA-NDS/endf-parserpy/blob/09e2f3bcc706ce5dd1ce565e55ede021546304c6/endf_parserpy/endf_recipes/endf6/__init__.py>`_
 how it is done for the entire `ENDF-6 formats standard
-<https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf>`_.
+<https://doi.org/10.2172/2007538>`_.
 
 In the instantiation of the :class:`~endf_parserpy.EndfParserPy` class,
 we also specified ``ignore_missing_tpid=True`` to tolerate the absence of a TPID

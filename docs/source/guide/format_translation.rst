@@ -3,7 +3,7 @@
 Translating ENDF-6 to JSON
 ==========================
 
-The `ENDF-6 format <https://doi.org/10.2172/1425114>`_
+The `ENDF-6 format <https://doi.org/10.2172/2007538>`_
 is a very specific format that is exclusively employed in the
 nuclear data domain. Only a few
 software packages exist to comprehensively

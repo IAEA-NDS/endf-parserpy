@@ -33,10 +33,12 @@ intersphinx_mapping = {
     "numpy": ("http://docs.scipy.org/doc/numpy/", None),
 }
 
+# The page numbers passed to endf6manpage and endf6manshort are
+# PDF page indices of ENDF-102-2023.pdf, not printed page numbers.
 extlinks = {
     "endf6manpage": (
         "https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf#page=%s",
-        "ENDF-6 formats manual (page  %s)",
+        "ENDF-6 formats manual (page %s)",
     ),
     "endf6manshort": (
         "https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf#page=%s",

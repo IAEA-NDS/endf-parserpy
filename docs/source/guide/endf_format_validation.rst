@@ -142,14 +142,15 @@ grouped by material, section, field (and variable) and kind, each group
 with the number of its mismatches and the first of them, i.e. the line
 of the input and the expected and the found value. A long list is
 truncated after ten groups. The text is the same for both parsers, e.g.
+for ``n-092_U_238.endf`` of ENDF/B-VIII.1:
 
 .. code:: text
 
-   2 field mismatches tolerated in n-005_B_011.endf (zero: 2
+   7 field mismatches tolerated in n-092_U_238.endf (zero: 7
    (ignore_zero_mismatch)), in 2 groups; the values found are not kept,
    writing the data gives the expected values:
-     MAT 528 MF3/MT1 L2: 1 zero mismatch, e.g. line 290: expected 0, found 99
-     MAT 528 MF3/MT16 L2: 1 zero mismatch, e.g. line 1974: expected 0, found 99
+     MAT 9237 MF34/MT2 N1: 5 zero mismatches, e.g. line 162657: expected 0, found 1
+     MAT 9237 MF34/MT51 N1: 2 zero mismatches, e.g. line 164012: expected 0, found 1
 
 (the first line is a single line in the warning). A mismatch found while
 the parser looks ahead to decide which branch of the recipe applies is

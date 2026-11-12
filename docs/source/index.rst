@@ -98,7 +98,7 @@ Install endf-parserpy
    compile time and parsing speed. Power users can alter the
    optimization flag by setting the ``INSTALL_ENDF_PARSERPY_CPP_OPTIM``
    environment variable before installation. For instance, under Linux and macOS,
-   where the default compiler is GNU C++, you could disable all optimizations by:
+   where the compiler is usually GCC or Clang, you could disable all optimizations by:
 
    .. code:: bash
 
@@ -108,7 +108,7 @@ Install endf-parserpy
 
    .. code:: bash
 
-      set INSTALL_ENDF_PARSERPY_CPP_OPTIM="/Od"
+      set INSTALL_ENDF_PARSERPY_CPP_OPTIM=/Od
 
    If you want to disable the compilation of the C++ modules entirely,
    you can set the environment variable ``INSTALL_ENDF_PARSERPY_CPP``

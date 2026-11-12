@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/11
+# Last modified:   2026/11/12
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -646,7 +646,6 @@ def _tolerated_log_setup(stream):
     cpp_report_tolerated), used if the argument ``tolerated`` is a list."""
     code = cpp.statement("cpp_tolerated_log cpp_tolerated")
     code += cpp.statement(f"cpp_tolerated.stream = &{stream}")
-    code += cpp.statement("cpp_tolerated.memory = parse_opts.memory_input")
     code += cpp.pureif(
         "! tolerated.is_none()",
         cpp.statement("parse_opts.tolerated = &cpp_tolerated"),

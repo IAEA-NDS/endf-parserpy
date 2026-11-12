@@ -3,12 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/11/11
+# Last modified:   2026/11/12
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+import gc
 import importlib
 import os
 from endf_parserpy.utils.accessories import EndfDict
@@ -390,7 +391,7 @@ class EndfParserCpp(EndfParserBase):
         tolerated = []
         result = self._parse_endf(lines, exclude, include, self.read_opts, tolerated)
         if tolerated:
-            warn_tolerated_mismatches(_tolerated_mismatches(tolerated))
+            _warn_after_parse(tolerated, None)
         return result
 
     def _parse_and_collect(self, lines, exclude=None, include=None):
@@ -467,9 +468,7 @@ class EndfParserCpp(EndfParserBase):
             str(filename), exclude, include, self.read_opts, tolerated
         )
         if tolerated:
-            warn_tolerated_mismatches(
-                _tolerated_mismatches(tolerated), source=str(filename)
-            )
+            _warn_after_parse(tolerated, str(filename))
         return result
 
     def write(self, endf_dict, exclude=None, include=None):
@@ -547,6 +546,25 @@ class EndfParserCpp(EndfParserBase):
                 path, endf_dict, exclude, include, self.write_opts
             ),
         )
+
+
+def _warn_after_parse(entries, source):
+    """Issue the warning about the mismatches tolerated in a parse.
+
+    The objects of the warning are created with the garbage collector
+    paused, as the result of the parse is (see cpp_gc_pause): otherwise
+    the first of them would start a collection over the objects of the
+    result, which only the next allocation of the caller starts if there
+    is no warning.
+    """
+    paused = gc.isenabled()
+    if paused:
+        gc.disable()
+    try:
+        warn_tolerated_mismatches(_tolerated_mismatches(entries), source=source)
+    finally:
+        if paused:
+            gc.enable()
 
 
 def _tolerated_mismatches(entries):

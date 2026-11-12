@@ -2746,12 +2746,15 @@ inline bool cpp_values_equal(int x, const EndfRational& y) { return x == y; }
 // cpp_validate_field): the kind ('z', 'n' or 'v'), the field of the line
 // (0 to 5, -1 if unknown), whether the value is one of the body of a
 // record, the expression of the field in the recipe, the expected and the
-// actual value (as double, and whether they are integers) and the
-// position in the input after the line holding the value. The line and
-// the MAT/MF/MT numbers are determined from the position when the
-// mismatches are reported (see cpp_report_tolerated).
+// actual value (as double, and whether they are integers), the position
+// in the input after the line holding the value, and the number of this
+// line (counting from 1) and its MAT/MF/MT numbers. For input held in
+// memory, the line and the numbers are determined when the mismatch is
+// recorded (see cpp_record_tolerated); for a file read as a stream
+// (load_file_into_memory=false), line is 0 and they are determined when
+// the mismatches are reported (see cpp_report_tolerated).
 struct cpp_tolerated_mismatch {
-  char kind = 0;
+  char kind;
   int fieldnum;
   bool in_body;
   const char* exprstr;
@@ -2760,6 +2763,10 @@ struct cpp_tolerated_mismatch {
   bool expected_int;
   bool actual_int;
   std::streamoff end_pos;
+  long line;
+  int mat;
+  int mf;
+  int mt;
   // for a value of a LIST body delivered by CppListBody: the beginning of
   // the body in the memory of the input and the index of the value, which
   // identify the value if it is checked again (see cpp_record_tolerated)
@@ -2773,8 +2780,6 @@ struct cpp_tolerated_mismatch {
 // ParsingOptions::tolerated. stream is the stream being parsed.
 struct cpp_tolerated_log {
   std::istream* stream;
-  // the input held in memory, if the stream reads from it
-  const cpp_memory_streambuf* memory;
   std::vector<cpp_tolerated_mismatch> entries;
 };
 
@@ -3149,7 +3154,8 @@ private:
 // into the memory (see CppLine).
 class cpp_memory_streambuf final : public std::streambuf {
 public:
-  cpp_memory_streambuf(const char* data, std::size_t size) {
+  cpp_memory_streambuf(const char* data, std::size_t size)
+    : checkpoint_(0), checkpoint_breaks_(0) {
     // the get area is only read from, never written to
     char* begin = const_cast<char*>(data);
     setg(begin, begin, begin + size);
@@ -3163,6 +3169,45 @@ public:
   // move the read position to pos (between current() and end())
   void move_to(const char* pos) {
     setg(eback(), const_cast<char*>(pos), egptr());
+  }
+
+  // A checkpoint for the line numbers of the tolerated mismatches (see
+  // cpp_record_tolerated): the number of line breaks before the position
+  // checkpoint_ (an offset). It is advanced by the readers of lines (CppLine::getline,
+  // CppListBody::fast_body) when they read lines that start exactly at
+  // it, with the line breaks they have found, and otherwise left as it is
+  // (e.g. after the stream has been moved back to the start of a section
+  // or of a lookahead, until the reading arrives at it again), so that it
+  // is always correct. A line number is counted from it.
+  // (The checkpoint is kept as offsets of type long long, which the
+  // compiler need not assume to alias the pointers and sizes of the line
+  // being read, so that the reading loops are not changed by the stores.)
+  void checkpoint_line(const char* start, const char* line_break) {
+    if (start - eback() == checkpoint_) {
+      checkpoint_ = line_break + 1 - eback();
+      checkpoint_breaks_++;
+    }
+  }
+
+  void checkpoint_lines(const char* start, const char* after, long long breaks) {
+    if (start - eback() == checkpoint_) {
+      checkpoint_ = after - eback();
+      checkpoint_breaks_ += breaks;
+    }
+  }
+
+  // the number of line breaks before pos (counted from the checkpoint)
+  long line_breaks_before(const char* pos) const {
+    const char* checkpoint = eback() + checkpoint_;
+    long breaks = static_cast<long>(checkpoint_breaks_);
+    const char* p = pos < checkpoint ? pos : checkpoint;
+    const char* e = pos < checkpoint ? checkpoint : pos;
+    long between = 0;
+    while ((p = static_cast<const char*>(std::memchr(p, '\n', e - p))) != nullptr) {
+      between++;
+      p++;
+    }
+    return pos < checkpoint ? breaks - between : breaks + between;
   }
 
   // The columns 67 to 75 of the lines of the section MAT/MF/MT as they
@@ -3211,6 +3256,10 @@ private:
   int cc_mf_ = 0;
   int cc_mt_ = 0;
   char cc_[16] = {0};
+  // see checkpoint_line: the offset of the checkpoint in the memory and
+  // the number of line breaks before it
+  long long checkpoint_;
+  long long checkpoint_breaks_;
 };
 
 
@@ -3348,6 +3397,7 @@ class CppLine {
       if (nl != nullptr) {
         len = nl - p;
         membuf_->move_to(nl + 1);
+        membuf_->checkpoint_line(p, nl);
       } else {
         len = e - p;
         membuf_->move_to(e);
@@ -4031,6 +4081,8 @@ class CppListBody {
       const int stop_line = n >= npl ? nlines - 1 : n / 6;
       good_ = stop_line + 1;
       mb->move_to(p + static_cast<std::size_t>(good_) * stride);
+      // each line of the range ends with a line break
+      mb->checkpoint_lines(p, p + static_cast<std::size_t>(good_) * stride, good_);
       line.set_view(p + static_cast<std::size_t>(stop_line) * stride, len);
       cpp_line_read_counter().views += static_cast<unsigned long long>(good_);
       if (n < npl) cpp_list_bulk_counter().stopped++;
@@ -4107,7 +4159,7 @@ class CppListBody {
 // value with the given index; the lines are counted as cpp_read_line
 // reads them, i.e. without the blank lines skipped with
 // ignore_blank_lines.
-inline std::streamoff cpp_body_value_end(
+inline const char* cpp_body_value_end(
   const CppListBody& body, int index, const ParsingOptions& parse_opts
 ) {
   const cpp_memory_streambuf* mb = parse_opts.memory_input;
@@ -4126,7 +4178,7 @@ inline std::streamoff cpp_body_value_end(
     if (l == target) break;
     l++;
   }
-  return static_cast<std::streamoff>(p - mb->begin());
+  return p;
 }
 
 
@@ -4144,6 +4196,38 @@ inline std::streamoff cpp_tolerated_stream_offset(
   std::streamoff pos = static_cast<std::streamoff>(cont.tellg());
   cont.clear(state);
   return pos;
+}
+
+
+// The MAT/MF/MT numbers of a line (as read with cpp_read_lenient_int_field
+// from the line padded to 75 columns).
+inline void cpp_tolerated_control_numbers(
+  const char* line, std::size_t len, cpp_tolerated_mismatch& m
+) {
+  if (len > 0 && line[len-1] == '\r') len--;
+  char buf[75];
+  std::size_t n = len < 75 ? len : 75;
+  std::memcpy(buf, line, n);
+  std::memset(buf + n, ' ', 75 - n);
+  m.mat = cpp_read_lenient_int_field(buf, 66, 4);
+  m.mf = cpp_read_lenient_int_field(buf, 70, 2);
+  m.mt = cpp_read_lenient_int_field(buf, 72, 3);
+}
+
+
+// The number (counting from 1) and the MAT/MF/MT numbers of the line of
+// the input in memory that ends before end, the position after the line
+// (after its line break, or the end of the input).
+inline void cpp_tolerated_line_info(
+  const cpp_memory_streambuf* mb, const char* end, cpp_tolerated_mismatch& m
+) {
+  const char* begin = mb->begin();
+  const char* last = end > begin ? end - 1 : begin;
+  const char* start = last;
+  while (start > begin && start[-1] != '\n') start--;
+  m.line = mb->line_breaks_before(start) + 1;
+  const char* line_end = (last >= begin && last < mb->end() && *last == '\n') ? last : end;
+  cpp_tolerated_control_numbers(start, static_cast<std::size_t>(line_end - start), m);
 }
 
 
@@ -4165,6 +4249,10 @@ CPP_TOLERATED_COLD void cpp_record_tolerated(
   m.actual_int = actual_int;
   m.body_start = nullptr;
   m.body_index = body_index;
+  m.line = 0;
+  m.mat = m.mf = m.mt = 0;
+  const cpp_memory_streambuf* mb = parse_opts.memory_input;
+  const char* end = nullptr;
   if (body != nullptr) {
     // A value delivered by CppListBody is checked again by the code of
     // the per-field form if the strided delivery is given up after the
@@ -4176,9 +4264,17 @@ CPP_TOLERATED_COLD void cpp_record_tolerated(
       if (it->body_index == body_index && it->exprstr == exprstr) return;
     }
     m.body_start = start;
-    m.end_pos = cpp_body_value_end(*body, body_index, parse_opts);
+    end = cpp_body_value_end(*body, body_index, parse_opts);
+  } else if (mb != nullptr && log->stream->rdbuf() == mb) {
+    end = mb->current();
   } else {
     m.end_pos = cpp_tolerated_stream_offset(*log->stream, parse_opts);
+  }
+  if (end != nullptr) {
+    // the line holding the value ends before end; it starts after the
+    // last line break before its last character
+    m.end_pos = static_cast<std::streamoff>(end - mb->begin());
+    cpp_tolerated_line_info(mb, end, m);
   }
   log->entries.push_back(m);
 }
@@ -4198,10 +4294,10 @@ inline py::object cpp_tolerated_pyvalue(double value, bool is_int) {
 // their positions in the input and, within a line, of the fields (as
 // EndfParserPy finds them; the checks of the strided delivery of a LIST
 // body visit the values in another order). The line and the MAT/MF/MT
-// numbers of a
-// mismatch are those of the line holding the value, determined in one
-// pass over the input, which is only read for this if there are
-// mismatches.
+// numbers are those of the line holding the value, determined when the
+// mismatch was recorded; only for a file read as a stream
+// (load_file_into_memory=false) are they determined here, in one pass
+// over the file.
 inline void cpp_report_tolerated(
   cpp_tolerated_log& log, std::istream& cont, py::object tolerated
 ) {
@@ -4215,68 +4311,64 @@ inline void cpp_report_tolerated(
     if (x.end_pos != y.end_pos) return x.end_pos < y.end_pos;
     return x.body_index < y.body_index;
   });
-  // the line holding the value ends before end_pos: its number is one
-  // more than the number of line breaks before its last character, and
-  // it starts after the last of them
-  std::vector<long> line_numbers(n);
-  std::vector<std::streamoff> line_starts(n);
-  // the input in memory is read directly, a file in chunks
-  const cpp_memory_streambuf* mb = log.memory;
-  const bool in_memory = mb != nullptr && cont.rdbuf() == mb;
-  cont.clear();
-  cont.seekg(0);
-  std::vector<char> buf(in_memory ? 0 : 1 << 16);
-  std::streamoff done = 0;
-  long breaks = 0;
-  std::streamoff last_start = 0;
-  for (std::size_t k = 0; k < n; k++) {
-    const std::size_t i = order[k];
-    const std::streamoff target = log.entries[i].end_pos - 1;
-    while (done < target) {
-      const char* chunk;
-      std::streamoff got = target - done;
-      if (in_memory) {
-        const std::streamoff avail = mb->end() - mb->begin() - done;
-        if (got > avail) got = avail;
-        chunk = mb->begin() + done;
-      } else {
-        if (! cont) break;
+  // A file read as a stream: the lines and the MAT/MF/MT numbers of the
+  // mismatches are determined in one pass over the file (the other
+  // mismatches have them already, see cpp_record_tolerated).
+  bool unknown = false;
+  for (const cpp_tolerated_mismatch& m : log.entries) unknown = unknown || m.line == 0;
+  if (unknown) {
+    // the line holding the value ends before end_pos: its number is one
+    // more than the number of line breaks before its last character, and
+    // it starts after the last of them
+    cont.clear();
+    cont.seekg(0);
+    std::vector<char> buf(1 << 16);
+    std::streamoff done = 0;
+    long breaks = 0;
+    std::streamoff last_start = 0;
+    std::vector<std::streamoff> line_starts(n, 0);
+    std::vector<bool> in_pass(n, false);
+    for (std::size_t k = 0; k < n; k++) {
+      const std::size_t i = order[k];
+      if (log.entries[i].line != 0) continue;
+      in_pass[i] = true;
+      const std::streamoff target = log.entries[i].end_pos - 1;
+      while (done < target && cont) {
+        std::streamoff got = target - done;
         if (got > static_cast<std::streamoff>(buf.size())) got = buf.size();
         cont.read(buf.data(), static_cast<std::streamsize>(got));
         got = cont.gcount();
-        chunk = buf.data();
+        if (got <= 0) break;
+        const char* chunk = buf.data();
+        const char* p = chunk;
+        const char* e = chunk + got;
+        while ((p = static_cast<const char*>(std::memchr(p, '\n', e - p))) != nullptr) {
+          breaks++;
+          p++;
+          last_start = done + (p - chunk);
+        }
+        done += got;
       }
-      if (got <= 0) break;
-      const char* p = chunk;
-      const char* e = chunk + got;
-      while ((p = static_cast<const char*>(std::memchr(p, '\n', e - p))) != nullptr) {
-        breaks++;
-        p++;
-        last_start = done + (p - chunk);
-      }
-      done += got;
+      log.entries[i].line = breaks + 1;
+      line_starts[i] = last_start;
     }
-    line_numbers[i] = breaks + 1;
-    line_starts[i] = last_start;
+    std::string text;
+    for (std::size_t i = 0; i < n; i++) {
+      if (! in_pass[i]) continue;
+      cont.clear();
+      cont.seekg(line_starts[i]);
+      text.clear();
+      std::getline(cont, text);
+      cpp_tolerated_control_numbers(text.data(), text.size(), log.entries[i]);
+    }
   }
   static const char* kinds[] = {"zero", "number", "varspec"};
   py::list result = tolerated.cast<py::list>();
-  std::string line;
   for (std::size_t k = 0; k < n; k++) {
-    const std::size_t i = order[k];
-    const cpp_tolerated_mismatch& m = log.entries[i];
-    cont.clear();
-    cont.seekg(line_starts[i]);
-    line.clear();
-    std::getline(cont, line);
-    if (! line.empty() && line[line.size()-1] == '\r') line.erase(line.size()-1);
-    if (line.size() < 75) line.append(75 - line.size(), ' ');
-    const int mat = cpp_read_lenient_int_field(line.data(), 66, 4);
-    const int mf = cpp_read_lenient_int_field(line.data(), 70, 2);
-    const int mt = cpp_read_lenient_int_field(line.data(), 72, 3);
+    const cpp_tolerated_mismatch& m = log.entries[order[k]];
     const char* kind = kinds[m.kind == 'z' ? 0 : (m.kind == 'n' ? 1 : 2)];
     result.append(py::make_tuple(
-      mat, mf, mt, m.fieldnum, m.in_body, m.exprstr, kind, line_numbers[i],
+      m.mat, m.mf, m.mt, m.fieldnum, m.in_body, m.exprstr, kind, m.line,
       cpp_tolerated_pyvalue(m.expected, m.expected_int),
       cpp_tolerated_pyvalue(m.actual, m.actual_int)
     ));

@@ -29,7 +29,7 @@ In order to create an ENDF-6 file from scratch with
 endf-parserpy, you need the following:
 
 - An understanding of the physical quantities defined
-  in the `ENDF-6 formats manual <https://doi.org/10.2172/1425114>`_,
+  in the `ENDF-6 formats manual <https://doi.org/10.2172/2007538>`_,
   e.g. such as mass number, charge number and cross section.
   You also need the manual to look up the variable names
   associated with those quantities.
@@ -234,7 +234,7 @@ doesn't need to be concerned anymore about the alignment of strings in
 text fields or the number of dashes preceding certain words.
 
 Also note that the MF1/MT451
-dictionary contains a directory (:endf6manshort:`57`) represented by
+dictionary contains a directory (:endf6manshort:`60`) represented by
 the arrays ``MFx[i]``, ``MTx[i]``, ``NCx[i]`` and ``MOD[i]``, which keeps
 track of MF/MT sections included in the file and the number of ENDF records stored
 in each of them.
@@ -318,7 +318,7 @@ Choosing ``NBT`` to be a list with a single entry given by the number of
 elements in ``E`` (or ``xs``) means that we are using a single interpolation region.
 The choice of ``INT = [2]`` specifies linear interpolation for that region.
 For details on the available interpolation schemes, see
-the :endf6manpage:`43`.
+the :endf6manpage:`45`.
 
 .. note::
 
@@ -363,7 +363,7 @@ the cross sections, i.e. ``endf_dict['3/1/xstable/E']``.
    a covariance matrix in an MF33 section is defined *group-wise*.
    This means that the energy mesh provides the boundaries between distinct groups and
    uncertainty information is provided for each energy group. Consult the
-   :endf6manpage:`274` for more details. To keep this section manageable,
+   :endf6manpage:`302` for more details. To keep this section manageable,
    we don't discuss this aspect further.
 
 An example covariance matrix can be created with the following code snippet:

@@ -388,7 +388,7 @@ keys named ``Eint`` and ``nu`` will only exist if
 ``mf1_mt452_section['LNU'] == 2``.
 
 
-.. _ENDF-6 format: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
-.. _ENDF-6 formats manual: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
+.. _ENDF-6 format: https://doi.org/10.2172/2007538
+.. _ENDF-6 formats manual: https://doi.org/10.2172/2007538
 .. _ENDF-6 recipes: https://github.com/IAEA-NDS/endf-parserpy/tree/main/endf_parserpy/endf_recipes/endf6/
 .. _GitHub repository: https://github.com/IAEA-NDS/endf-parserpy/

@@ -149,7 +149,7 @@ in the dictionary instead. In this way, we ensure that all preserved
 sections are copied verbatim to the new file.
 The :func:`~endf_parserpy.update_directory` invocation ensures
 that line counts are properly updated in the directory listing in
-MF1/MT451 (see :endf6manshort:`57`).
+MF1/MT451 (see :endf6manshort:`60`).
 
 To check if everything worked as expected, we can again compare
 the input and output file:
@@ -203,7 +203,7 @@ in ``endf_dict1``. Using the :func:`~copy.deepcopy` function
 prevents this coupling.
 The :func:`~endf_parserpy.update_directory` invocation ensures
 that line counts are properly updated in the directory listing in
-MF1/MT451 (see :endf6manshort:`57`).
+MF1/MT451 (see :endf6manshort:`60`).
 
 .. _modifying_arrays_sec:
 

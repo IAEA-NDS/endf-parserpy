@@ -6,18 +6,18 @@
 [![Documentation](https://readthedocs.org/projects/endf-parserpy/badge/?version=latest)](https://endf-parserpy.readthedocs.io/en/latest/)
 
 `endf-parserpy` is a Python package for reading
-and writing [ENDF-6](https://doi.org/10.2172/1425114) files.
+and writing [ENDF-6](https://doi.org/10.2172/2007538) files.
 This functionality in combination with Python's
 powerful facilities for data handling enables you to
 perform various actions on ENDF-6 files, such as:
 
-- Easily access any information
-- Modify, delete and insert data
+- Access any information easily
+- Modify, delete, and insert data
 - Perform format validation
 - Convert to and from other file formats, such as JSON
-- Merge data from various ENDF-6 files into a single one
-- Read and write files bundling several materials (tapes)
-- Compare ENDF-6 files with meaningful reporting on differences
+- Merge data from multiple ENDF-6 files into a single file
+- Read and write files containing multiple materials (tapes)
+- Compare ENDF-6 files and generate meaningful reports of their differences
 - Construct ENDF-6 files from scratch
 
 
@@ -48,6 +48,11 @@ and can be installed using `pip`:
 ```sh
 python -m pip install endf-parserpy --upgrade
 ```
+
+The optional NumPy dependency, installed with
+`python -m pip install "endf-parserpy[fast]"`, enables
+`array_type="numpy"`, the fastest parsing mode, and a faster scan
+of multi-material files. Without NumPy, a pure-Python fallback is used.
 
 
 ## Documentation
@@ -82,7 +87,7 @@ parser.writefile('output.endf', endf_dict)
 Support for the ENDF-6 format in `endf-parserpy` is not hand-coded
 section by section. The format is described by *recipes*, written in a
 formal language that mirrors the record layout of the
-[ENDF-6 formats manual](https://doi.org/10.2172/1425114). This is the
+[ENDF-6 formats manual](https://doi.org/10.2172/2007538). This is the
 complete recipe for an MF3 section (cross sections):
 
 ```
@@ -147,7 +152,7 @@ G. Schnabel, D. L. Aldama, R. Capote, "How to explain ENDF-6 to computers: A for
 This code is distributed under the MIT license augmented
 by an IAEA clause, see the accompanying license file for more information.
 
-Copyright (c) International Atomic Energy Agency (IAEA)
+Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 
 
 ## Acknowledgments

@@ -41,30 +41,31 @@
    reference/related_software
 
 
-.. _ENDF-6 format: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
+.. _ENDF-6 format: https://doi.org/10.2172/2007538
 
 Welcome to endf-parserpy's documentation!
 =========================================
 
 endf-parserpy is a Python package for reading
-and writing `ENDF <https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf>`_ files.
+and writing `ENDF-6 <https://doi.org/10.2172/2007538>`_ files.
 This functionality in combination with Python's
 powerful facilities for data handling enables you to
-perform various actions on ENDF files, such as:
+perform various actions on ENDF-6 files, such as:
 
-- Easily access any information
-- Modify, delete and insert data
+- Access any information easily
+- Modify, delete, and insert data
 - Perform format validation
-- Convert from and to other file formats, such as JSON
-- Merge data from various ENDF-6 files into a single one
-- Read and write files that bundle several materials
-- Compare ENDF-6 files with meaningful reporting on differences
+- Convert to and from other file formats, such as JSON
+- Merge data from multiple ENDF-6 files into a single file
+- Read and write files containing multiple materials (tapes)
+- Compare ENDF-6 files and generate meaningful reports of their differences
 - Construct ENDF-6 files from scratch
 
 
-Many of these actions can be performed via the command line.
+Many of these actions can also be performed from the command line
+through the ``endf-cli`` tool (see :doc:`guide/command_line_interface`).
 The support for the `ENDF-6 format`_ is comprehensive and
-some special NJOY output formats are also supported.
+some special NJOY2016 output formats are also supported.
 The package has been tested on the various sublibraries
 of the major nuclear data libraries, such as
 `ENDF/B <https://www.nndc.bnl.gov/endf/>`_,
@@ -98,7 +99,7 @@ Install endf-parserpy
    compile time and parsing speed. Power users can alter the
    optimization flag by setting the ``INSTALL_ENDF_PARSERPY_CPP_OPTIM``
    environment variable before installation. For instance, under Linux and macOS,
-   where the default compiler is GNU C++, you could disable all optimizations by:
+   where the compiler is usually GCC or Clang, you could disable all optimizations by:
 
    .. code:: bash
 
@@ -108,7 +109,7 @@ Install endf-parserpy
 
    .. code:: bash
 
-      set INSTALL_ENDF_PARSERPY_CPP_OPTIM="/Od"
+      set INSTALL_ENDF_PARSERPY_CPP_OPTIM=/Od
 
    If you want to disable the compilation of the C++ modules entirely,
    you can set the environment variable ``INSTALL_ENDF_PARSERPY_CPP``
@@ -183,3 +184,36 @@ Resources
   - :doc:`reference/endf6_recipes`
   - :doc:`reference/related_software`
 
+
+Citation and acknowledgments
+----------------------------
+
+If you want to cite this package,
+please use the following reference:
+
+.. code:: text
+
+   G. Schnabel, D. L. Aldama, R. Capote, "How to explain ENDF-6 to computers: A formal ENDF format description language", arXiv:2312.08249, DOI:10.48550/arXiv.2312.08249
+
+This code is distributed under the MIT license augmented
+by an IAEA clause, see the accompanying license file for more information.
+Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA).
+
+Daniel Lopez Aldama made significant contributions
+to the development of this package. He debugged the
+ENDF-6 recipe files and helped in numerous discussions
+to convey a good understanding of the technical details of
+the ENDF-6 format that enabled the creation of this package.
+
+endf-parserpy, including the formal recipe language, the parser
+architecture and the compiler that translates recipes into C++ code,
+was designed and developed without AI assistance from its beginning
+in 2022 up to and including version 0.16 (May 2026). Starting with
+version 0.17, AI coding assistance (Claude Fable 5 and Claude Opus 5.5
+by Anthropic) has been used extensively, in particular, but not
+exclusively, for the multi-material interface (``TapeIndex``, ``EndfFile``
+and the multi-material support of ``endf-cli``, version 0.17), the
+support for numpy arrays (``array_type="numpy"``, version 0.18), finding
+and fixing bugs, and the performance optimization of the recipe
+compiler and the generated C++ backend. All AI-assisted changes were
+reviewed and tested before inclusion.

@@ -3,15 +3,23 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/11/11
+# Last modified:   2026/11/12
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+import gc
 import importlib
 import os
 from endf_parserpy.utils.accessories import EndfDict
+from endf_parserpy.utils.tolerated_mismatches import (
+    BODY_FIELD,
+    FIELD_NAMES,
+    ToleratedMismatch,
+    field_variables,
+    warn_tolerated_mismatches,
+)
 from ..endf_parser_base import (
     EndfParserBase,
     _record_init_kwargs,
@@ -88,6 +96,9 @@ class EndfParserCpp(EndfParserBase):
         ignore_number_mismatch: bool
             Tolerate mismatches between numbers in ENDF-6 formatted
             data and the expected numbers according to the ENDF-6 recipes.
+            The mismatches tolerated are reported in one
+            :class:`~endf_parserpy.EndfToleratedMismatchWarning` per
+            call (see :func:`parsefile`).
             *(parsing)*
         ignore_zero_mismatch: bool
             Tolerate non-zero numbers in ENDF-6 formatted data that
@@ -95,12 +106,18 @@ class EndfParserCpp(EndfParserBase):
             in the fields given as ``0`` or ``0.0`` in the recipe. A
             variable read before with the value zero and another value
             in a later field is an error, as for any other value.
+            The mismatches tolerated are reported in one
+            :class:`~endf_parserpy.EndfToleratedMismatchWarning` per
+            call (see :func:`parsefile`).
             *(parsing)*
         ignore_varspec_mismatch: bool
             Tolerate distinct numbers that are supposed to be mapped
             to the same symbol name. For the time being, even with this
             option enabled, possible inconsistent variable assignment
             have to be marked with a queston mark in the ENDF-6 recipe.
+            The mismatches tolerated are reported in one
+            :class:`~endf_parserpy.EndfToleratedMismatchWarning` per
+            call (see :func:`parsefile`).
             *(parsing)*
         accept_spaces: bool
             Eliminate spaces in a number before trying to parse it, e.g.
@@ -361,10 +378,33 @@ class EndfParserCpp(EndfParserBase):
         -------
         dict
             See explanation in :func:`parsefile`.
+
+        Mismatches tolerated by the options ``ignore_zero_mismatch``,
+        ``ignore_number_mismatch`` and ``ignore_varspec_mismatch`` are
+        reported in one
+        :class:`~endf_parserpy.EndfToleratedMismatchWarning`
+        at the end of the call (see :func:`parsefile`).
         """
         if isinstance(lines, list):
             lines = "\n".join(lines)
-        return self._parse_endf(lines, exclude, include, self.read_opts)
+        # (the list is created before the call, see parsefile)
+        tolerated = []
+        result = self._parse_endf(lines, exclude, include, self.read_opts, tolerated)
+        if tolerated:
+            _warn_after_parse(tolerated, None)
+        return result
+
+    def _parse_and_collect(self, lines, exclude=None, include=None):
+        """Parse as :func:`parse` without issuing the warning about the
+        tolerated mismatches; returns the result and the list of
+        tolerated mismatches (see
+        :class:`~endf_parserpy.utils.tolerated_mismatches.ToleratedMismatch`)
+        with the lines counted in ``lines``."""
+        if isinstance(lines, list):
+            lines = "\n".join(lines)
+        tolerated = []
+        result = self._parse_endf(lines, exclude, include, self.read_opts, tolerated)
+        return result, _tolerated_mismatches(tolerated)
 
     def parsefile(self, filename, exclude=None, include=None):
         """Parse ENDF-6 formatted data stored in a file.
@@ -406,8 +446,30 @@ class EndfParserCpp(EndfParserBase):
             The structure of the :class:`dict` stored under a specific
             `MF`/`MT` combination is determined by the
             corresponding ENDF recipe.
+
+        Mismatches tolerated by the options ``ignore_zero_mismatch``,
+        ``ignore_number_mismatch`` and ``ignore_varspec_mismatch`` are
+        reported in one
+        :class:`~endf_parserpy.EndfToleratedMismatchWarning`
+        at the end of the call, which gives their number and lists them
+        grouped by section, field and kind, each group with the line of
+        the file of its first mismatch. The values found in these fields
+        are not kept, so that writing the data gives the values expected
+        by the recipe instead. The warning can be filtered with the
+        :mod:`warnings` module.
         """
-        return self._parse_endf_file(str(filename), exclude, include, self.read_opts)
+        # The list is created before the call: an object tracked by the
+        # garbage collector created after it, when the collector runs
+        # again (see cpp_gc_pause), would start a collection over the
+        # objects of the result, so that nothing is created if no mismatch
+        # was tolerated.
+        tolerated = []
+        result = self._parse_endf_file(
+            str(filename), exclude, include, self.read_opts, tolerated
+        )
+        if tolerated:
+            _warn_after_parse(tolerated, str(filename))
+        return result
 
     def write(self, endf_dict, exclude=None, include=None):
         """Convert data into the ENDF-6 format.
@@ -463,6 +525,8 @@ class EndfParserCpp(EndfParserBase):
             Existing files will only be overwritten if this argument
             is ``True``, otherwise this function will abort.
 
+        Notes
+        -----
         If an error occurs, the file is neither created nor changed. The
         text is streamed into a temporary file next to the file, which
         then becomes the file (a new file) or whose content is copied
@@ -484,3 +548,40 @@ class EndfParserCpp(EndfParserBase):
                 path, endf_dict, exclude, include, self.write_opts
             ),
         )
+
+
+def _warn_after_parse(entries, source):
+    """Issue the warning about the mismatches tolerated in a parse.
+
+    The objects of the warning are created with the garbage collector
+    paused, as the result of the parse is (see cpp_gc_pause): otherwise
+    the first of them would start a collection over the objects of the
+    result, which only the next allocation of the caller starts if there
+    is no warning.
+    """
+    paused = gc.isenabled()
+    if paused:
+        gc.disable()
+    try:
+        warn_tolerated_mismatches(_tolerated_mismatches(entries), source=source)
+    finally:
+        if paused:
+            gc.enable()
+
+
+def _tolerated_mismatches(entries):
+    """The ToleratedMismatch records of the tuples of the C++ module (see
+    cpp_report_tolerated)."""
+    mismatches = []
+    for mat, mf, mt, fieldnum, in_body, exprstr, kind, line, expected, found in entries:
+        if in_body:
+            field = BODY_FIELD
+        elif 0 <= fieldnum < len(FIELD_NAMES):
+            field = FIELD_NAMES[fieldnum]
+        else:
+            field = "?"
+        variable = field_variables(exprstr) if kind == "varspec" else None
+        mismatches.append(
+            ToleratedMismatch(mat, mf, mt, field, variable, kind, line, expected, found)
+        )
+    return mismatches

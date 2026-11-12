@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join("..", "..")))
 
 project = "endf-parserpy"
-copyright = "2022-2025, International Atomic Energy Agency"
+copyright = "2022-2026, International Atomic Energy Agency"
 author = "Georg Schnabel"
 
 # -- General configuration ---------------------------------------------------
@@ -33,10 +33,12 @@ intersphinx_mapping = {
     "numpy": ("http://docs.scipy.org/doc/numpy/", None),
 }
 
+# The page numbers passed to endf6manpage and endf6manshort are
+# PDF page indices of ENDF-102-2023.pdf, not printed page numbers.
 extlinks = {
     "endf6manpage": (
         "https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf#page=%s",
-        "ENDF-6 formats manual (page  %s)",
+        "ENDF-6 formats manual (page %s)",
     ),
     "endf6manshort": (
         "https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf#page=%s",
@@ -56,7 +58,6 @@ autoclass_content = "both"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"
-html_static_path = ["_static"]
 
 napoleon_use_rtype = True
 

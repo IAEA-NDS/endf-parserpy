@@ -1,5 +1,5 @@
-.. _ENDF-6 format: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
-.. _ENDF-6 formats manual: https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
+.. _ENDF-6 format: https://doi.org/10.2172/2007538
+.. _ENDF-6 formats manual: https://doi.org/10.2172/2007538
 .. _Lark: https://github.com/lark-parser/lark
 
 Philosophy

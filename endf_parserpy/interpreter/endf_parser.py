@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/11
+# Last modified:   2026/11/12
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -15,6 +15,10 @@ import warnings
 import weakref
 import re
 from .logging_utils import setup_logger, release_logger, write_info, RingBuffer
+from endf_parserpy.utils.tolerated_mismatches import (
+    ToleratedMismatch,
+    warn_tolerated_mismatches,
+)
 from os.path import exists as file_exists
 from endf_parserpy.utils.tree_utils import (
     is_tree,
@@ -201,6 +205,9 @@ class EndfParserPy(EndfParserBase):
         ignore_number_mismatch: bool
             Tolerate mismatches between numbers in ENDF-6 formatted
             data and the expected numbers according to the ENDF-6 recipes.
+            The mismatches tolerated are reported in one
+            :class:`~endf_parserpy.EndfToleratedMismatchWarning` per
+            call (see :func:`parsefile`).
             *(parsing)*
         ignore_zero_mismatch: bool
             Tolerate non-zero numbers in ENDF-6 formatted data that
@@ -208,12 +215,18 @@ class EndfParserPy(EndfParserBase):
             in the fields given as ``0`` or ``0.0`` in the recipe. A
             variable read before with the value zero and another value
             in a later field is an error, as for any other value.
+            The mismatches tolerated are reported in one
+            :class:`~endf_parserpy.EndfToleratedMismatchWarning` per
+            call (see :func:`parsefile`).
             *(parsing)*
         ignore_varspec_mismatch: bool
             Tolerate distinct numbers that are supposed to be mapped
             to the same symbol name. For the time being, even with this
             option enabled, possible inconsistent variable assignment
             have to be marked with a queston mark in the ENDF-6 recipe.
+            The mismatches tolerated are reported in one
+            :class:`~endf_parserpy.EndfToleratedMismatchWarning` per
+            call (see :func:`parsefile`).
             *(parsing)*
         fuzzy_matching: bool
             Tolerate small inconsistencies between fields when they
@@ -401,9 +414,12 @@ class EndfParserPy(EndfParserBase):
         loglevel : int
             Controls the level of detail for logging output. Default is
             `logging.WARN`. Many ENDF-6 files in nuclear data libraries
-            contain auxiliary information in unused fields (expected to be zero),
-            which will trigger warnings. Use `logging.ERROR` to suppress
-            these warnings (you will need to `import logging`).
+            contain auxiliary information in unused fields (expected to be
+            zero). The mismatches tolerated in such fields are reported in
+            one :class:`~endf_parserpy.EndfToleratedMismatchWarning` per
+            call of :func:`parse` or :func:`parsefile` (see there), which
+            can be filtered with the :mod:`warnings` module; the details
+            of each mismatch are logged at the level `logging.DEBUG`.
         """
         _check_array_type(array_type)
         if array_type == "numpy":
@@ -1119,7 +1135,25 @@ class EndfParserPy(EndfParserBase):
         nofail : bool
             See explanation of parameter ``nofail`` in
             :func:`parsefile` for details.
+
+        Notes
+        -----
+        Mismatches tolerated by the options ``ignore_zero_mismatch``,
+        ``ignore_number_mismatch`` and ``ignore_varspec_mismatch`` are
+        reported in one
+        :class:`~endf_parserpy.EndfToleratedMismatchWarning`
+        at the end of the call (see :func:`parsefile`).
         """
+        result, mismatches = self._parse_and_collect(lines, exclude, include, nofail)
+        warn_tolerated_mismatches(mismatches)
+        return result
+
+    def _parse_and_collect(self, lines, exclude=None, include=None, nofail=False):
+        """Parse as :func:`parse` without issuing the warning about the
+        tolerated mismatches; returns the result and the list of
+        tolerated mismatches (see
+        :class:`~endf_parserpy.utils.tolerated_mismatches.ToleratedMismatch`)
+        with the lines counted in ``lines``."""
         # each character corresponds to a byte of an ENDF-6 file (see
         # text_encoding), so characters above U+00FF cannot occur
         check_input(lines)
@@ -1143,6 +1177,9 @@ class EndfParserPy(EndfParserBase):
         tree_dic = self.tree_dic
         self.variable_descriptions = EndfDict()
         mfmt_dic = split_sections(lines, read_opts=self.read_opts)
+        # the mismatches tolerated in the sections parsed, as tuples
+        # (MAT, MF, MT, mismatches of the section, see _tolerated_mismatch)
+        tolerated = []
         for mf in mfmt_dic:
             if self.logger.isEnabledFor(logging.INFO):
                 write_info(self.logger, f"Parsing section MF{mf}")
@@ -1187,12 +1224,18 @@ class EndfParserPy(EndfParserBase):
                     else:
                         array_forms = {}
                         self.parse_opts.pop("array_forms", None)
+                    section_tolerated = []
+                    self.parse_opts["tolerated_mismatches"] = section_tolerated
                     try:
                         initialize_working_vars(self.datadic)
                         self.datadic.update(cur_ctrl)
                         self.run_instruction(cur_tree)
                         remove_working_vars(self.datadic)
                         mfmt_dic[mf][mt] = self.datadic
+                        if section_tolerated:
+                            tolerated.append(
+                                (cur_ctrl["MAT"], mf, mt, section_tolerated)
+                            )
                         if array_type == "list" or numpy_mode:
                             array_dict_to_list(mfmt_dic[mf][mt])
                         if array_type == "list":
@@ -1218,7 +1261,29 @@ class EndfParserPy(EndfParserBase):
                     # (parsefile) or not (a string passed to parse)
                     mfmt_dic[mf][mt] = [line.rstrip("\r\n") + "\n" for line in curlines]
         self._remove_array_state_opts()
-        return mfmt_dic
+        return mfmt_dic, self._tolerated_in_input_lines(lines, tolerated)
+
+    def _tolerated_in_input_lines(self, lines, tolerated):
+        # The ToleratedMismatch records of the mismatches of the sections
+        # (see parse), whose lines are counted in the lines of a section
+        # (from 0) and are translated to the lines of the input (from 1).
+        # The lines of the sections are only determined again (by
+        # split_sections) if there are mismatches.
+        if not tolerated:
+            return []
+        line_numbers = {}
+        split_sections(lines, read_opts=self.read_opts, line_numbers=line_numbers)
+        mismatches = []
+        for mat, mf, mt, entries in tolerated:
+            section_lines = line_numbers[mf][mt]
+            for kind, field, variable, line, expected, found in entries:
+                line = section_lines[min(line, len(section_lines) - 1)] + 1
+                mismatches.append(
+                    ToleratedMismatch(
+                        mat, mf, mt, field, variable, kind, line, expected, found
+                    )
+                )
+        return mismatches
 
     def _last_record_hint(self):
         # hint if the line of the last record read is longer than 80 columns
@@ -1239,6 +1304,7 @@ class EndfParserPy(EndfParserBase):
         self.parse_opts.pop("numpy_marks", None)
         self.parse_opts.pop("numpy_keep_floats", None)
         self.parse_opts.pop("array_write", None)
+        self.parse_opts.pop("tolerated_mismatches", None)
         self._numpy_forms = None
 
     def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
@@ -1489,12 +1555,28 @@ class EndfParserPy(EndfParserBase):
             The structure of the :class:`dict` stored under a specific
             `MF`/`MT` combination is determined by the
             corresponding ENDF recipe.
+
+        Mismatches tolerated by the options ``ignore_zero_mismatch``,
+        ``ignore_number_mismatch`` and ``ignore_varspec_mismatch`` are
+        reported in one
+        :class:`~endf_parserpy.EndfToleratedMismatchWarning`
+        at the end of the call, which gives their number and lists them
+        grouped by section, field and kind, each group with the line of
+        the file of its first mismatch. The values found in these fields
+        are not kept, so that writing the data gives the values expected
+        by the recipe instead. The warning can be filtered with the
+        :mod:`warnings` module. The details of each mismatch are logged
+        at the ``DEBUG`` level.
         """
         # every byte is mapped to the character with the same code
         # (Latin-1) on every platform, see text_encoding
         with open(filename, "r", encoding=ENDF_ENCODING) as fin:
             lines = fin.readlines()
-        return self.parse(lines, exclude, include, nofail=nofail)
+        result, mismatches = self._parse_and_collect(
+            lines, exclude, include, nofail=nofail
+        )
+        warn_tolerated_mismatches(mismatches, source=str(filename))
+        return result
 
     def writefile(
         self,
@@ -1537,6 +1619,8 @@ class EndfParserPy(EndfParserBase):
             Existing files will only be overwritten if this argument
             is ``True``, otherwise this function will abort.
 
+        Notes
+        -----
         If an error occurs, the file is neither created nor changed. The
         text is composed first and written into a temporary file next to
         the file, which then becomes the file (a new file) or whose

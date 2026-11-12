@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/10/24
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -26,7 +26,8 @@ in-memory ENDF-6 string, the ``_file`` variant on a file path.
 import os
 
 from ..endf_parser_factory import EndfParserFactory
-from .splitter import split_materials
+from .splitter import _split_materials_with_lines
+from ..utils.tolerated_mismatches import parse_and_collect, warn_tolerated_mismatches
 from .records import (
     _control_numbers,
     TEND_LINE,
@@ -106,15 +107,40 @@ def _check_on_error(on_error):
 # --------------------------------------------------------------------------
 
 
-def _iter_materials(lines, parser, exclude, include, on_error):
-    """Split ``lines`` into materials and parse them one at a time."""
-    for chunk in split_materials(lines):
+def _iter_materials(lines, parser, exclude, include, on_error, source=None):
+    """Split ``lines`` into materials and parse them one at a time.
+
+    The mismatches tolerated in a material are reported in one warning
+    per material, with the lines counted in ``lines`` (see
+    :mod:`~endf_parserpy.utils.tolerated_mismatches`); ``source`` is the
+    name of the file, if any.
+    """
+    for chunk, numbers in _split_materials_with_lines(lines):
         try:
-            yield parser.parse(chunk, exclude=exclude, include=include)
+            result, mismatches = parse_and_collect(
+                parser, chunk, exclude=exclude, include=include
+            )
         except Exception as exc:
             if on_error == "raise":
                 raise
             yield FailedMaterial(exc, chunk)
+            continue
+        if mismatches:
+            warn_tolerated_mismatches(
+                _mismatches_in_tape_lines(mismatches, numbers), source=source
+            )
+        yield result
+
+
+def _mismatches_in_tape_lines(mismatches, numbers):
+    # line n of a single-material tape of _split_materials_with_lines
+    # (after its TPID line) is line numbers[n - 2] of the tape
+    result = []
+    for m in mismatches:
+        if 2 <= m.line <= len(numbers) + 1:
+            m = m._replace(line=numbers[m.line - 2])
+        result.append(m)
+    return result
 
 
 def iter_parse_tape(text, *, parser=None, exclude=None, include=None, on_error="mark"):
@@ -182,7 +208,7 @@ def _iter_parse_file(path, parser, exclude, include, on_error):
     """Generator backing :func:`iter_parse_tape_file`; holds the file open."""
     # bytes are mapped to characters with Latin-1 as by the parsers
     with open(path, "r", encoding="latin-1") as fh:
-        yield from _iter_materials(fh, parser, exclude, include, on_error)
+        yield from _iter_materials(fh, parser, exclude, include, on_error, path)
 
 
 def parse_tape(text, *, parser=None, exclude=None, include=None, on_error="mark"):

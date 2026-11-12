@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/10
-# Last modified:   2026/11/10
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -38,9 +38,9 @@ all incident energies.
 """
 
 import itertools
-import logging
+import warnings
 import pytest
-from endf_parserpy import EndfParserCpp, EndfParserPy
+from endf_parserpy import EndfParserCpp, EndfParserPy, EndfToleratedMismatchWarning
 from endf_parserpy.endf_recipes import get_recipe_dict
 from endf_parserpy.interpreter.custom_exceptions import NumberMismatchError
 from endf_parserpy.utils.debugging_utils import compare_objects
@@ -182,26 +182,27 @@ def _text(written):
     return "".join(line if line.endswith("\n") else line + "\n" for line in written)
 
 
-def _mismatch_warnings(caplog):
-    return [
-        r
-        for r in caplog.records
-        if r.levelno == logging.WARNING and "Record specification" in r.getMessage()
-    ]
+def _tolerated_warnings(caught):
+    return [w for w in caught if issubclass(w.category, EndfToleratedMismatchWarning)]
 
 
 @pytest.mark.parametrize("opts", OPTION_COMBINATIONS, ids=_opts_id)
 @pytest.mark.parametrize("case", sorted(CASES))
 @pytest.mark.parametrize("ParserCls", PARSER_CLASSES)
-def test_mismatch_accepted_or_rejected(ParserCls, case, opts, caplog):
+def test_mismatch_accepted_or_rejected(ParserCls, case, opts):
     endf_format, tape, kind = CASES[case]
     parser = _parser(ParserCls, endf_format, **opts)
-    caplog.set_level(logging.WARNING)
     if _accepted(kind, opts):
-        parser.parse(tape)
-        if ParserCls is EndfParserPy:
-            # a tolerated mismatch gives a warning
-            assert bool(_mismatch_warnings(caplog)) == (kind != CONSISTENT)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            parser.parse(tape)
+        # a tolerated mismatch gives one summary warning in both parsers
+        # (EndfParserPy logged each mismatch at WARNING level before; the
+        # details are now logged at DEBUG level)
+        tolerated = _tolerated_warnings(caught)
+        assert len(tolerated) == (0 if kind == CONSISTENT else 1)
+        if tolerated:
+            assert len(tolerated[0].message.mismatches) == 1
     else:
         # EndfParserCpp reports a mismatch as a RuntimeError
         exc_type = NumberMismatchError if ParserCls is EndfParserPy else RuntimeError

@@ -20,5 +20,6 @@ implemented in the ``endf_parserpy`` package:
 - :class:`endf_parserpy.EndfMaterialPath`
 - :class:`endf_parserpy.TapeIndex`
 - :exc:`endf_parserpy.EndfParserpyError`
+- :exc:`endf_parserpy.EndfToleratedMismatchWarning`
 - :class:`endf_parserpy.utils.debugging_utils.TrackingDict`
 - :class:`endf_parserpy.utils.debugging_utils.TrackingList`

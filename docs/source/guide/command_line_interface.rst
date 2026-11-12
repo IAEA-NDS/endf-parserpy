@@ -170,6 +170,36 @@ relaxed individually on the command line, e.g.
 
    endf-cli validate --accept_spaces --ignore_blank_lines file.endf
 
+With the strict defaults, a value that differs from the recipe, e.g. a
+value other than zero in a field given as ``0`` in the recipe, makes the
+file fail. With ``--ignore_zero_mismatch``, ``--ignore_varspec_mismatch``
+or ``--ignore_number_mismatch``, such mismatches are tolerated (see
+:ref:`tolerated_mismatches_sec`): the file passes, and the report lists
+them under the name of the file, with the numbers of each kind and up to
+ten groups (by section, field and kind), each with the number of its
+mismatches and the first one (the line of the file, the expected and the
+found value). In the summary, the verdict of the file gives their
+number, e.g.
+
+.. code-block:: text
+
+   ================================================================================
+     Validation of n-005_B_011.endf passed with mismatches tolerated by the options:
+
+   18 field mismatches tolerated (zero: 18 (ignore_zero_mismatch)), in 18 groups; the values found are not kept, writing the data gives the expected values:
+     MAT 528 MF3/MT1 L2: 1 zero mismatch, e.g. line 290: expected 0, found 99
+     MAT 528 MF3/MT16 L2: 1 zero mismatch, e.g. line 1974: expected 0, found 99
+     ...
+     ... and 8 more groups
+
+   ========== VALIDATION SUMMARY ==========
+   ok (18 tolerated mismatches) - n-005_B_011.endf
+
+The return code is that of a file that passes. The other subcommands,
+whose defaults tolerate these mismatches, print the same summary once
+per file on the standard error after their output, e.g. for ``show``
+the mismatches of the sections it has parsed.
+
 The sections of a file are parsed one by one, so that ``validate`` also
 handles files with several materials. In addition, the framing records
 of the whole file are checked once: every section must end with a SEND

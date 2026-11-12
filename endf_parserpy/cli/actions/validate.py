@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/08
+# Last modified:   2026/11/11
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -17,9 +17,15 @@ from ..cmd_utils import (
 from endf_parserpy import EndfParserCpp
 from endf_parserpy.tape import SectionParseError
 from endf_parserpy.tape.framing import _check_framing_and_index
+from endf_parserpy.utils.tolerated_mismatches import (
+    EndfToleratedMismatchWarning,
+    format_tolerated_mismatches,
+    parse_and_collect,
+)
 from glob import glob
 from itertools import groupby
 import sys
+import warnings
 
 
 COMMAND_NAME = "validate"
@@ -95,7 +101,7 @@ def _numpy_available():
     return True
 
 
-def _sections_parse_at_once(endf_file, material, keys, fast_parser):
+def _sections_parse_at_once(endf_file, material, keys, fast_parser, tolerated=None):
     """Return whether the sections ``keys`` of ``material`` parse in one call.
 
     The sections are parsed as one tape built by
@@ -107,13 +113,31 @@ def _sections_parse_at_once(endf_file, material, keys, fast_parser):
     path checks the MAT/MF/MT numbers of every line, the parsing of a
     section cannot read the lines of another one; all sections must be
     present in the result.
+
+    If the sections parse and ``tolerated`` is a dictionary, it receives
+    the mismatches tolerated in each section (see
+    :func:`_validate_sections`), with the lines counted in the file.
     """
     try:
-        text = endf_file._sections_tape(material.position, keys)
-        result = fast_parser.parse(text)
-        return all(mt in result.get(mf, ()) for mf, mt in keys)
+        starts = {}
+        text = endf_file._sections_tape(material.position, keys, starts)
+        result, mismatches = parse_and_collect(fast_parser, text)
+        if not all(mt in result.get(mf, ()) for mf, mt in keys):
+            return False
     except Exception:  # noqa: BLE001
         return False
+    if tolerated is not None:
+        by_section = {}
+        for m in mismatches:
+            by_section.setdefault((m.mf, m.mt), []).append(m)
+        for (mf, mt), section_mismatches in by_section.items():
+            first = starts.get((mf, mt))
+            if first is not None:
+                section_mismatches = endf_file._mismatches_in_file_lines(
+                    material.position, mf, mt, section_mismatches, first
+                )
+            tolerated[(material.position, mf, mt)] = section_mismatches
+    return True
 
 
 # the number of problems with the framing records given in a report
@@ -161,11 +185,13 @@ def _framing_detail(parser, file):
     return detail, index
 
 
-def _validate_file(parser, file, fast_parser=None):
+def _validate_file(parser, file, fast_parser=None, tolerated=None):
     """Validate the framing records and every section of ``file``.
 
     Returns ``(ok, detail)``; ``detail`` is ``None`` on success and a
-    human-readable failure description otherwise. The framing records
+    human-readable failure description otherwise. If ``tolerated`` is a
+    dictionary, it receives the mismatches tolerated by the options of
+    the parser (see :func:`_validate_sections`). The framing records
     of the whole file are checked first (see :func:`_framing_detail`).
     Then the file is opened as an :class:`EndfFile`, so single- and
     multi-material files are validated the same way -- a tape is valid
@@ -183,7 +209,7 @@ def _validate_file(parser, file, fast_parser=None):
     same.
     """
     framing, index = _framing_detail(parser, file)
-    ok, detail = _validate_sections(parser, file, fast_parser, index)
+    ok, detail = _validate_sections(parser, file, fast_parser, index, tolerated)
     if framing is None:
         return ok, detail
     if detail is None:
@@ -191,7 +217,7 @@ def _validate_file(parser, file, fast_parser=None):
     return False, framing + "\n\n" + detail
 
 
-def _validate_sections(parser, file, fast_parser, index=None):
+def _validate_sections(parser, file, fast_parser, index=None, tolerated=None):
     """Validate every section of every material of ``file``.
 
     The part of :func:`_validate_file` that opens the file as an
@@ -199,6 +225,14 @@ def _validate_sections(parser, file, fast_parser, index=None):
     ``index`` is the :class:`~endf_parserpy.tape.TapeIndex` of the file
     built by :func:`_framing_detail`, or ``None`` to build it here (with
     the error of the index if it cannot be built).
+
+    If ``tolerated`` is a dictionary, it receives the mismatches tolerated
+    by the options of the parsers (e.g. ``--ignore_zero_mismatch``) in
+    each section, as lists of
+    :class:`~endf_parserpy.utils.tolerated_mismatches.ToleratedMismatch`
+    records with the lines counted in the file, by ``(position of the
+    material, MF, MT)``. A section is counted once: by the parse of its
+    MF in one call, or, if that fails, by the parse of the section alone.
     """
     kwargs = {} if index is None else {"_index": index}
     try:
@@ -210,13 +244,19 @@ def _validate_sections(parser, file, fast_parser, index=None):
         for _, mf_keys in groupby(material.sections(), key=lambda key: key[0]):
             mf_keys = list(mf_keys)
             if fast_parser is not None and _sections_parse_at_once(
-                endf_file, material, mf_keys, fast_parser
+                endf_file, material, mf_keys, fast_parser, tolerated
             ):
                 continue
             for mf, mt in mf_keys:
+                # the warning about the mismatches tolerated in the section
+                # (issued by EndfFile) is caught for the report of the file
+                caught = []
                 try:
-                    material[mf, mt]
+                    with warnings.catch_warnings(record=True) as caught:
+                        warnings.simplefilter("always", EndfToleratedMismatchWarning)
+                        material[mf, mt]
                 except Exception as exc:  # noqa: BLE001
+                    _keep_tolerated(caught, None, None)
                     prefix = (
                         f"material #{material.position} (MAT {material.mat}), "
                         if multi
@@ -224,7 +264,31 @@ def _validate_sections(parser, file, fast_parser, index=None):
                     )
                     detail = _failure_detail(exc)
                     return False, f"{prefix}section MF={mf}/MT={mt}:\n{detail}"
+                _keep_tolerated(caught, tolerated, (material.position, mf, mt))
     return True, None
+
+
+def _keep_tolerated(caught, tolerated, key):
+    """Keep the mismatches of the warnings ``caught`` while a section was
+    parsed (by :class:`EndfFile`, with the lines counted in the file) in
+    ``tolerated`` under ``key``; issue the other warnings again."""
+    mismatches = []
+    for w in caught:
+        if issubclass(w.category, EndfToleratedMismatchWarning):
+            mismatches.extend(getattr(w.message, "mismatches", ()))
+        else:
+            warnings.warn_explicit(w.message, w.category, w.filename, w.lineno)
+    if tolerated is not None and mismatches:
+        tolerated[key] = mismatches
+
+
+def _tolerated_detail(tolerated):
+    """The report of the mismatches tolerated in a file (see
+    :func:`_validate_sections`), or ``None`` if there are none."""
+    mismatches = [m for key in sorted(tolerated) for m in tolerated[key]]
+    if not mismatches:
+        return None, 0
+    return format_tolerated_mismatches(mismatches), len(mismatches)
 
 
 def _failure_detail(exc):
@@ -256,13 +320,27 @@ def _validate_endf_files(parser, files, fast_parser=None):
     any_failed = False
     file_status_list = []
     for file in files:
-        ok, detail = _validate_file(parser, file, fast_parser)
-        file_status_list.append((file, "ok" if ok else "failed"))
+        tolerated = {}
+        ok, detail = _validate_file(parser, file, fast_parser, tolerated)
+        status = "ok" if ok else "failed"
         if not ok:
             any_failed = True
             print("\n" + "=" * 80)
             print(f"  Validation of {file} failed for the following reason:\n")
             print(detail)
+        else:
+            # mismatches tolerated as requested by the options (e.g.
+            # --ignore_zero_mismatch): the file passes, and they are listed
+            report, count = _tolerated_detail(tolerated)
+            if report is not None:
+                print("\n" + "=" * 80)
+                print(
+                    f"  Validation of {file} passed with mismatches tolerated "
+                    "by the options:\n"
+                )
+                print(report)
+                status += f" ({count} tolerated mismatch{'es' if count != 1 else ''})"
+        file_status_list.append((file, status))
 
     print("\n========== VALIDATION SUMMARY ==========")
     for file_status in file_status_list:

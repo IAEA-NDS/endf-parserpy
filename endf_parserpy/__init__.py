@@ -24,6 +24,7 @@ from .utils.user_tools import (
 from .utils.endf6_plumbing import update_directory
 from .utils.math_utils import EndfFloat
 from .errors import EndfParserpyError
+from .utils.tolerated_mismatches import EndfToleratedMismatchWarning
 from .tape import (
     parse_tape,
     parse_tape_file,
@@ -58,6 +59,8 @@ __all__ = (
     "sanitize_fieldname_types",
     # package-wide base exception
     "EndfParserpyError",
+    # warning about the field mismatches tolerated in a parse
+    "EndfToleratedMismatchWarning",
     # multi-material tape interface
     "parse_tape",
     "parse_tape_file",

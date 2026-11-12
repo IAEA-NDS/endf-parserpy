@@ -1,8 +1,21 @@
+.. _arrays_as_lists_or_numpy_sec:
+
+
+Arrays as Lists or NumPy Arrays
+===============================
+
+By default, endf-parserpy represents the arrays of an ENDF-6 file as
+Python :class:`dict` objects. The ``array_type`` argument of the
+parsers selects one of two alternatives: ``array_type="list"``
+(Python lists, described in the first section below) and
+``array_type="numpy"`` (NumPy arrays, the fastest parsing mode,
+described in the second section).
+
+
 .. _arrays_as_list_sec:
 
-
 Arrays as Lists
-===============
+---------------
 
 One early design choice for the development of
 endf-parserpy was to represent arrays
@@ -76,7 +89,7 @@ If you are using the ``array_type="list"`` option, be aware of the following:
 
 .. _arrays_as_numpy_sec:
 
-Arrays as numpy arrays
+Arrays as NumPy Arrays
 ----------------------
 
 The :class:`~endf_parserpy.EndfParserCpp` and

@@ -42,9 +42,9 @@ ENDF-6 file with strict validation settings:
        accept_nan_inf=False,
        accept_d_exponent=False,
        accept_non_ascii=False,
-    )
+   )
 
-    parser.parsefile('input.endf')
+   parser.parsefile('input.endf')
 
 For an explanation of the arguments,
 consult the :ref:`detailed documentation <endf_parser_class>` of
@@ -68,22 +68,22 @@ in the case of a format violation:
 
 .. code::
 
-    endf_parserpy.custom_exceptions.InvalidIntegerError:
+    endf_parserpy.interpreter.custom_exceptions.InvalidIntegerError:
     Here is the parser record log until failure:
 
     -------- Line 0 -----------
     Template:  [ MAT , 4 , MT / ZA , AWR , 0 , LTT , 0 , 0 ] HEAD
-    Line:     " 6.415500+4 1.535920+2          1          1          0          06434 4  2    1"
+    Line:     " 6.415500+4 1.535920+2          0          1          0          06434 4  2"
 
     -------- Line 1 -----------
-    Template:  [ MAT , 4 , MT / 0.0 , AWR ? , LI , LCT , 0 , 0 ] CONT
-    Line:     " 0.000000+0 1.535920+2          0          2        441         206434 4  2    2"
+    Template:  [ MAT , 4 , MT / 0.0 , AWR ? , LI , LCT ? , 0 , 0 ] CONT
+    Line:     " 0.000000+0 1.535920+2          0          2          0          06434 4  2"
 
     -------- Line 2 -----------
     Template:  [ MAT , 4 , MT / 0.0 , 0.0 , 0 , 0 , NR , NE / Eint ] TAB2
     Line:     " 1.000000+0 4.340500-3 8.478030-6-9.08196-19 0.000000+0 0.000000+06434 4  2    3"
 
-    Error message: invalid literal for int() with base 10: ' 8.478030-6'
+    Error message: invalid integer field: " 8.478030-6" (an integer with an optional sign, preceded and followed by blanks only, or blank)
 
 
 This output tells us that the parser expected an integer but received something
@@ -93,7 +93,7 @@ ENDF-6 file (after ``Line:``) and which lines of an :ref:`ENDF-6 recipe <endf6_r
 
 The last line printed out (``Line 2``) caused the failure.
 From the last three numbers displayed in the string after ``Line:``,
-we see that the issue occured in the third line of an MF=4/MT=2 section.
+we see that the issue occurred in the third line of an MF=4/MT=2 section.
 The comparison of the template with the actual line of the ENDF-6 recipe
 tells us that the ENDF record encountered is incompatible with the recipe
 specification for several reasons.
@@ -101,6 +101,20 @@ The first two slots (behind the slash) are supposed to be zero according
 to the ENDF-6 recipe but non-zero values are present in the file.
 Further, the next four slots are supposed to be of type ``int``
 but float numbers are present in the file.
+
+:class:`~endf_parserpy.EndfParserCpp`, which ``endf-cli validate`` uses by
+default if the C++ modules are installed, reports the same record more
+compactly, with the number of the line in the file:
+
+.. code:: text
+
+    Expected a field to contain the value 0 but found instead the value 1 (field 1, columns 1-11).
+    Template: [ MAT , 4 , MT / 0.0 , 0.0 , 0 , 0 , NR , NE / Eint ] TAB2
+    Line 2360: " 1.000000+0 4.340500-3 8.478030-6-9.08196-19 0.000000+0 0.000000+06434 4  2    3"
+
+It checks the fields of a record one after the other and stops at the
+first one that does not match, here the first field, which the recipe
+requires to be zero.
 
 If the format violation can be fixed by a few modifications in a text
 editor, you could now search in the ENDF-6 file for some substring of the

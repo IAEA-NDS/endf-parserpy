@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/12
+# Last modified:   2026/11/16
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -811,7 +811,6 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
     """
     dedup = shared_registry is not None
     parsefuns_code = ""
-    wrapper_entries = []  # list of (outer_name, canonical_callee_name)
     recipefuns = {}
     forward_decls_seen = set()
     if dedup:
@@ -842,7 +841,6 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
             print(f"MF: {mf}")
             outer_name = mf_mt_parsefun_name(mf, None)
             inner_name = _route(mt_recipes, outer_name, mf=mf, mt_=None)
-            wrapper_entries.append((outer_name, inner_name))
             recipefuns[mf] = inner_name
             continue
         for mt, recipe in mt_recipes.items():
@@ -850,28 +848,23 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
             outer_name = mf_mt_parsefun_name(mf, mt)
             mt_ = mt if mt != -1 else None
             inner_name = _route(recipe, outer_name, mf=mf, mt_=mt_)
-            wrapper_entries.append((outer_name, inner_name))
             curdic = recipefuns.setdefault(mf, {})
             curdic[mt] = inner_name
 
-    parsefun_wrappers_code1 = generate_cpp_parsefun_wrappers_string(
-        wrapper_entries, ("ParsingOptions", "parse_opts")
-    )
-    parsefun_wrappers_code2 = generate_cpp_parsefun_wrappers_file(
-        wrapper_entries, ("ParsingOptions", "parse_opts")
-    )
-    # special case for the master function calling the other mf/mt parser funs
+    # the master function calling the per-(mf, mt) parse functions; only
+    # it is called from Python (via the wrappers below), so no wrappers
+    # are generated for the parse functions of the single sections
     master_parsefun_code = generate_master_parsefun("parse_endf_istream", recipefuns)
     # the mismatches tolerated are appended to the list given as the
     # argument `tolerated` (see cpp_report_tolerated)
-    parsefun_wrappers_code1 += generate_cpp_parsefun_wrappers_string(
+    parsefun_wrappers_code1 = generate_cpp_parsefun_wrappers_string(
         ["parse_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),
         ("ParsingOptions", "parse_opts"),
         report_tolerated=True,
     )
-    parsefun_wrappers_code2 += generate_cpp_parsefun_wrappers_file(
+    parsefun_wrappers_code2 = generate_cpp_parsefun_wrappers_file(
         ["parse_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),

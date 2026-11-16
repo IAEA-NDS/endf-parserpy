@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/08
+# Last modified:   2026/11/16
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -785,7 +785,6 @@ def generate_all_cpp_writefuns_code(recipes, module_name, shared_registry=None):
     """
     dedup = shared_registry is not None
     writefuns_code = ""
-    wrapper_entries = []
     recipefuns = {}
     forward_decls_seen = set()
     if dedup:
@@ -816,7 +815,6 @@ def generate_all_cpp_writefuns_code(recipes, module_name, shared_registry=None):
             print(f"MF: {mf}")
             outer_name = mf_mt_writefun_name(mf, None)
             inner_name = _route(mt_recipes, outer_name, mf=mf, mt_=None)
-            wrapper_entries.append((outer_name, inner_name))
             recipefuns[mf] = inner_name
             continue
         for mt, recipe in mt_recipes.items():
@@ -824,25 +822,20 @@ def generate_all_cpp_writefuns_code(recipes, module_name, shared_registry=None):
             outer_name = mf_mt_writefun_name(mf, mt)
             mt_ = mt if mt != -1 else None
             inner_name = _route(recipe, outer_name, mf=mf, mt_=mt_)
-            wrapper_entries.append((outer_name, inner_name))
             curdic = recipefuns.setdefault(mf, {})
             curdic[mt] = inner_name
 
-    writefun_wrappers_code1 = generate_cpp_writefun_wrappers_string(
-        wrapper_entries, ("WritingOptions", "write_opts")
-    )
-    writefun_wrappers_code2 = generate_cpp_writefun_wrappers_file(
-        wrapper_entries, ("WritingOptions", "write_opts")
-    )
-    # special case for the master function calling the other mf/mt parser funs
+    # the master function calling the per-(mf, mt) write functions; only
+    # it is called from Python (via the wrappers below), so no wrappers
+    # are generated for the write functions of the single sections
     master_writefun_code = generate_master_writefun("write_endf_ostream", recipefuns)
-    writefun_wrappers_code1 += generate_cpp_writefun_wrappers_string(
+    writefun_wrappers_code1 = generate_cpp_writefun_wrappers_string(
         ["write_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),
         ("WritingOptions", "write_opts"),
     )
-    writefun_wrappers_code2 += generate_cpp_writefun_wrappers_file(
+    writefun_wrappers_code2 = generate_cpp_writefun_wrappers_file(
         ["write_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),

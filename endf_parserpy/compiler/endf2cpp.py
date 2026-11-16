@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2026/05/13
+# Last modified:   2026/11/16
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -21,9 +21,10 @@ def generate_cpp_module_code(recipes, module_name, shared_registry=None):
     When ``shared_registry`` is provided, the heavy per-(mf, mt) parse and
     write function bodies are routed into the registry under canonical,
     recipe-hash-derived names, and the per-flavor source emits only
-    forward declarations plus the small wrappers, dispatcher, and
-    PYBIND11_MODULE block. The caller is responsible for emitting the
-    accumulated registry as a single ``_shared.cpp`` compiled once.
+    forward declarations plus the dispatchers, the wrappers called from
+    Python and the PYBIND11_MODULE block. The caller is responsible for
+    emitting the accumulated registry as the shared translation unit(s)
+    compiled once (see :func:`generate_shared_cpp_code`).
     """
     parsefuns_code, parsefuns_pybind_glue = generate_all_cpp_parsefuns_code(
         recipes, module_name, shared_registry=shared_registry

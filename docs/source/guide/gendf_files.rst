@@ -24,8 +24,14 @@ flavor follows the records as GROUPR and GAMINR write them
 (subroutines ``groupr`` and ``displa`` of ``groupr.f90``, ``gaminr``
 and ``dspla`` of ``gaminr.f90``).
 
-The ``gendf`` flavor has no :ref:`layout version <layout_versions_sec>`
-yet: its layout may still change in a later release.
+.. note::
+
+   The ``gendf`` flavor is **experimental**. It has no
+   :ref:`layout version <layout_versions_sec>` yet, and its layout may
+   still change in a later release. In particular, the way a whole
+   material is represented, with its sections in file order and
+   repeated MF/MT sections, is still being designed. The layout of the
+   individual sections, described below, is not expected to change.
 
 Reading a GENDF tape
 --------------------

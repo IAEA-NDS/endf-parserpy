@@ -240,7 +240,7 @@ def test_versions_are_aliases():
 
 
 def test_list_endf_flavors_keeps_the_flavors():
-    flavors = ("endf6-ext", "endf6", "jendl", "pendf", "errorr", "test")
+    flavors = ("endf6-ext", "endf6", "jendl", "pendf", "errorr", "gendf", "test")
     assert list_endf_build_targets() == flavors
     assert list_endf_flavors()[: len(flavors)] == flavors
     assert set(list_endf_flavors()) == set(flavors) | {"endf6-ext@0.19", "endf6@0.19"}
@@ -341,6 +341,7 @@ def test_build_has_no_module_for_aliases():
         "endf_parserpy.cpp_parsers.jendl",
         "endf_parserpy.cpp_parsers.pendf",
         "endf_parserpy.cpp_parsers.errorr",
+        "endf_parserpy.cpp_parsers.gendf",
         "endf_parserpy.cpp_parsers.test",
     ]
 

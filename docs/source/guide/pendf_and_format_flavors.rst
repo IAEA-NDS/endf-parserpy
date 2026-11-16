@@ -34,7 +34,7 @@ Available ENDF flavors can be queried by
 
    from endf_parserpy.endf_recipes import list_endf_flavors
    list_endf_flavors()
-   # ('endf6-ext', 'endf6', 'jendl', 'pendf', 'errorr', 'test',
+   # ('endf6-ext', 'endf6', 'jendl', 'pendf', 'errorr', 'gendf', 'test',
    #  'endf6-ext@0.19', 'endf6@0.19')
 
 The default is ``endf6-ext``, which is a syntactical superset
@@ -45,6 +45,8 @@ later release changes it. The ``test`` flavor contains recipes for the tests of
 the package. The ``errorr`` flavor
 can be used to read files produced by the NJOY2016 ERRORR module
 and, as for all other flavors, to modify and create them.
+The ``gendf`` flavor reads the multigroup (GENDF) tapes of the
+NJOY2016 modules GROUPR and GAMINR, see :doc:`GENDF files <gendf_files>`.
 
 To add a flavor of your own, e.g. with a changed recipe for one
 section, see :ref:`adding_recipe_flavor_sec`.

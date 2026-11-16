@@ -126,7 +126,7 @@ def test_per_field_form_unchanged(flavor, monkeypatch):
             assert strided_flag == (strided == 1)
             nstrided += strided
         nbulk += len(bulks)
-    if flavor != "errorr":
+    if flavor not in ("errorr", "gendf"):
         assert nbulk > nstrided > 0
 
 
@@ -290,6 +290,21 @@ GOLDEN_COUNTS = {
         "row_check": 0,
         "reasons": {},
         "type_checks_removed": 43,
+        "type_checks_kept": 0,
+    },
+    "gendf": {
+        "bulk": 13,
+        "strided": 13,
+        "list": 4,
+        "block": 12,
+        "single": 0,
+        "check": 0,
+        "rows": 0,
+        "row_copies": 0,
+        "row_single": 0,
+        "row_check": 0,
+        "reasons": {},
+        "type_checks_removed": 298,
         "type_checks_kept": 0,
     },
     "test": {

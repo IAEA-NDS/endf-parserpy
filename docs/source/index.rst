@@ -23,6 +23,7 @@
    guide/endf_plumbing
    guide/creation_endf_scratch
    guide/pendf_and_format_flavors
+   guide/gendf_files
    guide/layout_versions
    guide/format_extensions
    guide/working_with_legacy_formats

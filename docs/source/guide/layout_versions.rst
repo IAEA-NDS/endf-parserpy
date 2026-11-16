@@ -81,5 +81,5 @@ Available layout versions
      - 0.19.0
      - First layout version of ``endf6``: the layout of the release 0.19.
 
-The other flavors (``jendl``, ``pendf``, ``errorr``) have no layout
+The other flavors (``jendl``, ``pendf``, ``errorr``, ``gendf``) have no layout
 versions yet.

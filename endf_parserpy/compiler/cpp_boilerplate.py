@@ -90,6 +90,23 @@ def generate_cmake_content(module_name):
     code = cpp.indent_code(
         f"""
         cmake_minimum_required(VERSION 3.12)
+
+        # With GCC and Clang, Release builds start at -O1 (instead of
+        # CMake's -O3), as the package build does: much faster to compile.
+        # CMake appends its own -O3 to an init value set here, so the
+        # value is set in a file that CMake reads once the compiler is
+        # known, before the flags are stored in the cache. MSVC keeps
+        # its defaults (/O2). Another level can be chosen with, e.g.,
+        #   cmake -DCMAKE_CXX_FLAGS_RELEASE="-O3 -DNDEBUG" ..
+        file(WRITE "${{CMAKE_BINARY_DIR}}/release_flags.cmake" [=[
+        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"
+           AND NOT CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
+          set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O1 -DNDEBUG")
+        endif()
+        ]=])
+        set(CMAKE_USER_MAKE_RULES_OVERRIDE_CXX
+            "${{CMAKE_BINARY_DIR}}/release_flags.cmake")
+
         project({module_name})
 
         # Optimize unless another build type is given

@@ -50,3 +50,10 @@ def test_numpy_array_type_without_numpy(monkeypatch, select):
         warnings.simplefilter("error")
         with pytest.raises(ImportError, match="requires the numpy package"):
             EndfParserFactory.create(select=select, array_type="numpy")
+
+
+def test_unknown_endf_format_with_fastest():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with pytest.raises(TypeError, match="format specification"):
+            EndfParserFactory.create(select="fastest", endf_format="no-such-flavor")

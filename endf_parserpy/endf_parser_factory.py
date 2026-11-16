@@ -15,6 +15,7 @@ import warnings
 from .interpreter.endf_parser import EndfParserPy
 from .cpp_parsers.endf_parser_cpp import EndfParserCpp
 from .endf_parser_base import _check_numpy_available
+from .endf_recipes import get_recipe_dict
 
 
 def _check_param(
@@ -170,6 +171,9 @@ class EndfParserFactory:
             ):
                 epf.python_compatible_args(parser_args, do_raise=True)
                 return epf.get_python_parser(parser_args)
+            # An unknown flavor raises here, as in the Python parser,
+            # instead of being taken for an unavailable C++ parser.
+            get_recipe_dict(endf_format)
             try:
                 return epf.get_cpp_parser(parser_args)
             except ImportError:

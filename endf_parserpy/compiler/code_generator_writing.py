@@ -842,17 +842,15 @@ def generate_all_cpp_writefuns_code(recipes, module_name, shared_registry=None):
         ("WritingOptions", "write_opts"),
     )
     pybind_glue = ""
-    pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
+    pybind_glue += cpp_boilerplate.register_cpp_writefuns(
         ["write_endf"],
-        module_name,
         'py::arg("endf_dict")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
         'py::arg("write_opts") = default_writing_options()',
     )
-    pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
+    pybind_glue += cpp_boilerplate.register_cpp_writefuns(
         ["write_endf_file"],
-        module_name,
         'py::arg("filename")',
         'py::arg("endf_dict")',
         'py::arg("exclude") = py::none()',

@@ -74,16 +74,21 @@ def register_pybind_module(module_name, inner_code):
     return code
 
 
-def register_cpp_parsefuns(parsefuns, module_name, *extra_args):
+def _register_cpp_funs(funs, docstring, extra_args):
     args_str = ", ".join(arg for arg in extra_args)
     args_str = ", " + args_str if args_str != "" else args_str
     code = ""
-    for parsefun in parsefuns:
-        curcode = cpp.statement(
-            f'm.def("{parsefun}", &{parsefun}, "parsing function"{args_str})'
-        )
-        code += curcode
+    for fun in funs:
+        code += cpp.statement(f'm.def("{fun}", &{fun}, "{docstring}"{args_str})')
     return code
+
+
+def register_cpp_parsefuns(parsefuns, *extra_args):
+    return _register_cpp_funs(parsefuns, "parsing function", extra_args)
+
+
+def register_cpp_writefuns(writefuns, *extra_args):
+    return _register_cpp_funs(writefuns, "writing function", extra_args)
 
 
 def generate_cmake_content(module_name):

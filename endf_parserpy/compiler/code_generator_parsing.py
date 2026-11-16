@@ -874,7 +874,6 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
     pybind_glue = ""
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
         ["parse_endf"],
-        module_name,
         'py::arg("cont")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',
@@ -883,7 +882,6 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
     )
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
         ["parse_endf_file"],
-        module_name,
         'py::arg("filename")',
         'py::arg("exclude") = py::none()',
         'py::arg("include") = py::none()',

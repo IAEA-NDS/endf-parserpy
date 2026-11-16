@@ -177,7 +177,8 @@ def test_sections_round_trip(filename, cls):
 @pytest.mark.parametrize("cls", PARSERS)
 def test_writing_from_values(cls):
     # without preserve_value_strings, prefer_noexp and standard_form_on_tie
-    # give the number forms of GROUPR, including its nine-digit form
+    # give the number forms of GROUPR for the sections of this file,
+    # including its nine-digit form (but not where it ends in zeros)
     parser = cls(endf_format="gendf", prefer_noexp=True, standard_form_on_tie=True)
     for tpid, _, mat, mf, mt, lines in _sections("u238_special_records.gendf"):
         written = parser.write(parser.parse(_tape(tpid, mat, mf, mt, lines)))

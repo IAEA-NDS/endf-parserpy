@@ -212,7 +212,8 @@ Limitations
   several sections with the same MF/MT in a material. Such sections can
   only be read one by one, as a single section.
 - To write the numbers in the forms of NJOY, parse with
-  ``preserve_value_strings=True``, or write with ``prefer_noexp=True``
-  and ``standard_form_on_tie=True``. The latter gives the forms of
-  GROUPR, but not all forms of GAMINR, which keeps trailing zeros in
-  its nine-digit form.
+  ``preserve_value_strings=True``. Writing from the values with
+  ``prefer_noexp=True`` and ``standard_form_on_tie=True`` gives the
+  forms of NJOY in most fields, but drops the trailing zeros that NJOY
+  keeps in its nine-digit form (``1.4400001`` instead of
+  ``1.44000010``).

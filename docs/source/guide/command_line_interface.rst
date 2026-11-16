@@ -155,7 +155,7 @@ run
 
 The available format flavors are ``endf6-ext`` (default), ``endf6``, ``pendf``,
 ``jendl`` and ``errorr``, and the :ref:`layout versions <layout_versions_sec>`
-``endf6-ext-v1`` and ``endf6-v1``.
+``endf6-ext@0.19`` and ``endf6@0.19``.
 
 Unlike the other subcommands, ``endf-cli validate`` applies strict defaults to the
 parsing-leniency flags out of the box. Specifically, ``ignore_number_mismatch``,

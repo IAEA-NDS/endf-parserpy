@@ -18,8 +18,8 @@ To keep the layout that your code was developed against, pass a
 .. code:: python
 
    from endf_parserpy import EndfParserCpp, EndfParserPy
-   parser = EndfParserCpp(endf_format='endf6-ext-v1')
-   parser = EndfParserPy(endf_format='endf6-ext-v1')
+   parser = EndfParserCpp(endf_format='endf6-ext@0.19')
+   parser = EndfParserPy(endf_format='endf6-ext@0.19')
 
 The same names can be given to :class:`~endf_parserpy.EndfParserFactory`
 and to the ``--endf_format`` option of the
@@ -34,13 +34,15 @@ pipeline, that should continue to work after an upgrade.
 Naming
 ------
 
-A layout version is named ``<flavor>-v<N>`` with a positive integer
-``N``, e.g. ``endf6-ext-v1`` or ``endf6-v1``. ``N`` is increased only
-by a change of the layout. A change of the recipes that keeps the
-layout, e.g. one that accepts more deviations from the ENDF-6 format
-found in nuclear data libraries, does not increase it.
+A layout version is named ``<flavor>@<X.Y>`` after the release
+``X.Y`` of ``endf-parserpy`` whose layout it keeps, e.g.
+``endf6-ext@0.19`` or ``endf6@0.19``. Every release adds the layout
+versions of its own number, so the version to pin is the release your
+code was developed with. Layout versions exist from 0.19 on.
 A layout version does not pin the release of ``endf-parserpy``: fixes
-of the parsers reach all versions.
+of the parsers reach all versions, and a change of the recipes that
+keeps the layout, e.g. one that accepts more deviations from the
+ENDF-6 format found in nuclear data libraries, reaches them as well.
 
 The layout version that a flavor currently gives, i.e. the name to
 pin, and the flavor whose recipes a name stands for can be queried:
@@ -49,16 +51,17 @@ pin, and the flavor whose recipes a name stands for can be queried:
 
    from endf_parserpy.endf_recipes import get_layout_version, resolve_endf_flavor
    get_layout_version('endf6-ext')
-   # 'endf6-ext-v1'
-   resolve_endf_flavor('endf6-ext-v1')
+   # 'endf6-ext@0.19'
+   resolve_endf_flavor('endf6-ext@0.19')
    # 'endf6-ext'
 
 As long as a layout version gives the same dictionaries as the latest
 flavor, it uses the recipes and the compiled C++ module of the flavor;
-it adds nothing to the installation. When a later release changes the
-layout of the flavor, the version gets a copy of the previous recipes,
-and the flavor and a new version with the next number move on to the
-new layout.
+it adds nothing to the installation. Several releases with the same
+layout share it in this way. When a later release changes the layout
+of the flavor, the versions of the earlier releases get one copy of the
+previous recipes, and the flavor and the version of the new release
+move on to the new layout.
 
 
 Available layout versions
@@ -71,12 +74,12 @@ Available layout versions
    * - Version
      - Introduced in
      - Change relative to the previous version
-   * - ``endf6-ext-v1``
+   * - ``endf6-ext@0.19``
      - 0.19.0
-     - First layout version of ``endf6-ext``: the layout of this release.
-   * - ``endf6-v1``
+     - First layout version of ``endf6-ext``: the layout of the release 0.19.
+   * - ``endf6@0.19``
      - 0.19.0
-     - First layout version of ``endf6``: the layout of this release.
+     - First layout version of ``endf6``: the layout of the release 0.19.
 
 The other flavors (``jendl``, ``pendf``, ``errorr``) have no layout
 versions yet.

@@ -4,4 +4,5 @@ from .catalogue import (
     list_endf_build_targets,
     resolve_endf_flavor,
     get_layout_version,
+    cpp_module_basename,
 )

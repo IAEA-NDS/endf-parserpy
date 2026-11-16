@@ -407,7 +407,7 @@ class EndfParserPy(EndfParserBase):
             Other choices are `endf6` for strict compliance with the
             ENDF-6 formats manual and `jendl` with JENDL specific
             conventions, which are also implemented in `endf6-ext`.
-            A layout version, e.g. `endf6-ext-v1`, keeps the layout of
+            A layout version, e.g. `endf6-ext@0.19`, keeps the layout of
             the dictionaries of a flavor when the flavor changes it
             (see :ref:`layout_versions_sec`).
         recipes : dict_like

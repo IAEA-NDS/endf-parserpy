@@ -35,13 +35,13 @@ Available ENDF flavors can be queried by
    from endf_parserpy.endf_recipes import list_endf_flavors
    list_endf_flavors()
    # ('endf6-ext', 'endf6', 'jendl', 'pendf', 'errorr', 'test',
-   #  'endf6-ext-v1', 'endf6-v1')
+   #  'endf6-ext@0.19', 'endf6@0.19')
 
 The default is ``endf6-ext``, which is a syntactical superset
 of the ``endf6`` and ``jendl`` flavor. The names ending in
-``-v1`` are :ref:`layout versions <layout_versions_sec>`, which keep
-the layout of the dictionaries of a flavor when a later release
-changes it. The ``test`` flavor contains recipes for the tests of
+``@0.19`` are :ref:`layout versions <layout_versions_sec>`, which keep
+the layout of the dictionaries of a flavor in the release 0.19 when a
+later release changes it. The ``test`` flavor contains recipes for the tests of
 the package. The ``errorr`` flavor
 can be used to read files produced by the NJOY2016 ERRORR module
 and, as for all other flavors, to modify and create them.

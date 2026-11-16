@@ -23,39 +23,49 @@ _FORMAT_DICT = {
 # alias maps a name to a build target or to another alias. It has no
 # recipes and no C++ module of its own.
 #
-# A layout version `<flavor>-v<N>` pins the layout of the dictionaries
-# produced for a flavor: the keys, their nesting, the shape of the arrays
-# and the meaning of the values. N is increased only by a change of this
-# layout, not by a fix of a recipe that keeps it. The bare name of the
-# flavor is always the latest version. The checksums of the recipes of
-# every version are stored in tests/test_layout_versions.py.
+# A layout version `<flavor>@<X.Y>` pins the layout of the dictionaries
+# that the flavor gives in the release X.Y of endf-parserpy: the keys,
+# their nesting, the shape of the arrays and the meaning of the values.
+# The bare name of the flavor is always the latest layout. Every release
+# X.Y adds `<flavor>@<X.Y>` for every flavor with layout versions, as an
+# alias of the flavor. The checksums of the recipes of every version are
+# stored in tests/test_layout_versions.py.
 #
 # Procedure when a change of the recipes of a flavor changes its layout
-# (copy-on-write), e.g. a change of the flavor `endf6-ext` whose latest
-# version is `endf6-ext-v1`:
+# (copy-on-write), e.g. a change of `endf6-ext` in the release 0.21 whose
+# latest version is `endf6-ext@0.20`:
 #
-# 1. Create the folder `endf6_ext_v1` of the frozen version with copies
+# 1. Create the folder `endf6_ext_0_20` of the frozen version with copies
 #    of the current (unchanged) recipes of all MF/MT sections that the
 #    change affects. Its `__init__.py` derives the recipe dictionary from
 #    the flavor for the rest, as `jendl` does from `endf6`, and replaces
 #    the recipes of these sections by the copies.
-# 2. Move `endf6-ext-v1` from `_ALIASES` to `_FORMAT_DICT`, which makes
-#    it a build target with its own C++ module.
+# 2. Move `endf6-ext@0.20` from `_ALIASES` to `_FORMAT_DICT`, which makes
+#    it a build target with its own C++ module, and let the earlier
+#    versions with the same layout, e.g. `endf6-ext@0.19`, refer to it.
 # 3. Change the recipes of `endf6-ext` and add the alias
-#    `"endf6-ext-v2": "endf6-ext"`.
-# 4. Store the checksum of `endf6-ext-v2` in the test; the one of
-#    `endf6-ext-v1` stays as it is. Add the version to the table of
+#    `"endf6-ext@0.21": "endf6-ext"` with the release.
+# 4. Store the checksum of `endf6-ext@0.21` in the test; those of the
+#    earlier versions stay as they are. Add the version to the table of
 #    layout versions in the docs and to the CHANGELOG.
 #
-# Aliases that resolve to the changed flavor, e.g. `endf6-v1` -> `endf6`
-# for a change of `endf6`, are treated in the same way.
+# Aliases that resolve to the changed flavor, e.g. `endf6@0.20` ->
+# `endf6` for a change of `endf6`, are treated in the same way.
 _ALIASES = {
-    "endf6-ext-v1": "endf6-ext",
-    "endf6-v1": "endf6",
+    "endf6-ext@0.19": "endf6-ext",
+    "endf6@0.19": "endf6",
 }
 
 
-_LAYOUT_VERSION_RE = re.compile(r"^(?P<flavor>.+)-v(?P<num>[1-9][0-9]*)$")
+_LAYOUT_VERSION_RE = re.compile(
+    r"^(?P<flavor>[^@]+)@(?P<release>(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))$"
+)
+
+
+def _release_key(name):
+    """The release of a layout version as a tuple of integers."""
+    release = _LAYOUT_VERSION_RE.match(name).group("release")
+    return tuple(int(part) for part in release.split("."))
 
 
 def _resolve_aliases(targets, aliases):
@@ -79,7 +89,8 @@ def _resolve_aliases(targets, aliases):
     ValueError
         If an alias has the name of a build target, refers to a name
         that is neither a build target nor an alias, or is part of a
-        cycle of aliases.
+        cycle of aliases, or if a layout version `<flavor>@<X.Y>` stands
+        for another flavor.
     """
     resolved = {name: name for name in targets}
     for name in aliases:
@@ -100,6 +111,19 @@ def _resolve_aliases(targets, aliases):
             chain.append(current)
             current = aliases[current]
         resolved[name] = current
+    for name in list(targets) + list(aliases):
+        m = _LAYOUT_VERSION_RE.match(name)
+        if m is None:
+            continue
+        target = resolved[name]
+        target_m = _LAYOUT_VERSION_RE.match(target)
+        target_flavor = target_m.group("flavor") if target_m else target
+        if target_flavor != m.group("flavor"):
+            raise ValueError(
+                f"the layout version `{name}` stands for `{target}`, "
+                f"which is neither `{m.group('flavor')}` nor one of its "
+                "layout versions"
+            )
     return resolved
 
 
@@ -109,7 +133,7 @@ _RESOLVED = _resolve_aliases(_FORMAT_DICT, _ALIASES)
 def resolve_endf_flavor(format_spec):
     """Return the name of the flavor whose recipes a name stands for.
 
-    For a layout version that is an alias, e.g. ``endf6-ext-v1`` as long
+    For a layout version that is an alias, e.g. ``endf6-ext@0.19`` as long
     as it has the layout of the latest ``endf6-ext``, this is the name of
     the flavor (``endf6-ext``); for the name of a flavor with recipes of
     its own, the name itself.
@@ -137,8 +161,10 @@ def get_layout_version(format_spec):
 
     The name of the layout version that can be passed as ``endf_format``
     to keep the layout of the dictionaries that ``format_spec`` gives
-    now, e.g. ``endf6-ext-v1`` for ``endf6-ext``, or ``None`` if the
-    flavor has no layout versions. A layout version is returned as is.
+    now, e.g. ``endf6-ext@0.19`` for ``endf6-ext``, or ``None`` if the
+    flavor has no layout versions. If several versions have this layout,
+    the one of the latest release is returned. A layout version is
+    returned as is.
 
     Parameters
     ----------
@@ -157,7 +183,7 @@ def get_layout_version(format_spec):
     for name, name_target in _RESOLVED.items():
         m = _LAYOUT_VERSION_RE.match(name)
         if m and m.group("flavor") == format_spec and name_target == target:
-            versions.append((int(m.group("num")), name))
+            versions.append((_release_key(name), name))
     return max(versions)[1] if versions else None
 
 
@@ -173,6 +199,17 @@ def list_endf_flavors():
     versions and other aliases.
     """
     return tuple(_RESOLVED.keys())
+
+
+def cpp_module_basename(format_spec):
+    """Return the name of the C++ module of a build target.
+
+    The characters ``-``, ``@`` and ``.``, which a Python module name
+    cannot contain, are replaced by ``_``, e.g. ``endf6_ext`` for
+    ``endf6-ext`` and ``endf6_ext_0_20`` for a frozen layout version
+    ``endf6-ext@0.20``.
+    """
+    return format_spec.replace("-", "_").replace("@", "_").replace(".", "_")
 
 
 def list_endf_build_targets():

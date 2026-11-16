@@ -12,7 +12,11 @@
 import gc
 import importlib
 import os
-from endf_parserpy.endf_recipes import list_endf_flavors, resolve_endf_flavor
+from endf_parserpy.endf_recipes import (
+    cpp_module_basename,
+    list_endf_flavors,
+    resolve_endf_flavor,
+)
 from endf_parserpy.utils.accessories import EndfDict
 from endf_parserpy.utils.tolerated_mismatches import (
     BODY_FIELD,
@@ -268,7 +272,7 @@ class EndfParserCpp(EndfParserBase):
             Other choices are `endf6` for strict compliance with the
             ENDF-6 formats manual and `jendl` with JENDL specific
             conventions, which are also implemented in `endf6-ext`.
-            A layout version, e.g. `endf6-ext-v1`, keeps the layout of
+            A layout version, e.g. `endf6-ext@0.19`, keeps the layout of
             the dictionaries of a flavor when the flavor changes it
             (see :ref:`layout_versions_sec`).
         validate_control_records : bool
@@ -327,7 +331,7 @@ class EndfParserCpp(EndfParserBase):
             resolved_format = resolve_endf_flavor(endf_format)
         else:
             resolved_format = endf_format
-        module_name = f"{subpackage}.{resolved_format.replace('-', '_')}"
+        module_name = f"{subpackage}.{cpp_module_basename(resolved_format)}"
         # import the parsing functions
         try:
             self._parse_endf = self._dynamic_import(module_name, "parse_endf")

@@ -13,6 +13,7 @@ import os
 from endf_parserpy.endf_recipes import (
     get_recipe_dict,
     list_endf_build_targets,
+    cpp_module_basename,
 )
 from .endf2cpp import generate_cpp_module_code, generate_shared_cpp_code
 from .cpp_boilerplate import generate_cmake_content
@@ -106,7 +107,7 @@ def _prepare_cpp_parsers_subpackage(
     endf_flavors = list_endf_build_targets()
     script_dir = os.path.dirname(os.path.abspath(__file__))
     cpp_parsers_dir = os.path.join(script_dir, "../cpp_parsers")
-    flavor_filenames = [f"{f.replace('-', '_')}.cpp" for f in endf_flavors]
+    flavor_filenames = [f"{cpp_module_basename(f)}.cpp" for f in endf_flavors]
     filenames = list(flavor_filenames)
     if dedup:
         if num_shared_chunks == 1:
@@ -131,7 +132,7 @@ def _prepare_cpp_parsers_subpackage(
     shared_registry = {} if dedup else None
     for endf_flavor, module_file in zip(endf_flavors, flavor_filenames):
         print(f"---- compilation of {endf_flavor} ----")
-        module_name = endf_flavor.replace("-", "_")
+        module_name = cpp_module_basename(endf_flavor)
         cpp_module_path = os.path.join(cpp_parsers_dir, module_file)
         if not overwrite and os.path.exists(cpp_module_path):
             raise FileExistsError(f"The module {cpp_module_path} exists already!")

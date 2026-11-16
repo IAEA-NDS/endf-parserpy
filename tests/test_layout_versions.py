@@ -11,7 +11,7 @@
 
 """Layout versions of the flavors and the guard against changing them.
 
-A layout version, e.g. `endf6-ext-v1`, pins the layout of the
+A layout version, e.g. `endf6-ext@0.19`, pins the layout of the
 dictionaries of a flavor. As long as the flavor keeps this layout, the
 version is an alias of the flavor, without recipes or a C++ module of
 its own (see endf_recipes/catalogue.py).
@@ -35,6 +35,7 @@ import pytest
 
 from endf_parserpy import EndfParserCpp, EndfParserPy
 from endf_parserpy.endf_recipes import (
+    cpp_module_basename,
     get_layout_version,
     get_recipe_dict,
     list_endf_build_targets,
@@ -54,8 +55,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # The checksums of the recipes of the layout versions (see the messages
 # of _guard_report for what to do if one of them changes).
 LAYOUT_CHECKSUMS = {
-    "endf6-ext-v1": "485ba0875adc6a983c6158c55b67f7a89423e4706f89f5bae1a2185ab8882e7c",
-    "endf6-v1": "a8d0b32409a04bfb1e30227e803a4ea77a356ef10a7db1a121ebb7090afee3c8",
+    "endf6-ext@0.19": "485ba0875adc6a983c6158c55b67f7a89423e4706f89f5bae1a2185ab8882e7c",
+    "endf6@0.19": "a8d0b32409a04bfb1e30227e803a4ea77a356ef10a7db1a121ebb7090afee3c8",
 }
 
 # Whether a recipe fix that keeps the layout may also be applied to a
@@ -157,7 +158,7 @@ def _guard_report(flavors, targets, checksums, policy):
                 f"add '{name}': '{found}' to LAYOUT_CHECKSUMS."
             )
         elif stored != found:
-            frozen = target == name
+            frozen = _LAYOUT_VERSION_RE.match(target) is not None
             messages.append(
                 _changed_message(name, target, stored, found, frozen, policy)
             )
@@ -229,57 +230,92 @@ def test_checksum_depends_on_sections():
 
 
 def test_versions_are_aliases():
-    for name in ("endf6-ext-v1", "endf6-v1"):
+    for name in ("endf6-ext@0.19", "endf6@0.19"):
         assert name in list_endf_flavors()
         assert name not in list_endf_build_targets()
-    assert resolve_endf_flavor("endf6-ext-v1") == "endf6-ext"
-    assert resolve_endf_flavor("endf6-v1") == "endf6"
-    assert get_recipe_dict("endf6-ext-v1") is get_recipe_dict("endf6-ext")
-    assert get_recipe_dict("endf6-v1") is get_recipe_dict("endf6")
+    assert resolve_endf_flavor("endf6-ext@0.19") == "endf6-ext"
+    assert resolve_endf_flavor("endf6@0.19") == "endf6"
+    assert get_recipe_dict("endf6-ext@0.19") is get_recipe_dict("endf6-ext")
+    assert get_recipe_dict("endf6@0.19") is get_recipe_dict("endf6")
 
 
 def test_list_endf_flavors_keeps_the_flavors():
     flavors = ("endf6-ext", "endf6", "jendl", "pendf", "errorr", "test")
     assert list_endf_build_targets() == flavors
     assert list_endf_flavors()[: len(flavors)] == flavors
-    assert set(list_endf_flavors()) == set(flavors) | {"endf6-ext-v1", "endf6-v1"}
+    assert set(list_endf_flavors()) == set(flavors) | {"endf6-ext@0.19", "endf6@0.19"}
     for name in flavors:
         assert resolve_endf_flavor(name) == name
 
 
 def test_get_layout_version():
-    assert get_layout_version("endf6-ext") == "endf6-ext-v1"
-    assert get_layout_version("endf6") == "endf6-v1"
-    assert get_layout_version("endf6-ext-v1") == "endf6-ext-v1"
-    assert get_layout_version("endf6-v1") == "endf6-v1"
+    assert get_layout_version("endf6-ext") == "endf6-ext@0.19"
+    assert get_layout_version("endf6") == "endf6@0.19"
+    assert get_layout_version("endf6-ext@0.19") == "endf6-ext@0.19"
+    assert get_layout_version("endf6@0.19") == "endf6@0.19"
     assert get_layout_version("jendl") is None
     assert get_layout_version("test") is None
 
 
+def test_get_layout_version_latest_release(monkeypatch):
+    resolved = dict(
+        catalogue._RESOLVED,
+        **{"endf6-ext@0.20": "endf6-ext", "endf6-ext@0.9": "endf6-ext"},
+    )
+    monkeypatch.setattr(catalogue, "_RESOLVED", resolved)
+    assert get_layout_version("endf6-ext") == "endf6-ext@0.20"
+    assert get_layout_version("endf6-ext@0.9") == "endf6-ext@0.9"
+
+
+@pytest.mark.parametrize(
+    "name, match",
+    [
+        ("endf6@0.19", True),
+        ("endf6-ext@1.0", True),
+        ("endf6@v1", False),
+        ("endf6@0.19.1", False),
+        ("endf6@0.019", False),
+        ("endf6-v1", False),
+    ],
+)
+def test_layout_version_names(name, match):
+    assert (_LAYOUT_VERSION_RE.match(name) is not None) == match
+
+
+def test_cpp_module_basename():
+    assert cpp_module_basename("endf6-ext") == "endf6_ext"
+    assert cpp_module_basename("endf6-ext@0.20") == "endf6_ext_0_20"
+    assert cpp_module_basename("endf6") == "endf6"
+
+
 def test_unknown_name():
-    with pytest.raises(TypeError, match="`endf6-ext-v99`"):
-        get_recipe_dict("endf6-ext-v99")
-    with pytest.raises(TypeError, match="`endf6-ext-v99`"):
-        resolve_endf_flavor("endf6-ext-v99")
+    with pytest.raises(TypeError, match="`endf6-ext@9.99`"):
+        get_recipe_dict("endf6-ext@9.99")
+    with pytest.raises(TypeError, match="`endf6-ext@9.99`"):
+        resolve_endf_flavor("endf6-ext@9.99")
 
 
 def test_resolve_aliases_chain():
     targets = {"a": {}, "b": {}}
-    aliases = {"a-v1": "a", "a-v2": "a-v1", "b-v1": "b"}
+    aliases = {"a@0.19": "a", "a@0.20": "a@0.19", "b@0.19": "b"}
     resolved = _resolve_aliases(targets, aliases)
-    assert resolved == {"a": "a", "b": "b", "a-v1": "a", "a-v2": "a", "b-v1": "b"}
-    assert list(resolved) == ["a", "b", "a-v1", "a-v2", "b-v1"]
+    assert resolved == {"a": "a", "b": "b", "a@0.19": "a", "a@0.20": "a", "b@0.19": "b"}
+    assert list(resolved) == ["a", "b", "a@0.19", "a@0.20", "b@0.19"]
 
 
 @pytest.mark.parametrize(
     "aliases, message",
     [
-        ({"a-v1": "x"}, "`a-v1` refers to `x`"),
-        ({"a-v1": "a-v2", "a-v2": "x"}, "`a-v2` refers to `x`"),
-        ({"a-v1": "a-v1"}, "cycle of aliases: a-v1 -> a-v1"),
-        ({"a-v1": "a-v2", "a-v2": "a-v1"}, "cycle of aliases: a-v1 -> a-v2 -> a-v1"),
-        ({"x-v1": "a-v1", "a-v1": "a-v2", "a-v2": "a-v1"}, "cycle of aliases"),
+        ({"a@0.1": "x"}, "`a@0.1` refers to `x`"),
+        ({"a@0.1": "a@0.2", "a@0.2": "x"}, "`a@0.2` refers to `x`"),
+        ({"a@0.1": "a@0.1"}, "cycle of aliases: a@0.1 -> a@0.1"),
+        (
+            {"a@0.1": "a@0.2", "a@0.2": "a@0.1"},
+            "cycle of aliases: a@0.1 -> a@0.2 -> a@0.1",
+        ),
+        ({"x@0.1": "a@0.1", "a@0.1": "a@0.2", "a@0.2": "a@0.1"}, "cycle of aliases"),
         ({"a": "a"}, "`a` is also the name of a build target"),
+        ({"b@0.1": "a"}, "the layout version `b@0.1` stands for `a`"),
     ],
 )
 def test_resolve_aliases_rejects(aliases, message):
@@ -313,10 +349,10 @@ def test_build_has_no_module_for_aliases():
 
 
 ALIAS_CASES = [
-    ("endf6-ext-v1", "endf6-ext", "dec-094_Pu_244.endf"),
-    ("endf6-ext-v1", "endf6-ext", "tsl_Al.endf"),
-    ("endf6-v1", "endf6", "dec-094_Pu_244.endf"),
-    ("endf6-v1", "endf6", "tsl_Al.endf"),
+    ("endf6-ext@0.19", "endf6-ext", "dec-094_Pu_244.endf"),
+    ("endf6-ext@0.19", "endf6-ext", "tsl_Al.endf"),
+    ("endf6@0.19", "endf6", "dec-094_Pu_244.endf"),
+    ("endf6@0.19", "endf6", "tsl_Al.endf"),
 ]
 
 
@@ -329,13 +365,13 @@ def test_python_parser_with_alias(version, flavor, filename):
 
 
 def _cpp_module(flavor):
-    name = "endf_parserpy.cpp_parsers." + flavor.replace("-", "_")
+    name = "endf_parserpy.cpp_parsers." + cpp_module_basename(flavor)
     return pytest.importorskip(name)
 
 
 @pytest.mark.parametrize(
     "version, flavor, filename",
-    ALIAS_CASES + [("endf6-ext-v1", "endf6-ext", "n_2925_29-Cu-63.endf")],
+    ALIAS_CASES + [("endf6-ext@0.19", "endf6-ext", "n_2925_29-Cu-63.endf")],
 )
 def test_cpp_parser_with_alias(version, flavor, filename):
     module = _cpp_module(flavor)
@@ -352,12 +388,12 @@ def test_cpp_parser_with_alias(version, flavor, filename):
 
 
 def test_cpp_parser_error_names_both_flavors(monkeypatch):
-    resolved = dict(catalogue._RESOLVED, **{"nomodule-v1": "nomodule"})
+    resolved = dict(catalogue._RESOLVED, **{"nomodule@0.19": "nomodule"})
     monkeypatch.setattr(catalogue, "_RESOLVED", resolved)
     with pytest.raises(ImportError) as exc_info:
-        EndfParserCpp(endf_format="nomodule-v1")
+        EndfParserCpp(endf_format="nomodule@0.19")
     message = str(exc_info.value)
-    assert "`nomodule-v1`, which stands for the flavor `nomodule`" in message
+    assert "`nomodule@0.19`, which stands for the flavor `nomodule`" in message
     assert "endf_parserpy.cpp_parsers.nomodule)" in message
 
 
@@ -373,7 +409,7 @@ def test_cli_accepts_layout_version(monkeypatch, capsys, no_cpp):
     if not no_cpp:
         _cpp_module("endf6-ext")
     path = str(TESTDATA / "dec-094_Pu_244.endf")
-    argv = ["endf-cli", "validate", "--endf_format", "endf6-ext-v1", path]
+    argv = ["endf-cli", "validate", "--endf_format", "endf6-ext@0.19", path]
     if no_cpp:
         argv.append("--no-cpp")
     monkeypatch.setattr(sys, "argv", argv)
@@ -388,7 +424,7 @@ def test_cli_parser_with_layout_version():
 
     ap = argparse.ArgumentParser()
     add_common_cmd_parser_args(ap)
-    args = vars(ap.parse_args(["--endf_format", "endf6-v1", "--no-cpp"]))
+    args = vars(ap.parse_args(["--endf_format", "endf6@0.19", "--no-cpp"]))
     parser = get_endf_parser(args)
     assert isinstance(parser, EndfParserPy)
     path = str(TESTDATA / "dec-094_Pu_244.endf")
@@ -426,50 +462,57 @@ def test_copy_on_write_demo():
     current = deepcopy(get_recipe_dict("test"))
     old_recipe = current[2][1]
     assert "6*NX" in old_recipe
-    # the state before the change: demo-v1 is an alias of demo
-    targets, resolved = _demo_catalogue({"demo": current}, {"demo-v1": "demo"})
-    checksums = {"demo-v1": _layout_checksum(current)}
+    # the state before the change: the releases 0.19 and 0.20 have the
+    # same layout, so demo@0.19 and demo@0.20 are aliases of demo
+    aliases = {"demo@0.19": "demo", "demo@0.20": "demo"}
+    targets, resolved = _demo_catalogue({"demo": current}, aliases)
+    checksums = {name: _layout_checksum(current) for name in aliases}
     assert _guard_report(resolved, targets, checksums, "strict") == []
-    assert _demo_parse(targets, resolved, "demo-v1")["NX"] == 3
+    for name in aliases:
+        assert _demo_parse(targets, resolved, name)["NX"] == 3
 
     # the breaking change, made on the flavor only, is reported
     changed = deepcopy(current)
     changed[2][1] = old_recipe.replace("NX", "NITEMS")
-    targets, resolved = _demo_catalogue({"demo": changed}, {"demo-v1": "demo"})
+    targets, resolved = _demo_catalogue({"demo": changed}, aliases)
     for policy in ("backport", "strict"):
         messages = _guard_report(resolved, targets, checksums, policy)
-        assert len(messages) == 1
-        assert "`demo-v1` is an alias of the flavor `demo`" in messages[0]
-        assert "copy-on-write" in messages[0]
+        assert len(messages) == 2
+        assert "`demo@0.20` is an alias of the flavor `demo`" in messages[1]
+        assert "copy-on-write" in messages[1]
 
-    # copy-on-write: demo-v1 gets a copy of the previous recipe of MF2/MT1
-    # and derives from the flavor for the rest, as jendl from endf6; it
-    # becomes a build target, and demo-v2 is the new alias of demo
+    # copy-on-write in the release 0.21: demo@0.20 gets a copy of the
+    # previous recipe of MF2/MT1 and derives from the flavor for the rest,
+    # as jendl from endf6; it becomes a build target, demo@0.19 refers to
+    # it, and demo@0.21 is the new alias of demo
     frozen = deepcopy(changed)
     frozen[2][1] = old_recipe
     targets, resolved = _demo_catalogue(
-        {"demo": changed, "demo-v1": frozen}, {"demo-v2": "demo"}
+        {"demo": changed, "demo@0.20": frozen},
+        {"demo@0.19": "demo@0.20", "demo@0.21": "demo"},
     )
-    checksums["demo-v2"] = _layout_checksum(changed)
+    checksums["demo@0.21"] = _layout_checksum(changed)
     assert _guard_report(resolved, targets, checksums, "strict") == []
-    assert list(targets) == ["demo", "demo-v1"]
-    assert resolved["demo-v2"] == "demo"
-    # the frozen version keeps the old layout, the bare name has the new one
-    assert _demo_parse(targets, resolved, "demo-v1")["NX"] == 3
+    assert list(targets) == ["demo", "demo@0.20"]
+    assert resolved["demo@0.19"] == "demo@0.20"
+    assert resolved["demo@0.21"] == "demo"
+    # the frozen versions keep the old layout, the bare name has the new one
+    assert _demo_parse(targets, resolved, "demo@0.19")["NX"] == 3
+    assert _demo_parse(targets, resolved, "demo@0.20")["NX"] == 3
     assert "NX" not in _demo_parse(targets, resolved, "demo")
     assert _demo_parse(targets, resolved, "demo")["NITEMS"] == 3
-    assert _demo_parse(targets, resolved, "demo-v2")["NITEMS"] == 3
+    assert _demo_parse(targets, resolved, "demo@0.21")["NITEMS"] == 3
 
 
 def test_guard_on_frozen_version_depends_on_policy():
     current = deepcopy(get_recipe_dict("test"))
     frozen = deepcopy(current)
     targets, resolved = _demo_catalogue(
-        {"demo": current, "demo-v1": frozen}, {"demo-v2": "demo"}
+        {"demo": current, "demo@0.20": frozen}, {"demo@0.21": "demo"}
     )
     checksums = {
-        "demo-v1": _layout_checksum(frozen),
-        "demo-v2": _layout_checksum(current),
+        "demo@0.20": _layout_checksum(frozen),
+        "demo@0.21": _layout_checksum(current),
     }
     # a change of a recipe of the frozen version
     frozen[2][2] = frozen[2][2].replace(
@@ -478,15 +521,15 @@ def test_guard_on_frozen_version_depends_on_policy():
     backport = _guard_report(resolved, targets, checksums, "backport")
     strict = _guard_report(resolved, targets, checksums, "strict")
     assert len(backport) == len(strict) == 1
-    assert "`demo-v1` is a frozen version" in strict[0]
+    assert "`demo@0.20` is a frozen version" in strict[0]
     assert "replace the checksum" in backport[0]
     assert "replace the checksum" not in strict[0]
 
 
 def test_guard_reports_missing_and_extra_checksums():
     current = get_recipe_dict("test")
-    targets, resolved = _demo_catalogue({"demo": current}, {"demo-v1": "demo"})
-    messages = _guard_report(resolved, targets, {"demo-v7": "0"}, "backport")
+    targets, resolved = _demo_catalogue({"demo": current}, {"demo@0.19": "demo"})
+    messages = _guard_report(resolved, targets, {"demo@0.77": "0"}, "backport")
     assert len(messages) == 2
-    assert "No checksum is stored for the layout version `demo-v1`" in messages[0]
-    assert "`demo-v7`, which is not a layout version" in messages[1]
+    assert "No checksum is stored for the layout version `demo@0.19`" in messages[0]
+    assert "`demo@0.77`, which is not a layout version" in messages[1]

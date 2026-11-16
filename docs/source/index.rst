@@ -23,6 +23,7 @@
    guide/endf_plumbing
    guide/creation_endf_scratch
    guide/pendf_and_format_flavors
+   guide/layout_versions
    guide/format_extensions
    guide/working_with_legacy_formats
    guide/high_level_functionality
@@ -170,6 +171,7 @@ Resources
   - :doc:`guide/endf_plumbing`
   - :doc:`guide/creation_endf_scratch`
   - :doc:`guide/pendf_and_format_flavors`
+  - :doc:`guide/layout_versions`
   - :doc:`guide/format_extensions`
   - :doc:`guide/working_with_legacy_formats`
   - :doc:`guide/high_level_functionality`

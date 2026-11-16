@@ -154,7 +154,8 @@ run
    endf-cli validate --endf_format endf6 <endf-file1> ...
 
 The available format flavors are ``endf6-ext`` (default), ``endf6``, ``pendf``,
-and ``jendl``.
+``jendl`` and ``errorr``, and the :ref:`layout versions <layout_versions_sec>`
+``endf6-ext-v1`` and ``endf6-v1``.
 
 Unlike the other subcommands, ``endf-cli validate`` applies strict defaults to the
 parsing-leniency flags out of the box. Specifically, ``ignore_number_mismatch``,

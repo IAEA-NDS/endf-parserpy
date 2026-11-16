@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/03
-# Last modified:   2026/11/09
+# Last modified:   2026/11/16
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -34,7 +34,7 @@ from endf_parserpy.compiler.endf2cpp_aux import ListBulkForm
 from endf_parserpy.compiler.code_generator_parsing import generate_cpp_parsefun
 from endf_parserpy.compiler.code_generator_writing import generate_cpp_writefun
 from endf_parserpy.endf_recipes import get_recipe_dict
-from endf_parserpy.endf_recipes.catalogue import list_endf_flavors
+from endf_parserpy.endf_recipes.catalogue import list_endf_build_targets
 
 
 COND_RE = re.compile(r"if \(! cpp_list_bulk\(cont, parse_opts, (true|false)\)\) \{\n")
@@ -99,7 +99,7 @@ def _without_bulk_form(monkeypatch, func, *args):
         return func(*args)
 
 
-@pytest.mark.parametrize("flavor", list_endf_flavors())
+@pytest.mark.parametrize("flavor", list_endf_build_targets())
 def test_per_field_form_unchanged(flavor, monkeypatch):
     nbulk = 0
     nstrided = 0
@@ -313,7 +313,7 @@ GOLDEN_COUNTS = {
 }
 
 
-@pytest.mark.parametrize("flavor", list_endf_flavors())
+@pytest.mark.parametrize("flavor", list_endf_build_targets())
 def test_golden_counts(flavor):
     assert _generation_counts(flavor) == GOLDEN_COUNTS[flavor]
 

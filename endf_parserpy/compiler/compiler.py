@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/23
-# Last modified:   2026/05/17
+# Last modified:   2026/11/16
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -12,7 +12,7 @@
 import os
 from endf_parserpy.endf_recipes import (
     get_recipe_dict,
-    list_endf_flavors,
+    list_endf_build_targets,
 )
 from .endf2cpp import generate_cpp_module_code, generate_shared_cpp_code
 from .cpp_boilerplate import generate_cmake_content
@@ -101,7 +101,9 @@ def _prepare_cpp_parsers_subpackage(
             num_shared_chunks = min(os.cpu_count() or 1, 8)
     num_shared_chunks = max(num_shared_chunks, 1)
 
-    endf_flavors = list_endf_flavors()
+    # one module per flavor with recipes of its own; the aliases, e.g.
+    # layout versions without changes, use the module of their flavor
+    endf_flavors = list_endf_build_targets()
     script_dir = os.path.dirname(os.path.abspath(__file__))
     cpp_parsers_dir = os.path.join(script_dir, "../cpp_parsers")
     flavor_filenames = [f"{f.replace('-', '_')}.cpp" for f in endf_flavors]

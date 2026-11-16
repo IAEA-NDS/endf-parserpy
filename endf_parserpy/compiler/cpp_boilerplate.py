@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2026/10/13
+# Last modified:   2026/11/16
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -92,12 +92,16 @@ def generate_cmake_content(module_name):
         cmake_minimum_required(VERSION 3.12)
         project({module_name})
 
+        # Optimize unless another build type is given
+        if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+          set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+        endif()
+
         find_package(pybind11 REQUIRED)
 
-        # Create the C++ executable
-        pybind11_add_module({module_name} SHARED {module_name}.cpp)
+        # Create the Python extension module
+        pybind11_add_module({module_name} MODULE {module_name}.cpp)
 
-        add_compile_options(-O3)
         set_property(TARGET {module_name} PROPERTY CXX_STANDARD 11)
         """,
         -8,

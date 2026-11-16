@@ -57,9 +57,10 @@ record-by-record log of the parsing process. Furthermore, some
 initialization options are not available.
 One of these options is ``recipes`` that allows users
 to provide their custom :ref:`format extensions <guide_format_extension>`.
-In the following, we will explain how a user can generate their
-own C++ module with parsing and writing functions based on their
-own recipe files.
+To read and write your own recipes with C++ code, you can add them to
+the package as a new format flavor (see :ref:`adding_recipe_flavor_sec`)
+or generate a standalone C++ module from them (see
+:ref:`generating_cpp_code_sec`).
 
 
 .. _cpp_bulk_bodies_sec:
@@ -192,6 +193,175 @@ may change between versions:
    print(module._bulk_body_info()["selected"])
 
 
+.. _adding_recipe_flavor_sec:
+
+Adding a recipe flavor to the package
+-------------------------------------
+
+:class:`~endf_parserpy.EndfParserCpp` reads and writes the format
+flavors whose C++ modules were compiled when the package was installed
+(see the ``endf_format`` argument). The simplest way to use your own
+recipes with it is to add them to the package as a new flavor and to
+install the package from its source code: the installation then
+generates and compiles the C++ module of the new flavor in the same way
+as those of the flavors shipped with the package. This needs a C++
+compiler, but no knowledge of it.
+
+As an example, we add a flavor ``myflavor`` that differs from the
+``endf6`` flavor in one field. Suppose that the files of your library
+store a revision number of the evaluation in the fourth field of the
+third record of MF1/MT451, which the ENDF-6 format leaves at zero. The
+``endf6`` flavor tolerates a value other than zero in this field, but
+does not keep it: parsing issues an
+:class:`~endf_parserpy.EndfToleratedMismatchWarning`, and writing the
+data gives a zero (see :ref:`tolerated_mismatches_sec`). The flavor
+``myflavor`` reads this field into a variable ``NREV`` instead.
+
+1. Clone the repository, preferably at a release tag (``git tag`` lists
+   them), and work on a branch of your own:
+
+   .. code:: console
+
+      git clone https://github.com/IAEA-NDS/endf-parserpy.git
+      cd endf-parserpy
+      git checkout -b myflavor <tag>
+
+   The following commands are run in the root directory of the clone.
+
+2. Create the folder of the flavor in ``endf_parserpy/endf_recipes``,
+   with the recipe that changes. Here we start from a copy of the
+   ``endf6`` recipe of MF1/MT451:
+
+   .. code:: console
+
+      mkdir endf_parserpy/endf_recipes/myflavor
+      cp endf_parserpy/endf_recipes/endf6/endf_recipe_mf1_mt451.py endf_parserpy/endf_recipes/myflavor/
+
+   In the copy, ``endf_parserpy/endf_recipes/myflavor/endf_recipe_mf1_mt451.py``,
+   replace the zero in the third record by the variable:
+
+   .. code:: text
+
+      [MAT, 1,451/ AWI, EMAX, LREL, NREV, NSUB, NVER]CONT
+
+   The flavor itself is the file
+   ``endf_parserpy/endf_recipes/myflavor/__init__.py``, which defines the
+   recipe dictionary ``endf_recipe_dictionary``. It derives from the
+   ``endf6`` flavor, as the ``jendl`` flavor of the package does:
+
+   .. code:: Python
+
+      from copy import deepcopy
+      from ..utils import defdic
+      from ..endf6 import endf_recipe_dictionary as base_recipe_dictionary
+
+      from .endf_recipe_mf1_mt451 import ENDF_RECIPE_MF1_MT451
+
+      endf_recipe_dictionary = deepcopy(base_recipe_dictionary)
+      defdic(endf_recipe_dictionary, (1, 451), ENDF_RECIPE_MF1_MT451)
+
+   The copy of the ``endf6`` dictionary contains all its recipes,
+   including the recipe of the tape identification (TPID) record under
+   MF=0 and MT=0, which every recipe dictionary needs. ``defdic``
+   replaces the recipe of MF1/MT451; the index ``(MF,)`` instead of
+   ``(MF, MT)`` sets a recipe for all MT sections of an MF section. The
+   file ``__init__.py`` is also needed for the folder to be installed
+   with the package.
+
+3. Register the flavor in ``endf_parserpy/endf_recipes/catalogue.py``,
+   with an import at the top of the file and an entry in the dictionary
+   ``_FORMAT_DICT``, whose keys are the names of the flavors:
+
+   .. code:: Python
+
+      from .myflavor import endf_recipe_dictionary as myflavor_recipes
+
+      _FORMAT_DICT = {
+          # ... the entries of the other flavors
+          "myflavor": myflavor_recipes,
+      }
+
+4. Try the flavor with :class:`~endf_parserpy.EndfParserPy` first, in an
+   interactive Python session started in the root directory of the clone,
+   which then imports the package from the clone. Nothing needs to be compiled or
+   installed, and a change of a recipe takes effect in the next Python
+   session, which makes this the fastest way to work on the recipe:
+
+   .. code:: Python
+
+      from endf_parserpy import EndfParserPy
+      parser = EndfParserPy(endf_format="myflavor")
+      endf_dict = parser.parsefile("input.endf")
+      print(endf_dict[1][451]["NREV"])
+
+5. Build and install the package from the clone, preferably in a
+   virtual environment:
+
+   .. code:: console
+
+      INSTALL_ENDF_PARSERPY_CPP=yes python -m pip install .
+
+   (under Windows, ``set INSTALL_ENDF_PARSERPY_CPP=yes`` first, then
+   ``python -m pip install .``). This needs a C++ compiler; ``pip``
+   installs the other build requirements, such as pybind11, itself.
+   ``INSTALL_ENDF_PARSERPY_CPP=yes`` makes the installation fail with an
+   error if the C++ modules cannot be compiled (if no compiler is found,
+   the error is ``Unsupported compiler -- at least C++11 support is
+   needed!``). Without it, the installation then succeeds without any C++
+   module, with no message unless ``pip`` is run with ``-v``, and
+   :class:`~endf_parserpy.EndfParserCpp` raises an ``ImportError``
+   (``Unable to import the cpp module ...``).
+   The build generates and compiles the C++ modules of all flavors in
+   ``_FORMAT_DICT``, not only of the new one, which takes several
+   minutes (about three to four minutes on a laptop processor with eight
+   threads). The variables
+   ``INSTALL_ENDF_PARSERPY_NUM_BUILD_JOBS`` (the number of parallel
+   compile jobs) and ``INSTALL_ENDF_PARSERPY_CPP_OPTIM`` (the
+   optimization flag) are explained in the :doc:`installation notes
+   </index>`.
+
+6. Use the flavor with :class:`~endf_parserpy.EndfParserCpp`, in a Python
+   session started outside the root directory of the clone, so that the
+   installed package is imported, not the one in the clone, which does
+   not contain the compiled modules:
+
+   .. code:: Python
+
+      from endf_parserpy import EndfParserCpp
+      parser = EndfParserCpp(endf_format="myflavor")
+      endf_dict = parser.parsefile("input.endf")
+      print(endf_dict[1][451]["NREV"])
+      parser.writefile("output.endf", endf_dict)
+
+Some points to keep in mind:
+
+- After a change of a recipe, install the package again (step 5) before
+  :class:`~endf_parserpy.EndfParserCpp` sees the change; the compiled
+  module of the flavor is otherwise the one of the previous
+  installation.
+- An editable installation, ``INSTALL_ENDF_PARSERPY_CPP=yes python -m
+  pip install -e .``, also works: the compiled modules are then placed
+  into ``endf_parserpy/cpp_parsers/`` of the clone, and a change of a
+  recipe is seen by :class:`~endf_parserpy.EndfParserPy` in the next
+  Python session without installing again, from any directory. For
+  :class:`~endf_parserpy.EndfParserCpp`, the editable installation must
+  still be run again after a change of a recipe.
+- Installing or upgrading ``endf-parserpy`` from PyPI replaces the
+  package including the flavor. Keep the flavor on its branch of the
+  clone, and install from the clone again after an upgrade, e.g. after
+  rebasing the branch on a newer release tag.
+- The build writes the generated C++ code into
+  ``endf_parserpy/cpp_parsers/``, so that ``git status`` shows the C++
+  files there as modified or new (and, after an editable installation,
+  the compiled modules as new). Don't commit them with the flavor; the
+  flavor consists of its folder and the entry in ``catalogue.py``.
+- If your flavor is of general interest, consider contributing it
+  through a pull request on
+  `GitHub <https://github.com/IAEA-NDS/endf-parserpy>`_.
+
+
+.. _generating_cpp_code_sec:
+
 Generating C++ code from ENDF recipes
 ----------------------------------------
 
@@ -200,7 +370,10 @@ a C++ compiler, such as ``clang`` or the ``GNU C++`` compiler,
 is likely required. The aim of this section is to provide a
 starting point for expert users to compile their own ENDF format parsers
 but a detailed explanation of all possible pitfalls in the process
-is beyond the scope of this document.
+is beyond the scope of this document. The result is a standalone Python
+module outside the package; to use your recipes with
+:class:`~endf_parserpy.EndfParserCpp`, add them to the package as a
+flavor instead (see :ref:`adding_recipe_flavor_sec`).
 
 We assume that your recipes are available in a nested dictionary
 where the keys of the first level are the MF numbers (of type :class:`int`)
@@ -240,9 +413,9 @@ description stored in the ``endf_recipe_dictionary``:
     )
 
 This code will create a directory ``endf_parser_project`` with a
-simple example ``CMakeLists.txt`` file and a C++ source file named
-``cpp_endf.cpp``. For an impression how the generated C++ source code looks
-like, have a look at this `example C++ source file
+simple example ``CMakeLists.txt`` file, a C++ source file named
+``cpp_endf.cpp`` and an empty directory ``build``. For an impression
+how the generated C++ source code looks like, have a look at this `example C++ source file
 <https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/cpp_parsers/endf6.cpp>`_.
 Provided that the `pybind11
 <https://pybind11.readthedocs.io/en/stable/index.html>`_  header files
@@ -288,9 +461,29 @@ Here are a couple of examples how these functions can be used:
    write_endf_file("output.endf", endf_dict, write_opts={"prefer_noexp": True})
 
 
-The available keys for the ``parse_opts`` and ``write_opts`` dictionary can be found
-in the documentation of the :class:`~endf_parserpy.EndfParserCpp` class.
-Furthermore, all functions are endowed with an ``include`` and ``exclude``
-argument that behaves exactly the same way as for the member methods of the
-:class:`~endf_parserpy.EndfParserCpp` class.
-In fact, this class is only a thin wrapper around the C++ module functions.
+The keys of the ``parse_opts`` and ``write_opts`` dictionaries are the
+options of the :class:`~endf_parserpy.EndfParserCpp` class marked as
+*(parsing)* and *(writing)* in its documentation, respectively; an option
+marked as both, such as ``array_type``, must be given in both
+dictionaries, e.g. ``write_opts={"array_type": "numpy"}`` to write a
+dictionary parsed with ``parse_opts={"array_type": "numpy"}``. A missing key
+takes the default value of the option, and an unknown key raises an
+error. Furthermore, all functions are endowed with an ``include`` and
+``exclude`` argument that behaves exactly the same way as for the member
+methods of the :class:`~endf_parserpy.EndfParserCpp` class.
+
+The :class:`~endf_parserpy.EndfParserCpp` class calls these functions,
+but also does some work of its own. It collects the options given to its
+constructor into the two dictionaries, also accepts a list of lines in
+``parse`` (``parse_endf`` takes a string), returns a list of lines from
+``write`` (``write_endf`` returns a string), and writes a file only if it
+does not exist yet or ``overwrite=True`` is given, via a temporary file
+(``write_endf_file`` overwrites an existing file). It also reports the
+:ref:`tolerated mismatches <tolerated_mismatches_sec>`: the direct
+functions do not report them, i.e. with the default options a value
+other than zero in a field given as ``0`` in a recipe is accepted and
+dropped without any message. Use :class:`~endf_parserpy.EndfParserCpp`,
+which issues an :class:`~endf_parserpy.EndfToleratedMismatchWarning` with
+the lines of the mismatches, or turn them into errors with
+``parse_opts={"ignore_zero_mismatch": False}`` (and likewise for
+``ignore_varspec_mismatch``).

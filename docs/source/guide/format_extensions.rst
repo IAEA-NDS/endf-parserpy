@@ -221,6 +221,8 @@ test your ENDF-6 format extension proposals.
 Format extensions provided via the ``recipes`` argument are
 interpreted by :class:`~endf_parserpy.EndfParserPy` at run time.
 To read and write an extended format at the speed of the C++
-backend, the same recipe dictionary can be compiled into a
-dedicated C++ parser module, see
-:ref:`accelerated_parsing_and_writing_sec`.
+backend, the recipes can be added to the package as a new format
+flavor, which :class:`~endf_parserpy.EndfParserCpp` can then use (see
+:ref:`adding_recipe_flavor_sec`), or the same recipe dictionary can be
+compiled into a standalone C++ parser module (see
+:ref:`generating_cpp_code_sec`).

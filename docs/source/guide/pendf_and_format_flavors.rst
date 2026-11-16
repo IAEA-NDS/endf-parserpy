@@ -46,6 +46,9 @@ the package. The ``errorr`` flavor
 can be used to read files produced by the NJOY2016 ERRORR module
 and, as for all other flavors, to modify and create them.
 
+To add a flavor of your own, e.g. with a changed recipe for one
+section, see :ref:`adding_recipe_flavor_sec`.
+
 Using the ``pendf`` flavor, PENDF files produced by NJOY2016
 can be parsed and also modified in the same way as explained
 in :ref:`the section on ENDF-6 file plumbing <endf6_file_plumbing_sec>`.

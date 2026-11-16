@@ -63,36 +63,45 @@ def generate_shared_cpp_code(shared_registry, num_chunks=1):
     num_chunks : int
         Number of output translation units to spread the canonical
         functions across. ``num_chunks > 1`` lets the build system
-        compile the shared bodies in parallel; the chunks are stable
-        across builds (round-robin partition by lexicographic order of
-        ``recipe_hash``). The canonical functions never call each other,
-        so a function can land in any chunk without breaking the link
-        step.
+        compile the shared bodies in parallel. The functions are
+        assigned by size (see :func:`balanced_chunk_assignment` and
+        :func:`_code_size`), so that the chunks take about the same
+        time to compile; the assignment depends only on the generated
+        code, so the same recipes give the same chunks on every run. The
+        canonical functions never call each other and need only the module
+        header, so a function can land in any chunk, and the parse and
+        write functions of a recipe in different ones.
 
     Returns
     -------
     list[tuple[str, str]]
         A list of ``(basename, source_text)`` pairs. With
         ``num_chunks == 1`` the list has a single entry named
-        ``_shared.cpp`` (the legacy single-TU layout).
+        ``_shared.cpp`` (the legacy single-TU layout). Chunks without
+        functions are left out.
     """
     parse_reg = shared_registry.get("parse", {})
     write_reg = shared_registry.get("write", {})
-    # Stable lexicographic order so chunk membership is deterministic
-    # across runs (no surprises in incremental builds / debugging).
+    # Within a chunk, the functions are in the lexicographic order of
+    # their recipe hashes, parse functions first.
     parse_items = sorted(parse_reg.items())
     write_items = sorted(write_reg.items())
     if num_chunks <= 1:
         return [("_shared.cpp", _format_shared_chunk(parse_items, write_items, None))]
 
+    sized_items = [
+        (("parse", recipe_hash), _code_size(code, "parse"))
+        for recipe_hash, (_canonical, code) in parse_items
+    ] + [
+        (("write", recipe_hash), _code_size(code, "write"))
+        for recipe_hash, (_canonical, code) in write_items
+    ]
+    assignment = balanced_chunk_assignment(sized_items, num_chunks)
     chunks = []
-    for chunk_id in range(num_chunks):
-        chunk_parse = [
-            it for i, it in enumerate(parse_items) if i % num_chunks == chunk_id
-        ]
-        chunk_write = [
-            it for i, it in enumerate(write_items) if i % num_chunks == chunk_id
-        ]
+    for chunk_id, keys in enumerate(assignment):
+        members = set(keys)
+        chunk_parse = [it for it in parse_items if ("parse", it[0]) in members]
+        chunk_write = [it for it in write_items if ("write", it[0]) in members]
         if not chunk_parse and not chunk_write:
             continue
         basename = f"_shared_part_{chunk_id:02d}.cpp"
@@ -100,6 +109,63 @@ def generate_shared_cpp_code(shared_registry, num_chunks=1):
             (basename, _format_shared_chunk(chunk_parse, chunk_write, chunk_id))
         )
     return chunks
+
+
+# The weights of the source bytes of the parse and write functions in
+# the estimate of their compile time (see _code_size). With GCC 13 at
+# -O1, the compile time of a shared chunk was about 5 s for the module
+# header plus 9 s per MB of parse functions and 14 s per MB of write
+# functions, i.e. a byte of a write function costs about 3/2 of a byte
+# of a parse function (fitted to the 16 chunks of two layouts).
+_CODE_SIZE_WEIGHTS = {"parse": 2, "write": 3}
+
+
+def _code_size(code, side):
+    """The size of a generated function as the measure of its compile
+    time: the length of its source in bytes, weighted by the kind of the
+    function (``side``, ``"parse"`` or ``"write"``). An integer, so that
+    the assignment is exact."""
+    return _CODE_SIZE_WEIGHTS[side] * len(code.encode())
+
+
+def balanced_chunk_assignment(sized_items, num_chunks):
+    """Assign items to ``num_chunks`` chunks with about equal total sizes.
+
+    The items are taken largest first, each into the chunk with the
+    smallest total so far (the longest-processing-time rule); ties are
+    broken by the key of the item (for equal sizes) and by the lowest
+    chunk number (for equal totals). The result depends only on the
+    keys and sizes, not on the order of ``sized_items``. The largest
+    total exceeds the smallest one by at most the largest size, and is
+    at most 4/3 of the largest total of the best possible assignment.
+
+    Parameters
+    ----------
+    sized_items : iterable of tuple
+        Pairs ``(key, size)``, with distinct, mutually comparable keys
+        and non-negative sizes.
+    num_chunks : int
+        The number of chunks (at least 1).
+
+    Returns
+    -------
+    list[list]
+        For each chunk, the keys of its items in the order of their
+        assignment. Chunks may be empty if there are fewer items than
+        chunks; these are the last ones.
+    """
+    num_chunks = max(int(num_chunks), 1)
+    items = sorted(sized_items, key=lambda it: (-it[1], it[0]))
+    keys = [key for key, _size in items]
+    if len(set(keys)) != len(keys):
+        raise ValueError("the keys of the items must be distinct")
+    totals = [0] * num_chunks
+    assignment = [[] for _ in range(num_chunks)]
+    for key, size in items:
+        chunk_id = min(range(num_chunks), key=lambda i: (totals[i], i))
+        assignment[chunk_id].append(key)
+        totals[chunk_id] += size
+    return assignment
 
 
 def _format_shared_chunk(parse_items, write_items, chunk_id):

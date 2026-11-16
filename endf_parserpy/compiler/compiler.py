@@ -161,8 +161,8 @@ def _prepare_cpp_parsers_subpackage(
             with open(shared_path, "w") as f:
                 f.write(content)
             written_shared_files.append(basename)
-        # If round-robin produced fewer chunks than requested (e.g. a
-        # chunk slot ended up empty), drop the missing names from the
+        # If fewer chunks were produced than requested (with fewer
+        # functions than chunks), drop the missing names from the
         # returned filename list so downstream build steps don't try to
         # compile non-existent files.
         if num_shared_chunks > 1 and len(written_shared_files) != num_shared_chunks:

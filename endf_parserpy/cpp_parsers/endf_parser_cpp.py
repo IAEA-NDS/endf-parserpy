@@ -12,6 +12,7 @@
 import gc
 import importlib
 import os
+from endf_parserpy.endf_recipes import list_endf_flavors, resolve_endf_flavor
 from endf_parserpy.utils.accessories import EndfDict
 from endf_parserpy.utils.tolerated_mismatches import (
     BODY_FIELD,
@@ -267,6 +268,9 @@ class EndfParserCpp(EndfParserBase):
             Other choices are `endf6` for strict compliance with the
             ENDF-6 formats manual and `jendl` with JENDL specific
             conventions, which are also implemented in `endf6-ext`.
+            A layout version, e.g. `endf6-ext-v1`, keeps the layout of
+            the dictionaries of a flavor when the flavor changes it
+            (see :ref:`layout_versions_sec`).
         validate_control_records : bool
             If ``True``, the C++ parser strictly verifies that the
             MAT / MF / MT control record fields in every line of an
@@ -317,25 +321,31 @@ class EndfParserCpp(EndfParserBase):
             "array_type": array_type,
         }
         subpackage = "endf_parserpy.cpp_parsers"
-        endf_format = endf_format.replace("-", "_")
+        # an alias, e.g. a layout version without changes, uses the
+        # module of the flavor it stands for
+        if endf_format in list_endf_flavors():
+            resolved_format = resolve_endf_flavor(endf_format)
+        else:
+            resolved_format = endf_format
+        module_name = f"{subpackage}.{resolved_format.replace('-', '_')}"
         # import the parsing functions
         try:
-            self._parse_endf = self._dynamic_import(
-                f"{subpackage}.{endf_format}", "parse_endf"
-            )
-            self._parse_endf_file = self._dynamic_import(
-                f"{subpackage}.{endf_format}", "parse_endf_file"
-            )
-            self._write_endf = self._dynamic_import(
-                f"{subpackage}.{endf_format}", "write_endf"
-            )
-            self._write_endf_file = self._dynamic_import(
-                f"{subpackage}.{endf_format}", "write_endf_file"
-            )
+            self._parse_endf = self._dynamic_import(module_name, "parse_endf")
+            self._parse_endf_file = self._dynamic_import(module_name, "parse_endf_file")
+            self._write_endf = self._dynamic_import(module_name, "write_endf")
+            self._write_endf_file = self._dynamic_import(module_name, "write_endf_file")
         except ImportError as exc:
+            if resolved_format != endf_format:
+                flavor_info = (
+                    f"`{endf_format}`, which stands for the flavor "
+                    f"`{resolved_format}`"
+                )
+            else:
+                flavor_info = f"`{endf_format}`"
             raise type(exc)(
                 "Unable to import the cpp module responsible "
-                + "for parsing and reading ENDF-6 files. "
+                + "for parsing and reading ENDF-6 files "
+                + f"of the format {flavor_info} ({module_name}). "
                 + "Probably the module could not be compiled "
                 + "during package installation. Please use the "
                 + "EndfParserPy class instead."

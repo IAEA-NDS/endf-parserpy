@@ -130,18 +130,17 @@ Install endf-parserpy
 
 .. note::
 
-   The :doc:`multi-material file interface <guide/multimaterial_files>`
-   indexes tapes with a structural scan that is faster when
-   `NumPy <https://numpy.org/>`_ is available, and NumPy also enables
-   ``array_type="numpy"``, the fastest parsing mode. To install this
-   optional dependency, add the ``fast`` extra:
+   `NumPy <https://numpy.org/>`_ is needed for ``array_type="numpy"``,
+   the fastest parsing mode, and speeds up the structural scan of the
+   :doc:`multi-material file interface <guide/multimaterial_files>`,
+   which otherwise runs in pure Python. To install this optional
+   dependency, add the ``fast`` extra:
 
    .. code:: bash
 
       python -m pip install "endf-parserpy[fast]"
 
-   Without NumPy a pure-Python fallback is used, so the
-   dependency is not required.
+   Parsing with the other array types does not need NumPy.
 
 
 .. note::

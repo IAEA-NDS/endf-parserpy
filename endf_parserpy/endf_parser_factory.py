@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/11/11
+# Last modified:   2026/11/16
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -14,6 +14,7 @@ import inspect
 import warnings
 from .interpreter.endf_parser import EndfParserPy
 from .cpp_parsers.endf_parser_cpp import EndfParserCpp
+from .endf_parser_base import _check_numpy_available
 
 
 def _check_param(
@@ -133,6 +134,9 @@ class EndfParserFactory:
         del parser_args["require_compat"]
 
         epf = EndfParserFactory
+        # Checked before a parser is selected because the ImportError
+        # would otherwise be taken for an unavailable C++ parser.
+        _check_numpy_available(array_type)
 
         if require_compat:
             msg_tmpl = (

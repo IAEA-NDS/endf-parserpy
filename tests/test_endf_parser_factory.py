@@ -1,3 +1,5 @@
+import sys
+import warnings
 import pytest
 from endf_parserpy import (
     EndfParserFactory,
@@ -38,3 +40,13 @@ def test_enforced_compatibility():
         parser = EndfParserFactory.create(
             select="fastest", require_compat=True, loglevel=20
         )
+
+
+@pytest.mark.parametrize("select", ["fastest", "cpp", "python"])
+def test_numpy_array_type_without_numpy(monkeypatch, select):
+    # a None entry in sys.modules makes `import numpy` fail
+    monkeypatch.setitem(sys.modules, "numpy", None)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with pytest.raises(ImportError, match="requires the numpy package"):
+            EndfParserFactory.create(select=select, array_type="numpy")

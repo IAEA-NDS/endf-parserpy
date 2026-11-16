@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/11/08
+# Last modified:   2026/11/16
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -63,6 +63,22 @@ def _check_array_type(array_type):
         raise ValueError(
             f"invalid array_type `{array_type}`, " f"must be one of {valid_array_types}"
         )
+
+
+def _check_numpy_available(array_type):
+    """Raise an :exc:`ImportError` if ``array_type="numpy"`` cannot be used.
+
+    Both parsers return numpy arrays with this option, so the numpy
+    package is required whichever parser is selected.
+    """
+    if array_type == "numpy":
+        try:
+            import numpy  # noqa: F401
+        except ImportError as exc:
+            raise ImportError(
+                "array_type `numpy` requires the numpy package, "
+                "which could not be imported"
+            ) from exc
 
 
 MfNumberType = MtNumberType = int

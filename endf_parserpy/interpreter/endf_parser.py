@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/12
+# Last modified:   2026/11/16
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -111,6 +111,7 @@ from ..endf_parser_base import (
     EndfParserBase,
     _record_init_kwargs,
     _check_array_type,
+    _check_numpy_available,
     _write_via_temporary_file,
 )
 
@@ -422,14 +423,7 @@ class EndfParserPy(EndfParserBase):
             of each mismatch are logged at the level `logging.DEBUG`.
         """
         _check_array_type(array_type)
-        if array_type == "numpy":
-            try:
-                import numpy  # noqa: F401
-            except ImportError as exc:
-                raise ImportError(
-                    "array_type `numpy` requires the numpy package, "
-                    "which could not be imported"
-                ) from exc
+        _check_numpy_available(array_type)
         if cache_dir is not None or print_cache_info is not None:
             warnings.warn(
                 "the arguments `cache_dir` and `print_cache_info` are "

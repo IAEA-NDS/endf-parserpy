@@ -398,13 +398,16 @@ inline void throw_number_mismatch_error(
 
 // CPP_TOLERATED_COLD: for the functions recording a tolerated mismatch
 // (see cpp_validate_field), which are only called for a mismatch and are
-// kept out of the code of the reading functions.
+// kept out of the code of the reading functions. Only for function
+// templates, which may be defined in every translation unit without
+// `inline`: GCC warns (-Wattributes) about a function declared both
+// `inline` and `noinline` that is declared before its definition.
 #if defined(__GNUC__) || defined(__clang__)
-#define CPP_TOLERATED_COLD __attribute__((noinline, cold)) inline
+#define CPP_TOLERATED_COLD __attribute__((noinline, cold))
 #elif defined(_MSC_VER)
-#define CPP_TOLERATED_COLD __declspec(noinline) inline
+#define CPP_TOLERATED_COLD __declspec(noinline)
 #else
-#define CPP_TOLERATED_COLD inline
+#define CPP_TOLERATED_COLD
 #endif
 
 // high and low 64 bits of the product of a and b
@@ -2784,11 +2787,14 @@ struct cpp_tolerated_log {
 };
 
 
-// Defined after CppListBody.
+// Defined after CppListBody. A template over the type of the body
+// (always CppListBody), so that it can be declared here and kept out of
+// line (see CPP_TOLERATED_COLD).
+template<typename Body>
 CPP_TOLERATED_COLD void cpp_record_tolerated(
   ParsingOptions& parse_opts, char kind, int fieldnum, const char* exprstr,
   double expected, bool expected_int, double actual, bool actual_int,
-  const CppListBody* body, int body_index
+  const Body* body, int body_index
 );
 
 
@@ -4231,10 +4237,11 @@ inline void cpp_tolerated_line_info(
 }
 
 
+template<typename Body>
 CPP_TOLERATED_COLD void cpp_record_tolerated(
   ParsingOptions& parse_opts, char kind, int fieldnum, const char* exprstr,
   double expected, bool expected_int, double actual, bool actual_int,
-  const CppListBody* body, int body_index
+  const Body* body, int body_index
 ) {
   cpp_tolerated_log* log = parse_opts.tolerated;
   if (log == nullptr) return;

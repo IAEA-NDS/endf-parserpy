@@ -43,7 +43,6 @@ _GROUPWISE_COMMENT = """
 #     the families for the groups it-1.
 
 # var MAT:     Material number
-# var MF:      File number
 # var MT:      Reaction number
 # var ZA:      ZA = (1000.0 * Z) + A = ZA number
 # var NL:      Number of Legendre orders (MF5/MT455: number of families
@@ -98,3 +97,15 @@ ENDF_RECIPE_GROUPWISE_AWR = (
 """
     + _GROUPWISE_RECORDS
 )
+
+
+def groupwise_recipe(recipe, mf):
+    """Return the recipe of the sections of one MF number.
+
+    The recipes above use MF as a variable. The recipe of each MF gets
+    the number itself, so that the recipe of each MF has a text of its
+    own: the C++ code generator emits the parse and write functions of
+    identical recipe texts only once, specialized for the first MF number
+    it meets.
+    """
+    return recipe.replace("[MAT, MF, MT/", f"[MAT, {mf}, MT/")

@@ -317,8 +317,8 @@ data gives a zero (see :ref:`tolerated_mismatches_sec`). The flavor
    threads). The variables
    ``INSTALL_ENDF_PARSERPY_NUM_BUILD_JOBS`` (the number of parallel
    compile jobs) and ``INSTALL_ENDF_PARSERPY_CPP_OPTIM`` (the
-   optimization flag) are explained in the :doc:`installation notes
-   </index>`.
+   optimization flag, by default ``-O1`` on Linux and macOS and ``/O2``
+   on Windows) are explained in the :doc:`installation notes </index>`.
 
 6. Use the flavor with :class:`~endf_parserpy.EndfParserCpp`, in a Python
    session started outside the root directory of the clone, so that the
@@ -433,6 +433,23 @@ instructions on the command line can be used to compile the source code:
    cd endf_parser_project/build
    cmake -Dpybind11_DIR=$(python -c "import pybind11; print(pybind11.get_cmake_dir())") ..
    make
+
+The generated project builds the module optimized by default (build
+type ``Release``), with GCC and Clang at ``-O1``, the level that the
+installation of the package uses (see the optimization flag in step 5
+of the previous section). Other choices are passed to ``cmake``:
+
+- ``-DCMAKE_CXX_FLAGS_RELEASE="-O3 -DNDEBUG"`` for the highest
+  optimization level. In a measurement with GCC 13, the build took about
+  twice as long (47 instead of 23 seconds, with two and a half times the
+  CPU time), and the module parsed a test file at most 5% faster. Keep
+  ``-DNDEBUG`` in this value, as in the default and in the installation
+  of the package: it switches off the debug checks of pybind11 and the
+  standard ``assert``.
+- ``-DCMAKE_BUILD_TYPE=Debug`` for a build without optimization and with
+  debugging information.
+
+With MSVC, CMake's own defaults for ``Release`` (``/O2``) are used.
 
 
 The result of the successful compilation is a file named similar to

@@ -38,8 +38,13 @@ data lines that the number forms reproduce can agree, so this check is
 then left out).
 
 By default, the sections are parsed and written with
-``preserve_value_strings=True``, so that the text of every number is
-kept. With ``--njoy-number-forms``, they are written from the values
+``preserve_value_strings=True``, so that the text of every float number
+is kept. The integers, the end records and the sequence numbers in
+columns 76-80 are always written in the standard form. The check of the
+data lines and of the whole tape can still require identical text: NJOY
+writes these in the standard form, so on its tapes a difference shows a
+real deviation of the parser, not a different form of the same value.
+With ``--njoy-number-forms``, the sections are written from the values
 instead, with ``prefer_noexp=True`` and ``standard_form_on_tie=True``,
 which give the forms of NJOY in most, but not all, fields.
 

@@ -65,18 +65,25 @@ is not parsed (``exclude``/``include``).
 
    parser = EndfParserCpp(endf_format="gendf")
    material = parser.parsefile("gendf.tape")      # one material
-   for section in material[1:]:
+   tpid, *sections = material                     # the tape head first
+   for section in sections:
        print(section["MF"], section["MT"])
-   mf1 = material[1]
+   mf1 = sections[0]                              # MF1/MT451
    print(mf1["TEMPIN"], mf1["NGN"], mf1["SIGZ"])
    lines = parser.write(material)                 # the tape again
 
-Written back, a material gives the end records of the tape structure;
-with ``preserve_value_strings=True`` (the numbers as read), a tape is
-written back byte for byte. ``material_form="dict"`` asks for the
-nested form ``{MF: {MT: section}}`` instead, which raises an error for a
-material with repeated sections; a material without them is written back
-from the nested form with its sections in ascending order.
+Written back, a material gives the end records of the tape structure.
+With ``preserve_value_strings=True``, the float numbers are written as
+they were read; the integers, the end records and the sequence numbers
+in columns 76-80 are written in the standard form. Since NJOY writes
+them in this form, GROUPR and GAMINR tapes are written back byte for
+byte (all sample tapes and test files); a tape that deviates from this
+form is not.
+
+``material_form="dict"`` asks for the nested form ``{MF: {MT:
+section}}`` instead, which raises an error for a material with repeated
+sections; a material without them is written back from the nested form
+with its sections in ascending order.
 
 GROUPR writes the data of every temperature as a separate material with
 the same MAT number. ``parsefile`` reads one material; read a tape of

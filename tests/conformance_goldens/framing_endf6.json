@@ -530,7 +530,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Unexpected FEND record: the FEND record of MF=1 was read already\nLine 47: \"                                                                  3564 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 47."
   },
   "exclude_mt/ignore_send_records": {
@@ -539,7 +539,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Unexpected FEND record: the FEND record of MF=1 was read already\nLine 47: \"                                                                  3564 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 47."
   },
   "framing": {
@@ -557,7 +557,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Unexpected FEND record: the FEND record of MF=1 was read already\nLine 47: \"                                                                  3564 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 47."
   },
   "include/ignore_send_records": {
@@ -566,7 +566,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Unexpected FEND record: the FEND record of MF=1 was read already\nLine 47: \"                                                                  3564 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 47."
   }
  },
@@ -577,7 +577,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 105: \" 0.000000+0 0.000000+0          0          0          0          0   0 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=0 in control record of line 105."
   },
   "exclude_mt/ignore_send_records": {
@@ -586,7 +586,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 105: \" 0.000000+0 0.000000+0          0          0          0          0   0 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=0 in control record of line 105."
   },
   "framing": {
@@ -604,7 +604,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 105: \" 0.000000+0 0.000000+0          0          0          0          0   0 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=0 in control record of line 105."
   },
   "include/ignore_send_records": {
@@ -613,7 +613,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 105: \" 0.000000+0 0.000000+0          0          0          0          0   0 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=0 in control record of line 105."
   }
  },
@@ -672,7 +672,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: FEND record missing: MF=8 follows MF=1, after which the tape structure requires a FEND record\nLine 46: \" 9.424400+4 2.419676+2          0          0          0          63564 8457\"",
    "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=8 in control record of line 46."
   },
   "exclude_mt/ignore_send_records": {
@@ -681,7 +681,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: FEND record missing: MF=8 follows MF=1, after which the tape structure requires a FEND record\nLine 46: \" 9.424400+4 2.419676+2          0          0          0          63564 8457\"",
    "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=8 in control record of line 46."
   },
   "framing": {
@@ -699,7 +699,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: FEND record missing: MF=8 follows MF=1, after which the tape structure requires a FEND record\nLine 46: \" 9.424400+4 2.419676+2          0          0          0          63564 8457\"",
    "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=8 in control record of line 46."
   },
   "include/ignore_send_records": {
@@ -708,7 +708,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: FEND record missing: MF=8 follows MF=1, after which the tape structure requires a FEND record\nLine 46: \" 9.424400+4 2.419676+2          0          0          0          63564 8457\"",
    "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=8 in control record of line 46."
   }
  },
@@ -869,7 +869,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: FEND record with MAT=3565 after the sections of MAT=3564\nLine 46: \"                                                                  3565 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 46."
   },
   "exclude_mt/ignore_send_records": {
@@ -878,7 +878,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: FEND record with MAT=3565 after the sections of MAT=3564\nLine 46: \"                                                                  3565 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 46."
   },
   "framing": {
@@ -896,7 +896,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: FEND record with MAT=3565 after the sections of MAT=3564\nLine 46: \"                                                                  3565 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 46."
   },
   "include/ignore_send_records": {
@@ -905,7 +905,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: FEND record with MAT=3565 after the sections of MAT=3564\nLine 46: \"                                                                  3565 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 46."
   }
  },
@@ -1059,7 +1059,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \" 0.000000+0 0.000000+0          0          0          0          0   0 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=0 in control record of line 107."
   },
   "exclude_mt/ignore_send_records": {
@@ -1068,7 +1068,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \" 0.000000+0 0.000000+0          0          0          0          0   0 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=0 in control record of line 107."
   },
   "framing": {
@@ -1086,7 +1086,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \" 0.000000+0 0.000000+0          0          0          0          0   0 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=0 in control record of line 107."
   },
   "include/ignore_send_records": {
@@ -1095,7 +1095,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \" 0.000000+0 0.000000+0          0          0          0          0   0 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=0 in control record of line 107."
   }
  },
@@ -1106,7 +1106,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 107",
+   "cpp": "RuntimeError: Unexpected FEND record: the FEND record of MF=8 was read already\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          03564 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 106."
   },
   "exclude_mt/ignore_send_records": {
@@ -1115,7 +1115,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 107",
+   "cpp": "RuntimeError: Unexpected FEND record: the FEND record of MF=8 was read already\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          03564 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 106."
   },
   "framing": {
@@ -1137,7 +1137,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 107",
+   "cpp": "RuntimeError: Unexpected FEND record: the FEND record of MF=8 was read already\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          03564 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 106."
   },
   "include/ignore_send_records": {
@@ -1146,7 +1146,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 107",
+   "cpp": "RuntimeError: Unexpected FEND record: the FEND record of MF=8 was read already\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          03564 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 106."
   }
  },
@@ -1205,7 +1205,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 106: \"                                                                    -1 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 106."
   },
   "exclude_mt/ignore_send_records": {
@@ -1214,7 +1214,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 106: \"                                                                    -1 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 106."
   },
   "framing": {
@@ -1232,7 +1232,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 106: \"                                                                    -1 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 106."
   },
   "include/ignore_send_records": {
@@ -1241,7 +1241,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 106: \"                                                                    -1 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 106."
   }
  },
@@ -1722,19 +1722,19 @@
  },
  "pu:send_c2": {
   "exclude/ignore_send_records": {
-   "cpp": null,
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nLine 41: \" 0.000000+0        2.5          0          0          0          03564 1  0\"",
    "py": "NotSectionEndError: Not a Section End (SEND) record"
   },
   "exclude/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nLine 41: \" 0.000000+0        2.5          0          0          0          03564 1  0\"",
    "py": "NotSectionEndError: Not a Section End (SEND) record"
   },
   "exclude_mt/ignore_send_records": {
-   "cpp": null,
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nLine 41: \" 0.000000+0        2.5          0          0          0          03564 1  0\"",
    "py": "NotSectionEndError: Not a Section End (SEND) record"
   },
   "exclude_mt/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nLine 41: \" 0.000000+0        2.5          0          0          0          03564 1  0\"",
    "py": "NotSectionEndError: Not a Section End (SEND) record"
   },
   "framing": {
@@ -1760,11 +1760,11 @@
    "py": "NotSectionEndError: Not a Section End (SEND) record"
   },
   "include/ignore_send_records": {
-   "cpp": null,
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nLine 41: \" 0.000000+0        2.5          0          0          0          03564 1  0\"",
    "py": "NotSectionEndError: Not a Section End (SEND) record"
   },
   "include/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nLine 41: \" 0.000000+0        2.5          0          0          0          03564 1  0\"",
    "py": "NotSectionEndError: Not a Section End (SEND) record"
   }
  },
@@ -1917,7 +1917,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid MAT encountered! Expected MAT=3564 but found MAT=3565\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03565 1  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 41."
   },
   "exclude_mt/ignore_send_records": {
@@ -1926,7 +1926,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid MAT encountered! Expected MAT=3564 but found MAT=3565\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03565 1  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 41."
   },
   "framing": {
@@ -1944,7 +1944,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid MAT encountered! Expected MAT=3564 but found MAT=3565\nTemplate: SEND\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03565 1  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 41."
   },
   "include/ignore_send_records": {
@@ -1953,7 +1953,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid MAT encountered! Expected MAT=3564 but found MAT=3565\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03565 1  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 41."
   }
  },
@@ -1991,7 +1991,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid MF encountered! Expected MF=1 but found MF=2\nTemplate: SEND\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 2  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=1 but encountered MF=2 in control record of line 41."
   },
   "include/ignore_send_records": {
@@ -2200,7 +2200,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 108: \"                                                                    -1 0  0\"",
    "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
   },
   "exclude_mt/ignore_send_records": {
@@ -2209,7 +2209,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 108: \"                                                                    -1 0  0\"",
    "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
   },
   "framing": {
@@ -2227,7 +2227,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 108: \"                                                                    -1 0  0\"",
    "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
   },
   "include/ignore_send_records": {
@@ -2236,7 +2236,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": null,
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 108: \"                                                                    -1 0  0\"",
    "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
   }
  },
@@ -2247,7 +2247,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 107",
+   "cpp": "RuntimeError: FEND record with MAT=-2 after the sections of MAT=3564\nLine 107: \"                                                                    -2 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=-2 in control record of line 107."
   },
   "exclude_mt/ignore_send_records": {
@@ -2256,7 +2256,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 107",
+   "cpp": "RuntimeError: FEND record with MAT=-2 after the sections of MAT=3564\nLine 107: \"                                                                    -2 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=-2 in control record of line 107."
   },
   "framing": {
@@ -2278,7 +2278,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 107",
+   "cpp": "RuntimeError: FEND record with MAT=-2 after the sections of MAT=3564\nLine 107: \"                                                                    -2 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=-2 in control record of line 107."
   },
   "include/ignore_send_records": {
@@ -2287,7 +2287,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 107",
+   "cpp": "RuntimeError: FEND record with MAT=-2 after the sections of MAT=3564\nLine 107: \"                                                                    -2 0  0\"",
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=-2 in control record of line 107."
   }
  },

@@ -3730,7 +3730,10 @@ inline void cpp_read_send(std::istream& cont, int mat, int mf, ParsingOptions &p
     // the line is added by cpp_rethrow_parse_error
     throw std::runtime_error("Expected SEND record does not contain one!\n");
   }
-  if (parse_opts.validate_control_records) {
+  // the MAT and MF numbers of the SEND record are those of the section,
+  // unless ignore_send_records leaves the end records unchecked (with
+  // validate_control_records, they are checked in any case)
+  if (! parse_opts.ignore_send_records || parse_opts.validate_control_records) {
     int curmat = cpp_read_mat_number(line.data());
     int curmf = cpp_read_mf_number(line.data());
     if (curmat != mat)
@@ -4682,7 +4685,7 @@ inline void cpp_check_end_records(
     if (after_fend && ! section_encountered) {
       throw std::runtime_error("FEND record without preceding MF/MT section encountered");
     }
-    if (! tape.endf6 && mf != 0 && last_mf != 0 && mat == last_mat && mf != last_mf
+    if (mf != 0 && last_mf != 0 && mat == last_mat && mf != last_mf
         && ! after_fend && cpp_tape_fend(tape, last_mf)) {
       throw std::runtime_error(
         "FEND record missing: MF=" + std::to_string(mf) + " follows MF=" +
@@ -4768,9 +4771,22 @@ inline void cpp_check_extra_send(
 // A FEND record after the sections of an MF that the tape structure has
 // without one (not with ignore_send_records).
 inline void cpp_check_fend(
-  bool section_encountered, int last_mf, const ParsingOptions& parse_opts
+  bool section_encountered, bool after_fend, int mat, int last_mat, int last_mf,
+  const ParsingOptions& parse_opts
 ) {
-  if (parse_opts.ignore_send_records || parse_opts.tape.endf6) return;
+  if (parse_opts.ignore_send_records) return;
+  if (after_fend) {
+    throw std::runtime_error(
+      "Unexpected FEND record: the FEND record of MF=" + std::to_string(last_mf) +
+      " was read already"
+    );
+  }
+  if (section_encountered && mat != last_mat) {
+    throw std::runtime_error(
+      "FEND record with MAT=" + std::to_string(mat) + " after the sections of MAT=" +
+      std::to_string(last_mat)
+    );
+  }
   if (section_encountered && last_mf != 0 && ! cpp_tape_fend(parse_opts.tape, last_mf)) {
     throw std::runtime_error(
       "Unexpected FEND record after MF=" + std::to_string(last_mf) + ": the " +
@@ -4788,6 +4804,17 @@ inline bool cpp_mend_without_fend(
   return ! parse_opts.tape.endf6 && section_encountered && last_mf != 0
     && ! cpp_tape_fend(parse_opts.tape, last_mf);
 }
+
+// Whether the fields 1-6 of a SEND record are zero (or blank).
+inline bool cpp_send_fields_zero(const CppLine& line, ParsingOptions &parse_opts) {
+  return cpp_read_field<DOUBLE_TYPE>(line.data(), 0, parse_opts) == 0.0 &&
+    cpp_read_field<DOUBLE_TYPE>(line.data(), 1, parse_opts) == 0.0 &&
+    cpp_read_field<int>(line.data(), 2, parse_opts) == 0 &&
+    cpp_read_field<int>(line.data(), 3, parse_opts) == 0 &&
+    cpp_read_field<int>(line.data(), 4, parse_opts) == 0 &&
+    cpp_read_field<int>(line.data(), 5, parse_opts) == 0;
+}
+
 
 // The lines of a section are returned as Python strings (see
 // cpp_bytes_to_pystr).
@@ -4833,11 +4860,24 @@ inline py::list read_section_verbatim(
     if (! at_end && (no_send || curmf == 0 || curmt != 0)) {
       cont.clear();
       cont.seekg(curpos);
+    } else if (! at_end && ! cpp_send_fields_zero(line, parse_opts)) {
+      // a SEND record that has been read: its fields 1-6 are checked as
+      // without ignore_send_records
+      throw std::runtime_error("Expected SEND record does not contain one!\n");
     }
   } else if (! is_first && (curmf != mf || curmt != 0)) {
      std::string errmsg = "expected SEND of MF/MT " +
                           std::to_string(mf) + "/" + std::to_string(mt);
      throw std::runtime_error(errmsg);
+  } else if (! is_first) {
+    // the SEND record, which has been read: its MAT number and its fields
+    // 1-6, as for a section read with its recipe (see cpp_read_send)
+    if (! cpp_send_fields_zero(line, parse_opts)) {
+      throw std::runtime_error("Expected SEND record does not contain one!\n");
+    }
+    int curmat = cpp_read_mat_number(line.data());
+    if (curmat != mat)
+      throw_mismatch_error("MAT", mat, curmat);
   }
   if (is_first) {
     // we rewind one line because in the case of MF0/MT0 (tapeid)

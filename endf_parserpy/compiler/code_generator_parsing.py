@@ -522,15 +522,19 @@ def generate_master_parsefun(name, recipefuns):
     curstat += cpp.statement("after_mend = true")
     conditions.append(curcond)
     statements.append(curstat)
-    # fend record treatment (a MEND or TEND record in the wrong place is
-    # taken as a FEND record under the rules of ENDF-6)
+    # fend record treatment (a MEND or TEND record in a wrong place is not
+    # taken as a FEND record; it is an invalid line)
     curcond = cpp.logical_and(
         [
             aux.is_fend("mat", "parse_opts"),
-            cpp.logical_or(["parse_opts.tape.endf6", "(mat != 0 && mat != -1)"]),
+            "mat != 0",
+            "mat != -1",
         ]
     )
-    curstat = cpp.statement("cpp_check_fend(section_encountered, last_mf, parse_opts)")
+    curstat = cpp.statement(
+        "cpp_check_fend(section_encountered, after_fend, mat, last_mat, last_mf, "
+        "parse_opts)"
+    )
     curstat += cpp.statement("after_fend = true")
     conditions.append(curcond)
     statements.append(curstat)

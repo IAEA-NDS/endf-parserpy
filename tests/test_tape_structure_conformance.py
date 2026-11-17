@@ -142,29 +142,13 @@ GENDF_FILTERS = {
 }
 GENDF_GOLDEN = GOLDEN.parent / "framing_gendf.json"
 
-_ALL = [f"{filt}/{option}" for filt in FILTERS for option in OPTIONS]
-_STRICT = [f"{filt}/strict" for filt in FILTERS]
-_VERBATIM = [
-    f"{filt}/{option}" for filt in FILTERS if filt != "full" for option in OPTIONS
-]
-
 # The differences of the verdicts of the two parsers, by case: the filters
-# and options with which EndfParserCpp accepts an input that EndfParserPy
-# rejects (the strict-mode gaps of the C++ reader), or the reverse.
-KNOWN_DIFFERENCES = {
-    # a second FEND, MEND or TEND record, a missing FEND record between
-    # two MFs, a FEND or SEND record with another MAT number
-    "pu:fend_extra": _STRICT,
-    "pu:fend_missing": _STRICT,
-    "pu:fend_wrong_mat": _STRICT,
-    "pu:mend_extra": _STRICT,
-    "pu:tend_twice": _STRICT,
-    "pu:send_wrong_mat": _STRICT,
-    # the SEND record of a section read with its recipe: its MF number;
-    # of a section read verbatim: its fields 1-6
-    "pu:send_wrong_mf": ["full/strict"],
-    "pu:send_c2": _VERBATIM,
-}
+# and options with which one parser accepts an input that the other
+# rejects. There are none: the strict-mode gaps of the C++ reader (a
+# missing, second or misplaced FEND, MEND or TEND record, the MAT and MF
+# numbers of the SEND records, the fields of a SEND record after a
+# section read verbatim) are closed.
+KNOWN_DIFFERENCES = {}
 
 # the tapes of several materials, which are valid tapes (check_framing)
 # but not a single material for a parse

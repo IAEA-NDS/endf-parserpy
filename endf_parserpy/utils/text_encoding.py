@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/24
-# Last modified:   2026/10/25
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -79,16 +79,19 @@ def escape_text(text):
     return _non_printable_ascii.sub(lambda m: _escape_char(m.group(0)), text)
 
 
-def long_line_hint(line):
+def long_line_hint(line, lineno=None):
     """A hint for an error message if a line is longer than 80 columns.
 
     Empty for a line of at most 80 columns (without the line ending).
+    ``lineno`` is the number of the line (counting from 1), which the
+    hint names, as that of EndfParserCpp.
     """
     length = len(line_content(line))
     if length <= 80:
         return ""
+    what = "the line" if lineno is None else f"line {lineno}"
     return (
-        f"\nHint: the line is longer than 80 columns ({length} columns; "
+        f"\nHint: {what} is longer than 80 columns ({length} columns; "
         "non-ASCII multi-byte characters or text beyond column 80?)"
     )
 

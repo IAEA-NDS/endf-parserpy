@@ -672,7 +672,9 @@ class EndfParserPy(EndfParserBase):
             self.loop_vars["__ofs"] = self.ofs
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             if self.logger.isEnabledFor(logging.INFO):
-                write_info(self.logger, "Reading a TEXT record", self.ofs)
+                write_info(
+                    self.logger, "Reading a TEXT record", self._input_line(self.ofs)
+                )
             text_dic, self.ofs = read_text(
                 self.lines, self.ofs, with_ctrl=True, read_opts=self.read_opts
             )
@@ -715,7 +717,9 @@ class EndfParserPy(EndfParserBase):
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
             if self.logger.isEnabledFor(logging.INFO):
-                write_info(self.logger, "Reading a HEAD record", self.ofs)
+                write_info(
+                    self.logger, "Reading a HEAD record", self._input_line(self.ofs)
+                )
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_head(
                 self.lines,
@@ -759,7 +763,9 @@ class EndfParserPy(EndfParserBase):
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
             if self.logger.isEnabledFor(logging.INFO):
-                write_info(self.logger, "Reading a CONT record", self.ofs)
+                write_info(
+                    self.logger, "Reading a CONT record", self._input_line(self.ofs)
+                )
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             cont_dic, self.ofs = read_cont(
                 self.lines,
@@ -877,7 +883,9 @@ class EndfParserPy(EndfParserBase):
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
             if self.logger.isEnabledFor(logging.INFO):
-                write_info(self.logger, "Reading a TAB1 record", self.ofs)
+                write_info(
+                    self.logger, "Reading a TAB1 record", self._input_line(self.ofs)
+                )
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab1_dic, self.ofs = read_tab1(
                 self.lines,
@@ -915,7 +923,9 @@ class EndfParserPy(EndfParserBase):
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
             if self.logger.isEnabledFor(logging.INFO):
-                write_info(self.logger, "Reading a TAB2 record", self.ofs)
+                write_info(
+                    self.logger, "Reading a TAB2 record", self._input_line(self.ofs)
+                )
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             tab2_dic, self.ofs = read_tab2(
                 self.lines,
@@ -952,7 +962,9 @@ class EndfParserPy(EndfParserBase):
             self.ofs = skip_blank_lines(self.lines, self.ofs)
             self.loop_vars["__ofs"] = self.ofs
             if self.logger.isEnabledFor(logging.INFO):
-                write_info(self.logger, "Reading a LIST record", self.ofs)
+                write_info(
+                    self.logger, "Reading a LIST record", self._input_line(self.ofs)
+                )
             self.logbuffer.save_record_log(self.ofs, self.lines[self.ofs], tree)
             list_dic, self.ofs = read_list(
                 self.lines,
@@ -1218,7 +1230,15 @@ class EndfParserPy(EndfParserBase):
         tree_dic = self.tree_dic
         self.variable_descriptions = EndfDict()
         ts = self.tape_structure
-        sections = split_material(lines, read_opts=self.read_opts, tape_structure=ts)
+        # the indices in lines of the lines of each section (for the line
+        # numbers of the messages and of the tolerated mismatches)
+        section_line_numbers = []
+        sections = split_material(
+            lines,
+            read_opts=self.read_opts,
+            line_numbers=section_line_numbers,
+            tape_structure=ts,
+        )
         # the sections in the order of the file, each as (MF, MT, lines),
         # become the elements of the material in the list form
         material = [seclines for _, _, seclines in sections]
@@ -1228,6 +1248,7 @@ class EndfParserPy(EndfParserBase):
         tolerated = []
         last_mf = None
         for pos, (mf, mt, curlines) in enumerate(sections):
+            self._section_line_numbers = section_line_numbers[pos]
             if mf != last_mf:
                 if self.logger.isEnabledFor(logging.INFO):
                     write_info(self.logger, f"Parsing section MF{mf}")
@@ -1295,7 +1316,7 @@ class EndfParserPy(EndfParserBase):
                         convert_arrays(numpy, array_forms, keep_floats)
                 except ParserException as exc:
                     if not nofail:
-                        logstr = self.logbuffer.display_record_logs()
+                        logstr = self.logbuffer.display_record_logs(self._input_line)
                         self._remove_array_state_opts()
                         raise type(exc)(
                             "\nHere is the parser record log until failure:\n\n"
@@ -1311,27 +1332,18 @@ class EndfParserPy(EndfParserBase):
                 # EndfParserCpp, whether the lines carry line endings
                 # (parsefile) or not (a string passed to parse)
                 material[pos] = [line.rstrip("\r\n") + "\n" for line in curlines]
+        self._section_line_numbers = None
         self._remove_array_state_opts()
-        mismatches = self._tolerated_in_input_lines(lines, tolerated)
+        mismatches = self._tolerated_in_input_lines(section_line_numbers, tolerated)
         if self._public_material_form() == "dict":
             material = to_dict_form(material)
         return material, mismatches
 
-    def _tolerated_in_input_lines(self, lines, tolerated):
+    def _tolerated_in_input_lines(self, line_numbers, tolerated):
         # The ToleratedMismatch records of the mismatches of the sections
         # (see parse), whose lines are counted in the lines of a section
-        # (from 0) and are translated to the lines of the input (from 1).
-        # The lines of the sections are only determined again (by
-        # split_sections) if there are mismatches.
-        if not tolerated:
-            return []
-        line_numbers = []
-        split_material(
-            lines,
-            read_opts=self.read_opts,
-            line_numbers=line_numbers,
-            tape_structure=self.tape_structure,
-        )
+        # (from 0) and are translated to the lines of the input (from 1)
+        # with the indices of the lines of each section in the input.
         mismatches = []
         for mat, mf, mt, entries, pos in tolerated:
             section_lines = line_numbers[pos]
@@ -1352,7 +1364,18 @@ class EndfParserPy(EndfParserBase):
         ofs = queue[-1]["ofs"]
         if not isinstance(ofs, int) or not 0 <= ofs < len(self.lines):
             return ""
-        return long_line_hint(self.lines[ofs])
+        return long_line_hint(self.lines[ofs], self._input_line(ofs))
+
+    def _input_line(self, ofs):
+        """The number of the line of the input (counting from 1) of the
+        line ``ofs`` (counting from 0) of the section being parsed; the
+        SEND record added to the section is the line after it."""
+        numbers = getattr(self, "_section_line_numbers", None)
+        if not numbers:
+            return ofs + 1
+        if ofs < len(numbers):
+            return numbers[ofs] + 1
+        return numbers[-1] + 2 + ofs - len(numbers)
 
     def _remove_array_state_opts(self):
         # also called at the start of parse() and write(): these options

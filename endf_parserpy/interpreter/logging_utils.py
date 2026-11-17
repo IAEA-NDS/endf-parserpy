@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/01
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2022-2024 International Atomic Energy Agency (IAEA)
 #
@@ -123,10 +123,15 @@ class RingBuffer:
             recon_str = recon_str.split("\n")[0]
         self.enqueue({"ofs": ofs, "line": line.rstrip(), "record_spec": recon_str})
 
-    def display_record_logs(self):
+    def display_record_logs(self, line_number=None):
+        # line_number maps the index of a line in the lines being parsed
+        # to the number of the line in the input (counting from 1)
         outstr = ""
         for curentry in self.get_queue():
-            outstr += f'-------- Line {curentry["ofs"]} -----------\n'
+            ofs = curentry["ofs"]
+            if line_number is not None and isinstance(ofs, int):
+                ofs = line_number(ofs)
+            outstr += f"-------- Line {ofs} -----------\n"
             outstr += "Template:  {}\n".format(curentry["record_spec"])
             # characters outside printable ASCII are escaped, e.g. \x92
             outstr += 'Line:     "{}"\n\n'.format(escape_text(curentry["line"]))

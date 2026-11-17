@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/11
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -105,7 +105,7 @@ def _split_lines(raw):
 
 # Line numbers in the messages of the parsers (see _message_in_file_lines):
 # the pattern (the line number is its second group), the number of the
-# first line (1 or 0) and the replacement of the match for a line of the
+# first line (1) and the replacement of the match for a line of the
 # end records added to the section ({record} is FEND, MEND or TEND), or
 # None if the message cannot refer to these records
 _INPUT_LINE_PATTERNS = (
@@ -128,13 +128,16 @@ _INPUT_LINE_PATTERNS = (
     ),
     (
         re.compile(r"(in control record of line )(\d+)(\.)"),
-        0,
+        1,
         "in control record of the {record} record added after the section.",
     ),
-    (re.compile(r"^(Line )(\d+)( is a blank line\.)", re.MULTILINE), 0, None),
-)
-_SECTION_LINE0_PATTERN = re.compile(
-    r"^(-------- Line )(\d+)( -----------)$", re.MULTILINE
+    (re.compile(r"^(Line )(\d+)( is a blank line\.)", re.MULTILINE), 1, None),
+    (
+        re.compile(r"^(-------- Line )(\d+)( -----------)$", re.MULTILINE),
+        1,
+        "-------- Line after the section ({record} record added to parse it "
+        "alone) -----------",
+    ),
 )
 _ADDED_END_RECORDS = ("FEND", "MEND", "TEND")
 
@@ -149,10 +152,8 @@ def _message_in_file_lines(message, first_line, lines):
     followed by these lines and the added FEND, MEND and TEND records,
     so that line ``n`` of the tape (counting from 1) is line
     ``first_line + n - 2`` of the file for ``2 <= n <= len(lines) + 1``;
-    the line of an added end record is named as such. The numbers of the
-    record log of EndfParserPy count the lines of the section without
-    blank lines (dropped with ``ignore_blank_lines``) from 0. Only the
-    line numbers of the messages known to give them are translated.
+    the line of an added end record is named as such. Only the line
+    numbers of the messages known to give them are translated.
     """
 
     def replace(match, first, beyond):
@@ -167,16 +168,9 @@ def _message_in_file_lines(message, first_line, lines):
             return match.group(0)
         return beyond.format(record=_ADDED_END_RECORDS[k])
 
-    def section_line(match):
-        k = int(match.group(2))
-        nonblank = [i for i, line in enumerate(lines) if line.strip() != ""]
-        if k >= len(nonblank):
-            return match.group(0)
-        return match.group(1) + str(first_line + nonblank[k]) + match.group(3)
-
     for pattern, first, beyond in _INPUT_LINE_PATTERNS:
         message = pattern.sub(lambda m: replace(m, first, beyond), message)
-    return _SECTION_LINE0_PATTERN.sub(section_line, message)
+    return message
 
 
 def _value_match(field, value, tol):

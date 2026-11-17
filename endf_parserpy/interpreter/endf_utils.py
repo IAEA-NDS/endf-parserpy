@@ -636,14 +636,14 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
     def make_control_error_message(sectype, secnum, expsecnum, ofs):
         return (
             f"Currently in {sectype}={expsecnum} section but encountered "
-            + f"{sectype}={secnum} in control record of line {ofs}."
+            + f"{sectype}={secnum} in control record of line {ofs + 1}."
         )
 
     def make_send_error_message(sectype, secnum, expsecnum, ofs):
         return (
             "Expecting a Section End (SEND/FEND/MEND) record with "
             + f"{sectype}={expsecnum} but encountered {sectype}={secnum} "
-            + f"in control record of line {ofs}."
+            + f"in control record of line {ofs + 1}."
         )
 
     def make_order_error_message(mat, mf, mt, after_fend, ofs):
@@ -654,12 +654,12 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
             return (
                 "The sections of a material must be in ascending order of MF, "
                 + f"but encountered MF={mf} after {after} of MAT={mat} "
-                + f"in control record of line {ofs}."
+                + f"in control record of line {ofs + 1}."
             )
         return (
             "The sections of an MF must be in ascending order of MT, "
             + f"but encountered MT={mt} after MT={order_mt} in MF={mf} "
-            + f"of MAT={mat} in control record of line {ofs}."
+            + f"of MAT={mat} in control record of line {ofs + 1}."
         )
 
     def make_eof_error_message(sectype, secnum):
@@ -688,7 +688,7 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
     ofs = 0
     while is_blank_line(lines[ofs]):
         if not ignore_blank_lines:
-            raise BlankLineError(f"Line {ofs} is a blank line.")
+            raise BlankLineError(f"Line {ofs + 1} is a blank line.")
         ofs += 1
     sections = []
     if not accept_non_ascii:
@@ -757,7 +757,7 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
             if ignore_blank_lines:
                 continue
             else:
-                raise BlankLineError(f"Line {ofs} is a blank line.")
+                raise BlankLineError(f"Line {ofs + 1} is a blank line.")
         if not accept_non_ascii:
             check_line_ascii(line, ofs + 1, width)
         if sec_level == -1:
@@ -797,18 +797,18 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MT", mt, last_mt, ofs)
                     + send_hint(last_mf, last_mt)
-                    + long_line_hint(line)
+                    + long_line_hint(line, ofs + 1)
                 )
             if sec_level >= 2 and last_mf != mf:
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MF", mf, last_mf, ofs)
                     + (fend_hint(last_mf) if sec_level == 2 else "")
-                    + long_line_hint(line)
+                    + long_line_hint(line, ofs + 1)
                 )
             if sec_level >= 1 and last_mat != mat:
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MAT", mat, last_mat, ofs)
-                    + long_line_hint(line)
+                    + long_line_hint(line, ofs + 1)
                 )
 
         # dealing with regular records
@@ -819,8 +819,8 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
                     raise UnexpectedControlRecordError(
                         "No MF/MT section allowed after the MEND record: parse "
                         + "reads one material; use parse_tape for a tape of "
-                        + f"several materials, in control record of line {ofs}."
-                        + long_line_hint(line)
+                        + f"several materials, in control record of line {ofs + 1}."
+                        + long_line_hint(line, ofs + 1)
                     )
                 if ignore_send_records and order_mat is not None and mat != order_mat:
                     # without the end records, a material ends where the
@@ -829,8 +829,8 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
                         f"A section of MAT={mat} follows the sections of "
                         + f"MAT={order_mat}: parse reads one material; use "
                         + "parse_tape for a tape of several materials, in "
-                        + f"control record of line {ofs}."
-                        + long_line_hint(line)
+                        + f"control record of line {ofs + 1}."
+                        + long_line_hint(line, ofs + 1)
                     )
                 if order_mat == mat and (ignore_send_records or sec_level != 0):
                     after_fend = sec_level == 1 and not ignore_send_records
@@ -859,15 +859,15 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
                     if wrong_order:
                         raise UnexpectedControlRecordError(
                             make_order_error_message(mat, mf, mt, after_fend, ofs)
-                            + long_line_hint(line)
+                            + long_line_hint(line, ofs + 1)
                         )
                     if seen is not None and (mf, mt) in seen and not ts.repeat(mf, mt):
                         raise UnexpectedControlRecordError(
                             f"The section MF={mf}/MT={mt} of MAT={mat} occurs a "
                             + "second time in the material, which the tape "
                             + "structure does not allow, in control record of "
-                            + f"line {ofs}."
-                            + long_line_hint(line)
+                            + f"line {ofs + 1}."
+                            + long_line_hint(line, ofs + 1)
                         )
                 elif seen is not None:
                     seen.clear()
@@ -910,8 +910,8 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
                         f"Unexpected SEND record after section MF={last_mf}/"
                         + f"MT={last_mt} of MAT={last_mat}: the tape structure "
                         + "has no SEND record after this section, in control "
-                        + f"record of line {ofs}."
-                        + long_line_hint(line)
+                        + f"record of line {ofs + 1}."
+                        + long_line_hint(line, ofs + 1)
                     )
                 # the section ends without a SEND record
                 sec_level = 2
@@ -921,8 +921,8 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
                         f"Unexpected FEND record after MF={last_mf} of "
                         + f"MAT={last_mat}: the tape structure has no FEND record "
                         + "after the sections of this MF, in control record of "
-                        + f"line {ofs}."
-                        + long_line_hint(line)
+                        + f"line {ofs + 1}."
+                        + long_line_hint(line, ofs + 1)
                     )
                 # the run of the MF ends without a FEND record
                 if mf == 0:
@@ -930,23 +930,27 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
         if sec_level >= 2 and mat != last_mat:
             raise UnexpectedControlRecordError(
                 make_send_error_message("MAT", mat, last_mat, ofs)
-                + long_line_hint(line)
+                + long_line_hint(line, ofs + 1)
             )
         if sec_level == 1 and mat != 0:
             raise UnexpectedControlRecordError(
-                make_send_error_message("MAT", mat, 0, ofs) + long_line_hint(line)
+                make_send_error_message("MAT", mat, 0, ofs)
+                + long_line_hint(line, ofs + 1)
             )
         if sec_level >= 3 and mf != last_mf:
             raise UnexpectedControlRecordError(
-                make_send_error_message("MF", mf, last_mf, ofs) + long_line_hint(line)
+                make_send_error_message("MF", mf, last_mf, ofs)
+                + long_line_hint(line, ofs + 1)
             )
         if sec_level < 3 and mf != 0:
             raise UnexpectedControlRecordError(
-                make_send_error_message("MF", mf, 0, ofs) + long_line_hint(line)
+                make_send_error_message("MF", mf, 0, ofs)
+                + long_line_hint(line, ofs + 1)
             )
         if sec_level == 0 and mat != -1:
             raise UnexpectedControlRecordError(
-                make_send_error_message("MAT", mat, -1, ofs) + long_line_hint(line)
+                make_send_error_message("MAT", mat, -1, ofs)
+                + long_line_hint(line, ofs + 1)
             )
         sec_level -= 1
         if sec_level == 0:

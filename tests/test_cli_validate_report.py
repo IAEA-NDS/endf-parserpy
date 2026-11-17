@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/01
-# Last modified:   2026/11/01
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -202,17 +202,20 @@ def test_message_in_file_lines():
             "line 5, column 1 of the input contains",
             "line 103, column 1 of the input contains",
         ),
-        # counting from 0 (EndfParserPy)
+        # the messages of EndfParserPy (counting from 1 as well)
         (
-            "encountered MT=2 in control record of line 3.",
+            "encountered MT=2 in control record of line 4.",
             "encountered MT=2 in control record of line 102.",
         ),
-        ("Line 1 is a blank line.", "Line 100 is a blank line."),
-        # the record log of EndfParserPy counts the lines of the section
-        # without blank lines from 0
-        ("-------- Line 0 -----------", "-------- Line 100 -----------"),
-        ("-------- Line 1 -----------", "-------- Line 102 -----------"),
-        ("-------- Line 2 -----------", "-------- Line 103 -----------"),
+        ("Line 3 is a blank line.", "Line 101 is a blank line."),
+        ("-------- Line 2 -----------", "-------- Line 100 -----------"),
+        ("-------- Line 4 -----------", "-------- Line 102 -----------"),
+        ("-------- Line 5 -----------", "-------- Line 103 -----------"),
+        (
+            "-------- Line 6 -----------",
+            "-------- Line after the section (FEND record added to parse it "
+            "alone) -----------",
+        ),
         # the end records added after the section (lines 6 to 8)
         (
             'Line 6: "x"',
@@ -224,7 +227,7 @@ def test_message_in_file_lines():
             "added to parse it alone",
         ),
         (
-            "encountered MAT=0 in control record of line 6.",
+            "encountered MAT=0 in control record of line 7.",
             "encountered MAT=0 in control record of the MEND record added "
             "after the section.",
         ),

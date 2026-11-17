@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/24
-# Last modified:   2026/10/25
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -49,10 +49,8 @@ CPP_HINT = (
     "Hint: line 6 is longer than 80 columns (82 columns; non-ASCII "
     "multi-byte characters or text beyond column 80?)"
 )
-PY_HINT = (
-    "Hint: the line is longer than 80 columns (82 columns; non-ASCII "
-    "multi-byte characters or text beyond column 80?)"
-)
+# the same hint, with the line number counted from 1 by both parsers
+PY_HINT = CPP_HINT
 
 
 def _error(tmp_path, ParserCls, data, exc_type, **kwargs):

@@ -114,7 +114,9 @@ label, or, for a label that the material does not have, inserts the
 section directly after the last section whose label is less than or
 equal to its own, so that a material in ascending order stays in
 ascending order. A copy of a label is never added by a path; the
-function :func:`~endf_parserpy.insert_section` does so. A field cannot
+function :func:`~endf_parserpy.insert_section` (and the method
+:meth:`~endf_parserpy.tape.MaterialView.insert_section` of a material of
+an :class:`~endf_parserpy.EndfFile`) does so. A field cannot
 be set in a section of a list that does not exist. The functions
 :func:`~endf_parserpy.get_section`, :func:`~endf_parserpy.set_section`,
 :func:`~endf_parserpy.insert_section`, :func:`~endf_parserpy.remove_section`,

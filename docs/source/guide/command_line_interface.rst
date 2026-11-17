@@ -149,6 +149,17 @@ one file is matched with the ``k``-th in the other). Each pair is then
 compared field by field, and any material that has no counterpart in the
 other file is reported as unpaired.
 
+The sections of two paired materials are paired by their label and its
+occurrence, the ``k``-th section MF/MT of one material with the ``k``-th
+of the other; this matters for tapes that repeat a label in a material,
+as GENDF tapes do. For such a label, the reported paths carry the
+occurrence, e.g. ``Value mismatch at /3/102#1/IZAM (952420.0 vs
+952421.0)``, and a section without a partner is reported as ``unpaired:
+section 3/102#2 only in <file>``. If the paired sections are in a
+different order, as a free-order tape structure allows, one line
+``section order differs: <file1> has 1/451, 23/501, ...; <file2> has
+...`` reports it, and it counts as a difference.
+
 
 Validating
 ----------
@@ -306,7 +317,11 @@ a material-only path replaces an entire material:
    endf-cli replace '#0' source.endf target.endf    # whole material #0
 
 In both cases the addressed unit of the target is made equal to the
-source's: target sections the source does not have are removed.
+source's: target sections the source does not have are removed. If a
+label occurs several times in the source or in the target (as on a
+GENDF tape), the sections of the source are copied in their order in
+place of those of the target; a single occurrence is replaced by its
+path, e.g. ``endf-cli replace 3/102#1 source.gendf target.gendf``.
 
 When the source or target is a :ref:`multi-material tape
 <cli_multimaterial>`, prefix the path with a material selector, e.g.

@@ -107,8 +107,9 @@ section that occurs several times in a material is selected by its
 occurrence: ``material[3, 102, k]`` or ``material["3/102#k"]`` is the
 ``k``-th MF3/MT102 section (counting from 0), and ``material[3, 102]``
 raises an ``AmbiguousSectionError`` (see :ref:`sections of a material
-<endf_path_sections>`); it cannot be edited yet. ``to_string`` and
-``export`` write all of them.
+<endf_path_sections>`). The same keys replace and delete it, and
+``material.insert_section(section)`` adds a further one. ``to_string``
+and ``export`` write all of them, in their order.
 
 The tool ``tools/check_gendf_roundtrip.py`` of the source repository
 checks the round trip of every section of a tape, and of the whole tape

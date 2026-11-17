@@ -417,8 +417,28 @@ A label that names several sections, given without an occurrence (e.g.
 ``material[3, 102]``), raises an
 :class:`~endf_parserpy.tape.AmbiguousSectionError`, as a MAT number
 that names several materials raises an
-:class:`~endf_parserpy.tape.AmbiguousMaterialError`. One of several
-sections with the same label can be read but not yet edited or deleted.
+:class:`~endf_parserpy.tape.AmbiguousMaterialError`. The same keys and
+paths replace, edit and delete a section:
+
+.. code:: Python
+
+   material[3, 102, 1] = edited_section  # replace the second MF3/MT102
+   endf_file['#0/3/102#1/IZAM'] = 952421.0
+   del material['#3']                    # delete the section at position 3
+   material.insert_section(new_section)  # after the sections with its label
+   material.insert_section(new_section, 0)  # at position 0
+
+A section added by a label that the material does not have, e.g.
+``material[3, 18] = section``, goes directly after the last section whose
+label is less than or equal to its own; so does
+:meth:`~endf_parserpy.tape.MaterialView.insert_section` without a
+position, which also adds a further section with a label that the
+material has. A material with several sections with the same label has
+no nested form: its
+:meth:`~endf_parserpy.tape.MaterialView.to_tape_dict` raises a
+:class:`~endf_parserpy.tape.TapeStructureError`, and
+:meth:`~endf_parserpy.tape.MaterialView.to_tape_list` returns it as a
+single-material tape in the list form.
 
 A retrieved section is not a plain dictionary but a *view* over
 the tape, and what that view permits is governed by the

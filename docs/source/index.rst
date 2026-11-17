@@ -31,6 +31,7 @@
    guide/perfect_precision
    guide/arrays_as_list
    guide/accelerated_parsing_and_writing
+   performance
 
 .. toctree::
    :maxdepth: 1

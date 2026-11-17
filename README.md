@@ -134,9 +134,10 @@ cache; measured on the development version of November 2026). Every
 value is fully interpreted during parsing, and written output is
 formatted field by field.
 
-The numbers are produced with
-[`tools/benchmark_throughput.py`](tools/benchmark_throughput.py) and
-refreshed for each release.
+The [Performance](https://endf-parserpy.readthedocs.io/en/latest/performance.html)
+page of the documentation gives the results for both parsers and all
+array types, by sublibrary and file size, with the peak memory and the
+command that reproduces them; they are refreshed for each release.
 
 
 ## Citation

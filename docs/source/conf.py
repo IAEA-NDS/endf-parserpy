@@ -51,7 +51,8 @@ extlinks = {
 }
 
 templates_path = ["_templates"]
-exclude_patterns = []
+# the tables of the Performance page, included by performance.rst
+exclude_patterns = ["performance/*.rst"]
 autoclass_content = "both"
 
 # -- Options for HTML output -------------------------------------------------

@@ -156,9 +156,10 @@ run
 The available format flavors are ``endf6-ext`` (default), ``endf6``, ``pendf``,
 ``jendl``, ``errorr`` and ``gendf``, and the :ref:`layout versions <layout_versions_sec>`
 ``endf6-ext@0.19`` and ``endf6@0.19``.
-GENDF tapes (``gendf``) do not have the framing of ENDF-6 that
-``endf-cli validate`` checks, and are reported as failed; see
-:doc:`GENDF files <gendf_files>`.
+``endf-cli validate`` checks the framing records by the tape structure
+of the flavor, e.g. that of GENDF tapes with ``--endf_format gendf``
+(no SEND record after MF1/MT451, a FEND record after MF1 only, the
+sections in any order); see :doc:`GENDF files <gendf_files>`.
 
 Unlike the other subcommands, ``endf-cli validate`` applies strict defaults to the
 parsing-leniency flags out of the box. Specifically, ``ignore_number_mismatch``,

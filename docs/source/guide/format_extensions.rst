@@ -226,3 +226,49 @@ flavor, which :class:`~endf_parserpy.EndfParserCpp` can then use (see
 :ref:`adding_recipe_flavor_sec`), or the same recipe dictionary can be
 compiled into a standalone C++ parser module (see
 :ref:`generating_cpp_code_sec`).
+
+
+.. _tape_structure_sec:
+
+The tape structure of a custom format
+-------------------------------------
+
+The recipes describe the content of the sections. How the sections of a
+material are framed and arranged is the *tape structure* of a format:
+where SEND and FEND records are, whether the MF and MT numbers are in
+ascending order, whether a section may occur more than once in a
+material, and the form in which ``parse`` returns a material. It is
+given as a dictionary of plain values; the empty dictionary, the
+default, is the structure of ENDF-6, which all flavors except ``gendf``
+have. A rule at the top level applies to all sections and can be
+overridden for the sections of an MF (``"mf"``) or for one section
+(``"section"``); the most specific entry applies:
+
+.. code:: python
+
+   tape_structure = {
+       "mf_order": "free",      # the order of the file, not ascending MF
+       "mt_order": "free",      # nor ascending MT within an MF
+       "repeat": True,          # a section MF/MT may occur several times
+       "fend": False,           # no FEND records ...
+       "mf": {1: {"fend": True}},               # ... except after MF1
+       "section": {(1, 451): {"send": False}},  # no SEND after MF1/MT451
+       "material_form": "list",                 # parse returns a list
+       "end_record_fill": "blank",              # blank end records
+   }
+   parser = EndfParserPy(recipes=my_recipes, tape_structure=tape_structure)
+
+This is the tape structure of the ``gendf`` flavor. A recipe ends with
+``SEND`` if and only if the tape structure has a SEND record after its
+sections; otherwise the parser raises a ``ValueError`` when it is
+created. The rules, their values and the levels at which they can be
+given are described in :class:`~endf_parserpy.TapeStructure`.
+
+A material can be the nested dictionary ``{MF: {MT: section}}`` or the
+**list of its sections** in the order of the file, the tape head first.
+``material_form`` of both parsers selects the form that ``parse``
+returns (``None``: the form of the tape structure); ``write`` accepts
+both and generates the end records by the tape structure. The functions
+:func:`~endf_parserpy.to_list_form`, :func:`~endf_parserpy.to_dict_form`
+and :func:`~endf_parserpy.section_label` convert between the forms; the
+nested form cannot hold two sections with the same MF and MT numbers.

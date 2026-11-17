@@ -28,46 +28,82 @@ and ``dspla`` of ``gaminr.f90``).
 
    The ``gendf`` flavor is **experimental**. It has no
    :ref:`layout version <layout_versions_sec>` yet, and its layout may
-   still change in a later release. In particular, the way a whole
-   material is represented, with its sections in file order and
-   repeated MF/MT sections, is still being designed. The layout of the
-   individual sections, described below, is not expected to change.
+   still change in a later release. In particular, the representation
+   of a whole material as the list of its sections (see below) is
+   experimental until it has been checked on a larger set of tapes. The
+   layout of the individual sections, described below, is not expected
+   to change.
 
 Reading a GENDF tape
 --------------------
 
-Two properties of GENDF tapes differ from ENDF-6:
+GENDF tapes are arranged differently from ENDF-6 tapes:
 
-- **Framing.** NJOY writes no SEND record after MF1/MT451, and no FEND
-  records between the MFs of a material.
+- **Framing.** NJOY writes no SEND record after MF1/MT451, a FEND
+  record after MF1 only (none between the other MFs of a material),
+  and the columns 1-66 of the SEND, FEND, MEND and TEND records blank.
 - **Section order.** The sections are written in the order in which
-  they were requested, which need not be ascending in MF and MT.
+  they were requested, which need not be ascending in MF and MT; GAMINR
+  alternates MF23 and MF26.
+- **Repeated sections.** GROUPR writes nuclide production (input
+  ``10/``) as additional MF3 sections with the MT of the reaction, e.g.
+  three MF3/MT102 sections that differ in ``IZAM``.
 
-GROUPR also writes the data of every temperature as a separate
-material with the same MAT number. Therefore,
-:func:`~endf_parserpy.EndfParserPy.parsefile`, ``parse_tape_file`` and
-``endf-cli validate``, which check the framing of ENDF-6, do not read
-GENDF tapes. Read them with :class:`~endf_parserpy.EndfFile` instead,
-with a parser that ignores the position of the end records:
+These rules are the *tape structure* of the flavor (see
+:class:`~endf_parserpy.TapeStructure` and
+:func:`~endf_parserpy.endf_recipes.get_tape_structure`), which both
+parsers, :class:`~endf_parserpy.EndfFile`, ``parse_tape_file`` and
+``endf-cli validate --endf_format gendf`` use. A material is the
+**list of its sections** in the order of the tape: the first element is
+the tape head, the others are the sections, each a dictionary with the
+keys ``MAT``, ``MF`` and ``MT``, or a list of lines for a section that
+is not parsed (``exclude``/``include``).
+
+.. code:: python
+
+   from endf_parserpy import EndfParserCpp
+
+   parser = EndfParserCpp(endf_format="gendf")
+   material = parser.parsefile("gendf.tape")      # one material
+   for section in material[1:]:
+       print(section["MF"], section["MT"])
+   mf1 = material[1]
+   print(mf1["TEMPIN"], mf1["NGN"], mf1["SIGZ"])
+   lines = parser.write(material)                 # the tape again
+
+Written back, a material gives the end records of the tape structure;
+with ``preserve_value_strings=True`` (the numbers as read), a tape is
+written back byte for byte. ``material_form="dict"`` asks for the
+nested form ``{MF: {MT: section}}`` instead, which raises an error for a
+material with repeated sections; a material without them is written back
+from the nested form with its sections in ascending order.
+
+GROUPR writes the data of every temperature as a separate material with
+the same MAT number. ``parsefile`` reads one material; read a tape of
+several with ``parse_tape_file`` (a list of materials) or with
+:class:`~endf_parserpy.EndfFile`:
 
 .. code:: python
 
    from endf_parserpy import EndfFile, EndfParserPy
 
-   parser = EndfParserPy(endf_format="gendf", ignore_send_records=True)
+   parser = EndfParserPy(endf_format="gendf")
    with EndfFile("gendf.tape", parser=parser) as tape:
        material = tape[0]            # the first material (temperature)
        mf1 = material[1, 451]
-       print(mf1["TEMPIN"], mf1["NGN"], mf1["SIGZ"])
        sec = material[3, 1]          # total cross section
+       print(material.sections())    # in the order of the tape
 
 ``tape.by_mat(mat, occurrence=k)`` selects the ``k``-th temperature of
-a material (see :doc:`multi-material files <multimaterial_files>`).
+a material (see :doc:`multi-material files <multimaterial_files>`). A
+section that occurs several times in a material cannot be addressed by
+its MF/MT numbers yet: ``material[3, 102]`` raises a
+``RepeatedSectionError``; ``to_string`` and ``export`` write all of
+them.
 
-The parsers also read and write a single section, given as a short
-tape with the usual end records. The tool
-``tools/check_gendf_roundtrip.py`` of the source repository does this
-for every section of a tape.
+The tool ``tools/check_gendf_roundtrip.py`` of the source repository
+checks the round trip of every section of a tape, and of the whole tape
+through ``parse_tape``/``write_tape`` and ``EndfFile``.
 
 Dictionary layout
 -----------------
@@ -185,9 +221,7 @@ P0 component at infinite dilution:
    import numpy as np
    from endf_parserpy import EndfFile, EndfParserPy
 
-   parser = EndfParserPy(
-       endf_format="gendf", ignore_send_records=True, array_type="numpy"
-   )
+   parser = EndfParserPy(endf_format="gendf", array_type="numpy")
    with EndfFile("gendf.tape", parser=parser) as tape:
        material = tape[0]
        ngn = material[1, 451]["NGN"]
@@ -203,22 +237,10 @@ P0 component at infinite dilution:
 Limitations
 -----------
 
-- Writing a whole tape, e.g. with :meth:`~endf_parserpy.EndfFile.export`,
-  keeps every data record but does not reproduce the tape byte for
-  byte:
-
-  - it writes the framing of ENDF-6 (a SEND record after MF1/MT451 and
-    FEND records);
-  - it sorts the sections by MF and MT.
-
-- GROUPR writes nuclide production (input ``10/``) as additional MF3
-  sections with the MT of the reaction, e.g. several MF3/MT102
-  sections that differ in ``IZAM``. The structural index of
-  :class:`~endf_parserpy.EndfFile` holds one section per MF/MT in a
-  material, so that opening such a tape raises a
-  :class:`~endf_parserpy.tape.TapeStructureError` naming the section
-  and the lines at which the sections start. Such sections can only be
-  read one by one, as a single section.
+- A section that occurs several times in a material cannot be addressed
+  by its MF/MT numbers in :class:`~endf_parserpy.EndfFile` (nor be
+  edited or deleted there); read the material as a list with the
+  parsers to work with such sections.
 - To write the numbers in the forms of NJOY, parse with
   ``preserve_value_strings=True``. Writing from the values with
   ``prefer_noexp=True`` and ``standard_form_on_tie=True`` gives the

@@ -217,9 +217,11 @@ class EndfPath(Sequence):
     a specific level in the hierarchy of a nested dictionary.
     As for the :class:`tuple` datatype, references can be concatenated
     using the ``+`` operator and two references can be compared
-    using the ``==`` operator. Also iterating over the individual
-    keys within a reference works, which are returned as
-    :class:`EndfPath` instances.
+    using the ``==`` operator; they are equal if they have the same
+    keys, so a path is not equal to its prefixes. References are
+    hashable and can be used in sets and as dictionary keys.
+    Also iterating over the individual keys within a reference works,
+    which are returned as :class:`EndfPath` instances.
 
     **Sections of a material.** Applied to a material, the first
     elements of a path select a section, in one of three ways:
@@ -378,11 +380,14 @@ class EndfPath(Sequence):
                     raise ValueError(f"invalid path element `{el}`")
 
     def __eq__(self, other):
+        # the location only: array_type and leading, which choose the
+        # containers that set creates, do not take part
         if isinstance(other, EndfPath):
-            p1 = self._path_elements
-            p2 = other._path_elements
-            return all(x == y for x, y in zip(p1, p2))
+            return self._path_elements == other._path_elements
         return False
+
+    def __hash__(self):
+        return hash(self._path_elements)
 
     def __str__(self):
         return "/".join([str(x) for x in self._path_elements])

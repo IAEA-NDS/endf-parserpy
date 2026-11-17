@@ -9,7 +9,8 @@ from .test import endf_recipe_dictionary as test_recipes
 
 
 # The build targets: the flavors with a recipe dictionary of their own.
-# The C++ code generator and setup.py create one C++ module per entry.
+# The C++ code generator and setup.py create one entry per build target
+# in the C++ module (see cpp_module_basename).
 _FORMAT_DICT = {
     "endf6-ext": endf6_ext_recipes,
     "endf6": endf6_recipes,
@@ -23,7 +24,7 @@ _FORMAT_DICT = {
 
 # Layout versions and other names that stand for another flavor. An
 # alias maps a name to a build target or to another alias. It has no
-# recipes and no C++ module of its own.
+# recipes and no entry in the C++ module of its own.
 #
 # A layout version `<flavor>@<X.Y>` pins the layout of the dictionaries
 # that the flavor gives in the release X.Y of endf-parserpy: the keys,
@@ -43,8 +44,9 @@ _FORMAT_DICT = {
 #    the flavor for the rest, as `jendl` does from `endf6`, and replaces
 #    the recipes of these sections by the copies.
 # 2. Move `endf6-ext@0.20` from `_ALIASES` to `_FORMAT_DICT`, which makes
-#    it a build target with its own C++ module, and let the earlier
-#    versions with the same layout, e.g. `endf6-ext@0.19`, refer to it.
+#    it a build target with its own entry in the C++ module, and let the
+#    earlier versions with the same layout, e.g. `endf6-ext@0.19`, refer
+#    to it.
 # 3. Change the recipes of `endf6-ext` and add the alias
 #    `"endf6-ext@0.21": "endf6-ext"` with the release.
 # 4. Store the checksum of `endf6-ext@0.21` in the test; those of the
@@ -148,7 +150,8 @@ def resolve_endf_flavor(format_spec):
     Returns
     -------
     str
-        The name of the flavor whose recipes and C++ module are used.
+        The name of the flavor whose recipes and entry in the C++ module
+        are used.
     """
     if format_spec not in _RESOLVED:
         raise TypeError(
@@ -204,16 +207,21 @@ def list_endf_flavors():
 
 
 def cpp_module_basename(format_spec):
-    """Return the name of the C++ module of a build target.
+    """Return the name of the entry of a build target in the C++ module.
 
-    The characters ``-``, ``@`` and ``.``, which a Python module name
+    The characters ``-``, ``@`` and ``.``, which a Python identifier
     cannot contain, are replaced by ``_``, e.g. ``endf6_ext`` for
     ``endf6-ext`` and ``endf6_ext_0_20`` for a frozen layout version
-    ``endf6-ext@0.20``.
+    ``endf6-ext@0.20``. The entry is a submodule of
+    ``endf_parserpy.cpp_parsers._flavors`` and its code is in the C++
+    namespace ``endf_flavor_<name>``.
     """
     return format_spec.replace("-", "_").replace("@", "_").replace(".", "_")
 
 
 def list_endf_build_targets():
-    """Return the names of the flavors with recipes and a C++ module of their own."""
+    """Return the names of the flavors with recipes of their own.
+
+    Each of them has an entry in the C++ module.
+    """
     return tuple(_FORMAT_DICT.keys())

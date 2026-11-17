@@ -15,10 +15,20 @@ from endf_parserpy.endf_recipes import (
     list_endf_build_targets,
     cpp_module_basename,
 )
-from .endf2cpp import generate_cpp_module_code, generate_shared_cpp_code
+from .endf2cpp import (
+    generate_cpp_module_code,
+    generate_cpp_flavor_code,
+    generate_cpp_flavors_module_code,
+    generate_shared_cpp_code,
+)
 from .cpp_boilerplate import generate_cmake_content
 
 
+# the extension module with the functions of all build targets, one
+# entry (submodule) per target (see _prepare_cpp_parsers_subpackage)
+CPP_MODULE_NAME = "_flavors"
+CPP_MODULE_FILENAME = f"{CPP_MODULE_NAME}.cpp"
+FLAVOR_TU_PREFIX = "_flavor_"
 SHARED_CPP_FILENAME = "_shared.cpp"
 SHARED_CHUNK_PREFIX = "_shared_part_"
 
@@ -74,16 +84,42 @@ def create_project_files(
     create_cmake_file(project_path, module_name, overwrite=overwrite_files)
 
 
+def _flavor_tu_filename(entry_name):
+    return f"{FLAVOR_TU_PREFIX}{entry_name}.cpp"
+
+
+def is_generated_tu_filename(basename):
+    """Whether a file in ``cpp_parsers/`` is a translation unit that the
+    build generates (and removes again before generating anew)."""
+    return (
+        is_shared_chunk_filename(basename)
+        or basename == CPP_MODULE_FILENAME
+        or (basename.startswith(FLAVOR_TU_PREFIX) and basename.endswith(".cpp"))
+    )
+
+
 def _prepare_cpp_parsers_subpackage(
-    overwrite=False, only_filenames=False, dedup=True, num_shared_chunks=None
+    overwrite=False,
+    only_filenames=False,
+    dedup=True,
+    num_shared_chunks=None,
 ):
-    """Generate per-flavor C++ pybind11 module sources.
+    """Generate the C++ sources of the extension module with all flavors.
+
+    The module ``endf_parserpy.cpp_parsers._flavors`` contains one
+    entry (a submodule) per build target, named by
+    ``cpp_module_basename``, with the functions ``parse_endf``,
+    ``parse_endf_file``, ``write_endf`` and ``write_endf_file`` of the
+    target. Aliases have no entry; they use the entry of their target.
 
     When ``dedup`` is True (default), parse and write function bodies
     that have an identical underlying ENDF recipe, specialized for the
-    same MF/MT, across multiple flavors are emitted only once into shared translation unit(s),
-    which the build system compiles and links into each flavor's
-    extension module via ``extra_objects``.
+    same MF/MT, across multiple flavors are emitted only once into shared
+    translation unit(s).
+    The code of each flavor (wrappers and dispatchers, which have the
+    same names in every flavor) is placed into a namespace of its own,
+    in a translation unit of its own (``_flavor_<entry>.cpp``); the
+    module init is in ``_flavors.cpp``.
 
     Parameters
     ----------
@@ -93,6 +129,12 @@ def _prepare_cpp_parsers_subpackage(
         (default) consults the ``INSTALL_ENDF_PARSERPY_NUM_SHARED_CHUNKS``
         environment variable, falling back to ``min(os.cpu_count(), 8)``.
         Set to ``1`` to keep the legacy single-``_shared.cpp`` layout.
+
+    Returns
+    -------
+    list[str]
+        The basenames of the translation units of the module, the
+        flavors first, then the shared chunks, then the module init.
     """
     if num_shared_chunks is None:
         env_val = os.environ.get("INSTALL_ENDF_PARSERPY_NUM_SHARED_CHUNKS", "")
@@ -102,12 +144,13 @@ def _prepare_cpp_parsers_subpackage(
             num_shared_chunks = min(os.cpu_count() or 1, 8)
     num_shared_chunks = max(num_shared_chunks, 1)
 
-    # one module per flavor with recipes of its own; the aliases, e.g.
-    # layout versions without changes, use the module of their flavor
+    # one entry per flavor with recipes of its own; the aliases, e.g.
+    # layout versions without changes, use the entry of their flavor
     endf_flavors = list_endf_build_targets()
+    entry_names = [cpp_module_basename(f) for f in endf_flavors]
     script_dir = os.path.dirname(os.path.abspath(__file__))
     cpp_parsers_dir = os.path.join(script_dir, "../cpp_parsers")
-    flavor_filenames = [f"{cpp_module_basename(f)}.cpp" for f in endf_flavors]
+    flavor_filenames = [_flavor_tu_filename(e) for e in entry_names]
     filenames = list(flavor_filenames)
     if dedup:
         if num_shared_chunks == 1:
@@ -116,34 +159,41 @@ def _prepare_cpp_parsers_subpackage(
             filenames.extend(
                 _shared_chunk_filename(i) for i in range(num_shared_chunks)
             )
+    filenames.append(CPP_MODULE_FILENAME)
     if only_filenames:
         return filenames
 
-    # Remove shared translation units left by any previous build. A
-    # changed layout (different chunk count, or dedup toggled off)
-    # would otherwise leave stale _shared*.cpp files that the build
-    # picks up alongside the current ones, causing duplicate-symbol
-    # link errors.
+    # Remove the translation units left by any previous build. A
+    # changed layout (different chunk count, dedup toggled off or other
+    # flavors) would otherwise leave stale
+    # files that the build picks up alongside the current ones, causing
+    # duplicate-symbol link errors.
     if overwrite:
         for name in os.listdir(cpp_parsers_dir):
-            if is_shared_chunk_filename(name):
+            if is_generated_tu_filename(name):
                 os.remove(os.path.join(cpp_parsers_dir, name))
 
+    def _write(basename, content):
+        path = os.path.join(cpp_parsers_dir, basename)
+        if not overwrite and os.path.exists(path):
+            raise FileExistsError(f"The module {path} exists already!")
+        with open(path, "w") as f:
+            f.write(content)
+
     shared_registry = {} if dedup else None
-    for endf_flavor, module_file in zip(endf_flavors, flavor_filenames):
+    for endf_flavor, entry_name, filename in zip(
+        endf_flavors, entry_names, flavor_filenames
+    ):
         print(f"---- compilation of {endf_flavor} ----")
-        module_name = cpp_module_basename(endf_flavor)
-        cpp_module_path = os.path.join(cpp_parsers_dir, module_file)
-        if not overwrite and os.path.exists(cpp_module_path):
-            raise FileExistsError(f"The module {cpp_module_path} exists already!")
         recipe = get_recipe_dict(endf_flavor)
-        create_cpp_parser_module(
-            cpp_module_path,
-            module_name,
-            recipe,
-            overwrite=overwrite,
-            shared_registry=shared_registry,
+        code = generate_cpp_flavor_code(
+            recipe, entry_name, shared_registry=shared_registry
         )
+        _write(filename, code)
+    _write(
+        CPP_MODULE_FILENAME,
+        generate_cpp_flavors_module_code(CPP_MODULE_NAME, entry_names),
+    )
 
     written_shared_files = []
     if dedup:
@@ -155,11 +205,7 @@ def _prepare_cpp_parsers_subpackage(
             f"{n_parse} parse + {n_write} write deduplicated functions ----"
         )
         for basename, content in chunks:
-            shared_path = os.path.join(cpp_parsers_dir, basename)
-            if not overwrite and os.path.exists(shared_path):
-                raise FileExistsError(f"The module {shared_path} exists already!")
-            with open(shared_path, "w") as f:
-                f.write(content)
+            _write(basename, content)
             written_shared_files.append(basename)
         # If fewer chunks were produced than requested (with fewer
         # functions than chunks), drop the missing names from the

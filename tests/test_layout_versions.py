@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/16
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -13,8 +13,8 @@
 
 A layout version, e.g. `endf6-ext@0.19`, pins the layout of the
 dictionaries of a flavor. As long as the flavor keeps this layout, the
-version is an alias of the flavor, without recipes or a C++ module of
-its own (see endf_recipes/catalogue.py).
+version is an alias of the flavor, without recipes or an entry in the
+C++ module of its own (see endf_recipes/catalogue.py).
 
 The guard stores a checksum of the recipes of every layout version and
 fails if the recipes that a version resolves to change. The checksum is
@@ -25,6 +25,7 @@ change it.
 
 import argparse
 import hashlib
+import importlib
 import importlib.util
 import json
 import sys
@@ -324,8 +325,8 @@ def test_resolve_aliases_rejects(aliases, message):
 
 
 def test_build_has_no_module_for_aliases():
-    # the extension modules of setup.py, which are the same as before the
-    # layout versions were introduced
+    # one extension module with one translation unit per build target,
+    # none for an alias
     setup_py = REPO_ROOT / "setup.py"
     if not setup_py.exists():
         pytest.skip("setup.py is not available")
@@ -334,16 +335,53 @@ def test_build_has_no_module_for_aliases():
     setup_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(setup_module)
     ext_modules = setup_module.generate_ext_module_list("yes", None)
-    names = [ext.name for ext in ext_modules]
-    assert names == [
-        "endf_parserpy.cpp_parsers.endf6_ext",
-        "endf_parserpy.cpp_parsers.endf6",
-        "endf_parserpy.cpp_parsers.jendl",
-        "endf_parserpy.cpp_parsers.pendf",
-        "endf_parserpy.cpp_parsers.errorr",
-        "endf_parserpy.cpp_parsers.gendf",
-        "endf_parserpy.cpp_parsers.test",
+    assert [ext.name for ext in ext_modules] == ["endf_parserpy.cpp_parsers._flavors"]
+    sources = [Path(src).name for src in ext_modules[0].sources]
+    flavor_sources = [s for s in sources if s.startswith("_flavor_")]
+    assert flavor_sources == [
+        "_flavor_endf6_ext.cpp",
+        "_flavor_endf6.cpp",
+        "_flavor_jendl.cpp",
+        "_flavor_pendf.cpp",
+        "_flavor_errorr.cpp",
+        "_flavor_gendf.cpp",
+        "_flavor_test.cpp",
     ]
+    assert "_flavors.cpp" in sources
+
+
+def test_cpp_module_has_one_entry_per_build_target():
+    flavors = pytest.importorskip("endf_parserpy.cpp_parsers._flavors")
+    targets = list_endf_build_targets()
+    assert flavors._entries == tuple(cpp_module_basename(t) for t in targets)
+    for alias in set(list_endf_flavors()) - set(targets):
+        assert not hasattr(flavors, cpp_module_basename(alias))
+
+
+# the modules of the flavors until release 0.18, which stand for the
+# entries of the C++ module
+HISTORICAL_MODULES = ("endf6_ext", "endf6", "jendl", "pendf", "errorr", "test")
+
+
+@pytest.mark.parametrize("name", HISTORICAL_MODULES)
+def test_historical_module_names(name):
+    flavors = pytest.importorskip("endf_parserpy.cpp_parsers._flavors")
+    module = importlib.import_module("endf_parserpy.cpp_parsers." + name)
+    assert module is getattr(flavors, name)
+    for func in ("parse_endf", "parse_endf_file", "write_endf", "write_endf_file"):
+        assert getattr(module, func).__module__ == module.__name__
+    assert importlib.import_module(module.__name__) is module
+
+
+def test_no_module_names_for_aliases():
+    # the shims are only for the historical names (see HISTORICAL_MODULES)
+    cpp_parsers_dir = REPO_ROOT / "endf_parserpy" / "cpp_parsers"
+    shims = sorted(
+        p.stem
+        for p in cpp_parsers_dir.glob("*.py")
+        if p.stem not in ("__init__", "endf_parser_cpp")
+    )
+    assert shims == sorted(HISTORICAL_MODULES)
 
 
 # the parsers with a layout version that is an alias
@@ -366,8 +404,11 @@ def test_python_parser_with_alias(version, flavor, filename):
 
 
 def _cpp_module(flavor):
-    name = "endf_parserpy.cpp_parsers." + cpp_module_basename(flavor)
-    return pytest.importorskip(name)
+    # the entry of the build target in the C++ module: skipped only if
+    # the C++ module is not available at all, an error if it lacks the
+    # entry
+    flavors = pytest.importorskip("endf_parserpy.cpp_parsers._flavors")
+    return getattr(flavors, cpp_module_basename(flavor))
 
 
 @pytest.mark.parametrize(
@@ -395,7 +436,7 @@ def test_cpp_parser_error_names_both_flavors(monkeypatch):
         EndfParserCpp(endf_format="nomodule@0.19")
     message = str(exc_info.value)
     assert "`nomodule@0.19`, which stands for the flavor `nomodule`" in message
-    assert "endf_parserpy.cpp_parsers.nomodule)" in message
+    assert "endf_parserpy.cpp_parsers._flavors.nomodule)" in message
 
 
 def test_cpp_parser_unknown_name():

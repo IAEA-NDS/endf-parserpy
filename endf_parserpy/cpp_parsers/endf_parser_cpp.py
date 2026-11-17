@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -32,6 +32,23 @@ from ..endf_parser_base import (
     _check_numpy_available,
     _write_via_temporary_file,
 )
+
+
+# the extension module with one entry per build target (see
+# endf_parserpy.compiler.compiler._prepare_cpp_parsers_subpackage)
+_CPP_MODULE = "endf_parserpy.cpp_parsers._flavors"
+
+
+def _cpp_module_entry(entry_name):
+    """Return the entry of a build target in the C++ module.
+
+    Raises an ``ImportError`` if the module is not available (e.g. not
+    compiled) or has no entry of this name.
+    """
+    module = importlib.import_module(_CPP_MODULE)
+    if entry_name not in module._entries:
+        raise ImportError(f"{_CPP_MODULE} has no entry `{entry_name}`")
+    return getattr(module, entry_name)
 
 
 class EndfParserCpp(EndfParserBase):
@@ -324,20 +341,21 @@ class EndfParserCpp(EndfParserBase):
             "accept_non_ascii": accept_non_ascii,
             "array_type": array_type,
         }
-        subpackage = "endf_parserpy.cpp_parsers"
         # an alias, e.g. a layout version without changes, uses the
-        # module of the flavor it stands for
+        # entry of the flavor it stands for
         if endf_format in list_endf_flavors():
             resolved_format = resolve_endf_flavor(endf_format)
         else:
             resolved_format = endf_format
-        module_name = f"{subpackage}.{cpp_module_basename(resolved_format)}"
-        # import the parsing functions
+        entry_name = cpp_module_basename(resolved_format)
+        location = f"{_CPP_MODULE}.{entry_name}"
+        # the functions of the flavor from its entry in the C++ module
         try:
-            self._parse_endf = self._dynamic_import(module_name, "parse_endf")
-            self._parse_endf_file = self._dynamic_import(module_name, "parse_endf_file")
-            self._write_endf = self._dynamic_import(module_name, "write_endf")
-            self._write_endf_file = self._dynamic_import(module_name, "write_endf_file")
+            entry = _cpp_module_entry(entry_name)
+            self._parse_endf = entry.parse_endf
+            self._parse_endf_file = entry.parse_endf_file
+            self._write_endf = entry.write_endf
+            self._write_endf_file = entry.write_endf_file
         except ImportError as exc:
             if resolved_format != endf_format:
                 flavor_info = (
@@ -349,17 +367,11 @@ class EndfParserCpp(EndfParserBase):
             raise type(exc)(
                 "Unable to import the cpp module responsible "
                 + "for parsing and reading ENDF-6 files "
-                + f"of the format {flavor_info} ({module_name}). "
+                + f"of the format {flavor_info} ({location}). "
                 + "Probably the module could not be compiled "
                 + "during package installation. Please use the "
                 + "EndfParserPy class instead."
             ) from exc
-
-    def _dynamic_import(self, module_name, attribute_name):
-        module = importlib.import_module(module_name)
-        if attribute_name:
-            return getattr(module, attribute_name)
-        return module
 
     def parse(self, lines, exclude=None, include=None):
         """Parse ENDF-6 formatted data.

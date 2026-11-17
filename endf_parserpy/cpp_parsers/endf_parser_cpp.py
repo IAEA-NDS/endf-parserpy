@@ -20,10 +20,9 @@ from endf_parserpy.endf_recipes import (
 )
 from endf_parserpy.utils.tape_structure import (
     check_material,
-    dict_form_keys,
+    check_nested_material,
     is_list_form,
     to_dict_form,
-    to_list_form,
 )
 from endf_parserpy.utils.accessories import EndfDict
 from endf_parserpy.utils.tolerated_mismatches import (
@@ -395,9 +394,10 @@ class EndfParserCpp(EndfParserBase):
         # the tape structure of the flavor, given to the functions of the
         # C++ module with the options (see TapeStructure)
         self.tape_structure = get_tape_structure(resolved_format)
-        tape_opts = {"tape_structure": self.tape_structure.cpp_options()}
-        self._cpp_read_opts = dict(self.read_opts, **tape_opts)
-        self._cpp_write_opts = dict(self.write_opts, **tape_opts)
+        # (the functions of the entry of a flavor use its tape structure
+        # if the options give none, see cpp_flavor_tape_rules)
+        self._cpp_read_opts = self.read_opts
+        self._cpp_write_opts = self.write_opts
 
     def parse(self, lines, exclude=None, include=None):
         """Parse ENDF-6 formatted data.
@@ -459,9 +459,22 @@ class EndfParserCpp(EndfParserBase):
     def _public_form(self, material):
         """The material returned by the C++ module (the list of its
         sections) in the form asked for (see ``material_form``)."""
-        if self._public_material_form() == "dict":
+        if self.material_form != "dict" and (
+            self.material_form == "list" or self.tape_structure.material_form != "dict"
+        ):
+            return material
+        # The dictionaries of the nested form are created with the cyclic
+        # garbage collector paused, as the result is by the C++ module
+        # (see cpp_gc_pause): otherwise their creation started a
+        # collection that traverses all objects of the result, a few
+        # percent of the time of a parse.
+        if not gc.isenabled():
             return to_dict_form(material)
-        return material
+        gc.disable()
+        try:
+            return to_dict_form(material)
+        finally:
+            gc.enable()
 
     def _material_to_write(self, endf_dict):
         """Check a material before it is written (see check_material) and
@@ -476,8 +489,7 @@ class EndfParserCpp(EndfParserBase):
             ]
             check_material(endf_dict, self.tape_structure, True)
             return endf_dict
-        sections = to_list_form(endf_dict)
-        check_material(sections, self.tape_structure, False, dict_form_keys(endf_dict))
+        check_nested_material(endf_dict)
         return endf_dict
 
     def parsefile(self, filename, exclude=None, include=None):

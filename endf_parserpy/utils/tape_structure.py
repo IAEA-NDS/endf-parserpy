@@ -546,30 +546,35 @@ def to_dict_form(material):
     if not isinstance(material, list):
         return material
     result = {}
-    seen = {}
-    repeated = None
-    for pos, section in enumerate(material):
-        _, mf, mt = section_label(section)
-        mtdic = result.setdefault(mf, {})
-        if mt in mtdic:
-            seen[(mf, mt)].append(pos)
-            if repeated is None:
-                repeated = (mf, mt)
-            continue
-        seen[(mf, mt)] = [pos]
-        mtdic[mt] = section
-    if repeated is not None:
-        from ..tape.errors import TapeStructureError
-
-        mf, mt = repeated
-        positions = seen[repeated]
-        raise TapeStructureError(
-            f"the material has {len(positions)} sections MF={mf}/MT={mt} "
-            f"(at positions {_positions(positions)} of the list); the nested "
-            "form {MF: {MT: section}} holds one section per MF/MT; use "
-            'material_form="list"'
-        )
+    for section in material:
+        # (a plain dict, as the parsers create it, directly)
+        if type(section) is dict:
+            mf = section["MF"]
+            mt = section["MT"]
+        else:
+            _, mf, mt = section_label(section)
+        mtdic = result.get(mf)
+        if mtdic is None:
+            result[mf] = {mt: section}
+        elif mt in mtdic:
+            _raise_repeated(material, mf, mt)
+        else:
+            mtdic[mt] = section
     return result
+
+
+def _raise_repeated(material, mf, mt):
+    from ..tape.errors import TapeStructureError
+
+    positions = [
+        pos for pos, s in enumerate(material) if section_label(s)[1:] == (mf, mt)
+    ]
+    raise TapeStructureError(
+        f"the material has {len(positions)} sections MF={mf}/MT={mt} "
+        f"(at positions {_positions(positions)} of the list); the nested "
+        "form {MF: {MT: section}} holds one section per MF/MT; use "
+        'material_form="list"'
+    )
 
 
 def recipe_ends_with_send(recipe):
@@ -807,3 +812,47 @@ def check_verbatim_labels(lines, mf, mt):
                 f"has MAT/MF/MT {'/'.join(map(str, found))}, which differ from "
                 f"{'/'.join(map(str, expected))} of its first line"
             )
+
+
+def check_nested_material(material):
+    """Check a material in the nested form before it is written, in one
+    pass: the checks of :func:`to_list_form` (the keys ``MF`` and ``MT`` of
+    a parsed section) and the MAT rule of :func:`check_material`, which are
+    all that apply to the nested form, as the conversion gives the
+    canonical order. Used by EndfParserCpp, whose C++ module writes the
+    nested form itself."""
+    from ..interpreter.custom_exceptions import UnexpectedControlRecordError
+
+    material_mat = None
+    pos = 0
+    for mf in sorted(material):
+        mtdic = material[mf]
+        for mt in sorted(mtdic):
+            section = mtdic[mt]
+            if isinstance(section, Mapping):
+                section.setdefault("MF", mf)
+                if section["MF"] != mf:
+                    raise UnexpectedControlRecordError(
+                        f"expected MF={mf} but found MF={section['MF']}"
+                    )
+                section.setdefault("MT", mt)
+                if section["MT"] != mt:
+                    raise UnexpectedControlRecordError(
+                        f"expected MT={mt} but found MT={section['MT']}"
+                    )
+                mat = section.get("MAT")
+            else:
+                mat = _lenient_label(section)[0]
+            if mf != 0 and mat is not None:
+                if material_mat is None:
+                    material_mat = (mat, mf, mt)
+                elif mat != material_mat[0]:
+                    raise ValueError(
+                        f"section MF={mf}/MT={mt} at position {pos} of the list has "
+                        f"MAT={mat}, but the material has MAT={material_mat[0]} "
+                        f"(from the section MF={material_mat[1]}/MT="
+                        f"{material_mat[2]}); all sections of a material must have "
+                        "the same MAT number (the tape head MF=0/MT=0 is not "
+                        "counted)"
+                    )
+            pos += 1

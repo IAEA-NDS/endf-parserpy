@@ -1,4 +1,48 @@
 {
+ "extra_line_451": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: invalid integer in field: \" 1.700000+7\" (field 3, columns 23-33).\nTemplate: [ MAT , 1 , 451 / ZA , AWR , 0 , NZ , (-1) , NTW ] HEAD\nLine 10: \" 1.350000+7 1.500000+7 1.700000+7 0.000000+0                       125 1451    8\"",
+   "py": "UnexpectedControlRecordError: \nHere is the parser record log until failure:\n\n-------- Line 2 -----------\nTemplate:  [ MAT , 1 , 451 / ZA , AWR , 0 , NZ , - 1 , NTW ] HEAD\nLine:     \" 1.001000+3 9.991673-1          0          1         -1          1 125 1451    1\"\n\n-------- Line 3 -----------\nTemplate:  [ MAT , 1 , 451 / TEMPIN , 0.0 , NGN , NGG , NTW + NZ + NGN + NGG + 2 , 0 / \n { TITLE [ i ] } { i = 1 to NTW } \n { SIGZ [ i ] } { i = 1 to NZ } \n { EGN [ i ] } { i = 1 to NGN + 1 } \n { EGG [ i ] } { i = 1 to NGG + 1 } ] LIST\nLine:     \" 2.936000+2 0.000000+0         30          0         34          0 125 1451    2\"\n\nError message: Unexpected record after the end of section MF=1/MT=451 of MAT=125: the tape structure has no SEND record after this section, which ends with the last record of its recipe, in control record of line 10."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: invalid integer in field: \" 1.700000+7\" (field 3, columns 23-33).\nTemplate: [ MAT , 1 , 451 / ZA , AWR , 0 , NZ , (-1) , NTW ] HEAD\nLine 10: \" 1.350000+7 1.500000+7 1.700000+7 0.000000+0                       125 1451    8\"",
+   "py": "UnexpectedControlRecordError: \nHere is the parser record log until failure:\n\n-------- Line 2 -----------\nTemplate:  [ MAT , 1 , 451 / ZA , AWR , 0 , NZ , - 1 , NTW ] HEAD\nLine:     \" 1.001000+3 9.991673-1          0          1         -1          1 125 1451    1\"\n\n-------- Line 3 -----------\nTemplate:  [ MAT , 1 , 451 / TEMPIN , 0.0 , NGN , NGG , NTW + NZ + NGN + NGG + 2 , 0 / \n { TITLE [ i ] } { i = 1 to NTW } \n { SIGZ [ i ] } { i = 1 to NZ } \n { EGN [ i ] } { i = 1 to NGN + 1 } \n { EGG [ i ] } { i = 1 to NGG + 1 } ] LIST\nLine:     \" 2.936000+2 0.000000+0         30          0         34          0 125 1451    2\"\n\nError message: Unexpected record after the end of section MF=1/MT=451 of MAT=125: the tape structure has no SEND record after this section, which ends with the last record of its recipe, in control record of line 10."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ },
  "fend_extra": {
   "exclude/ignore_send_records": {
    "cpp": null,

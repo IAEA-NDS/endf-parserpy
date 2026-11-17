@@ -129,6 +129,12 @@ def _gendf_cases():
         + b["s1"][:-1]
         + tape("s2", "mend", "tend"),
         "mend_missing": tape("tpid", "451", "fend1", "s1", "s2", "tend"),
+        # a line too many at the end of MF1/MT451 (a copy of its last
+        # line): without a SEND record, the section ends with the last
+        # record of its recipe, and the line is not read
+        "extra_line_451": tape("tpid", "451")
+        + b["451"][-1:]
+        + tape("fend1", "s1", "s2", "mend", "tend"),
     }
 
 
@@ -431,8 +437,17 @@ def test_gendf_valid_cases(gendf_results):
                 assert entry["py"] is None and entry["cpp"] is None, (name, key)
 
 
+# the gendf cases whose damage is in the content of a section, which the
+# parsers find by its recipe, and not in the framing that check_framing
+# checks
+GENDF_CONTENT_CASES = ("extra_line_451",)
+
+
 def test_gendf_framing_check_agrees_with_full_parse(gendf_results):
     for name, result in gendf_results.items():
+        if name in GENDF_CONTENT_CASES:
+            assert result["framing"] == {option: [] for option in OPTIONS}
+            continue
         for option in OPTIONS:
             entry = result[f"full/{option}"]
             failed = entry["py"] is not None or entry["cpp"] is not None

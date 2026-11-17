@@ -280,18 +280,61 @@ def test_no_send_records_send_in_the_data():
         )
 
 
-def test_no_send_records_copies_are_one_section():
-    # nothing separates two copies of a section, so that they are read as
-    # one section (of two lines), even if the section may repeat
+def test_no_send_records_adjacent_copies():
+    # without SEND records, nothing separates two copies of a section
+    # directly after each other, which therefore cannot be told apart from
+    # one section with a line too many: an error at the first line that
+    # the recipe does not read, even if the section may repeat
     tape = _no_send_tape(1, 1)
     spec = dict(NO_SEND_GLOBAL, repeat=True)
     parser = EndfParserPy(
         recipes=_no_send_recipes(), tape_structure=spec, material_form="list"
     )
-    assert _labels(parser.parse(tape)) == [(0, 0), (3, 1)]
+    with pytest.raises(UnexpectedControlRecordError) as exc:
+        parser.parse(tape)
+    assert str(exc.value).endswith(
+        "Error message: Unexpected record after the end of section MF=3/MT=1 of "
+        "MAT=2631: the tape structure has no SEND record after this section, "
+        "which ends with the last record of its recipe, in control record of "
+        "line 3."
+    )
+    # read verbatim, the lines are kept as one section
     material = parser.parse(tape, exclude=[3])
     assert _labels(material) == [(0, 0), (3, 1)]
     assert len(material[1]) == 2
+    # separated by another section, the copies are two sections
+    parser = EndfParserPy(
+        recipes=_no_send_recipes(),
+        tape_structure=dict(spec, mt_order="free"),
+        material_form="list",
+    )
+    material = parser.parse(_no_send_tape(1, 2, _ln(_HEAD, 2631, 3, 1)))
+    assert _labels(material) == [(0, 0), (3, 1), (3, 2), (3, 1)]
+
+
+def test_no_send_records_line_not_read():
+    # a line after the last record of the recipe of a section without SEND
+    # record (here a second HEAD record of MF3/MT2) is an error; it was
+    # dropped before
+    extra = _ln(" 9.999900+4 1.000000+0" + "          0" * 4, 2631, 3, 2)
+    tape = _no_send_tape(1, 2, extra)
+    parser = EndfParserPy(recipes=_no_send_recipes(), tape_structure=NO_SEND_GLOBAL)
+    with pytest.raises(UnexpectedControlRecordError) as exc:
+        parser.parse(tape)
+    assert str(exc.value).endswith(
+        "Error message: Unexpected record after the end of section MF=3/MT=2 of "
+        "MAT=2631: the tape structure has no SEND record after this section, "
+        "which ends with the last record of its recipe, in control record of "
+        "line 4."
+    )
+    # blank lines at the end of the section are not records
+    blank = EndfParserPy(
+        recipes=_no_send_recipes(),
+        tape_structure=NO_SEND_GLOBAL,
+        ignore_blank_lines=True,
+    )
+    with_blank = _no_send_tape(1, 2, "")
+    assert blank.parse(with_blank) == parser.parse(_no_send_tape(1, 2))
 
 
 def test_no_send_records_tape_layer(tmp_path):

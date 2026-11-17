@@ -263,10 +263,12 @@ This is the tape structure of the ``gendf`` flavor. A recipe ends with
 sections; otherwise the parser raises a ``ValueError`` when it is
 created. Like ``fend``, ``send`` can also be given at the top level and
 per MF: ``{"send": False}`` is a format without any SEND records, whose
-recipes all end without ``SEND``. Two copies of the same section
-directly after each other are then read as one section, as nothing
-separates them. The rules, their values and the levels at which they can
-be given are described in :class:`~endf_parserpy.TapeStructure`.
+recipes all end without ``SEND``. A section without a SEND record ends
+with the last record of its recipe, and a further line of the section is
+an error. Two copies of the same section directly after each other then
+cannot be told apart and are an error, unless another record separates
+them. The rules, their values and the levels at which they can be given
+are described in :class:`~endf_parserpy.TapeStructure`.
 
 A material can be the nested dictionary ``{MF: {MT: section}}`` or the
 **list of its sections** in the order of the file, the tape head first.

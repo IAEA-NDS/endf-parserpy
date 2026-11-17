@@ -75,6 +75,7 @@ from .endf_utils import (
     write_list,
     split_material,
     skip_blank_lines,
+    is_blank_line,
     add_linenumbers_to_section,
 )
 from .custom_exceptions import (
@@ -1302,6 +1303,8 @@ class EndfParserPy(EndfParserBase):
                     initialize_working_vars(self.datadic)
                     self.datadic.update(cur_ctrl)
                     self.run_instruction(cur_tree)
+                    if not with_send:
+                        self._check_section_consumed(mf, mt, cur_ctrl["MAT"])
                     remove_working_vars(self.datadic)
                     material[pos] = self.datadic
                     if section_tolerated:
@@ -1338,6 +1341,24 @@ class EndfParserPy(EndfParserBase):
         if self._public_material_form() == "dict":
             material = to_dict_form(material)
         return material, mismatches
+
+    def _check_section_consumed(self, mf, mt, mat):
+        """Check that the recipe of a section without a SEND record has
+        read all lines of the section (blank lines aside). Without the
+        SEND record, which the recipe of another section reads, the
+        section ends with the last record of its recipe, so that a line
+        after it would be lost."""
+        lines = self.lines
+        ofs = self.ofs
+        while ofs < len(lines) and is_blank_line(lines[ofs]):
+            ofs += 1
+        if ofs < len(lines):
+            raise UnexpectedControlRecordError(
+                f"Unexpected record after the end of section MF={mf}/MT={mt} of "
+                f"MAT={mat}: the tape structure has no SEND record after this "
+                "section, which ends with the last record of its recipe, in "
+                f"control record of line {self._input_line(ofs)}."
+            )
 
     def _tolerated_in_input_lines(self, line_numbers, tolerated):
         # The ToleratedMismatch records of the mismatches of the sections

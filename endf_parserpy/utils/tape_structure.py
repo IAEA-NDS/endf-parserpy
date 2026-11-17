@@ -74,9 +74,11 @@ the FEND record of an MF must have a greater MF. With
 ``mt_order="ascending"``, the MT numbers increase within a run; if the
 section may repeat, the copies must follow each other. Copies of a
 section that are not separated by any record are read as one section.
-In particular, without SEND records (``"send": False``), two copies of
-the same section directly after each other are read as one section,
-even if the section may repeat.
+A section without a SEND record (``"send": False``) ends with the last
+record of its recipe, and a further line of the section is an error.
+Without SEND records, two copies of the same section directly after each
+other therefore cannot be told apart and are an error, even if the
+section may repeat, unless another record separates them.
 The tape head (TPID, MF0/MT0) is outside these rules.
 
 :class:`TapeStructure` is the validated and resolved form of such a

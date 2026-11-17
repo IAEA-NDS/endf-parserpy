@@ -14,24 +14,33 @@
 The test files in ``tests/testdata/gendf`` are cut down from tapes of
 NJOY 2016.72: a few groups per section, the record of the last group
 kept, and the framing of NJOY (no SEND after MF1/MT451, no FEND records
-between the MFs). A GENDF tape cannot be read by ``parsefile`` because of
-this framing, so the sections are parsed one by one, each as a short
-tape with the usual end records, as ``EndfFile`` and the tool
-``tools/check_gendf_roundtrip.py`` do. The expected values are those of
-the tapes, checked against the listings of GROUPR.
+between the MFs), which the tape structure of the flavor describes. The
+sections are parsed one by one, each as a short tape with the end
+records of this structure, and whole tapes are read and written back
+byte for byte with both parsers (parsefile/write, parse_tape/write_tape,
+EndfFile). The expected values are those of the tapes, checked against
+the listings of GROUPR.
 """
 
 import importlib
+import json
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from endf_parserpy import EndfFile, EndfParserCpp, EndfParserPy
+from endf_parserpy import (
+    EndfFile,
+    EndfParserCpp,
+    EndfParserPy,
+    section_label,
+    to_dict_form,
+)
 from endf_parserpy.endf_recipes import (
     get_layout_version,
     get_recipe_dict,
+    get_tape_structure,
     list_endf_build_targets,
     list_endf_flavors,
     resolve_endf_flavor,
@@ -41,7 +50,12 @@ from endf_parserpy.interpreter.custom_exceptions import (
     UnexpectedControlRecordError,
     UnexpectedEndOfInputError,
 )
-from endf_parserpy.tape.errors import AmbiguousMaterialError
+from endf_parserpy.tape import parse_tape_file, write_tape
+from endf_parserpy.tape.errors import (
+    AmbiguousMaterialError,
+    RepeatedSectionError,
+    TapeStructureError,
+)
 
 
 TESTDATA = Path(__file__).parent / "testdata" / "gendf"
@@ -101,17 +115,26 @@ def _ctrl(mat, mf, mt, ns):
     return " " * 66 + f"{mat:4d}{mf:2d}{mt:3d}{ns:5d}"
 
 
+GENDF = get_tape_structure("gendf")
+
+
 def _tape(tpid, mat, mf, mt, lines):
+    # the framing of a GENDF tape: no SEND record after MF1/MT451, a FEND
+    # record after MF1 only
+    send = [_ctrl(mat, mf, 0, 99999)] if GENDF.send(mf, mt) else []
+    fend = [_ctrl(mat, 0, 0, 0)] if GENDF.fend(mf) else []
     return "\n".join(
-        [tpid]
-        + lines
-        + [
-            _ctrl(mat, mf, 0, 99999),
-            _ctrl(mat, 0, 0, 0),
-            _ctrl(0, 0, 0, 0),
-            _ctrl(-1, 0, 0, 0),
-        ]
+        [tpid] + lines + send + fend + [_ctrl(0, 0, 0, 0), _ctrl(-1, 0, 0, 0)]
     )
+
+
+def _only_section(material, mf, mt):
+    # the section of a material of the tape head and one section, in
+    # either form
+    if isinstance(material, list):
+        assert len(material) == 2
+        return material[1]
+    return material[mf][mt]
 
 
 def _sections(filename):
@@ -127,7 +150,7 @@ def _section(filename, mf, mt, position=0, occurrence=0, parser=None, **opts):
     tpid, _, mat, mf, mt, lines = found[occurrence]
     if parser is None:
         parser = EndfParserPy(endf_format="gendf", **opts)
-    return parser.parse(_tape(tpid, mat, mf, mt, lines))[mf][mt]
+    return _only_section(parser.parse(_tape(tpid, mat, mf, mt, lines)), mf, mt)
 
 
 def _written_lines(text, mf, mt):
@@ -458,16 +481,63 @@ def test_damaged_sections_raise(cls, change, error):
 # --- whole tapes ---------------------------------------------------------------------
 
 
-def test_parsefile_does_not_read_gendf_framing():
-    # NJOY writes no SEND after MF1/MT451: the framing of a GENDF tape is
-    # not that of ENDF-6, see EndfFile below
-    parser = EndfParserPy(endf_format="gendf")
-    with pytest.raises(UnexpectedControlRecordError):
-        parser.parsefile(str(TESTDATA / "he4_two_temperatures.gendf"))
+SINGLE_MATERIAL = sorted(
+    p.name for p in TESTDATA.iterdir() if p.name != "he4_two_temperatures.gendf"
+)
+
+
+@pytest.mark.parametrize("cls", PARSERS)
+@pytest.mark.parametrize("filename", SINGLE_MATERIAL)
+def test_whole_tape_round_trip(filename, cls):
+    # a material is the list of its sections in the order of the tape;
+    # written back, the tape is the same byte for byte (the numbers as
+    # read with preserve_value_strings, the end records generated)
+    path = TESTDATA / filename
+    parser = cls(endf_format="gendf", preserve_value_strings=True)
+    material = parser.parsefile(str(path))
+    assert isinstance(material, list)
+    text = path.read_text(encoding="latin-1")
+    assert "\n".join(parser.write(material)) + "\n" == text
+
+
+@pytest.mark.parametrize("cls", PARSERS)
+@pytest.mark.parametrize("filename", sorted(p.name for p in TESTDATA.iterdir()))
+def test_tape_round_trip(filename, cls):
+    path = TESTDATA / filename
+    text = path.read_text(encoding="latin-1")
+    parser = cls(endf_format="gendf", preserve_value_strings=True)
+    materials = parse_tape_file(path, parser=parser, on_error="raise")
+    assert "".join(write_tape(materials, parser=parser)) == text
+    with EndfFile(path, parser=parser) as ef:
+        assert ef.to_string() == text
+
+
+@pytest.mark.parametrize("cls", PARSERS)
+def test_nuclide_production_in_the_list(cls):
+    parser = cls(endf_format="gendf")
+    material = parser.parsefile(str(TESTDATA / "am241_nuclide_production.gendf"))
+    labels = [(s["MF"], s["MT"]) for s in material[1:]]
+    assert labels == [(1, 451), (3, 102), (3, 102), (3, 102)]
+    assert [s["IZAM"] for s in material[2:]] == [0.0, 952420.0, 952422.0]
+    # the nested form cannot hold the three sections
+    with pytest.raises(TapeStructureError, match="3 sections MF=3/MT=102"):
+        cls(endf_format="gendf", material_form="dict").parsefile(
+            str(TESTDATA / "am241_nuclide_production.gendf")
+        )
+
+
+@pytest.mark.parametrize("cls", PARSERS)
+def test_nested_form_on_request(cls):
+    # a material without repeated sections; written back from the nested
+    # form, its sections are in ascending order
+    path = str(TESTDATA / "u238_special_records.gendf")
+    as_list = cls(endf_format="gendf").parsefile(path)
+    as_dict = cls(endf_format="gendf", material_form="dict").parsefile(path)
+    assert to_dict_form(as_list) == as_dict
 
 
 def test_endf_file_keeps_temperatures_apart():
-    parser = EndfParserPy(endf_format="gendf", ignore_send_records=True)
+    parser = EndfParserPy(endf_format="gendf")
     with EndfFile(TESTDATA / "he4_two_temperatures.gendf", parser=parser) as ef:
         assert len(ef) == 2
         with pytest.raises(AmbiguousMaterialError):
@@ -477,6 +547,97 @@ def test_endf_file_keeps_temperatures_apart():
         assert list(ef[0].sections()) == [(1, 451), (3, 1), (3, 251), (6, 2)]
         assert list(ef[1].sections()) == [(1, 451), (3, 1), (6, 2)]
         assert ef.by_mat(228, occurrence=1)[3, 1]["TEMPIN"] == 600.0
+
+
+def test_endf_file_keeps_the_order_and_repeated_sections():
+    parser = EndfParserPy(endf_format="gendf")
+    path = TESTDATA / "am241_nuclide_production.gendf"
+    with EndfFile(path, parser=parser) as ef:
+        assert list(ef[0].sections()) == [(1, 451), (3, 102), (3, 102), (3, 102)]
+        with pytest.raises(RepeatedSectionError, match="occurs 3 times"):
+            ef[0][3, 102]
+        assert ef[0][1, 451]["NZ"] == 1
+    with EndfFile(TESTDATA / "h1_gaminr.gam", parser=parser) as ef:
+        mfs = [mf for mf, _ in ef[0].sections()]
+        assert mfs == [1, 23, 26, 23, 26, 23]
+
+
+def test_parse_tape_of_two_temperatures():
+    # parsefile reads one material; a tape of several, with parse_tape
+    materials = parse_tape_file(
+        TESTDATA / "he4_two_temperatures.gendf",
+        parser=EndfParserPy(endf_format="gendf"),
+        on_error="raise",
+    )
+    assert [m[1]["TEMPIN"] for m in materials] == [293.6, 600.0]
+    with pytest.raises(UnexpectedControlRecordError, match="parse reads one material"):
+        EndfParserPy(endf_format="gendf").parsefile(
+            str(TESTDATA / "he4_two_temperatures.gendf")
+        )
+
+
+@pytest.mark.parametrize("cls", PARSERS)
+def test_material_from_scratch(cls):
+    """A small GENDF material built as a list in Python and written: the end
+    records are generated by the tape structure of the flavor."""
+    mat = 125
+    tpid = [" gendf from scratch".ljust(66) + "   1 0  0    0\n"]
+    mf1 = {
+        "MAT": mat,
+        "MF": 1,
+        "MT": 451,
+        "ZA": 1001.0,
+        "AWR": 0.99917,
+        "NZ": 1,
+        "NTW": 1,
+        "TEMPIN": 293.6,
+        "NGN": 2,
+        "NGG": 0,
+        "TITLE": {1: 0.0},
+        "SIGZ": {1: 1e10},
+        "EGN": {1: 1e-5, 2: 1.0, 3: 2e7},
+        "EGG": {1: 0.0},
+    }
+    mf3 = {
+        "MAT": mat,
+        "MF": 3,
+        "MT": 1,
+        "ZA": 1001.0,
+        "IZAM": 0.0,
+        "NL": 1,
+        "NZ": 1,
+        "LRFLAG": 0,
+        "NGI": 2,
+        "TEMPIN": 293.6,
+        "IG": {1: 2},
+        "NG2": {1: 2},
+        "IG2LO": {1: 0},
+        "ANS": {1: {1: {1: {1: 1.5}}, 2: {1: {1: 20.4}}}},
+    }
+    parser = cls(endf_format="gendf", include_linenum=False)
+    lines = parser.write([tpid, mf1, mf3])
+    assert [line[66:75] for line in lines] == [
+        "   1 0  0",
+        " 125 1451",
+        " 125 1451",
+        " 125 1451",
+        " 125 0  0",  # FEND after MF1, no SEND before it
+        " 125 3  1",
+        " 125 3  1",
+        " 125 3  1",
+        " 125 3  0",  # SEND, no FEND
+        "   0 0  0",
+        "  -1 0  0",
+    ]
+    # the end records are blank, as NJOY writes them
+    assert lines[4][:66].strip() == "" and lines[8][:66].strip() == ""
+    material = parser.parse(lines)
+    assert [section_label(s) for s in material] == [
+        (1, 0, 0),
+        (125, 1, 451),
+        (125, 3, 1),
+    ]
+    assert material[2]["ANS"][1][2][1][1] == 20.4
 
 
 def _cli(*argv):
@@ -492,8 +653,35 @@ def test_cli_accepts_the_flavor():
     result = _cli("list-materials", "--no-cpp", "--endf_format", "gendf", path)
     assert result.returncode == 0, result.stderr
     assert "2 materials" in result.stdout
-    # validate checks the framing of ENDF-6, which a GENDF tape does not
-    # have (no SEND after MF1/MT451): it reports the file as failed
-    result = _cli("validate", "--no-cpp", "--endf_format", "gendf", path)
-    assert result.returncode != 0
-    assert "MF=1" in result.stdout + result.stderr
+    # validate checks the framing by the tape structure of the flavor
+    for argv in (["--no-cpp"], []):
+        for name in ("he4_two_temperatures.gendf", "am241_nuclide_production.gendf"):
+            path = str(TESTDATA / name)
+            result = _cli("validate", *argv, "--endf_format", "gendf", path)
+            assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_listing_and_json_of_the_list_form(tmp_path):
+    from endf_parserpy import list_parsed_sections, list_unparsed_sections
+
+    path = TESTDATA / "am241_nuclide_production.gendf"
+    material = EndfParserPy(endf_format="gendf").parsefile(str(path), exclude=[1])
+    assert list_parsed_sections(material) == ((0, 0), (3, 102), (3, 102), (3, 102))
+    assert list_unparsed_sections(material) == ((1, 451),)
+    # endf-cli convert: a tape of materials in the list form is a JSON array
+    # of arrays, and converted back a tape with the same framing and values
+    out = tmp_path / "tape.json"
+    back = tmp_path / "tape.gendf"
+    argv = ("--no-cpp", "--endf_format", "gendf")
+    result = _cli("convert", *argv, "--to", "json", str(path), str(out))
+    assert result.returncode == 0, result.stderr
+    assert json.loads(out.read_text())[0][1]["MT"] == 451
+    result = _cli("convert", *argv, "--to", "endf", str(out), str(back))
+    assert result.returncode == 0, result.stderr
+
+    def ctrl(p):
+        return [line[66:75] for line in p.read_text(encoding="latin-1").split("\n")]
+
+    assert ctrl(back) == ctrl(path)
+    parser = EndfParserPy(endf_format="gendf")
+    assert parser.parsefile(str(back)) == parser.parsefile(str(path))

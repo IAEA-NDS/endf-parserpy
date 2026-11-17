@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/16
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -21,7 +21,8 @@ ENDF_RECIPE_MF1_MT451 = """
 #
 # NJOY writes no SEND record after this section, but directly the FEND
 # record; the other sections of the material end with their SEND record
-# and are not separated by FEND records.
+# and are not separated by FEND records. The recipe therefore ends without
+# SEND, as the tape structure of the flavor (see __init__.py) has it.
 
 # var MAT:     Material number
 # var ZA:      ZA = (1000.0 * Z) + A = ZA number
@@ -49,5 +50,4 @@ ENDF_RECIPE_MF1_MT451 = """
     {SIGZ[i]}{i=1 to NZ}
     {EGN[i]}{i=1 to NGN+1}
     {EGG[i]}{i=1 to NGG+1} ] LIST
-SEND
 """

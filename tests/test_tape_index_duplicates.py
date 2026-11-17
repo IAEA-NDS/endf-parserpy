@@ -18,8 +18,8 @@ silently; it now raises a ``TapeStructureError`` that names the section
 and the lines at which both sections start. The damaged tapes are built
 from the Cu-63 file of ``tests/testdata``: its MF3/MT1 section repeated
 after its SEND record. A GENDF tape with nuclide production (three
-MF3/MT102 sections) raises the error too, until the representation of
-such materials is decided.
+MF3/MT102 sections) raises the error under these rules, but not with the
+tape structure of the flavor gendf, which allows repeated sections.
 """
 
 from pathlib import Path
@@ -185,8 +185,35 @@ def test_gendf_nuclide_production():
         f"at position 0: the sections start in lines {starts[0]} and "
         f"{starts[1]}"
     )
+    # under the rules of ENDF-6 (the default of the index)
     with pytest.raises(TapeStructureError, match=expected):
         TapeIndex.from_file(AM241)
-    parser = EndfParserPy(endf_format="gendf", ignore_send_records=True)
-    with pytest.raises(TapeStructureError, match=expected):
-        EndfFile(AM241, parser=parser)
+    # the tape structure of gendf allows them: EndfFile reads all three
+    parser = EndfParserPy(endf_format="gendf")
+    with EndfFile(AM241, parser=parser) as ef:
+        assert list(ef[0].sections()).count((3, 102)) == 3
+
+
+def test_tape_structure_with_repeats():
+    # with the tape structure of gendf, which allows repeated sections, the
+    # index holds all sections in the order of the file
+    from endf_parserpy.endf_recipes import get_tape_structure
+
+    ts = get_tape_structure("gendf")
+    entry = TapeIndex.from_file(AM241, tape_structure=ts)[0]
+    assert entry.has_repeated_sections
+    assert [key for key, _ in entry.section_list] == [
+        (1, 451),
+        (3, 102),
+        (3, 102),
+        (3, 102),
+    ]
+    offsets = [e.offset for _, e in entry.section_list]
+    assert offsets == sorted(offsets)
+    # sections holds the first of the repeated ones
+    assert entry.sections[(3, 102)] is entry.section_list[1][1]
+    assert list(entry.sections) == [(1, 451), (3, 102)]
+    # without repetitions, the list is that of the sections
+    entry = TapeIndex.from_file(CU)[0]
+    assert not entry.has_repeated_sections
+    assert entry.section_list == list(entry.sections.items())

@@ -802,7 +802,11 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
             if sec_level >= 2 and last_mf != mf:
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MF", mf, last_mf, ofs)
-                    + (fend_hint(last_mf) if sec_level == 2 else "")
+                    + (
+                        fend_hint(last_mf)
+                        if sec_level == 2
+                        else send_hint(last_mf, last_mt)
+                    )
                     + long_line_hint(line, ofs + 1)
                 )
             if sec_level >= 1 and last_mat != mat:

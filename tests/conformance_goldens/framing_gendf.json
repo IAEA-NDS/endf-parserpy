@@ -1,0 +1,375 @@
+{
+ "fend_extra": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Unexpected FEND record after MF=3: the tape structure has no FEND record after the sections of this MF\nLine 23: \"                                                                   125 0  0    0\"",
+   "py": "UnexpectedControlRecordError: Unexpected FEND record after MF=3 of MAT=125: the tape structure has no FEND record after the sections of this MF, in control record of line 23."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Unexpected FEND record after MF=3: the tape structure has no FEND record after the sections of this MF\nLine 23: \"                                                                   125 0  0    0\"",
+   "py": "UnexpectedControlRecordError: Unexpected FEND record after MF=3 of MAT=125: the tape structure has no FEND record after the sections of this MF, in control record of line 23."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     23,
+     "expected a section of MAT 125 or the MEND record (MAT/MF/MT 0/0/0), found a FEND record (MAT/MF/MT 125/0/0)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Unexpected FEND record after MF=3: the tape structure has no FEND record after the sections of this MF\nLine 23: \"                                                                   125 0  0    0\"",
+   "py": "UnexpectedControlRecordError: Unexpected FEND record after MF=3 of MAT=125: the tape structure has no FEND record after the sections of this MF, in control record of line 23."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Unexpected FEND record after MF=3: the tape structure has no FEND record after the sections of this MF\nLine 23: \"                                                                   125 0  0    0\"",
+   "py": "UnexpectedControlRecordError: Unexpected FEND record after MF=3 of MAT=125: the tape structure has no FEND record after the sections of this MF, in control record of line 23."
+  }
+ },
+ "fend_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: FEND record missing: MF=3 follows MF=1, after which the tape structure requires a FEND record\nLine 10: \" 1.001000+3 0.000000+0          1          1          0         30 125 3221    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=3 in control record of line 10. The tape structure requires a FEND record after MF=1."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: FEND record missing: MF=3 follows MF=1, after which the tape structure requires a FEND record\nLine 10: \" 1.001000+3 0.000000+0          1          1          0         30 125 3221    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=3 in control record of line 10. The tape structure requires a FEND record after MF=1."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     10,
+     "expected a section of MF=1 of MAT 125 or the FEND record (MAT/MF/MT 125/0/0), found a record of section MF=3/MT=221 of MAT 125; the FEND record of MF=1 is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: FEND record missing: MF=3 follows MF=1, after which the tape structure requires a FEND record\nLine 10: \" 1.001000+3 0.000000+0          1          1          0         30 125 3221    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=3 in control record of line 10. The tape structure requires a FEND record after MF=1."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: FEND record missing: MF=3 follows MF=1, after which the tape structure requires a FEND record\nLine 10: \" 1.001000+3 0.000000+0          1          1          0         30 125 3221    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=3 in control record of line 10. The tape structure requires a FEND record after MF=1."
+  }
+ },
+ "mend_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 39: \"                                                                    -1 0  0    0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 39."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 39: \"                                                                    -1 0  0    0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 39."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     39,
+     "expected a section of MAT 125 or the MEND record (MAT/MF/MT 0/0/0), found a TEND record (MAT/MF/MT -1/0/0); the MEND record is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 39: \"                                                                    -1 0  0    0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 39."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 39: \"                                                                    -1 0  0    0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 39."
+  }
+ },
+ "section_twice": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ },
+ "sections_reversed": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ },
+ "send_after_451": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Unexpected SEND record after MF=1/MT=451: the tape structure has no SEND record after this section\nLine 10: \"                                                                   125 1  099999\"",
+   "py": "UnexpectedControlRecordError: Unexpected SEND record after section MF=1/MT=451 of MAT=125: the tape structure has no SEND record after this section, in control record of line 10."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Unexpected SEND record after MF=1/MT=451: the tape structure has no SEND record after this section\nLine 10: \"                                                                   125 1  099999\"",
+   "py": "UnexpectedControlRecordError: Unexpected SEND record after section MF=1/MT=451 of MAT=125: the tape structure has no SEND record after this section, in control record of line 10."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     10,
+     "expected a record of section MF=1/MT=451 of MAT 125, a section of MF=1 of MAT 125 or the FEND record (MAT/MF/MT 125/0/0), found a SEND record (MAT/MF/MT 125/1/0)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Unexpected SEND record after MF=1/MT=451: the tape structure has no SEND record after this section\nLine 10: \"                                                                   125 1  099999\"",
+   "py": "UnexpectedControlRecordError: Unexpected SEND record after section MF=1/MT=451 of MAT=125: the tape structure has no SEND record after this section, in control record of line 10."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Unexpected SEND record after MF=1/MT=451: the tape structure has no SEND record after this section\nLine 10: \"                                                                   125 1  099999\"",
+   "py": "UnexpectedControlRecordError: Unexpected SEND record after section MF=1/MT=451 of MAT=125: the tape structure has no SEND record after this section, in control record of line 10."
+  }
+ },
+ "send_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nTemplate: SEND\nLine 22: \" 1.001000+3 0.000000+0          2          1          0         30 125 6221    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=3 section but encountered MF=6 in control record of line 22. The tape structure requires a SEND record after MF=3/MT=221."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nTemplate: SEND\nLine 22: \" 1.001000+3 0.000000+0          2          1          0         30 125 6221    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=3 section but encountered MF=6 in control record of line 22. The tape structure requires a SEND record after MF=3/MT=221."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     22,
+     "expected a record of section MF=3/MT=221 of MAT 125 or its SEND record (MAT/MF/MT 125/3/0), found a record of section MF=6/MT=221 of MAT 125; the SEND record of section MF=3/MT=221 is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nTemplate: SEND\nLine 22: \" 1.001000+3 0.000000+0          2          1          0         30 125 6221    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=3 section but encountered MF=6 in control record of line 22. The tape structure requires a SEND record after MF=3/MT=221."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nTemplate: SEND\nLine 22: \" 1.001000+3 0.000000+0          2          1          0         30 125 6221    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=3 section but encountered MF=6 in control record of line 22. The tape structure requires a SEND record after MF=3/MT=221."
+  }
+ },
+ "valid": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ }
+}

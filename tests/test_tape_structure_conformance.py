@@ -50,7 +50,8 @@ from endf_parserpy import EndfParserPy
 from endf_parserpy.tape import check_framing
 from endf_parserpy.utils.debugging_utils import compare_objects
 from test_section_order import CASES as ORDER_CASES, _file as _order_file
-from test_validate_framing_records import CU, PU, PU_CASES, ZN, _tape
+from endf_parserpy.endf_recipes import get_tape_structure
+from test_validate_framing_records import CU, PU, PU_CASES, ZN, _lines, _tape
 
 GOLDEN = Path(__file__).resolve().parent / "conformance_goldens" / "framing_endf6.json"
 
@@ -78,6 +79,68 @@ def _cases():
 
 
 CASES = _cases()
+
+GENDF_TESTDATA = Path(__file__).resolve().parent / "testdata" / "gendf"
+
+
+def _gendf_blocks():
+    """The records of a GENDF test file (MF1/MT451, MF3/MT221 and
+    MF6/MT221 of H-1): tape head, MF1/MT451 (without SEND record), the
+    FEND record after it, the other sections with their SEND records,
+    MEND and TEND records."""
+    L = _lines(GENDF_TESTDATA / "h1_thermal_freegas.gendf")
+    ctrl = [line[66:75] for line in L]
+    fend = [i for i, c in enumerate(ctrl) if c == b" 125 0  0"][0]
+    sends = [i for i, c in enumerate(ctrl) if c[6:9] == b"  0" and c[4:6] != b" 0"]
+    return {
+        "tpid": L[:1],
+        "451": L[1:fend],
+        "fend1": [L[fend]],
+        "s1": L[fend + 1 : sends[0] + 1],
+        "s2": L[sends[0] + 1 : sends[1] + 1],
+        "mend": [L[-2]],
+        "tend": [L[-1]],
+    }
+
+
+def _gendf_cases():
+    b = _gendf_blocks()
+
+    def tape(*parts):
+        return [line for part in parts for line in b[part]]
+
+    send_451 = b["s1"][-1][:66] + b" 125 1  0" + b["s1"][-1][75:]
+    fend3 = b["fend1"][0]
+    return {
+        "valid": tape("tpid", "451", "fend1", "s1", "s2", "mend", "tend"),
+        # the order of the sections is free, and a section may repeat
+        "sections_reversed": tape("tpid", "451", "fend1", "s2", "s1", "mend", "tend"),
+        "section_twice": tape("tpid", "451", "fend1", "s1", "s1", "s2", "mend", "tend"),
+        # a SEND record after MF1/MT451, which the structure has without one
+        "send_after_451": tape("tpid", "451")
+        + [send_451]
+        + tape("fend1", "s1", "s2", "mend", "tend"),
+        # the FEND record after MF1 missing, a FEND record after MF3
+        "fend_missing": tape("tpid", "451", "s1", "s2", "mend", "tend"),
+        "fend_extra": tape("tpid", "451", "fend1", "s1")
+        + [fend3]
+        + tape("s2", "mend", "tend"),
+        # the SEND record of the MF3 section missing
+        "send_missing": tape("tpid", "451", "fend1")
+        + b["s1"][:-1]
+        + tape("s2", "mend", "tend"),
+        "mend_missing": tape("tpid", "451", "fend1", "s1", "s2", "tend"),
+    }
+
+
+GENDF_CASES = _gendf_cases()
+GENDF_FILTERS = {
+    "full": {},
+    "include": {"include": [3]},
+    "exclude": {"exclude": [1]},
+    "exclude_mt": {"exclude": [(1, 451)]},
+}
+GENDF_GOLDEN = GOLDEN.parent / "framing_gendf.json"
 
 _ALL = [f"{filt}/{option}" for filt in FILTERS for option in OPTIONS]
 _STRICT = [f"{filt}/strict" for filt in FILTERS]
@@ -119,18 +182,23 @@ def _outcome(parse, path, kwargs):
         return None, f"{type(exc).__name__}: {exc}".replace(str(path), "<file>")
 
 
-def run_case(name, cpp_class=None):
-    """The results of the case ``name``: for every filter and option the
+def run_case(name, cpp_class=None, flavor=None):
+    """The results of the case ``name`` (of ``GENDF_CASES`` for the flavor
+    ``gendf``, otherwise of ``CASES``): for every filter and option the
     messages of both parsers (``None`` for a successful parse), whether
     their results agree, and the problems found by ``check_framing``."""
     result = {}
+    cases = GENDF_CASES if flavor == "gendf" else CASES
+    filters = GENDF_FILTERS if flavor == "gendf" else FILTERS
+    flavor_opts = {} if flavor is None else {"endf_format": flavor}
+    tape_structure = None if flavor is None else get_tape_structure(flavor)
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "case.endf"
-        path.write_bytes(_text(CASES[name]).encode("latin-1"))
+        path.write_bytes(_text(cases[name]).encode("latin-1"))
         for option, opts in OPTIONS.items():
-            py = EndfParserPy(**opts)
-            cpp = cpp_class(**opts) if cpp_class is not None else None
-            for filt, kwargs in FILTERS.items():
+            py = EndfParserPy(**opts, **flavor_opts)
+            cpp = cpp_class(**opts, **flavor_opts) if cpp_class is not None else None
+            for filt, kwargs in filters.items():
                 res_py, msg_py = _outcome(py.parsefile, path, kwargs)
                 entry = {"py": msg_py}
                 if cpp is not None:
@@ -143,7 +211,10 @@ def run_case(name, cpp_class=None):
                         entry["same_result"] = same
                 result[f"{filt}/{option}"] = entry
         result["framing"] = {
-            option: [[p.line, p.message] for p in check_framing(path, **opts)]
+            option: [
+                [p.line, p.message]
+                for p in check_framing(path, tape_structure=tape_structure, **opts)
+            ]
             for option, opts in OPTIONS.items()
         }
     return result
@@ -332,3 +403,62 @@ def test_offending_lines_agree(results):
             assert len(set(named.values())) <= 1, (name, key, named)
             compared += len(named) > 1
     assert compared > 100
+
+
+# --- the tape structure of gendf -------------------------------------------
+
+# the differences of the verdicts of the parsers (see KNOWN_DIFFERENCES)
+KNOWN_GENDF_DIFFERENCES = {}
+
+
+@pytest.fixture(scope="module")
+def gendf_results(cpp_class):
+    return {name: run_case(name, cpp_class, "gendf") for name in GENDF_CASES}
+
+
+def test_gendf_capture_or_compare(gendf_results):
+    if os.environ.get("ENDF_CONFORMANCE_CAPTURE"):
+        GENDF_GOLDEN.write_text(
+            json.dumps(gendf_results, indent=1, sort_keys=True) + "\n"
+        )
+        pytest.skip("captured the golden file")
+    golden = json.loads(GENDF_GOLDEN.read_text())
+    assert sorted(gendf_results) == sorted(golden)
+    for name in gendf_results:
+        assert gendf_results[name] == golden[name], name
+
+
+def test_gendf_parsers_agree(gendf_results):
+    expected = {name: sorted(keys) for name, keys in KNOWN_GENDF_DIFFERENCES.items()}
+    assert _differences(gendf_results) == expected
+
+
+def test_gendf_valid_cases(gendf_results):
+    for name in ("valid", "sections_reversed", "section_twice"):
+        result = gendf_results[name]
+        assert result["framing"]["strict"] == [], name
+        for key, entry in result.items():
+            if key != "framing":
+                assert entry["py"] is None and entry["cpp"] is None, (name, key)
+
+
+def test_gendf_framing_check_agrees_with_full_parse(gendf_results):
+    for name, result in gendf_results.items():
+        for option in OPTIONS:
+            entry = result[f"full/{option}"]
+            failed = entry["py"] is not None or entry["cpp"] is not None
+            assert (result["framing"][option] != []) == failed, (name, option)
+
+
+def test_gendf_offending_lines_agree(gendf_results):
+    for name, result in gendf_results.items():
+        for key, entry in result.items():
+            if key == "framing":
+                continue
+            lines = {kind: _offending_line(entry.get(kind)) for kind in ("py", "cpp")}
+            filt, option = key.split("/")
+            problems = result["framing"][option]
+            if filt == "full" and problems:
+                lines["framing"] = problems[0][0]
+            named = {kind: line for kind, line in lines.items() if line is not None}
+            assert len(set(named.values())) <= 1, (name, key, named)

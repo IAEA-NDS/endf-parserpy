@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/08
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -150,7 +150,10 @@ class MaterialIndexEntry:
     byte_length : int
         Total byte length of the material, including its MEND record.
     sections : dict[tuple[int, int], SectionIndexEntry]
-        The (MF, MT) sections contained in the material.
+        The (MF, MT) sections contained in the material. A material
+        holds one section per (MF, MT): the index of a tape with a
+        second section with the same MF and MT numbers in a material
+        cannot be built (:class:`TapeStructureError`).
     """
 
     position: int
@@ -199,6 +202,7 @@ class _ScanState:
         "done",
         "events",
         "lenient",
+        "duplicate",
     )
 
     def __init__(self, ignore_missing_tpid=False, events=None, lenient=False):
@@ -224,12 +228,35 @@ class _ScanState:
         self.tpid = None  # (line, offset, length) of the tape head, once found
         self.head_done = False  # the tape head phase is over (see _scan_tpid)
         self.done = False  # a TEND record has been seen
+        # the first section found a second time in its material, as
+        # (position of the material, MAT, (MF, MT), byte offset of the
+        # first and of the second section), or None (see store_section)
+        self.duplicate = None
+
+    def store_section(self, key, entry):
+        """Store the finished section ``key`` in the open material.
+
+        A material holds one section per (MF, MT). A section whose key
+        the material already holds is not stored: the first one is
+        kept, and the first such section of the tape is remembered, so
+        that :meth:`result` raises an error naming both sections. The
+        scan goes on, so that the scan of the framing check (see
+        framing.py) collects all records.
+        """
+        sections = self.cur.sections
+        first = sections.get(key)
+        if first is None:
+            sections[key] = entry
+        elif self.duplicate is None:
+            cur = self.cur
+            self.duplicate = (cur.position, cur.mat, key, first.offset, entry.offset)
 
     def flush_section(self):
         # store a section that was left open (e.g. a missing SEND record)
         if self.sec_key is not None and self.cur is not None:
-            self.cur.sections[self.sec_key] = SectionIndexEntry(
-                self.sec_offset, self.sec_length, self.sec_lines
+            self.store_section(
+                self.sec_key,
+                SectionIndexEntry(self.sec_offset, self.sec_length, self.sec_lines),
             )
         self.sec_key = None
 
@@ -240,23 +267,68 @@ class _ScanState:
         self.materials.append(self.cur)
         self.cur = None
 
-    def result(self, end=None):
+    def result(self, end=None, line_numbers=None):
         """Return ``(materials, tpid)`` of a finished scan.
 
         ``tpid`` is ``None`` if the tape has no tape head and the scan
         ran with ``ignore_missing_tpid``. ``end`` is the size of the
         file, at which a lenient scan ends an open material.
+        ``line_numbers`` maps a list of byte offsets of records to a
+        dictionary of their line numbers (counting from 1), for the
+        error about a section that occurs twice in a material.
         """
         if not self.head_done:
             raise TapeStructureError("the tape does not contain any records")
         if self.cur is not None and self.lenient and end is not None:
             self.close_material(end)
+        if self.duplicate is not None:
+            raise self._duplicate_error(line_numbers)
         if self.cur is not None:
             raise TapeStructureError(
                 "the tape ends in the middle of a material; the final MEND or "
                 "TEND record is missing"
             )
         return self.materials, self.tpid
+
+    def _duplicate_error(self, line_numbers):
+        position, mat, (mf, mt), first, second = self.duplicate
+        where = f"at byte offsets {first} and {second}"
+        if line_numbers is not None:
+            lines = line_numbers([first, second])
+            where = f"in lines {lines[first]} and {lines[second]}"
+        return TapeStructureError(
+            f"section MF={mf}/MT={mt} of MAT {mat} occurs a second time in "
+            f"the material at position {position}: the sections start {where}; "
+            "a material can hold only one section with the same MF and MT "
+            "numbers"
+        )
+
+
+def _file_line_numbers(fh, offsets):
+    """Map byte offsets of the open binary file ``fh`` to line numbers.
+
+    The line numbers count from 1. The file is read again from its
+    start, in blocks; this is only done for an error message.
+    """
+    targets = sorted(set(offsets))
+    result = {}
+    count = 0
+    pos = 0
+    k = 0
+    fh.seek(0)
+    while k < len(targets):
+        chunk = fh.read(_DEFAULT_CHUNK_BYTES)
+        if not chunk:
+            break
+        end = pos + len(chunk)
+        while k < len(targets) and targets[k] < end:
+            result[targets[k]] = count + chunk.count(b"\n", 0, targets[k] - pos) + 1
+            k += 1
+        count += chunk.count(b"\n")
+        pos = end
+    for offset in targets[k:]:
+        result[offset] = count + 1
+    return result
 
 
 def _consume_run(st, mat, mf, mt, offset, length, line_count, head_line):
@@ -301,8 +373,11 @@ def _consume_run(st, mat, mf, mt, offset, length, line_count, head_line):
         st.sec_lines += line_count
     elif mf != 0 and mt == 0:  # SEND: end of section
         if st.sec_key is not None and st.cur is not None:
-            st.cur.sections[st.sec_key] = SectionIndexEntry(
-                st.sec_offset, st.sec_length + length, st.sec_lines + line_count
+            st.store_section(
+                st.sec_key,
+                SectionIndexEntry(
+                    st.sec_offset, st.sec_length + length, st.sec_lines + line_count
+                ),
             )
         st.sec_key = None
     elif mat == 0 and mf == 0 and mt == 0:  # MEND: end of material
@@ -395,11 +470,17 @@ def _scan(records, ignore_missing_tpid=False):
     st = _ScanState(ignore_missing_tpid)
     offset = 0
     records = iter(records)
+    # the line numbers of the records applied singly by _scan_record, which
+    # include the first records of all sections (for an error message)
+    lineno = 0
+    record_lines = {}
 
     # the tape head (TPID) is the first non-blank record
     for byte_length, part in records:
+        lineno += 1
         if not _scan_tpid(st, part, offset, byte_length):
             # ignore_missing_tpid: the record starts the material data
+            record_lines[offset] = lineno
             _scan_record(st, part, offset, byte_length)
         offset += byte_length
         if st.head_done:
@@ -407,16 +488,18 @@ def _scan(records, ignore_missing_tpid=False):
 
     if st.head_done:
         for byte_length, part in records:
+            lineno += 1
             if part[_CTRL_COLS] == st.prev_ctrl:
                 st.sec_length += byte_length
                 st.sec_lines += 1
             else:
+                record_lines[offset] = lineno
                 _scan_record(st, part, offset, byte_length)
                 if st.done:  # TEND: nothing meaningful follows
                     break
             offset += byte_length
 
-    return st.result()
+    return st.result(line_numbers=lambda offsets: {o: record_lines[o] for o in offsets})
 
 
 # A record must hold the complete control field (columns 67-75) and its
@@ -617,7 +700,7 @@ def _scan_file(fh, chunk_bytes, ignore_missing_tpid=False):
     """
     st = _ScanState(ignore_missing_tpid)
     _scan_file_into(st, fh, chunk_bytes)
-    return st.result()
+    return st.result(line_numbers=lambda offsets: _file_line_numbers(fh, offsets))
 
 
 def _scan_file_into(st, fh, chunk_bytes):

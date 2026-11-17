@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/08
-# Last modified:   2026/11/08
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -51,6 +51,7 @@ from .index import (
     _EV_SECTION,
     _EV_TPID,
     _ScanState,
+    _file_line_numbers,
     _scan_file_into,
 )
 from ..interpreter.endf_utils import ctrl_field_value
@@ -611,7 +612,10 @@ def _check_framing_and_index(path, *, ignore_missing_tpid=False, **options):
         try:
             _scan_file_into(st, fh, _DEFAULT_CHUNK_BYTES)
             end = os.fstat(fh.fileno()).st_size
-            index = TapeIndex._from_scan(path, *st.result(end))
+            result = st.result(
+                end, line_numbers=lambda offsets: _file_line_numbers(fh, offsets)
+            )
+            index = TapeIndex._from_scan(path, *result)
         except TapeStructureError as exc:
             # e.g. no tape head: the event _EV_NO_TPID is the last one
             error = exc

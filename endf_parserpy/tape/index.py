@@ -68,6 +68,16 @@ _EV_SECTION = 3
 _EV_RECORD = 4
 
 
+def _tape_structure(spec):
+    # the resolved tape structure, or None for that of ENDF-6
+    if spec is None:
+        return None
+    from ..utils.tape_structure import TapeStructure
+
+    ts = TapeStructure.from_spec(spec)
+    return None if ts.is_endf6 else ts
+
+
 def _endf_float(field_text):
     """Parse an 11-column ENDF number field; return ``None`` on failure.
 
@@ -150,10 +160,13 @@ class MaterialIndexEntry:
     byte_length : int
         Total byte length of the material, including its MEND record.
     sections : dict[tuple[int, int], SectionIndexEntry]
-        The (MF, MT) sections contained in the material. A material
-        holds one section per (MF, MT): the index of a tape with a
-        second section with the same MF and MT numbers in a material
-        cannot be built (:class:`TapeStructureError`).
+        The (MF, MT) sections contained in the material, in the order of
+        the file. Under the rules of ENDF-6, a material holds one section
+        per (MF, MT): the index of a tape with a second section with the
+        same MF and MT numbers in a material cannot be built
+        (:class:`TapeStructureError`). If the tape structure of the index
+        allows such sections, ``sections`` holds the first of them, and
+        :attr:`section_list` all sections.
     """
 
     position: int
@@ -163,6 +176,24 @@ class MaterialIndexEntry:
     byte_offset: int
     byte_length: int
     sections: Dict[Tuple[int, int], SectionIndexEntry] = field(default_factory=dict)
+    # all sections in the order of the file, as ((MF, MT), entry), if the
+    # material has sections with the same MF and MT numbers, else None
+    repeated_sections: Optional[list] = field(default=None, repr=False, compare=False)
+
+    @property
+    def section_list(self):
+        """All sections of the material in the order of the file, as a
+        list of ``((MF, MT), SectionIndexEntry)``, also those with the same
+        MF and MT numbers."""
+        if self.repeated_sections is not None:
+            return list(self.repeated_sections)
+        return list(self.sections.items())
+
+    @property
+    def has_repeated_sections(self):
+        """Whether two sections of the material have the same MF and MT
+        numbers (which the tape structure of the index allowed)."""
+        return self.repeated_sections is not None
 
 
 def _iter_line_records(lines):
@@ -203,9 +234,12 @@ class _ScanState:
         "events",
         "lenient",
         "duplicate",
+        "ts",
     )
 
-    def __init__(self, ignore_missing_tpid=False, events=None, lenient=False):
+    def __init__(
+        self, ignore_missing_tpid=False, events=None, lenient=False, tape_structure=None
+    ):
         self.ignore_missing_tpid = ignore_missing_tpid
         # the positions of the MEND and TEND records are not relied upon
         # (the scan of endf-cli validate with ignore_send_records, see
@@ -232,6 +266,9 @@ class _ScanState:
         # (position of the material, MAT, (MF, MT), byte offset of the
         # first and of the second section), or None (see store_section)
         self.duplicate = None
+        # the tape structure, which may allow sections with the same MF and
+        # MT numbers in a material (see store_section)
+        self.ts = tape_structure
 
     def store_section(self, key, entry):
         """Store the finished section ``key`` in the open material.
@@ -243,10 +280,16 @@ class _ScanState:
         scan goes on, so that the scan of the framing check (see
         framing.py) collects all records.
         """
-        sections = self.cur.sections
+        cur = self.cur
+        sections = cur.sections
         first = sections.get(key)
+        if cur.repeated_sections is not None:
+            cur.repeated_sections.append((key, entry))
         if first is None:
             sections[key] = entry
+        elif self.ts is not None and self.ts.repeat(*key):
+            if cur.repeated_sections is None:
+                cur.repeated_sections = list(sections.items()) + [(key, entry)]
         elif self.duplicate is None:
             cur = self.cur
             self.duplicate = (cur.position, cur.mat, key, first.offset, entry.offset)
@@ -457,7 +500,7 @@ def _scan_record(st, part, offset, byte_length):
     st.prev_ctrl = ctrl if (mat > 0 and mf > 0 and mt > 0) else None
 
 
-def _scan(records, ignore_missing_tpid=False):
+def _scan(records, ignore_missing_tpid=False, tape_structure=None):
     """Scan an iterator of ``(byte_length, line)`` records.
 
     Return ``(materials, tpid)`` with ``tpid = (line, offset, length)``,
@@ -467,7 +510,7 @@ def _scan(records, ignore_missing_tpid=False):
     records. Each record is applied by :func:`_scan_record`; a record
     that continues the current section is accumulated inline.
     """
-    st = _ScanState(ignore_missing_tpid)
+    st = _ScanState(ignore_missing_tpid, tape_structure=tape_structure)
     offset = 0
     records = iter(records)
     # the line numbers of the records applied singly by _scan_record, which
@@ -687,7 +730,7 @@ def _scan_block(st, buf, end, base):
         pos += n * width
 
 
-def _scan_file(fh, chunk_bytes, ignore_missing_tpid=False):
+def _scan_file(fh, chunk_bytes, ignore_missing_tpid=False, tape_structure=None):
     """Structural scan of an open binary tape file.
 
     Return ``(materials, tpid)``, the same result as :func:`_scan` over
@@ -698,7 +741,7 @@ def _scan_file(fh, chunk_bytes, ignore_missing_tpid=False):
     record is re-read with the next block), so peak memory stays a small
     multiple of ``chunk_bytes`` unless a single record is longer.
     """
-    st = _ScanState(ignore_missing_tpid)
+    st = _ScanState(ignore_missing_tpid, tape_structure=tape_structure)
     _scan_file_into(st, fh, chunk_bytes)
     return st.result(line_numbers=lambda offsets: _file_line_numbers(fh, offsets))
 
@@ -791,6 +834,7 @@ class TapeIndex:
         *,
         chunk_bytes=_DEFAULT_CHUNK_BYTES,
         ignore_missing_tpid=False,
+        tape_structure=None,
     ):
         """Build an index of the ENDF tape stored at ``path``.
 
@@ -800,11 +844,16 @@ class TapeIndex:
         tape whose first record is already a section record (instead of
         the tape head demanded by the ENDF-6 format) is accepted: the
         record starts the first material and the ``tpid_*`` attributes of
-        the index are ``None``.
+        the index are ``None``. With a ``tape_structure`` (see
+        :class:`~endf_parserpy.TapeStructure`) that allows repeated
+        sections, a material may hold several sections with the same MF
+        and MT numbers (see :attr:`MaterialIndexEntry.section_list`);
+        otherwise they are an error.
         """
         path = os.fspath(path)
+        ts = _tape_structure(tape_structure)
         with open(path, "rb") as fh:
-            materials, tpid = _scan_file(fh, chunk_bytes, ignore_missing_tpid)
+            materials, tpid = _scan_file(fh, chunk_bytes, ignore_missing_tpid, ts)
         return cls._from_scan(path, materials, tpid)
 
     @classmethod
@@ -828,7 +877,9 @@ class TapeIndex:
         )
 
     @classmethod
-    def from_lines(cls, lines, source=None, *, ignore_missing_tpid=False):
+    def from_lines(
+        cls, lines, source=None, *, ignore_missing_tpid=False, tape_structure=None
+    ):
         """Build an index from an iterable of ENDF tape lines.
 
         The lines are consumed lazily. Byte offsets are computed
@@ -837,7 +888,11 @@ class TapeIndex:
         :meth:`from_file` when exact on-disk offsets are required. For
         ``ignore_missing_tpid`` see :meth:`from_file`.
         """
-        materials, tpid = _scan(_iter_line_records(lines), ignore_missing_tpid)
+        materials, tpid = _scan(
+            _iter_line_records(lines),
+            ignore_missing_tpid,
+            _tape_structure(tape_structure),
+        )
         tpid = tpid if tpid is not None else (None, None, None)
         return cls(materials, tpid[0], tpid[1], tpid[2], source=source)
 

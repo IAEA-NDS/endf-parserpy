@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/11
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -253,11 +253,12 @@ def parse_tape_file(path, *, parser=None, exclude=None, include=None, on_error="
 
 def _material_lines(material, parser, exclude, include):
     # A material given as a list of ENDF-6 lines, or as a FailedMaterial,
-    # is written verbatim -- no parse, no render. A parsed material
-    # dictionary is rendered by the single-material parser.
+    # is written verbatim -- no parse, no render. A parsed material, a
+    # dictionary or the list of its sections (whose elements are
+    # sections, not lines), is rendered by the single-material parser.
     if isinstance(material, FailedMaterial):
         return list(material.raw_lines)
-    if isinstance(material, list):
+    if isinstance(material, list) and (not material or isinstance(material[0], str)):
         return list(material)
     return parser.write(material, exclude=exclude, include=include)
 

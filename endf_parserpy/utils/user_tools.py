@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/06/02
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -54,9 +54,10 @@ def list_unparsed_sections(dic):
 
     Parameters
     ----------
-    dic : dict
-        A ``dict`` in the form as returned by the
-        :meth:`~endf_parserpy.EndfParserPy.parsefile` method of the :class:`~endf_parserpy.EndfParserPy` class.
+    dic : Union[dict, list]
+        A material in the form as returned by the
+        :meth:`~endf_parserpy.EndfParserPy.parsefile` method of the :class:`~endf_parserpy.EndfParserPy` class,
+        the nested dictionary or the list of its sections.
 
     Returns
     -------
@@ -66,10 +67,9 @@ def list_unparsed_sections(dic):
         the return value would be ``((1, 451), (2, 151))``.
     """
     unparsed = []
-    for mf, mfsec in dic.items():
-        for mt, mtsec in mfsec.items():
-            if isinstance(mtsec, list):
-                unparsed.append((mf, mt))
+    for mf, mt, mtsec in _labelled_sections(dic):
+        if isinstance(mtsec, list):
+            unparsed.append((mf, mt))
     return tuple(unparsed)
 
 
@@ -78,9 +78,10 @@ def list_parsed_sections(dic):
 
     Parameters
     ----------
-    dic : dict
-        A ``dict`` in the form as returned by the
-        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.EndfParserPy` class.
+    dic : Union[dict, list]
+        A material in the form as returned by the
+        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.EndfParserPy` class,
+        the nested dictionary or the list of its sections.
 
     Returns
     -------
@@ -90,11 +91,25 @@ def list_parsed_sections(dic):
         the return value would be ``((1, 451), (2, 151))``.
     """
     parsed = []
-    for mf, mfsec in dic.items():
-        for mt, mtsec in mfsec.items():
-            if isinstance(mtsec, dict):
-                parsed.append((mf, mt))
+    for mf, mt, mtsec in _labelled_sections(dic):
+        if isinstance(mtsec, dict):
+            parsed.append((mf, mt))
     return tuple(parsed)
+
+
+def _labelled_sections(material):
+    """Yield ``(MF, MT, section)`` of a material in the nested form or in
+    the list form (in the order of the list, a label once per section)."""
+    if isinstance(material, list):
+        from .tape_structure import section_label
+
+        for section in material:
+            _, mf, mt = section_label(section)
+            yield mf, mt, section
+        return
+    for mf, mfsec in material.items():
+        for mt, mtsec in mfsec.items():
+            yield mf, mt, mtsec
 
 
 def sanitize_fieldname_types(dic):

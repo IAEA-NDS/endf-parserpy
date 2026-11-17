@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/03/24
-# Last modified:   2026/05/17
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -69,7 +69,12 @@ def _convert_to_json(parser, sourcefile, destfile, json_dump_kwargs):
     # A single-material tape is written as a JSON object, a multi-material
     # tape as a JSON array of material objects (design decision D); the
     # json->endf direction tells the two apart by container type.
-    payload = materials[0] if len(materials) == 1 else materials
+    # A material in the list form (e.g. of gendf) is a JSON array, so that
+    # such a tape is always written as the array of its materials.
+    if len(materials) == 1 and not isinstance(materials[0], list):
+        payload = materials[0]
+    else:
+        payload = materials
     with open(destfile, "w") as f:
         json.dump(payload, f, **json_dump_kwargs)
     return 0
@@ -80,8 +85,15 @@ def _convert_to_endf(parser, sourcefile, destfile):
         endf_data = json.load(f)
     # A JSON array is a multi-material tape, a JSON object a single
     # material; both are written through the multi-material tape writer.
+    # A material of a tape is an object (the nested form) or an array of
+    # its sections (the list form).
     materials = endf_data if isinstance(endf_data, list) else [endf_data]
     for material in materials:
-        sanitize_fieldname_types(material)
+        if isinstance(material, list):
+            for section in material:
+                if isinstance(section, dict):
+                    sanitize_fieldname_types(section)
+        else:
+            sanitize_fieldname_types(material)
     write_tape_file(materials, destfile, parser=parser)
     return 0

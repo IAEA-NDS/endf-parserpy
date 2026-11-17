@@ -53,7 +53,9 @@ from .errors import (
     StaleSourceError,
     TapeStructureError,
 )
+from .errors import RepeatedSectionError
 from .index import TapeIndex
+from ..utils.tape_structure import TapeStructure, section_label
 from .material import MaterialView, _MaterialSlot
 from .operations import write_tape, write_tape_file, _VALID_ON_ERROR, _FailedUnit
 from .records import (
@@ -171,6 +173,17 @@ def _message_in_file_lines(message, first_line, lines):
     for pattern, first, beyond in _INPUT_LINE_PATTERNS:
         message = pattern.sub(lambda m: replace(m, first, beyond), message)
     return message
+
+
+def _section_of(material, mf, mt):
+    """The section MF/MT of a material parsed from a tape of the tape head
+    and one section, in either form."""
+    if isinstance(material, list):
+        for section in material:
+            if section_label(section)[1:] == (mf, mt):
+                return section
+        raise KeyError((mf, mt))
+    return material[mf][mt]
 
 
 def _value_match(field, value, tol):
@@ -353,9 +366,15 @@ class EndfFile:
         self._on_error = on_error
         self._check_edits = check_edits
         self._verify_source = verify_source
+        # the tape structure of the parser (see TapeStructure): the framing
+        # of the sections handed to it and written, the order of the
+        # sections and whether a section may repeat in a material
+        self._init_tape_structure()
         if _index is None:
             _index = TapeIndex.from_file(
-                self._path, ignore_missing_tpid=ignore_missing_tpid
+                self._path,
+                ignore_missing_tpid=ignore_missing_tpid,
+                tape_structure=self._ts,
             )
         self._index = _index
         self._materials = [
@@ -373,6 +392,16 @@ class EndfFile:
             self._preload(parse=False)
         elif mode == "parse_all":
             self._preload(parse=True)
+
+    def _init_tape_structure(self):
+        # the tape structure of the parser and whether it frees the order
+        self._ts = TapeStructure.from_spec(
+            getattr(self._parser, "tape_structure", None)
+        )
+        self._free_order = not (
+            self._ts.mf_ascending
+            and all(self._ts.mt_ascending(mf) for mf in range(100))
+        )
 
     def _ensure_valid(self):
         """Raise if the object was invalidated by an export onto its source.
@@ -872,10 +901,41 @@ class EndfFile:
         return keys
 
     def _slot_section_keys(self, slot):
-        return sorted(self._slot_section_keys_set(slot))
+        """The keys (MF, MT) of the sections of a material: in ascending
+        order, or in the order of the file (and the added sections after
+        them) if the tape structure frees the order; a section that
+        repeats has its key once per section."""
+        if not self._free_order:
+            return sorted(self._slot_section_keys_set(slot))
+        keys = []
+        if slot.original_position is not None:
+            entry = self._index[slot.original_position]
+            keys = [key for key, _ in entry.section_list if key not in slot.deleted]
+        keys += [key for key in slot.overlay if key not in set(keys)]
+        return keys
+
+    def _repeated_count(self, slot, mf, mt):
+        """The number of sections MF/MT in the original material, if more
+        than one, otherwise 0."""
+        if slot.original_position is None:
+            return 0
+        entry = self._index[slot.original_position]
+        if not entry.has_repeated_sections:
+            return 0
+        n = sum(1 for key, _ in entry.section_list if key == (mf, mt))
+        return n if n > 1 else 0
+
+    def _check_not_repeated(self, slot, mf, mt):
+        n = self._repeated_count(slot, mf, mt)
+        if n:
+            raise RepeatedSectionError(
+                f"MF={mf}/MT={mt} occurs {n} times in this material; addressing "
+                "a repeated section is not supported yet"
+            )
 
     def _get_slot_section(self, slot, mf, mt):
         self._ensure_valid()
+        self._check_not_repeated(slot, mf, mt)
         key = (mf, mt)
         if key in slot.overlay:
             return slot.overlay[key]
@@ -922,6 +982,7 @@ class EndfFile:
     def _set_slot_section(self, slot, mf, mt, value):
         self._ensure_valid()
         self._check_section_key(mf, mt)
+        self._check_not_repeated(slot, mf, mt)
         if isinstance(value, _SectionView):
             value = value.detach()
         if not isinstance(value, (Mapping, list)):
@@ -957,6 +1018,7 @@ class EndfFile:
             slot.deleted.discard((mf, mt))
 
     def _delete_slot_section(self, slot, mf, mt):
+        self._check_not_repeated(slot, mf, mt)
         self._ensure_valid()
         if (mf, mt) not in self._slot_section_keys_set(slot):
             raise KeyError(f"this material has no MF={mf}/MT={mt} section")
@@ -1122,7 +1184,18 @@ class EndfFile:
         self._section_cache.put(key, section, sec_entry.length)
         return section
 
-    def _mini_tape(self, entry, raw):
+    def _section_at(self, position, k):
+        """Parse the ``k``-th section (counting from 0) of the material at
+        ``position`` in the file, also one of several sections with the
+        same MF and MT numbers; the section is not cached."""
+        self._ensure_valid()
+        entry = self._index[position]
+        (mf, mt), sec_entry = entry.section_list[k]
+        with self._read_session():
+            raw = self._read_span(sec_entry.offset, sec_entry.length)
+        return self._parse_section(entry, mf, mt, raw)
+
+    def _mini_tape(self, entry, raw, mf=None):
         """Wrap the raw text of a section in a minimal single-material tape.
 
         The result is a single string, the form in which both parsers
@@ -1133,8 +1206,8 @@ class EndfFile:
         the text itself, which is therefore not divided and joined again.
         """
         tail = (
-            _control_line(entry.mat, 0, 0)  # FEND
-            + "\n"
+            # the FEND record if the tape structure has one after the MF
+            (_control_line(entry.mat, 0, 0) + "\n" if self._ts.fend(mf or 0) else "")
             + _control_line(0, 0, 0)  # MEND
             + "\n"
             + TEND_LINE  # TEND
@@ -1168,7 +1241,7 @@ class EndfFile:
         tape_line = 2
         with self._read_session():
             for mf, mt in keys:
-                if prev_mf is not None and mf != prev_mf:
+                if prev_mf is not None and mf != prev_mf and self._ts.fend(prev_mf):
                     parts.append(fend)
                     tape_line += 1
                 prev_mf = mf
@@ -1186,14 +1259,16 @@ class EndfFile:
                     if raw and not raw.endswith("\n"):
                         parts.append("\n")
                         tape_line += 1
-        parts.append(fend + _control_line(0, 0, 0) + "\n" + TEND_LINE)
+        if prev_mf is not None and self._ts.fend(prev_mf):
+            parts.append(fend)
+        parts.append(_control_line(0, 0, 0) + "\n" + TEND_LINE)
         return "".join(parts)
 
     def _parse_section(self, entry, mf, mt, raw):
         try:
-            mini_tape = self._mini_tape(entry, raw)
+            mini_tape = self._mini_tape(entry, raw, mf)
             result, mismatches = parse_and_collect(self._parser, mini_tape)
-            section = result[mf][mt]
+            section = _section_of(result, mf, mt)
         except Exception as exc:
             if self._on_error == "raise":
                 raise self._section_parse_error(
@@ -1331,32 +1406,76 @@ class EndfFile:
 
     # -- write-back ----------------------------------------------------
 
-    def _assemble(self, slot, detach=False):
-        """Build a ``{MF: {MT: section}}`` dict ready for the writer.
+    def _assemble(self, slot, detach=False, as_dict=False):
+        """Build the material ready for the writer.
 
         Untouched sections are taken verbatim from disk; edited or added
         sections come from the overlay. These are the canonical objects
         of the overlay unless ``detach`` is true, which copies them (see
         :meth:`MaterialView.to_tape_dict`); the lists of lines of the
-        untouched sections are new lists in either case.
+        untouched sections are new lists in either case. The material is
+        a ``{MF: {MT: section}}`` dict, or the list of its sections in
+        their order if the tape structure frees the order or the
+        material has repeated sections.
         """
-        material = {0: {0: [_tpid_or_default(self._index)]}}
+        tpid = [_tpid_or_default(self._index)]
+        entry = None
+        if slot.original_position is not None:
+            entry = self._index[slot.original_position]
+        repeated = entry is not None and entry.has_repeated_sections
+        if as_dict and repeated:
+            for mf, mt in self._slot_section_keys_set(slot):
+                self._check_not_repeated(slot, mf, mt)
+        elif self._free_order or repeated:
+            return self._assemble_list(slot, entry, tpid, detach)
+        material = {0: {0: tpid}}
         for mf, mt in self._slot_section_keys(slot):
-            if (mf, mt) in slot.overlay:
-                section = slot.overlay[(mf, mt)]
-                # an overlay section is always a parsed mapping or a raw
-                # list of lines; a raw list is stripped of any trailing
-                # SEND so the writer can re-emit it
-                if isinstance(section, list):
-                    section = _strip_send(section)
-                if detach:
-                    section = _plain(section)
-            else:
-                sec_entry = self._index[slot.original_position].sections[(mf, mt)]
-                raw = self._get_raw(slot.original_position, mf, mt, sec_entry)
-                section = _strip_send(_split_lines(raw))
-            material.setdefault(mf, {})[mt] = section
+            material.setdefault(mf, {})[mt] = self._assembled_section(
+                slot, mf, mt, detach
+            )
         return material
+
+    def _assembled_section(self, slot, mf, mt, detach, sec_entry=None):
+        if sec_entry is None and (mf, mt) in slot.overlay:
+            section = slot.overlay[(mf, mt)]
+            # an overlay section is always a parsed mapping or a raw
+            # list of lines; a raw list is stripped of any trailing
+            # SEND so the writer can re-emit it
+            if isinstance(section, list):
+                section = _strip_send(section)
+            if detach:
+                section = _plain(section)
+            return section
+        if sec_entry is None:
+            sec_entry = self._index[slot.original_position].sections[(mf, mt)]
+            raw = self._get_raw(slot.original_position, mf, mt, sec_entry)
+        else:
+            # a repeated section, read without the cache (keyed by MF/MT)
+            raw = self._read_span(sec_entry.offset, sec_entry.length)
+        return _strip_send(_split_lines(raw))
+
+    def _assemble_list(self, slot, entry, tpid, detach):
+        sections = [tpid]
+        if entry is not None and entry.has_repeated_sections:
+            counts = {}
+            for key, _ in entry.section_list:
+                counts[key] = counts.get(key, 0) + 1
+            for key, sec_entry in entry.section_list:
+                if key in slot.deleted:
+                    continue
+                repeated = counts[key] > 1
+                sections.append(
+                    self._assembled_section(
+                        slot, *key, detach, sec_entry if repeated else None
+                    )
+                )
+            added = [k for k in slot.overlay if k not in counts]
+        else:
+            added = None
+        keys = self._slot_section_keys(slot) if added is None else added
+        for mf, mt in keys:
+            sections.append(self._assembled_section(slot, mf, mt, detach))
+        return sections
 
     def _check_deferred_edits(self):
         """Render-check the edits before output (deferred mode only).
@@ -1576,6 +1695,7 @@ class EndfFile:
     def __setstate__(self, state):
         self._path = state["path"]
         self._parser = state["parser"]
+        self._init_tape_structure()
         self._on_error = state["on_error"]
         self._check_edits = state.get("check_edits", "eager")
         self._invalidated = state.get("invalidated", False)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/10/25
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -139,7 +139,7 @@ class MaterialView:
         the changed section back, e.g. ``view[mf, mt] = tape_dict[mf][mt]``.
         """
         self._check_live()
-        return self._file._assemble(self._slot, detach=True)
+        return self._file._assemble(self._slot, detach=True, as_dict=True)
 
     def __getitem__(self, key):
         self._check_live()

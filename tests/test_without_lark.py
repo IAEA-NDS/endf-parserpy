@@ -47,7 +47,7 @@ def test_python_parser_without_lark():
 
 
 def test_cpp_parser_without_lark():
-    pytest.importorskip("endf_parserpy.cpp_parsers.endf6_ext")
+    pytest.importorskip("endf_parserpy.cpp_parsers._flavors")
     _run(
         f"""
         from endf_parserpy import EndfParserCpp, EndfParserPy, EndfParserFactory

@@ -6,7 +6,10 @@ from pathlib import Path
 from endf_parserpy.interpreter.endf_parser import EndfParserPy
 from endf_parserpy.cpp_parsers.endf_parser_cpp import EndfParserCpp
 from endf_parserpy.utils.debugging_utils import compare_objects
-from endf_parserpy.cpp_parsers.endf6_ext import parse_endf_file, write_endf_file
+from endf_parserpy.cpp_parsers._flavors.endf6_ext import (
+    parse_endf_file,
+    write_endf_file,
+)
 from endf_parserpy.utils.accessories import EndfDict
 
 

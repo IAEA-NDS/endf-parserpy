@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/03
-# Last modified:   2026/11/08
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -333,7 +333,7 @@ def _info_in_subprocess(value):
         "import importlib, json, warnings\n"
         "with warnings.catch_warnings(record=True) as w:\n"
         "    warnings.simplefilter('always')\n"
-        "    m = importlib.import_module('endf_parserpy.cpp_parsers.endf6_ext')\n"
+        "    m = importlib.import_module('endf_parserpy.cpp_parsers._flavors')\n"
         "print(json.dumps({'info': m._bulk_body_info(),"
         " 'warnings': [str(x.message) for x in w]}))\n"
     )

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/24
-# Last modified:   2026/10/24
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -219,7 +219,7 @@ def test_parsing_character_above_ff_same_error(as_list):
 
 
 def test_cpp_module_accepts_bytes_and_str():
-    from endf_parserpy.cpp_parsers.endf6_ext import parse_endf
+    from endf_parserpy.cpp_parsers._flavors.endf6_ext import parse_endf
 
     data = cp1252_bytes()
     res_bytes = parse_endf(data, parse_opts={})

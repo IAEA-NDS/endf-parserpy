@@ -4,9 +4,8 @@
 from pathlib import Path
 import pytest
 
-# the module of the default flavor: a C++ exception raised in a flavor
-# module loaded after another one may lose its message in some builds
-endf6 = pytest.importorskip("endf_parserpy.cpp_parsers.endf6_ext")
+# the entry of the default flavor in the C++ module
+endf6 = pytest.importorskip("endf_parserpy.cpp_parsers._flavors").endf6_ext
 
 TESTFILE = Path(__file__).parent / "testdata" / "dec-094_Pu_244.endf"
 

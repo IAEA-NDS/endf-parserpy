@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/16
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -49,8 +49,10 @@ FILES = sorted(p.name for p in TESTDATA.iterdir())
 
 
 def _cpp_available():
+    # skipped only without the C++ module; an error if it lacks the entry
+    # of the flavor
     try:
-        importlib.import_module("endf_parserpy.cpp_parsers.gendf")
+        importlib.import_module("endf_parserpy.cpp_parsers._flavors")
     except ImportError:
         return False
     return True
@@ -58,9 +60,7 @@ def _cpp_available():
 
 CPP = pytest.param(
     EndfParserCpp,
-    marks=pytest.mark.skipif(
-        not _cpp_available(), reason="C++ module gendf is not built"
-    ),
+    marks=pytest.mark.skipif(not _cpp_available(), reason="C++ module is not built"),
     id="cpp",
 )
 PARSERS = [pytest.param(EndfParserPy, id="py"), CPP]
@@ -185,7 +185,7 @@ def test_writing_from_values(cls):
         assert _written_lines(written, mf, mt) == lines, f"MF{mf}/MT{mt}"
 
 
-@pytest.mark.skipif(not _cpp_available(), reason="C++ module gendf is not built")
+@pytest.mark.skipif(not _cpp_available(), reason="C++ module is not built")
 @pytest.mark.parametrize("mode", ["dict", "list", "numpy"])
 @pytest.mark.parametrize("filename", FILES)
 def test_parsers_give_equal_dicts(filename, mode):

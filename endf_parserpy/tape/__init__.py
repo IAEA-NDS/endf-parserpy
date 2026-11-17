@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/08
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -15,6 +15,7 @@ from .errors import (
     TapeError,
     TapeStructureError,
     AmbiguousMaterialError,
+    AmbiguousSectionError,
     SectionParseError,
     SectionRenderError,
     StaleSourceError,
@@ -56,6 +57,7 @@ __all__ = (
     "TapeError",
     "TapeStructureError",
     "AmbiguousMaterialError",
+    "AmbiguousSectionError",
     "SectionParseError",
     "SectionRenderError",
     "StaleSourceError",

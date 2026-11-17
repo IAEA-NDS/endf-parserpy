@@ -50,6 +50,34 @@ class AmbiguousMaterialError(TapeError, LookupError):
     """
 
 
+class AmbiguousSectionError(TapeError, LookupError):
+    """Raised when the MF and MT numbers of a section match several
+    sections of a material.
+
+    A tape structure that allows repeats (e.g. that of ``gendf``) lets a
+    label MF/MT occur more than once in a material. Addressing such a
+    section by its label alone (``MF/MT``) then does not name one of them;
+    the occurrence (``MF/MT#k``) or the position (``#k``) selects one.
+
+    This is a lookup failure, so it also derives from the built-in
+    :class:`LookupError`, but not from :class:`KeyError`: a test whether
+    a path exists does not answer ``False`` for an ambiguous label.
+
+    Attributes
+    ----------
+    mf, mt : int or None
+        The label that is ambiguous.
+    positions : list[int] or None
+        The positions (``#k``) of the sections with this label.
+    """
+
+    def __init__(self, message, *, mf=None, mt=None, positions=None):
+        super().__init__(message)
+        self.mf = mf
+        self.mt = mt
+        self.positions = positions
+
+
 class SectionParseError(TapeError):
     """Raised when a section fails to parse and ``on_error="raise"``.
 

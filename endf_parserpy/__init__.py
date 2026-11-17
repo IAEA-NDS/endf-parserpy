@@ -31,6 +31,15 @@ from .utils.tape_structure import (
     to_dict_form,
     to_list_form,
 )
+from .utils.sections import (
+    iter_sections,
+    section_positions,
+    locate_section,
+    get_section,
+    set_section,
+    insert_section,
+    remove_section,
+)
 from .tape import (
     parse_tape,
     parse_tape_file,
@@ -44,6 +53,7 @@ from .tape import (
     EndfMaterialPath,
     TapeError,
     TapeStructureError,
+    AmbiguousSectionError,
 )
 
 
@@ -63,6 +73,13 @@ __all__ = (
     "section_label",
     "to_dict_form",
     "to_list_form",
+    "iter_sections",
+    "section_positions",
+    "locate_section",
+    "get_section",
+    "set_section",
+    "insert_section",
+    "remove_section",
     "compare_objects",
     "list_parsed_sections",
     "list_unparsed_sections",
@@ -84,6 +101,7 @@ __all__ = (
     "EndfMaterialPath",
     "TapeError",
     "TapeStructureError",
+    "AmbiguousSectionError",
     # deprecated aliases
     "EndfParser",
     "BasicEndfParser",

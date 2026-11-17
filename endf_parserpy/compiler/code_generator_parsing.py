@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -74,15 +74,31 @@ def mf_mt_parsefun_name(mf, mt):
     return f"parse_mf{mf}mt{mt}"
 
 
-def _canonical_parsefun_name(recipe):
-    """Stable name derived only from the ENDF recipe text. Two distinct
-    (mf, mt) pairs that share recipe text get the same canonical name, so
-    the corresponding parser function can be emitted once into _shared.cpp
-    and reused by every flavor that references it. The truncated 16-hex
-    prefix is well below birthday-bound for the few hundred functions
-    involved.
+def _dedup_key(recipe, mf, mt):
+    """Hash of everything a generated parse or write function body depends
+    on: the recipe text and the MF and MT numbers it is specialized for.
+
+    The generator puts the MF number, and the MT number if it is given
+    (``mt`` is None for a recipe that serves all MTs of an MF), into the
+    body as constants, whether or not the recipe uses ``MF`` or ``MT`` as
+    a variable. A recipe text registered under several MF numbers, or
+    under several explicit MT numbers, therefore needs one function per
+    (MF, MT), while the same (text, MF, MT) is still shared across
+    flavors.
     """
-    return "parse_recipe_" + md5(recipe.encode()).hexdigest()[:16]
+    key = f"{mf}\0{'' if mt is None else mt}\0{recipe}"
+    return md5(key.encode()).hexdigest()
+
+
+def _canonical_parsefun_name(recipe, mf, mt):
+    """Stable name derived from the dedup key (:func:`_dedup_key`). The
+    same recipe text with the same specialization, in any flavor, gets
+    the same canonical name, so the parser function can be emitted once
+    into _shared.cpp and reused by every flavor that references it. The
+    truncated 16-hex prefix is well below birthday-bound for the few
+    hundred functions involved.
+    """
+    return "parse_recipe_" + _dedup_key(recipe, mf, mt)[:16]
 
 
 def _mf_mt_dict_varname(mf, mt):
@@ -802,8 +818,9 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
 
     When ``shared_registry`` is provided (dict with keys ``"parse"`` and
     ``"write"``), per-recipe parse function bodies are deduplicated across
-    flavors via canonical recipe-hash-derived names. The full body is
-    stored in the registry only the first time a given recipe hash is
+    flavors via canonical names derived from the recipe text and the
+    MF/MT the body is specialized for (:func:`_dedup_key`). The full body
+    is stored in the registry only the first time a given key is
     encountered; subsequent encounters (whether in the same flavor or in a
     later flavor) just emit a forward declaration in the per-flavor code
     so the dispatcher and wrappers can link to the canonical symbol that
@@ -823,8 +840,8 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
                 outer_name + "_istream", recipe, mf=mf, mt=mt_
             )
             return outer_name
-        recipe_hash = md5(recipe.encode()).hexdigest()
-        canonical = _canonical_parsefun_name(recipe)
+        recipe_hash = _dedup_key(recipe, mf, mt_)
+        canonical = _canonical_parsefun_name(recipe, mf, mt_)
         canonical_istream = canonical + "_istream"
         if recipe_hash not in parse_reg:
             parse_reg[recipe_hash] = (

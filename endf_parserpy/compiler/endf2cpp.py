@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/03/28
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -19,8 +19,9 @@ def generate_cpp_module_code(recipes, module_name, shared_registry=None):
     """Emit one ENDF flavor's pybind11 module source.
 
     When ``shared_registry`` is provided, the heavy per-(mf, mt) parse and
-    write function bodies are routed into the registry under canonical,
-    recipe-hash-derived names, and the per-flavor source emits only
+    write function bodies are routed into the registry under canonical
+    names derived from the recipe text and the MF/MT it is specialized
+    for, and the per-flavor source emits only
     forward declarations plus the dispatchers, the wrappers called from
     Python and the PYBIND11_MODULE block. The caller is responsible for
     emitting the accumulated registry as the shared translation unit(s)
@@ -83,7 +84,7 @@ def generate_shared_cpp_code(shared_registry, num_chunks=1):
     parse_reg = shared_registry.get("parse", {})
     write_reg = shared_registry.get("write", {})
     # Within a chunk, the functions are in the lexicographic order of
-    # their recipe hashes, parse functions first.
+    # their dedup keys (recipe text and MF/MT), parse functions first.
     parse_items = sorted(parse_reg.items())
     write_items = sorted(write_reg.items())
     if num_chunks <= 1:
@@ -173,13 +174,13 @@ def _format_shared_chunk(parse_items, write_items, chunk_id):
     chunk_tag = "" if chunk_id is None else f" (chunk {chunk_id})"
     parts.append(
         f"// === Deduplicated parse functions{chunk_tag} "
-        "(canonical names derived from recipe MD5) ===\n"
+        "(canonical names derived from recipe and MF/MT) ===\n"
     )
     for recipe_hash, (_canonical, code) in parse_items:
         parts.append(code)
     parts.append(
         f"\n// === Deduplicated write functions{chunk_tag} "
-        "(canonical names derived from recipe MD5) ===\n"
+        "(canonical names derived from recipe and MF/MT) ===\n"
     )
     for recipe_hash, (_canonical, code) in write_items:
         parts.append(code)

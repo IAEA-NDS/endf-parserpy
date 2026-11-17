@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/23
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -80,8 +80,8 @@ def _prepare_cpp_parsers_subpackage(
     """Generate per-flavor C++ pybind11 module sources.
 
     When ``dedup`` is True (default), parse and write function bodies
-    that have an identical underlying ENDF recipe across multiple
-    flavors are emitted only once into shared translation unit(s),
+    that have an identical underlying ENDF recipe, specialized for the
+    same MF/MT, across multiple flavors are emitted only once into shared translation unit(s),
     which the build system compiles and links into each flavor's
     extension module via ``extra_objects``.
 

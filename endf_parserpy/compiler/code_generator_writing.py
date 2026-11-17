@@ -3,15 +3,15 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 
-from hashlib import md5
 from .code_generator_core import generate_vardefs, generate_code_from_parsetree
+from .code_generator_parsing import _dedup_key
 from . import cpp_boilerplate
 from . import cpp_boilerplate_writing
 from .code_generator_core import (
@@ -97,12 +97,13 @@ def mf_mt_writefun_name(mf, mt):
     return f"write_mf{mf}mt{mt}"
 
 
-def _canonical_writefun_name(recipe):
-    """Recipe-hash-derived canonical name for the writing side. See
+def _canonical_writefun_name(recipe, mf, mt):
+    """Canonical name for the writing side, derived from the same dedup
+    key as on the parsing side. See
     :func:`code_generator_parsing._canonical_parsefun_name` for the
     rationale and collision argument.
     """
-    return "write_recipe_" + md5(recipe.encode()).hexdigest()[:16]
+    return "write_recipe_" + _dedup_key(recipe, mf, mt)[:16]
 
 
 def _split_wrapper_names(entry):
@@ -781,7 +782,8 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
 def generate_all_cpp_writefuns_code(recipes, module_name, shared_registry=None):
     """Mirror of :func:`code_generator_parsing.generate_all_cpp_parsefuns_code`
     for the write side. With ``shared_registry`` provided, deduplicate
-    write_recipe_<hash>_ostream bodies across flavors into _shared.cpp.
+    write_recipe_<hash>_ostream bodies across flavors into _shared.cpp,
+    with the same key as on the parse side (recipe text and MF/MT).
     """
     dedup = shared_registry is not None
     writefuns_code = ""
@@ -797,8 +799,8 @@ def generate_all_cpp_writefuns_code(recipes, module_name, shared_registry=None):
                 outer_name + "_ostream", recipe, mf=mf, mt=mt_
             )
             return outer_name
-        recipe_hash = md5(recipe.encode()).hexdigest()
-        canonical = _canonical_writefun_name(recipe)
+        recipe_hash = _dedup_key(recipe, mf, mt_)
+        canonical = _canonical_writefun_name(recipe, mf, mt_)
         canonical_ostream = canonical + "_ostream"
         if recipe_hash not in write_reg:
             write_reg[recipe_hash] = (

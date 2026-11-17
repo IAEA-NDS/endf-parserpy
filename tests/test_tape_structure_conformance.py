@@ -50,7 +50,6 @@ from endf_parserpy import EndfParserPy
 from endf_parserpy.tape import check_framing
 from endf_parserpy.utils.debugging_utils import compare_objects
 from test_section_order import CASES as ORDER_CASES, _file as _order_file
-from endf_parserpy.endf_recipes import get_tape_structure
 from test_validate_framing_records import CU, PU, PU_CASES, ZN, _lines, _tape
 
 GOLDEN = Path(__file__).resolve().parent / "conformance_goldens" / "framing_endf6.json"
@@ -175,7 +174,13 @@ def run_case(name, cpp_class=None, flavor=None):
     cases = GENDF_CASES if flavor == "gendf" else CASES
     filters = GENDF_FILTERS if flavor == "gendf" else FILTERS
     flavor_opts = {} if flavor is None else {"endf_format": flavor}
-    tape_structure = None if flavor is None else get_tape_structure(flavor)
+    tape_structure = None
+    if flavor is not None:
+        # (imported here, so that tools/snapshot_framing_messages.py runs
+        # the cases of ENDF-6 with versions without tape structures)
+        from endf_parserpy.endf_recipes import get_tape_structure
+
+        tape_structure = get_tape_structure(flavor)
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "case.endf"
         path.write_bytes(_text(cases[name]).encode("latin-1"))
@@ -194,10 +199,10 @@ def run_case(name, cpp_class=None, flavor=None):
                             same = compare_objects(res_py, res_cpp, fail_on_diff=False)
                         entry["same_result"] = same
                 result[f"{filt}/{option}"] = entry
+        ts_opts = {} if tape_structure is None else {"tape_structure": tape_structure}
         result["framing"] = {
             option: [
-                [p.line, p.message]
-                for p in check_framing(path, tape_structure=tape_structure, **opts)
+                [p.line, p.message] for p in check_framing(path, **ts_opts, **opts)
             ]
             for option, opts in OPTIONS.items()
         }

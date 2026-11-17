@@ -669,11 +669,30 @@ def dict_form_keys(material):
     return [(mf, mt) for mf in sorted(material) for mt in sorted(material[mf])]
 
 
+def _material_kind(element):
+    """The form of an element of a material in the list form that is
+    itself a material, or ``None`` for any other element: a list whose
+    first element is a section (a mapping or a list of lines), whereas an
+    unparsed section is a list of lines, or a mapping with the key 0 (the
+    tape head MF0) or other int keys, but without a key ``MF``, whereas
+    the keys of a parsed section are names."""
+    if isinstance(element, list):
+        if element and isinstance(element[0], (Mapping, list)):
+            return "a list of sections"
+        return None
+    if isinstance(element, Mapping) and "MF" not in element:
+        if any(_is_int(key) for key in element):
+            return "a dict {MF: {MT: section}}"
+    return None
+
+
 def check_material(material, tape_structure, given_as_list=True, keys=None):
     """Check a material in the list form before it is written.
 
     The checks of the writers of both parsers:
 
+    - no element of a list is itself a material, as in a list of
+      materials, which ``write_tape`` writes;
     - every section is a mapping (parsed) or a list of lines (unparsed)
       with the labels ``MF`` and ``MT``, and the tape head (MF0/MT0), if
       present, is the first section;
@@ -705,6 +724,13 @@ def check_material(material, tape_structure, given_as_list=True, keys=None):
     seen = set()
     for pos, section in enumerate(material):
         if given_as_list:
+            kind = _material_kind(section)
+            if kind is not None:
+                raise TypeError(
+                    f"write writes one material, but the element at position {pos} "
+                    f"of the list is itself a material ({kind}); use write_tape "
+                    "for a tape of several materials"
+                )
             if not isinstance(section, (Mapping, list)):
                 raise TypeError(
                     "a section must be a dict (parsed) or a list of strings "

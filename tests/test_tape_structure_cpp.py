@@ -77,3 +77,10 @@ def test_blank_end_records():
     )
     py = EndfParserPy(tape_structure={"end_record_fill": "blank"}).write(material)
     assert written.split("\n") == py
+
+
+def test_write_of_several_materials(tmp_path):
+    from endf_parserpy import EndfParserCpp
+    from test_tape_structure_py import check_write_of_several_materials
+
+    check_write_of_several_materials(EndfParserCpp, tmp_path)

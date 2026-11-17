@@ -323,3 +323,48 @@ def test_verbatim_lines_must_agree():
         "line 4 of the section MF=8/MT=457 given as a list of lines has "
         "MAT/MF/MT 3564/8/458, which differ from 3564/8/457 of its first line"
     )
+
+
+def check_write_of_several_materials(parser_class, tmp_path):
+    """``write`` and ``writefile`` of a list of materials raise an error
+    with a hint to ``write_tape``; valid materials are written as before.
+    Also used for EndfParserCpp (test_tape_structure_cpp.py)."""
+    parser = parser_class()
+    as_list = parser_class(material_form="list").parsefile(str(PU))
+    as_dict = parser_class().parsefile(str(PU))
+    verbatim = parser_class(material_form="list").parsefile(str(PU), exclude=[1, 8])
+    # the tape head given as a list of lines, as EndfFile gives it
+    verbatim_head = [parser.write(as_list)[:1]] + as_list[1:]
+    hint = "; use write_tape for a tape of several materials"
+    as_list_kind = "a list of sections"
+    as_dict_kind = "a dict {MF: {MT: section}}"
+    for materials, kind, pos in (
+        ([as_list, as_list], as_list_kind, 0),
+        ([as_dict, as_dict], as_dict_kind, 0),
+        ([verbatim, verbatim], as_list_kind, 0),
+        ([verbatim_head], as_list_kind, 0),
+        ([as_list[0], as_list], as_list_kind, 1),
+    ):
+        expected = (
+            f"write writes one material, but the element at position {pos} of "
+            f"the list is itself a material ({kind})" + hint
+        )
+        with pytest.raises(TypeError) as exc:
+            parser.write(materials)
+        assert str(exc.value) == expected
+        with pytest.raises(TypeError) as exc:
+            parser.writefile(tmp_path / "out.endf", materials)
+        assert str(exc.value) == expected
+        assert not (tmp_path / "out.endf").exists()
+    # no false positives: a material in the nested form, in the list form,
+    # with sections given as lists of lines, and the empty list
+    text = parser.write(as_dict)
+    assert parser.write(as_list) == text
+    # (the lines of a section read verbatim are those of the file)
+    assert _ctrl(parser.write(verbatim)) == _ctrl(text)
+    assert parser.write(verbatim_head) == text
+    assert parser_class(ignore_missing_tpid=True).write([]) == text[-2:]
+
+
+def test_write_of_several_materials(tmp_path):
+    check_write_of_several_materials(EndfParserPy, tmp_path)

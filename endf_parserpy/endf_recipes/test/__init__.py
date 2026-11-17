@@ -141,3 +141,7 @@ defdic(endf_recipe_dictionary, (10, 8), ENDF_RECIPE_MF10_MT8)
 defdic(endf_recipe_dictionary, (10, 9), ENDF_RECIPE_MF10_MT9)
 defdic(endf_recipe_dictionary, (10, 10), ENDF_RECIPE_MF10_MT10)
 defdic(endf_recipe_dictionary, (10, 11), ENDF_RECIPE_MF10_MT11)
+
+# The tape structure of the flavor (see endf_parserpy.utils.tape_structure):
+# that of ENDF-6, the defaults
+TAPE_STRUCTURE = {}

@@ -23,3 +23,7 @@ for _mf in GROUPWISE_AWR_MF:
     defdic(
         endf_recipe_dictionary, (_mf,), groupwise_recipe(ENDF_RECIPE_GROUPWISE_AWR, _mf)
     )
+
+# The tape structure of the flavor (see endf_parserpy.utils.tape_structure):
+# for the time being that of ENDF-6
+TAPE_STRUCTURE = {}

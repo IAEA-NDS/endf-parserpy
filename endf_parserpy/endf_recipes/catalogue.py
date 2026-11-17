@@ -6,6 +6,13 @@ from .pendf import endf_recipe_dictionary as pendf_recipes
 from .errorr import endf_recipe_dictionary as errorr_recipes
 from .gendf import endf_recipe_dictionary as gendf_recipes
 from .test import endf_recipe_dictionary as test_recipes
+from .endf6_ext import TAPE_STRUCTURE as endf6_ext_tape_structure
+from .endf6 import TAPE_STRUCTURE as endf6_tape_structure
+from .jendl import TAPE_STRUCTURE as jendl_tape_structure
+from .pendf import TAPE_STRUCTURE as pendf_tape_structure
+from .errorr import TAPE_STRUCTURE as errorr_tape_structure
+from .gendf import TAPE_STRUCTURE as gendf_tape_structure
+from .test import TAPE_STRUCTURE as test_tape_structure
 
 
 # The build targets: the flavors with a recipe dictionary of their own.
@@ -19,6 +26,19 @@ _FORMAT_DICT = {
     "errorr": errorr_recipes,
     "gendf": gendf_recipes,
     "test": test_recipes,
+}
+
+
+# the tape structure of each build target (see
+# endf_parserpy.utils.tape_structure), given next to its recipes
+_TAPE_STRUCTURE_DICT = {
+    "endf6-ext": endf6_ext_tape_structure,
+    "endf6": endf6_tape_structure,
+    "jendl": jendl_tape_structure,
+    "pendf": pendf_tape_structure,
+    "errorr": errorr_tape_structure,
+    "gendf": gendf_tape_structure,
+    "test": test_tape_structure,
 }
 
 
@@ -195,6 +215,30 @@ def get_layout_version(format_spec):
 def get_recipe_dict(format_spec):
     """Return the recipe dictionary of a flavor or a layout version."""
     return _FORMAT_DICT[resolve_endf_flavor(format_spec)]
+
+
+def get_tape_structure(format_spec):
+    """Return the tape structure of a flavor or a layout version.
+
+    Returns
+    -------
+    TapeStructure
+        The resolved tape structure (see
+        :class:`~endf_parserpy.TapeStructure`) of the flavor whose recipes
+        the name stands for.
+    """
+    from ..utils.tape_structure import TapeStructure
+
+    target = resolve_endf_flavor(format_spec)
+    ts = _TAPE_STRUCTURES.get(target)
+    if ts is None:
+        ts = TapeStructure.from_spec(_TAPE_STRUCTURE_DICT[target])
+        _TAPE_STRUCTURES[target] = ts
+    return ts
+
+
+# the resolved tape structures of the build targets (see get_tape_structure)
+_TAPE_STRUCTURES = {}
 
 
 def list_endf_flavors():

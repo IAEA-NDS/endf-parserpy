@@ -16,7 +16,11 @@ import pickle
 import pytest
 
 from endf_parserpy import TapeStructure, section_label, to_dict_form, to_list_form
-from endf_parserpy.endf_recipes import get_recipe_dict
+from endf_parserpy.endf_recipes import (
+    get_recipe_dict,
+    get_tape_structure,
+    list_endf_flavors,
+)
 from endf_parserpy.interpreter.custom_exceptions import UnexpectedControlRecordError
 from endf_parserpy.tape import TapeStructureError
 from endf_parserpy.utils.tape_structure import (
@@ -202,3 +206,16 @@ def test_check_recipes_disagreement():
     with pytest.raises(ValueError, match="does not end with a SEND record"):
         check_recipes(recipes, {})
     check_recipes(recipes, {"section": {(3, 1): {"send": False}}})
+
+
+@pytest.mark.parametrize("flavor", list_endf_flavors())
+def test_tape_structure_of_each_flavor_agrees_with_its_recipes(flavor):
+    ts = get_tape_structure(flavor)
+    assert isinstance(ts, TapeStructure)
+    check_recipes(get_recipe_dict(flavor), ts)
+
+
+def test_tape_structure_of_an_alias():
+    assert get_tape_structure("endf6-ext@0.19") is get_tape_structure("endf6-ext")
+    with pytest.raises(TypeError):
+        get_tape_structure("no-such-flavor")

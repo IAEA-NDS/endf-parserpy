@@ -641,3 +641,167 @@ def check_recipes(recipes, tape_structure):
                 f"the tape structure expects one after the sections of {what} "
                 f"({rule})"
             )
+
+
+def _lenient_label(section):
+    """The label of a section, with ``None`` for the numbers that cannot
+    be determined (they are reported where the section is written)."""
+    if isinstance(section, Mapping):
+        return section.get("MAT"), section.get("MF"), section.get("MT")
+    if isinstance(section, list) and section:
+        try:
+            return _line_label(section[0], 1)
+        except (TypeError, ValueError):
+            return None, None, None
+    return None, None, None
+
+
+def dict_form_keys(material):
+    """The keys ``(MF, MT)`` of a material in the nested form, in the
+    order of :func:`to_list_form`."""
+    return [(mf, mt) for mf in sorted(material) for mt in sorted(material[mf])]
+
+
+def check_material(material, tape_structure, given_as_list=True, keys=None):
+    """Check a material in the list form before it is written.
+
+    The checks of the writers of both parsers:
+
+    - every section is a mapping (parsed) or a list of lines (unparsed)
+      with the labels ``MF`` and ``MT``, and the tape head (MF0/MT0), if
+      present, is the first section;
+    - all sections except the tape head have the same MAT number;
+    - the order and the repetition of the sections follow the rules of
+      the tape structure (only for a material given as a list; the
+      conversion of the nested form gives the canonical order).
+
+    For a material given in the nested form, ``keys`` are its keys
+    ``(MF, MT)`` (see :func:`dict_form_keys`), which label the sections;
+    a MAT number that cannot be read (e.g. a missing key or an invalid
+    field) is left to the writer, which reports it as before. A section of
+    a list must have readable labels.
+
+    Returns
+    -------
+    list[tuple]
+        The labels ``(MAT, MF, MT)`` of the sections.
+
+    Raises
+    ------
+    TypeError, ValueError
+        At the first section that breaks a rule.
+    """
+    ts = TapeStructure.from_spec(tape_structure)
+    labels = []
+    material_mat = None
+    prev = None
+    seen = set()
+    for pos, section in enumerate(material):
+        if given_as_list:
+            if not isinstance(section, (Mapping, list)):
+                raise TypeError(
+                    "a section must be a dict (parsed) or a list of strings "
+                    f"(unparsed), got {type(section).__name__} at position {pos} "
+                    "of the list"
+                )
+            if isinstance(section, Mapping) and (
+                section.get("MF") is None or section.get("MT") is None
+            ):
+                raise ValueError(
+                    f"the parsed section at position {pos} of the list has no "
+                    "MF or MT key"
+                )
+        if keys is not None:
+            mf, mt = keys[pos]
+            mat = _lenient_label(section)[0]
+        elif isinstance(section, list) and section:
+            mat, mf, mt = _line_label(section[0], 1, f"the section at position {pos}")
+        else:
+            mat, mf, mt = _lenient_label(section)
+        labels.append((mat, mf, mt))
+        if mf == 0 and mt == 0:
+            if pos != 0 and given_as_list:
+                raise ValueError(
+                    "the tape head (MF=0/MT=0) must be the first section of the "
+                    f"list, found at position {pos}"
+                )
+            continue
+        if mat is not None:
+            if material_mat is None:
+                material_mat = (mat, mf, mt)
+            elif mat != material_mat[0]:
+                raise ValueError(
+                    f"section MF={mf}/MT={mt} at position {pos} of the list has "
+                    f"MAT={mat}, but the material has MAT={material_mat[0]} (from "
+                    f"the section MF={material_mat[1]}/MT={material_mat[2]}); all "
+                    "sections of a material must have the same MAT number (the "
+                    "tape head MF=0/MT=0 is not counted)"
+                )
+        if not given_as_list:
+            continue
+        where = (
+            f"cannot write the section MF={mf}/MT={mt} at position {pos} of the list"
+        )
+        if prev is not None:
+            pmf, pmt = prev
+            if ts.mf_ascending and mf < pmf:
+                raise ValueError(
+                    f"{where} after MF={pmf}/MT={pmt}: the tape structure requires "
+                    "ascending MF"
+                )
+            if mf == pmf and ts.mt_ascending(mf):
+                if mt < pmt or (mt == pmt and not ts.repeat(mf, mt)):
+                    raise ValueError(
+                        f"{where} after MF={pmf}/MT={pmt}: the tape structure "
+                        "requires ascending MT within an MF"
+                    )
+            if ts.mf_ascending and mf != pmf and mf in {m for m, _ in seen}:
+                raise ValueError(
+                    f"{where} after MF={pmf}/MT={pmt}: the tape structure requires "
+                    "ascending MF"
+                )
+        if (mf, mt) in seen and not ts.repeat(mf, mt):
+            first = next(k for k, l in enumerate(labels[:-1]) if l[1:] == (mf, mt))
+            raise ValueError(
+                f"{where}: MF={mf}/MT={mt} already occurs at position {first}, and "
+                "the tape structure does not allow a repeated section"
+            )
+        seen.add((mf, mt))
+        prev = (mf, mt)
+    return labels
+
+
+def check_verbatim_labels(lines, mf, mt):
+    """Check that all lines of an unparsed section have the MAT, MF and MT
+    numbers of its first line (lines whose numbers cannot be read are left
+    to the writer)."""
+    if not lines:
+        return
+    first = lines[0]
+    if isinstance(first, bytes):
+        first = first.decode("latin-1")
+    if not isinstance(first, str):
+        return
+    first_cols = first.rstrip("\r\n")[66:75]
+    expected = None
+    for k, line in enumerate(lines[1:], start=2):
+        if isinstance(line, bytes):
+            line = line.decode("latin-1")
+        if not isinstance(line, str):
+            continue
+        cols = line.rstrip("\r\n")[66:75]
+        if cols == first_cols or cols.strip() == "":
+            # (a short line without control fields is written as it is)
+            continue
+        try:
+            if expected is None:
+                expected = _line_label(first, 1)
+            found = _line_label(line, k)
+        except ValueError:
+            continue
+        if found != expected:
+            raise ValueError(
+                f"line {k} of the section MF={mf}/MT={mt} given as a list of lines "
+                f"has MAT/MF/MT {'/'.join(map(str, found))}, which differ from "
+                f"{'/'.join(map(str, expected))} of its first line"
+            )

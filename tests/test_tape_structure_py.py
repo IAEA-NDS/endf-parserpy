@@ -182,3 +182,144 @@ def test_second_material_rejected():
         "No MF/MT section allowed after the MEND record: parse reads one "
         "material; use parse_tape for a tape of several materials"
     )
+
+
+# --- writing ---------------------------------------------------------------
+
+
+def _lines_of(text):
+    return text.rstrip("\n").split("\n")
+
+
+def _ctrl(lines):
+    # the control columns of the lines (the framing), the data of the
+    # parsed sections being compared by parsing them again
+    return [line[66:75] for line in lines]
+
+
+def test_write_list_form_of_endf6():
+    parser = EndfParserPy()
+    as_dict = parser.parsefile(str(PU))
+    as_list = EndfParserPy(material_form="list").parsefile(str(PU))
+    assert parser.write(as_list) == parser.write(as_dict)
+    parser = EndfParserPy(include_linenum=False)
+    assert _ctrl(parser.write(as_list)) == _ctrl(
+        _lines_of(PU.read_text(encoding="latin-1"))
+    )
+
+
+def test_write_free_order_and_repeats():
+    text = _text("tpid", "457", "452", "451", "457", "mend", "tend")
+    parser = EndfParserPy(
+        tape_structure=FREE, material_form="list", include_linenum=False
+    )
+    material = parser.parse(text)
+    written = parser.write(material)
+    assert _ctrl(written) == _ctrl(_lines_of(text))
+    assert parser.parse(written) == material
+    # the verbatim sections are written as they are
+    material = parser.parse(text, exclude=[1, 8])
+
+    def data(lines):
+        return [line for line in lines if line[72:75] != "  0"]
+
+    assert data(parser.write(material)) == data(_lines_of(text))
+
+
+def test_write_without_send_after_451():
+    text = _no_send_text("tpid", "451", "452", "fend1", "457", "mend", "tend")
+    parser = _no_send_parser(include_linenum=False)
+    lines = _lines_of(text)
+    for form in ("dict", "list"):
+        p = _no_send_parser(include_linenum=False, material_form=form)
+        material = p.parse(text)
+        written = p.write(material)
+        assert _ctrl(written) == _ctrl(lines)
+        assert p.parse(written) == material
+    # MF1 read verbatim: its lines as in the file, without SEND after MT451
+    written = parser.write(parser.parse(text, exclude=[1]))
+    first_fend = lines.index(_blocks()["fend1"][0].decode())
+    assert written[1:first_fend] == lines[1:first_fend]
+
+
+def test_write_blank_end_records():
+    parser = EndfParserPy(tape_structure={"end_record_fill": "blank"})
+    lines = parser.write(EndfParserPy().parsefile(str(PU)))
+    ends = [line for line in lines if line[72:75] == "  0" and line[:66].strip() == ""]
+    assert len(ends) == 7  # 3 SEND, 2 FEND, MEND, TEND
+    zeros = EndfParserPy().write(EndfParserPy().parsefile(str(PU)))
+    assert parser.write(EndfParserPy().parsefile(str(PU)), zero_as_blank=False) == zeros
+
+
+def _pu_list():
+    return EndfParserPy(material_form="list").parsefile(str(PU))
+
+
+def test_write_checks_the_list():
+    parser = EndfParserPy()
+    material = _pu_list()
+    with pytest.raises(ValueError) as exc:
+        parser.write([material[0], material[2], material[1], material[3]])
+    assert str(exc.value) == (
+        "cannot write the section MF=1/MT=451 at position 2 of the list after "
+        "MF=1/MT=452: the tape structure requires ascending MT within an MF"
+    )
+    with pytest.raises(ValueError) as exc:
+        parser.write([material[0], material[3], material[1]])
+    assert str(exc.value) == (
+        "cannot write the section MF=1/MT=451 at position 2 of the list after "
+        "MF=8/MT=457: the tape structure requires ascending MF"
+    )
+    with pytest.raises(ValueError) as exc:
+        EndfParserPy(tape_structure=dict(FREE, repeat=False)).write(
+            material + [material[3]]
+        )
+    assert str(exc.value) == (
+        "cannot write the section MF=8/MT=457 at position 4 of the list: "
+        "MF=8/MT=457 already occurs at position 3, and the tape structure does "
+        "not allow a repeated section"
+    )
+    with pytest.raises(ValueError) as exc:
+        parser.write(material[1:2] + material[:1])
+    assert str(exc.value) == (
+        "the tape head (MF=0/MT=0) must be the first section of the list, found "
+        "at position 1"
+    )
+    with pytest.raises(TypeError) as exc:
+        parser.write(material[:1] + [3])
+    assert str(exc.value) == (
+        "a section must be a dict (parsed) or a list of strings (unparsed), got "
+        "int at position 1 of the list"
+    )
+
+
+@pytest.mark.parametrize("form", ["dict", "list"])
+def test_mat_rule(form):
+    parser = EndfParserPy(material_form=form)
+    material = parser.parsefile(str(PU))
+    if form == "dict":
+        material[8][457]["MAT"] = 3565
+    else:
+        material[3]["MAT"] = 3565
+    with pytest.raises(ValueError) as exc:
+        parser.write(material)
+    position = 3
+    assert str(exc.value) == (
+        f"section MF=8/MT=457 at position {position} of the list has MAT=3565, "
+        "but the material has MAT=3564 (from the section MF=1/MT=451); all "
+        "sections of a material must have the same MAT number (the tape head "
+        "MF=0/MT=0 is not counted)"
+    )
+
+
+def test_verbatim_lines_must_agree():
+    parser = EndfParserPy()
+    material = parser.parsefile(str(PU), exclude=[8])
+    lines = material[8][457]
+    lines[3] = lines[3][:66] + "3564 8458" + lines[3][75:]
+    with pytest.raises(ValueError) as exc:
+        parser.write(material)
+    assert str(exc.value) == (
+        "line 4 of the section MF=8/MT=457 given as a list of lines has "
+        "MAT/MF/MT 3564/8/458, which differ from 3564/8/457 of its first line"
+    )

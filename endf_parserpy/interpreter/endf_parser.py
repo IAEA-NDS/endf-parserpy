@@ -93,8 +93,13 @@ from .endf_recipe_utils import (
 from endf_parserpy.endf_recipes import get_recipe_dict, get_tape_structure
 from endf_parserpy.utils.tape_structure import (
     TapeStructure,
+    check_material,
     check_recipes,
+    check_verbatim_labels,
+    dict_form_keys,
+    is_list_form,
     to_dict_form,
+    to_list_form,
 )
 from endf_parserpy.utils.debugging_utils import TrackingDict
 from .helpers import array_dict_to_list
@@ -1361,7 +1366,7 @@ class EndfParserPy(EndfParserBase):
         self.parse_opts.pop("tolerated_mismatches", None)
         self._numpy_forms = None
 
-    def write(self, endf_dic, exclude=None, include=None, zero_as_blank=False):
+    def write(self, endf_dic, exclude=None, include=None, zero_as_blank=None):
         """Convert data into the ENDF-6 format.
 
         All parameters are explained in the description of
@@ -1372,8 +1377,14 @@ class EndfParserPy(EndfParserBase):
         list[str]
             List of lines with the ENDF-6 formatted data.
         """
+        ts = self.tape_structure
+        if zero_as_blank is None:
+            zero_as_blank = ts.end_record_fill == "blank"
+        given_as_list = is_list_form(endf_dic)
         if isinstance(endf_dic, EndfDict):
             endf_dic = endf_dic.unwrap()
+        if given_as_list:
+            endf_dic = [s.unwrap() if isinstance(s, EndfDict) else s for s in endf_dic]
         self.zero_as_blank = zero_as_blank
         self._remove_array_state_opts()
         array_type = self.parse_opts["array_type"]
@@ -1382,6 +1393,11 @@ class EndfParserPy(EndfParserBase):
             # numpy arrays and scalars are written like lists and
             # Python numbers with the same values
             endf_dic = numpy_to_python(endf_dic)
+        # the sections in the order in which they are written: a material
+        # in the nested form in canonical order (ascending MF and MT)
+        keys = None if given_as_list else dict_form_keys(endf_dic)
+        sections = to_list_form(endf_dic)
+        labels = check_material(sections, ts, given_as_list, keys)
         self.parse_opts["internal_array_type"] = "list" if in_list_mode else "dict"
         if in_list_mode:
             # the start indices of nested arrays are those of their
@@ -1393,140 +1409,133 @@ class EndfParserPy(EndfParserBase):
         should_check_arrays = self.write_opts["check_arrays"]
         tree_dic = self.tree_dic
         lines = []
-        for mf in sorted(endf_dic):
-            some_mf_output = False
-            for mt in sorted(endf_dic[mf]):
-                should_skip = self.should_skip_section(mf, mt, exclude, include)
-                if should_skip:
-                    continue
-                cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
-                is_parsed = isinstance(endf_dic[mf][mt], Mapping)
-                if cur_tree is not None and is_parsed:
-                    if in_list_mode:
-                        _annotate_tree(cur_tree)
-                    datadic = endf_dic[mf][mt]
-                    if should_check_arrays:
-                        datadic = TrackingDict(datadic)
-                    self.reset_parser_state(rwmode="write", datadic=datadic)
-                    self.current_path = EndfPath((mf, mt))
-                    datadic.setdefault("MF", mf)
-                    if datadic["MF"] != mf:
-                        raise UnexpectedControlRecordError(
-                            f"expected MF={mf} but found MF={datadic['MF']}"
+        # the MF of the last section written; a FEND record follows the
+        # sections of an MF (if the tape structure has one) where the MF
+        # changes and after the last section
+        last_mf = None
+        found_tpid = False
+        for section, (_, mf, mt) in zip(sections, labels):
+            if mf == 0 and mt == 0:
+                found_tpid = True
+            should_skip = self.should_skip_section(mf, mt, exclude, include)
+            if should_skip:
+                continue
+            if last_mf is not None and mf != last_mf and last_mf != 0:
+                if ts.fend(last_mf):
+                    lines.extend(
+                        write_fend(
+                            self.datadic,
+                            with_ctrl=True,
+                            zero_as_blank=zero_as_blank,
+                            write_opts=self.write_opts,
                         )
-                    datadic.setdefault("MT", mt)
-                    if datadic["MT"] != mt:
-                        raise UnexpectedControlRecordError(
-                            f"expected MT={mt} but found MT={datadic['MT']}"
-                        )
-                    try:
-                        initialize_working_vars(self.datadic)
-                        self.run_instruction(cur_tree)
-                        remove_working_vars(self.datadic)
-                    except Exception as exc:
-                        logstr = self.logbuffer.display_reduced_record_logs()
-                        errmsg = (
-                            "\nHere is the parser record log until failure:\n"
-                            + "--------------------------------------------\n"
-                            + logstr
-                            + "\n"
-                            + "Error message: "
-                            + str(exc)
-                        )
-                        if isinstance(
-                            exc, (VariableNotFoundError, MissingSectionError)
-                        ):
-                            if self.explain_missing_variable:
-                                if isinstance(exc, VariableNotFoundError):
-                                    varpath = self.current_path + exc.varname
-                                    eltype = "variable"
-                                elif isinstance(exc, MissingSectionError):
-                                    varpath = self.current_path + exc.section_name
-                                    eltype = exc.section_type
-                                explanation = self.explain(varpath, stdout=False)
-                                if explanation is None:
-                                    explanation = "No explanation available"
-                                explain_header = (
-                                    f"Explanation of missing {eltype} `{varpath}`"
-                                )
-                            errmsg += "\n\n" + explain_header + "\n"
-                            errmsg += "-" * len(explain_header) + "\n"
-                            errmsg += explanation
-                        self._remove_array_state_opts()
-                        raise type(exc)(errmsg)
-                    # check if arrays have been written in their entirety
-                    if should_check_arrays:
-                        self.datadic.verify_complete_retrieval()
-                    # add the NS number to the lines except last one
-                    # because the SEND (=section end) record already
-                    # contains it. For mf=0 (tape head), no SEND present
-                    curlines = self.lines[:-1] if mf != 0 else self.lines
-                    curlines = add_linenumbers_to_section(
-                        curlines, write_opts=self.write_opts
                     )
-                    # prepare the SEND (=section end) line
-                    if mf != 0:
-                        curline_send = self.lines[-1]
-                        curlines.append(curline_send)
-                    lines.extend(curlines)
-                    # NOTE: the SEND record is part of the recipe
-                    # and therefore will be added by the parser in
-                    # process_send_line method. Hence there is no
-                    # need to add it here, in contrast to the
-                    # branch of the if-statement below to deal
-                    # with non-parsable MF/MF sections.
-                else:
-                    # nothing is parsed here, but in the spirit of
-                    # defensive coding, we reset the parser nevertheless
-                    self.reset_parser_state(rwmode="write")
-                    # if no recipe is available to parse a
-                    # MF/MT section, it will be preserved as a
-                    # list of strings in the parse step
-                    # and we output that unchanged; a line given as bytes
-                    # is written as these bytes, as by EndfParserCpp
-                    curlines = [
-                        (
-                            line.decode(ENDF_ENCODING)
-                            if isinstance(line, bytes)
-                            else line
-                        )
-                        for line in endf_dic[mf][mt]
-                    ]
-                    accept_non_ascii = self.write_opts["accept_non_ascii"]
-                    for i, curline in enumerate(curlines):
-                        if not accept_non_ascii or not curline.isascii():
-                            check_verbatim_line(
-                                curline, i + 1, mf, mt, accept_non_ascii
+            # the SEND record after the section (not after the tape head)
+            with_send = mf != 0 and ts.send(mf, mt)
+            cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
+            is_parsed = isinstance(section, Mapping)
+            if cur_tree is not None and is_parsed:
+                if in_list_mode:
+                    _annotate_tree(cur_tree)
+                datadic = section
+                if should_check_arrays:
+                    datadic = TrackingDict(datadic)
+                self.reset_parser_state(rwmode="write", datadic=datadic)
+                self.current_path = EndfPath((mf, mt))
+                try:
+                    initialize_working_vars(self.datadic)
+                    self.run_instruction(cur_tree)
+                    remove_working_vars(self.datadic)
+                except Exception as exc:
+                    logstr = self.logbuffer.display_reduced_record_logs()
+                    errmsg = (
+                        "\nHere is the parser record log until failure:\n"
+                        + "--------------------------------------------\n"
+                        + logstr
+                        + "\n"
+                        + "Error message: "
+                        + str(exc)
+                    )
+                    if isinstance(exc, (VariableNotFoundError, MissingSectionError)):
+                        if self.explain_missing_variable:
+                            if isinstance(exc, VariableNotFoundError):
+                                varpath = self.current_path + exc.varname
+                                eltype = "variable"
+                            elif isinstance(exc, MissingSectionError):
+                                varpath = self.current_path + exc.section_name
+                                eltype = exc.section_type
+                            explanation = self.explain(varpath, stdout=False)
+                            if explanation is None:
+                                explanation = "No explanation available"
+                            explain_header = (
+                                f"Explanation of missing {eltype} `{varpath}`"
                             )
-                    curlines = add_linenumbers_to_section(
-                        curlines, write_opts=self.write_opts
-                    )
-                    lines.extend(curlines)
-                    # update the MAT, MF, MT number
-                    self.datadic = read_ctrl(lines[-1], read_opts=self.read_opts)
-                    # add the SEND record in between the MT subections
-                    # if it was not a tape head record (mf=0)
-                    if mf != 0:
-                        lines.extend(
-                            write_send(
-                                self.datadic,
-                                with_ctrl=True,
-                                zero_as_blank=zero_as_blank,
-                                write_opts=self.write_opts,
-                            )
-                        )
-                some_mf_output = True
-            # we output the file end (fend) record only if something has been written
-            # to this mf section and it is not the tape head (mf=0)
-            if some_mf_output and mf != 0:
-                lines.extend(
-                    write_fend(
-                        self.datadic,
-                        with_ctrl=True,
-                        zero_as_blank=zero_as_blank,
-                        write_opts=self.write_opts,
-                    )
+                        errmsg += "\n\n" + explain_header + "\n"
+                        errmsg += "-" * len(explain_header) + "\n"
+                        errmsg += explanation
+                    self._remove_array_state_opts()
+                    raise type(exc)(errmsg)
+                # check if arrays have been written in their entirety
+                if should_check_arrays:
+                    self.datadic.verify_complete_retrieval()
+                # add the NS number to the lines except the SEND record of
+                # the recipe, which already contains it (the recipe ends
+                # with a SEND record if the tape structure has one after
+                # the section, see check_recipes)
+                curlines = self.lines[:-1] if with_send else self.lines
+                curlines = add_linenumbers_to_section(
+                    curlines, write_opts=self.write_opts
                 )
+                if with_send:
+                    curlines.append(self.lines[-1])
+                lines.extend(curlines)
+            else:
+                # nothing is parsed here, but in the spirit of
+                # defensive coding, we reset the parser nevertheless
+                self.reset_parser_state(rwmode="write")
+                # if no recipe is available to parse a
+                # MF/MT section, it will be preserved as a
+                # list of strings in the parse step
+                # and we output that unchanged; a line given as bytes
+                # is written as these bytes, as by EndfParserCpp
+                curlines = [
+                    (line.decode(ENDF_ENCODING) if isinstance(line, bytes) else line)
+                    for line in section
+                ]
+                accept_non_ascii = self.write_opts["accept_non_ascii"]
+                for i, curline in enumerate(curlines):
+                    if not accept_non_ascii or not curline.isascii():
+                        check_verbatim_line(curline, i + 1, mf, mt, accept_non_ascii)
+                check_verbatim_labels(curlines, mf, mt)
+                curlines = add_linenumbers_to_section(
+                    curlines, write_opts=self.write_opts
+                )
+                lines.extend(curlines)
+                # update the MAT, MF, MT number
+                self.datadic = read_ctrl(lines[-1], read_opts=self.read_opts)
+                # add the SEND record after the section if the tape
+                # structure has one
+                if with_send:
+                    lines.extend(
+                        write_send(
+                            self.datadic,
+                            with_ctrl=True,
+                            zero_as_blank=zero_as_blank,
+                            write_opts=self.write_opts,
+                        )
+                    )
+            last_mf = mf
+        # the file end (fend) record after the last MF, if something has
+        # been written to it and it is not the tape head (mf=0)
+        if last_mf is not None and last_mf != 0 and ts.fend(last_mf):
+            lines.extend(
+                write_fend(
+                    self.datadic,
+                    with_ctrl=True,
+                    zero_as_blank=zero_as_blank,
+                    write_opts=self.write_opts,
+                )
+            )
 
         # the check runs after all sections are written, so that errors
         # in the sections surface first (write is also used to diagnose
@@ -1536,7 +1545,7 @@ class EndfParserPy(EndfParserBase):
             exclude is None
             and include is None
             and not self.write_opts["ignore_missing_tpid"]
-            and not (0 in endf_dic and 0 in endf_dic[0])
+            and not found_tpid
         ):
             raise RuntimeError(
                 "no tape identification (TPID) record written: the "
@@ -1638,7 +1647,7 @@ class EndfParserPy(EndfParserBase):
         endf_dic,
         exclude=None,
         include=None,
-        zero_as_blank=False,
+        zero_as_blank=None,
         overwrite=False,
     ):
         """Write data to an ENDF-6 file.
@@ -1652,11 +1661,18 @@ class EndfParserPy(EndfParserBase):
             written back unchanged. A text value with a character
             above U+00FF raises an ``InvalidCharacterError`` naming
             the variable.
-        endf_dic : dict
+        endf_dic : Union[dict, list]
             Nested dictionary with nuclear data. Keys of first level
             are MF numbers and the keys of second level MT numbers.
             The structure of the :class:`dict` stored under an MF/MT combination
-            depends on the corresponding ENDF recipe.
+            depends on the corresponding ENDF recipe. A material can
+            also be given as the list of its sections (see
+            :func:`~endf_parserpy.to_list_form`), which are written in
+            this order; the nested dictionary is written in ascending
+            order of MF and MT. The SEND, FEND, MEND and TEND records
+            are generated by the rules of the tape structure of the
+            parser. All sections except the tape head must have the same
+            MAT number.
         exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             A section will only be written to the file if
             not excluded. For an explanation of how to specify
@@ -1669,6 +1685,11 @@ class EndfParserPy(EndfParserBase):
             be written to the file. For an explanation of how to
             define which sections to include, see the ``include`` argument
             of :func:`parsefile`.
+        zero_as_blank : Union[None, bool]
+            If ``True``, the columns 1-66 of the SEND, FEND, MEND and
+            TEND records are blank, if ``False``, they hold zeros. The
+            default ``None`` follows the tape structure of the parser
+            (zeros for all flavors except ``gendf``).
         overwrite : bool
             Existing files will only be overwritten if this argument
             is ``True``, otherwise this function will abort.

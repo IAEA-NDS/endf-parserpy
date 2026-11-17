@@ -148,16 +148,14 @@ def test_the_sections_agree_with_the_parsed_material(am241):
         assert material[f"#{k}"].detach() == parsed[k + 1]
 
 
-def test_one_of_repeated_sections_is_read_only_for_now(am241):
+def test_view_of_a_repeated_section_follows_the_mode(am241):
     view = am241[0][3, 102, 1]
-    with pytest.raises(TypeError):
+    if am241._check_edits == "eager":
+        with pytest.raises(TypeError):
+            view["IZAM"] = 1.0
+    else:
         view["IZAM"] = 1.0
-    with pytest.raises(NotImplementedError, match="occurs 3 times"):
-        am241["#0/3/102#1/IZAM"] = 1.0
-    with pytest.raises(NotImplementedError):
-        del am241[0][3, 102, 1]
-    with pytest.raises(NotImplementedError):
-        am241[0]["#2"] = view.detach()
+        assert am241["#0/3/102#1/IZAM"] == 1.0
     with pytest.raises(AmbiguousSectionError):
         am241[0][3, 102] = view.detach()
 

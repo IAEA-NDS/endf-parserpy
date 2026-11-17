@@ -54,9 +54,14 @@ from .errors import (
     TapeStructureError,
 )
 from .index import TapeIndex
-from ..utils.sections import ambiguous_section_error, locate_in_labels
+from ..utils.sections import (
+    _label as _section_label,
+    ambiguous_section_error,
+    insertion_index as _insertion_index,
+    locate_in_labels,
+)
 from ..utils.tape_structure import TapeStructure, section_label
-from .material import MaterialView, _MaterialSlot
+from .material import MaterialView, _MaterialSlot, _SectionRef
 from .operations import write_tape, write_tape_file, _VALID_ON_ERROR, _FailedUnit
 from .records import (
     _control_numbers,
@@ -560,12 +565,11 @@ class EndfFile:
             mf, mt, k = self._locate_slot_section(
                 slot, mp.mf, mp.mt, mp.section_occurrence, mp.section_position
             )
-        self._check_not_one_of_repeats(slot, mf, mt, k)
         subpath = mp.subpath
         if subpath is None:
-            self._set_slot_section(slot, mf, mt, value)
+            self._set_slot_section(slot, mf, mt, value, k)
         else:
-            self._set_slot_field(slot, mf, mt, subpath, value)
+            self._set_slot_field(slot, mf, mt, subpath, value, k)
 
     def __delitem__(self, key):
         """Delete the material, section or field addressed by ``key``."""
@@ -583,11 +587,10 @@ class EndfFile:
         if mf is None:
             self._remove_material(position)
             return
-        self._check_not_one_of_repeats(slot, mf, mt, k)
         if subpath is None:
-            self._delete_slot_section(slot, mf, mt)
+            self._delete_slot_section(slot, mf, mt, k)
         else:
-            self._delete_slot_field(slot, mf, mt, subpath)
+            self._delete_slot_field(slot, mf, mt, subpath, k)
 
     def __contains__(self, key):
         """Whether ``key`` resolves to a present material/section/field.
@@ -923,6 +926,8 @@ class EndfFile:
     # -- per-material section access (slot-aware) ----------------------
 
     def _slot_section_keys_set(self, slot):
+        if slot.sequence is not None:
+            return {(ref.mf, ref.mt) for ref in slot.sequence}
         if slot.original_position is not None:
             keys = set(self._index[slot.original_position].sections)
         else:
@@ -936,6 +941,8 @@ class EndfFile:
         order, or in the order of the file (and the added sections after
         them) if the tape structure frees the order; a section that
         repeats has its key once per section."""
+        if slot.sequence is not None:
+            return [(ref.mf, ref.mt) for ref in slot.sequence]
         if not self._free_order:
             return sorted(self._slot_section_keys_set(slot))
         keys = []
@@ -946,8 +953,11 @@ class EndfFile:
         return keys
 
     def _repeated_count(self, slot, mf, mt):
-        """The number of sections MF/MT in the original material, if more
-        than one, otherwise 0."""
+        """The number of sections MF/MT of the material, if more than one,
+        otherwise 0."""
+        if slot.sequence is not None:
+            n = sum(1 for ref in slot.sequence if (ref.mf, ref.mt) == (mf, mt))
+            return n if n > 1 else 0
         if slot.original_position is None:
             return 0
         entry = self._index[slot.original_position]
@@ -969,14 +979,128 @@ class EndfFile:
                 mf, mt, positions, self._SECTION_HINT.format(mf=mf, mt=mt)
             )
 
-    def _check_not_one_of_repeats(self, slot, mf, mt, k):
-        """Reject the edit of one of several sections with the same label."""
-        if k is not None:
-            raise NotImplementedError(
-                f"MF={mf}/MT={mt} occurs {self._repeated_count(slot, mf, mt)} "
-                "times in this material; editing or deleting one of these "
-                "sections is not supported yet"
+    # -- the ordered sequence of a material (see _MaterialSlot) ---------
+
+    def _ensure_sequence(self, slot):
+        """Switch a material to its ordered sequence of sections, keeping
+        its state; a no-op if it has one already. The sections added by
+        their label are placed by the insertion rule of
+        :func:`~endf_parserpy.insert_section`."""
+        if slot.sequence is not None:
+            return slot.sequence
+        refs = []
+        if slot.original_position is not None:
+            section_list = self._index[slot.original_position].section_list
+            for index, (key, _) in enumerate(section_list):
+                if key in slot.deleted:
+                    continue
+                refs.append(_SectionRef(*key, index, slot.overlay.get(key)))
+            slot.original_length = len(section_list)
+        present = {(ref.mf, ref.mt) for ref in refs}
+        for key, section in slot.overlay.items():
+            if key not in present:
+                labels = [(ref.mf, ref.mt) for ref in refs]
+                refs.insert(
+                    _insertion_index(labels, key), _SectionRef(*key, None, section)
+                )
+        slot.overlay = {}
+        slot.deleted = set()
+        slot.sequence = refs
+        return refs
+
+    @staticmethod
+    def _refs_of(slot, mf, mt):
+        return [ref for ref in slot.sequence if (ref.mf, ref.mt) == (mf, mt)]
+
+    def _ref(self, slot, mf, mt, k):
+        """The section MF/MT of a material in its sequence; with ``k`` the
+        ``k``-th of several with this label."""
+        refs = self._refs_of(slot, mf, mt)
+        if not refs:
+            raise KeyError(f"this material has no MF={mf}/MT={mt} section")
+        if k is None:
+            if len(refs) > 1:
+                self._check_not_repeated(slot, mf, mt)
+            return refs[0]
+        return refs[k]
+
+    def _ref_section(self, slot, ref):
+        if ref.section is not None:
+            return ref.section
+        return self._original_section(slot.original_position, ref.index)
+
+    def _original_occurrence(self, position, index):
+        """The label of the ``index``-th section of the material at
+        ``position`` in the file, and its occurrence if the label repeats
+        there (else ``None``)."""
+        section_list = self._index[position].section_list
+        key = section_list[index][0]
+        labels = [label for label, _ in section_list]
+        if labels.count(key) == 1:
+            return key, None
+        return key, labels[:index].count(key)
+
+    def _original_section(self, position, index):
+        """Parse the ``index``-th section of the material at ``position``
+        in the file (cached by its label and, for a repeated label, by its
+        occurrence)."""
+        (mf, mt), k = self._original_occurrence(position, index)
+        if k is None:
+            return self._get_section(position, mf, mt)
+        return self._get_repeated_section(position, mf, mt, k)
+
+    def _original_raw(self, position, index):
+        """The raw text of the ``index``-th section of the material at
+        ``position`` in the file (cached as :meth:`_original_section`)."""
+        (mf, mt), k = self._original_occurrence(position, index)
+        sec_entry = self._index[position].section_list[index][1]
+        if k is None:
+            return self._get_raw(position, mf, mt, sec_entry)
+        key = (position, mf, mt, k)
+        raw = self._raw_cache.get(key)
+        if raw is None:
+            raw = self._read_span(sec_entry.offset, sec_entry.length)
+            self._raw_cache.put(key, raw, sec_entry.length)
+        return raw
+
+    def _uses_sequence(self, slot, mf, mt, k, adding=False):
+        """Whether an edit of the section MF/MT (``k``: see
+        :meth:`_locate_slot_section`) goes through the sequence of the
+        material: one of several sections with the same label, a material
+        that has its sequence, or a section added to a free-order
+        material (placed by the insertion rule)."""
+        if slot.sequence is not None or k is not None:
+            return True
+        return (
+            adding
+            and self._free_order
+            and (mf, mt) not in (self._slot_section_keys_set(slot))
+        )
+
+    def _insert_slot_section(self, slot, section, position=None):
+        """Insert a section into the sequence of a material (see
+        :meth:`MaterialView.insert_section`)."""
+        self._ensure_valid()
+        if isinstance(section, _SectionView):
+            section = section.detach()
+        if not isinstance(section, (Mapping, list)):
+            raise TypeError(
+                "a section must be a mapping (parsed) or a list of strings (raw)"
             )
+        mf, mt = _section_label(section)
+        self._check_section_key(mf, mt)
+        if self._check_edits == "eager":
+            self._check_section(mf, mt, section)
+        refs = self._ensure_sequence(slot)
+        if position is None:
+            position = _insertion_index([(ref.mf, ref.mt) for ref in refs], (mf, mt))
+        elif not (isinstance(position, int) and 0 <= position <= len(refs)):
+            raise IndexError(
+                f"section position {position} out of range for an insertion; "
+                f"the material has {len(refs)} sections"
+            )
+        refs.insert(position, _SectionRef(mf, mt, None, section))
+        return position
 
     def _locate_slot_section(
         self, slot, mf=None, mt=None, occurrence=None, position=None
@@ -1011,13 +1135,24 @@ class EndfFile:
         several sections with this label (see :meth:`_locate_slot_section`)."""
         if k is None:
             return self._get_slot_section(slot, mf, mt)
+        if slot.sequence is not None:
+            return self._ref_section(slot, self._ref(slot, mf, mt, k))
         return self._get_repeated_section(slot.original_position, mf, mt, k)
 
     def _located_view(self, slot, mf, mt, k, subpath=None):
         section = self._get_located(slot, mf, mt, k)
-        # one of several sections with the same label cannot be edited
-        # yet, so that its view is read-only in either mode
-        return self._view(slot, mf, mt, section, subpath, frozen=k is not None)
+        touch = None
+        if self._check_edits == "deferred" and self._uses_sequence(slot, mf, mt, k):
+            # a live view writes through to its own entry of the sequence
+            ref = self._ref(slot, mf, mt, k) if slot.sequence is not None else None
+            if ref is None:
+                self._ensure_sequence(slot)
+                ref = self._ref(slot, mf, mt, k)
+
+            def touch(_ref=ref, _section=section):
+                _ref.section = _section
+
+        return self._view(slot, mf, mt, section, subpath, touch=touch)
 
     def _get_repeated_section(self, position, mf, mt, k):
         """Parse the ``k``-th section MF/MT of the material at ``position``
@@ -1040,6 +1175,8 @@ class EndfFile:
     def _get_slot_section(self, slot, mf, mt):
         self._ensure_valid()
         self._check_not_repeated(slot, mf, mt)
+        if slot.sequence is not None:
+            return self._ref_section(slot, self._ref(slot, mf, mt, None))
         key = (mf, mt)
         if key in slot.overlay:
             return slot.overlay[key]
@@ -1083,10 +1220,11 @@ class EndfFile:
             return mat if mat > 0 else None
         return None
 
-    def _set_slot_section(self, slot, mf, mt, value):
+    def _set_slot_section(self, slot, mf, mt, value, k=None):
         self._ensure_valid()
         self._check_section_key(mf, mt)
-        self._check_not_repeated(slot, mf, mt)
+        if k is None:
+            self._check_not_repeated(slot, mf, mt)
         if isinstance(value, _SectionView):
             value = value.detach()
         if not isinstance(value, (Mapping, list)):
@@ -1095,10 +1233,30 @@ class EndfFile:
             )
         if self._check_edits == "eager":
             self._check_section(mf, mt, value)
+        if self._uses_sequence(slot, mf, mt, k, adding=True):
+            refs = self._ensure_sequence(slot)
+            if k is None and not self._refs_of(slot, mf, mt):
+                labels = [(ref.mf, ref.mt) for ref in refs]
+                refs.insert(
+                    _insertion_index(labels, (mf, mt)), _SectionRef(mf, mt, None, value)
+                )
+            else:
+                self._ref(slot, mf, mt, k).section = value
+            return
         slot.overlay[(mf, mt)] = value
         slot.deleted.discard((mf, mt))
 
-    def _set_slot_field(self, slot, mf, mt, subpath, value):
+    def _commit_section(self, slot, mf, mt, k, section):
+        """Store an edited section MF/MT (``k``: see
+        :meth:`_locate_slot_section`) in the material."""
+        if self._uses_sequence(slot, mf, mt, k):
+            self._ensure_sequence(slot)
+            self._ref(slot, mf, mt, k).section = section
+            return
+        slot.overlay[(mf, mt)] = section
+        slot.deleted.discard((mf, mt))
+
+    def _set_slot_field(self, slot, mf, mt, subpath, value, k=None):
         """Read-modify-write a single field within a section.
 
         Under ``check_edits="eager"`` a deep copy of the section is
@@ -1108,24 +1266,27 @@ class EndfFile:
         marked dirty.
         """
         value = _own_value(value)
-        section = self._get_slot_section(slot, mf, mt)
+        section = self._get_located(slot, mf, mt, k)
         self._require_mapping_section(section, mf, mt)
         if self._check_edits == "eager":
             work = _plain(section)
             self._set_at(work, subpath, value)
             self._check_section(mf, mt, work)
-            slot.overlay[(mf, mt)] = work
-            slot.deleted.discard((mf, mt))
+            self._commit_section(slot, mf, mt, k, work)
         else:
             self._set_at(section, subpath, value)
-            slot.overlay[(mf, mt)] = section
-            slot.deleted.discard((mf, mt))
+            self._commit_section(slot, mf, mt, k, section)
 
-    def _delete_slot_section(self, slot, mf, mt):
-        self._check_not_repeated(slot, mf, mt)
+    def _delete_slot_section(self, slot, mf, mt, k=None):
+        if k is None:
+            self._check_not_repeated(slot, mf, mt)
         self._ensure_valid()
         if (mf, mt) not in self._slot_section_keys_set(slot):
             raise KeyError(f"this material has no MF={mf}/MT={mt} section")
+        if self._uses_sequence(slot, mf, mt, k):
+            self._ensure_sequence(slot)
+            slot.sequence.remove(self._ref(slot, mf, mt, k))
+            return
         slot.overlay.pop((mf, mt), None)
         if (
             slot.original_position is not None
@@ -1133,7 +1294,7 @@ class EndfFile:
         ):
             slot.deleted.add((mf, mt))
 
-    def _delete_slot_field(self, slot, mf, mt, subpath):
+    def _delete_slot_field(self, slot, mf, mt, subpath, k=None):
         """Delete a single field within a section (deferred mode only)."""
         if self._check_edits == "eager":
             raise ValueError(
@@ -1142,11 +1303,10 @@ class EndfFile:
                 "its ENDF recipe; open the EndfFile with "
                 "check_edits='deferred', or assign a whole edited section"
             )
-        section = self._get_slot_section(slot, mf, mt)
+        section = self._get_located(slot, mf, mt, k)
         self._require_mapping_section(section, mf, mt)
         self._del_at(section, subpath)
-        slot.overlay[(mf, mt)] = section
-        slot.deleted.discard((mf, mt))
+        self._commit_section(slot, mf, mt, k, section)
 
     def _require_mapping_section(self, section, mf, mt):
         """Raise unless ``section`` is a parsed (mapping) section."""
@@ -1176,14 +1336,16 @@ class EndfFile:
         parent, last = _navigate(container, subpath)
         del parent[last]
 
-    def _view(self, slot, mf, mt, section, subpath=None, frozen=False):
+    def _view(self, slot, mf, mt, section, subpath=None, touch=None):
         """Wrap a canonical section in the mode-dependent view.
 
         ``check_edits="eager"`` yields a frozen (read-only) view,
         ``"deferred"`` a live write-through view. A
         :class:`FailedSection` raises :class:`SectionParseError`. With a
         ``subpath`` the view is navigated to that field, returning a
-        nested view or a bare scalar.
+        nested view or a bare scalar. ``touch`` is the callback of a live
+        view; by default it installs the section into the overlay of the
+        material, or into its sequence, if it has one.
         """
         if isinstance(section, FailedSection):
             raise self._section_parse_error(
@@ -1195,11 +1357,15 @@ class EndfFile:
                 section.exception,
                 section.raw_lines,
             ) from section.exception
-        if self._check_edits == "deferred" and not frozen:
+        if self._check_edits == "deferred":
+            if touch is None:
 
-            def touch(_slot=slot, _mf=mf, _mt=mt, _section=section):
-                _slot.overlay[(_mf, _mt)] = _section
-                _slot.deleted.discard((_mf, _mt))
+                def touch(_slot=slot, _mf=mf, _mt=mt, _section=section):
+                    if _slot.sequence is not None:
+                        self._touch_in_sequence(_slot, _mf, _mt, _section)
+                        return
+                    _slot.overlay[(_mf, _mt)] = _section
+                    _slot.deleted.discard((_mf, _mt))
 
             if isinstance(section, Mapping):
                 view = _LiveMapping(section, touch)
@@ -1213,6 +1379,20 @@ class EndfFile:
         if subpath is None:
             return view
         return view[subpath]
+
+    def _touch_in_sequence(self, slot, mf, mt, section):
+        """Install a section edited through a live view, retrieved before
+        the material switched to its sequence, into the sequence."""
+        refs = self._refs_of(slot, mf, mt)
+        if any(ref.section is section for ref in refs):
+            return
+        for ref in refs:
+            if ref.section is None and ref.index is not None:
+                if self._original_section(slot.original_position, ref.index) is section:
+                    ref.section = section
+                    return
+        if len(refs) == 1:
+            refs[0].section = section
 
     def _check_section(self, mf, mt, section):
         """Render a section through the writer to check recipe conformity.
@@ -1251,7 +1431,15 @@ class EndfFile:
         """
         report = []
         for position, slot in enumerate(self._materials):
-            for (mf, mt), section in list(slot.overlay.items()):
+            if slot.sequence is not None:
+                edited = [
+                    ((ref.mf, ref.mt), ref.section)
+                    for ref in slot.sequence
+                    if ref.section is not None
+                ]
+            else:
+                edited = list(slot.overlay.items())
+            for (mf, mt), section in edited:
                 if not isinstance(section, Mapping):
                     continue
                 try:
@@ -1510,7 +1698,7 @@ class EndfFile:
 
     # -- write-back ----------------------------------------------------
 
-    def _assemble(self, slot, detach=False, as_dict=False):
+    def _assemble(self, slot, detach=False, as_dict=False, as_list=False):
         """Build the material ready for the writer.
 
         Untouched sections are taken verbatim from disk; edited or added
@@ -1519,24 +1707,36 @@ class EndfFile:
         :meth:`MaterialView.to_tape_dict`); the lists of lines of the
         untouched sections are new lists in either case. The material is
         a ``{MF: {MT: section}}`` dict, or the list of its sections in
-        their order if the tape structure frees the order or the
-        material has repeated sections.
+        their order if the tape structure frees the order, the material
+        has several sections with the same label, or ``as_list`` is true.
+        With ``as_dict``, a material with several sections with the same
+        label raises a :class:`TapeStructureError`.
         """
         tpid = [_tpid_or_default(self._index)]
-        entry = None
-        if slot.original_position is not None:
-            entry = self._index[slot.original_position]
-        repeated = entry is not None and entry.has_repeated_sections
-        if as_dict and repeated:
+        if as_dict:
             for mf, mt in self._slot_section_keys_set(slot):
                 n = self._repeated_count(slot, mf, mt)
                 if n:
                     raise TapeStructureError(
                         f"MF={mf}/MT={mt} occurs {n} times in this material; the "
                         "nested form {MF: {MT: section}} holds one section per "
-                        "MF/MT"
+                        "MF/MT; use to_tape_list() for the list form"
                     )
-        elif self._free_order or repeated:
+        if slot.sequence is not None:
+            sections = [tpid] + [
+                self._assembled_ref(slot, ref, detach) for ref in slot.sequence
+            ]
+            if not as_dict:
+                return sections
+            material = {0: {0: tpid}}
+            for ref, section in zip(slot.sequence, sections[1:]):
+                material.setdefault(ref.mf, {})[ref.mt] = section
+            return material
+        entry = None
+        if slot.original_position is not None:
+            entry = self._index[slot.original_position]
+        repeated = entry is not None and entry.has_repeated_sections
+        if as_list or (not as_dict and (self._free_order or repeated)):
             return self._assemble_list(slot, entry, tpid, detach)
         material = {0: {0: tpid}}
         for mf, mt in self._slot_section_keys(slot):
@@ -1562,6 +1762,18 @@ class EndfFile:
         else:
             # a repeated section, read without the cache (keyed by MF/MT)
             raw = self._read_span(sec_entry.offset, sec_entry.length)
+        return _strip_send(_split_lines(raw))
+
+    def _assembled_ref(self, slot, ref, detach):
+        if ref.section is not None:
+            section = ref.section
+            # a raw list is stripped of any trailing SEND, as in the overlay
+            if isinstance(section, list):
+                section = _strip_send(section)
+            if detach:
+                section = _plain(section)
+            return section
+        raw = self._original_raw(slot.original_position, ref.index)
         return _strip_send(_split_lines(raw))
 
     def _assemble_list(self, slot, entry, tpid, detach):

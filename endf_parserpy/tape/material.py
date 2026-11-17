@@ -64,6 +64,28 @@ def _section_key(key):
     raise KeyError(_KEY_MESSAGE)
 
 
+class _SectionRef:
+    """One section in the ordered sequence of a material (see
+    :attr:`_MaterialSlot.sequence`): the section at ``index`` of the
+    original material in the file, or ``None`` for an added section, and
+    ``section``, the edited or added section, or ``None`` while the
+    original section is untouched."""
+
+    __slots__ = ("mf", "mt", "index", "section")
+
+    def __init__(self, mf, mt, index=None, section=None):
+        self.mf = mf
+        self.mt = mt
+        self.index = index
+        self.section = section
+
+    def __getstate__(self):
+        return (self.mf, self.mt, self.index, self.section)
+
+    def __setstate__(self, state):
+        self.mf, self.mt, self.index, self.section = state
+
+
 class _MaterialSlot:
     """Mutable per-material state in an :class:`EndfFile`.
 
@@ -75,11 +97,21 @@ class _MaterialSlot:
     the original material. ``removed`` is set when the material itself
     is deleted from the tape, which invalidates any :class:`MaterialView`
     bound to the slot.
+
+    A material whose sections are not identified by their labels alone
+    (one with several sections with the same label, or a free-order
+    material to which a section is added) is instead edited as an
+    ordered ``sequence`` of :class:`_SectionRef`, built on the first
+    such edit; ``overlay`` and ``deleted`` are then empty, and
+    ``original_length`` is the number of sections of the original
+    material. Every other material keeps ``sequence = None``.
     """
 
-    # a class attribute, so it defaults to False without per-instance
-    # storage and survives unpickling of slots written before it existed
+    # class attributes, so they default without per-instance storage and
+    # survive unpickling of slots written before they existed
     removed = False
+    sequence = None
+    original_length = 0
 
     def __init__(self, original_position=None, mat=None, za=None, awr=None):
         self.original_position = original_position
@@ -92,6 +124,13 @@ class _MaterialSlot:
     @property
     def is_modified(self):
         """Whether the slot differs from its original on-disk material."""
+        if self.sequence is not None:
+            return (
+                self.original_position is None
+                or any(ref.section is not None for ref in self.sequence)
+                or [ref.index for ref in self.sequence]
+                != list(range(self.original_length))
+            )
         return bool(self.overlay or self.deleted or self.original_position is None)
 
 
@@ -112,9 +151,12 @@ class MaterialView:
     can also be a section path, as for an :class:`~endf_parserpy.EndfPath`
     applied to a material: ``material["3/102#1"]``, ``material["#0"]`` (the
     first section; the tape head is not counted) or, reaching into the
-    section, ``material["3/102#1/IZAM"]``. Such a section is read-only for
-    now: one of several sections with the same label cannot be edited or
-    deleted yet.
+    section, ``material["3/102#1/IZAM"]``. Each of these keys also replaces
+    (``material[3, 102, 1] = section``) and deletes a section. A section
+    whose label the material does not have is added by its label, directly
+    after the last section whose label is less than or equal to its own;
+    :meth:`insert_section` inserts a section at a given position, also a
+    further section with a label the material has.
 
     Reading a section returns a *view* over the parsed section whose
     mutability follows the file's ``check_edits`` mode -- read-only under
@@ -190,6 +232,11 @@ class MaterialView:
         ``dict`` and ``list`` objects (numpy arrays are copied), and
         changing it does not change the tape. To apply a change, assign
         the changed section back, e.g. ``view[mf, mt] = tape_dict[mf][mt]``.
+
+        A material with several sections with the same label has no
+        nested form; it raises a
+        :class:`~endf_parserpy.tape.TapeStructureError`, and
+        :meth:`to_tape_list` returns it in the list form.
         """
         self._check_live()
         return self._file._assemble(self._slot, detach=True, as_dict=True)
@@ -209,24 +256,52 @@ class MaterialView:
     def __setitem__(self, key, value):
         self._check_live()
         mf, mt, occurrence, position, subpath = _section_key(key)
-        if occurrence is not None or position is not None:
+        k = None
+        if occurrence is not None or position is not None or subpath is not None:
             mf, mt, k = self._file._locate_slot_section(
                 self._slot, mf, mt, occurrence, position
             )
-            self._file._check_not_one_of_repeats(self._slot, mf, mt, k)
         if subpath is None:
-            self._file._set_slot_section(self._slot, mf, mt, value)
+            self._file._set_slot_section(self._slot, mf, mt, value, k)
         else:
-            self._file._set_slot_field(self._slot, mf, mt, subpath, value)
+            self._file._set_slot_field(self._slot, mf, mt, subpath, value, k)
 
     def __delitem__(self, key):
         self._check_live()
         mf, mt, k, subpath = self._locate(key)
-        self._file._check_not_one_of_repeats(self._slot, mf, mt, k)
         if subpath is None:
-            self._file._delete_slot_section(self._slot, mf, mt)
+            self._file._delete_slot_section(self._slot, mf, mt, k)
         else:
-            self._file._delete_slot_field(self._slot, mf, mt, subpath)
+            self._file._delete_slot_field(self._slot, mf, mt, subpath, k)
+
+    def insert_section(self, section, position=None):
+        """Insert a section and return its position.
+
+        The section is inserted at ``position`` (counting from 0, the tape
+        head not counted; ``len(material)`` appends it), also if the
+        material already has a section with its label: this is how a
+        further section with the same label is added. Without
+        ``position``, it is inserted directly after the last section
+        whose label is less than or equal to its own, so that it follows
+        the sections with its label. The label is that of the section:
+        its keys ``MF`` and ``MT``, or the control fields of its first
+        line.
+        """
+        self._check_live()
+        return self._file._insert_slot_section(self._slot, section, position)
+
+    def to_tape_list(self):
+        """Return this material as a complete single-material tape in the
+        list form.
+
+        The counterpart of :meth:`to_tape_dict` for a material in the list
+        form: the list of its sections in their order, with the tape head
+        (TPID) first, which ``parser.write`` writes as a tape. Unlike
+        :meth:`to_tape_dict`, it also holds a material with several
+        sections with the same label. The result is a standalone copy.
+        """
+        self._check_live()
+        return self._file._assemble(self._slot, detach=True, as_list=True)
 
     def __contains__(self, key):
         """Whether the material has the section, or the field, of ``key``.

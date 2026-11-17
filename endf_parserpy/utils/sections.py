@@ -344,16 +344,23 @@ def get_section(material, mf=None, mt=None, occurrence=None, *, position=None):
     return container[key]
 
 
+def insertion_index(labels, label):
+    """The position at which a new section with ``label`` is inserted
+    among sections with ``labels`` (in their order): directly after the
+    last one that is less than or equal to it, or 0 if there is none."""
+    position = 0
+    for k, other in enumerate(labels):
+        if other <= label:
+            position = k + 1
+    return position
+
+
 def insertion_position(material, mf, mt):
     """The position ``#k`` at which a new section with the label MF/MT is
     inserted: directly after the last section whose label is less than or
     equal to MF/MT, or at position 0 if there is none."""
     material = _prepare(material, mf, mt, None, None)
-    position = 0
-    for k, label in enumerate(_labels(material)):
-        if label <= (mf, mt):
-            position = k + 1
-    return position
+    return insertion_index(_labels(material), (mf, mt))
 
 
 def _insert_head(material, section):

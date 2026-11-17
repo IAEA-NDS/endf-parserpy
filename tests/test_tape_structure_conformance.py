@@ -21,6 +21,8 @@ and without ``ignore_send_records``:
 
 - the verdicts of the two parsers agree, except for the differences
   listed in ``KNOWN_DIFFERENCES``;
+- the implementations that name the offending line (counting from 1)
+  name the same line;
 - the exact messages of every implementation, which give the offending
   line in its own convention, are those of the golden file
   ``conformance_goldens/framing_endf6.json``. Run with the environment
@@ -37,6 +39,7 @@ import contextlib
 import hashlib
 import io
 import json
+import re
 import os
 import tempfile
 from pathlib import Path
@@ -297,3 +300,48 @@ def test_writers_agree(results):
         name for name, entry in results["write"].items() if entry["py"] != entry["cpp"]
     }
     assert differ == KNOWN_WRITE_DIFFERENCES
+
+
+# the number of the offending line in a message (counting from 1): of
+# EndfParserPy (a control record, a blank line, the last record of the
+# record log) and of EndfParserCpp (the line appended to the message);
+# None if the message gives none
+_LINE_PATTERNS = (
+    re.compile(r"in control record of line (\d+)\."),
+    re.compile(r"\bLine (\d+) is a blank line\."),
+    re.compile(r"^Line (\d+): ", re.MULTILINE),
+)
+_RECORD_LOG_LINE = re.compile(r"^-------- Line (\d+) -", re.MULTILINE)
+
+
+def _offending_line(message):
+    if message is None:
+        return None
+    for pattern in _LINE_PATTERNS:
+        m = pattern.search(message)
+        if m is not None:
+            return int(m.group(1))
+    found = _RECORD_LOG_LINE.findall(message)
+    return int(found[-1]) if found else None
+
+
+def test_offending_lines_agree(results):
+    """The implementations that name the offending line name the same one,
+    and for a full parse it is the line of the first problem found by
+    check_framing."""
+    compared = 0
+    for name, result in results.items():
+        if name == "write":
+            continue
+        for key, entry in result.items():
+            if key == "framing":
+                continue
+            lines = {kind: _offending_line(entry.get(kind)) for kind in ("py", "cpp")}
+            filt, option = key.split("/")
+            problems = result["framing"][option]
+            if filt == "full" and problems:
+                lines["framing"] = problems[0][0]
+            named = {kind: line for kind, line in lines.items() if line is not None}
+            assert len(set(named.values())) <= 1, (name, key, named)
+            compared += len(named) > 1
+    assert compared > 100

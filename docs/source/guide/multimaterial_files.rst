@@ -394,6 +394,32 @@ object goes away.
 path, a section for an ``MF/MT`` path, and the value at the
 field for a deeper path.
 
+After the material selector, the section is selected as by an
+:class:`~endf_parserpy.EndfPath` applied to a material (see
+:ref:`sections of a material <endf_path_sections>`): by its label
+``MF/MT``, by the occurrence ``MF/MT#k`` of a label that occurs several
+times in the material (as on a GENDF tape), or by its position ``#k``.
+Positions and occurrences count from 0, and **the positions do not
+count the tape head**: ``#0`` is the first section listed by
+``material.sections()``. A :class:`~endf_parserpy.tape.MaterialView`
+takes the occurrence as a third element of the key, and also a section
+path:
+
+.. code:: Python
+
+   endf_file['9543#0/3/102#2/IZAM']      # the third MF3/MT102 section
+   endf_file['#0/#2']                    # the section at position 2
+   material = endf_file[0]
+   material[3, 102, 2]                   # the same as material['3/102#2']
+   material['#2/IZAM']
+
+A label that names several sections, given without an occurrence (e.g.
+``material[3, 102]``), raises an
+:class:`~endf_parserpy.tape.AmbiguousSectionError`, as a MAT number
+that names several materials raises an
+:class:`~endf_parserpy.tape.AmbiguousMaterialError`. One of several
+sections with the same label can be read but not yet edited or deleted.
+
 A retrieved section is not a plain dictionary but a *view* over
 the tape, and what that view permits is governed by the
 ``check_edits`` argument of the :class:`~endf_parserpy.EndfFile`

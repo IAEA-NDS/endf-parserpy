@@ -50,6 +50,77 @@ only useful when they can actually be used
 to navigate dictionaries with ENDF-6 data and retrieve the desired data
 from them. The :class:`~endf_parserpy.EndfDict` class helps with this requirement.
 
+.. _endf_path_sections:
+
+Sections of a material
+~~~~~~~~~~~~~~~~~~~~~~
+
+The first two keys of a path into a material, ``MF/MT``, select a
+section by its *label*. Some flavors let a label occur several times in
+a material: GENDF tapes, for instance, hold one MF3/MT102 section per
+product of a nuclide production (see :doc:`GENDF files <../guide/gendf_files>`).
+Such a material is a list of sections in the order of the file (its *list
+form*, see :func:`~endf_parserpy.to_list_form`), and a path can select a
+section in three ways:
+
+- ``MF/MT``, e.g. ``3/102``: the section with this label, which must be
+  unique in the material; otherwise an
+  :class:`~endf_parserpy.tape.AmbiguousSectionError` is raised;
+- ``MF/MT#k``, e.g. ``3/102#2``: the ``k``-th section with this label;
+- ``#k``, e.g. ``#0``: the section at position ``k`` of the material.
+
+The rest of the path addresses data within the section as before, e.g.
+``3/102#2/IZAM``. ``k`` counts from 0.
+
+.. important::
+
+   **The positions do not count the tape head.** ``#0`` is the first
+   section after the tape head (MF0/MT0), as in
+   :class:`~endf_parserpy.EndfFile`, whose materials have no tape head.
+   A material returned by ``parse`` in the list form has the tape head as
+   its element 0, so that the position ``#k`` is the list element
+   ``material[k + 1]``, and an integer index of the list, or of an
+   :class:`~endf_parserpy.utils.accessories.EndfList` wrapping it, counts
+   the tape head. The tape head itself is selected by its label, ``0/0``.
+   :func:`~endf_parserpy.iter_sections` yields every section with its
+   position, so that the offset need not be computed by hand.
+
+.. code:: python
+
+   from endf_parserpy import EndfParserPy, EndfPath, iter_sections
+
+   parser = EndfParserPy(endf_format="gendf")
+   material = parser.parsefile("am241.gendf")   # a list of sections
+   EndfPath("3/102#2/IZAM").get(material)        # the third MF3/MT102
+   EndfPath("#1").get(material) is material[2]   # True: the head is material[0]
+   for entry in iter_sections(material):
+       print(f"#{entry.position}: {entry.mf}/{entry.mt}#{entry.occurrence}")
+
+On a material in the nested form ``{MF: {MT: section}}``, a path is
+walked by its keys as before, and ``MF/MT#0`` and ``#k`` work as well;
+the position is that in the canonical order, by ascending MF and then
+MT, again without the tape head.
+
+A list is taken for a material in the list form if its first element is
+a section: a dictionary with the keys ``MF`` and ``MT``, or a list of
+strings (a section that was not parsed). Only the object a path is
+applied to is examined, so that the arrays within a section, also in the
+``array_type="list"`` mode, are addressed as before. On a material in
+the list form a path must begin with a section selector: an ``MF`` alone
+does not select a section and is an error.
+
+Setting a whole section by its label replaces the section with this
+label, or, for a label that the material does not have, inserts the
+section directly after the last section whose label is less than or
+equal to its own, so that a material in ascending order stays in
+ascending order. A copy of a label is never added by a path; the
+function :func:`~endf_parserpy.insert_section` does so. A field cannot
+be set in a section of a list that does not exist. The functions
+:func:`~endf_parserpy.get_section`, :func:`~endf_parserpy.set_section`,
+:func:`~endf_parserpy.insert_section`, :func:`~endf_parserpy.remove_section`,
+:func:`~endf_parserpy.section_positions` and
+:func:`~endf_parserpy.locate_section` do the same without a path.
+
 .. _endf_dict_class:
 
 EndfDict

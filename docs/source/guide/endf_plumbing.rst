@@ -205,6 +205,19 @@ The :func:`~endf_parserpy.update_directory` invocation ensures
 that line counts are properly updated in the directory listing in
 MF1/MT451 (see :endf6manshort:`60`).
 
+A material in the list form, e.g. of a GENDF tape, is a list of
+sections, which an :class:`~endf_parserpy.utils.accessories.EndfList`
+wraps in the same way. A section whose label occurs several times in
+the material is addressed by its occurrence (see :ref:`sections of a
+material <endf_path_sections>`):
+
+.. code:: python
+
+   from endf_parserpy.utils.accessories import EndfList
+   material1 = EndfList(gendf_parser.parsefile('input1.gendf'))
+   material2 = EndfList(gendf_parser.parsefile('input2.gendf'))
+   material2['3/102#1'] = deepcopy(material1['3/102#1'])
+
 .. _modifying_arrays_sec:
 
 Modifying arrays

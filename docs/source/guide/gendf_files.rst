@@ -103,10 +103,12 @@ several with ``parse_tape_file`` (a list of materials) or with
 
 ``tape.by_mat(mat, occurrence=k)`` selects the ``k``-th temperature of
 a material (see :doc:`multi-material files <multimaterial_files>`). A
-section that occurs several times in a material cannot be addressed by
-its MF/MT numbers yet: ``material[3, 102]`` raises a
-``RepeatedSectionError``; ``to_string`` and ``export`` write all of
-them.
+section that occurs several times in a material is selected by its
+occurrence: ``material[3, 102, k]`` or ``material["3/102#k"]`` is the
+``k``-th MF3/MT102 section (counting from 0), and ``material[3, 102]``
+raises an ``AmbiguousSectionError`` (see :ref:`sections of a material
+<endf_path_sections>`); it cannot be edited yet. ``to_string`` and
+``export`` write all of them.
 
 The tool ``tools/check_gendf_roundtrip.py`` of the source repository
 checks the round trip of every section of a tape, and of the whole tape

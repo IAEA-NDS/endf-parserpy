@@ -14,6 +14,7 @@ classes and functions included in them.
    endf_parser_cpp/index
    tape/index
    tape_structure/index
+   sections/index
    accessories/index
    debugging_utils/index
    endf6_plumbing/index

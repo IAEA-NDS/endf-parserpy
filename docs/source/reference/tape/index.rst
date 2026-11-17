@@ -47,6 +47,8 @@ raises the :class:`TapeError` subclasses listed below.
 
 .. autoexception:: AmbiguousMaterialError
 
+.. autoexception:: AmbiguousSectionError
+
 .. autoexception:: SectionParseError
 
 .. autoexception:: SectionRenderError

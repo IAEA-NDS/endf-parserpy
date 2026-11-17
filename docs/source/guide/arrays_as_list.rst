@@ -79,6 +79,9 @@ If you are using the ``array_type="list"`` option, be aware of the following:
   the first element of ``HSUB`` above (being part of an MF1/MT451 section)
   is given by ``1/451/HSUB/0`` if using ``array_type="list"`` whereas it
   would be ``1/451/HSUB/1`` if using ``array_type="dict"``.
+  The section selectors ``MF/MT#k`` and ``#k`` (see :ref:`sections of a
+  material <endf_path_sections>`) apply only to the material itself and
+  do not change how the arrays within a section are addressed.
 - If you make use of the :ref:`EndfDict <endf_dict_class>` class,
   especially if you want to manipulate ENDF data through it, ensure
   to initialize it with the ``array_type="list"`` argument, e.g.,

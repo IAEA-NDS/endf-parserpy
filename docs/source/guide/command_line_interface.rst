@@ -86,8 +86,8 @@ ZA and AWR.
 Subcommands that take an :ref:`EndfPath <endf_path_class>` (``show``,
 ``explain``, ``replace``) accept a *material-qualified* path on a
 multi-material tape. Such a path is an ordinary EndfPath prefixed with a
-**material selector** and a ``/``. The selector always contains a ``#``,
-and that ``#`` is what marks a path as material-qualified:
+**material selector** and a ``/``. The selector always contains a ``#``
+and is the first component of the path:
 
 * ``#k`` selects the material at tape position ``k`` (zero-based), e.g.
   ``#0/3/2/AWR``;
@@ -105,6 +105,24 @@ On a file that holds a single material the selector may be omitted, so
 the plain paths described in the following sections keep working
 unchanged. On a multi-material tape a selector-less path is rejected
 with a listing of the available materials, so you can pick one.
+
+A section of a material can also be selected by the occurrence of its
+label or by its position (see :ref:`sections of a material
+<endf_path_sections>`), which matters for tapes that repeat a label in
+a material, as GENDF tapes do:
+
+* ``3/102#2/IZAM`` (or ``#0/3/102#2/IZAM``) is the field ``IZAM`` of the
+  third MF3/MT102 section;
+* ``#0/#2`` is the section at position 2 of the first material; the
+  tape head is not counted.
+
+The first component of a path tells a material selector from a section
+selector: ``MAT#k`` is always a material selector, and so is ``#k`` when
+it stands alone or is followed by an MF number or by another ``#``. A
+``#k`` followed by a field name, as in ``#2/IZAM``, is the section at
+position ``k`` of a single-material file. So ``#2`` alone is the third
+material, and the third section of a single material is ``#0/#2``.
+``show`` lists a label that occurs several times as ``MF/MT#k``.
 
 
 Comparing

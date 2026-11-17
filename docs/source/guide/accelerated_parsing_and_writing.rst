@@ -437,9 +437,10 @@ description stored in the ``endf_recipe_dictionary``:
 
 This code will create a directory ``endf_parser_project`` with a
 simple example ``CMakeLists.txt`` file, a C++ source file named
-``cpp_endf.cpp`` and an empty directory ``build``. For an impression
-how the generated C++ source code looks like, have a look at this `example C++ source file
-<https://github.com/IAEA-NDS/endf-parserpy/blob/main/endf_parserpy/cpp_parsers/endf6.cpp>`_.
+``cpp_endf.cpp`` and an empty directory ``build``. The file
+``cpp_endf.cpp`` is the complete source code of the module, generated
+from the recipes; have a look at it for an impression of how the
+generated C++ code looks like.
 Provided that the `pybind11
 <https://pybind11.readthedocs.io/en/stable/index.html>`_  header files
 are available on your system, you can use your favorite C++ compiler

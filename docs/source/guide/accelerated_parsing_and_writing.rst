@@ -21,8 +21,9 @@ required for parsing and writing ENDF-6 files in Python.
 For this reason, parsing and writing functionality is also
 provided by C++ functions shipped with the ``endf-parserpy``
 package. During the installation via ``pip install`` or equivalent
-means, an attempt is made to compile the C++ source code to
-Python modules if pre-compiled binary wheels for your platform are not
+means, an attempt is made to compile the C++ source code to a
+Python extension module, which contains the functions of all format
+flavors, if pre-compiled binary wheels for your platform are not
 available. Provided that a binary exists for your platform or the
 compilation from source is successful, you can benefit
 from accelerated parsing and writing of ENDF-6 files by using
@@ -69,7 +70,7 @@ Bulk reading of TAB1 and LIST bodies
 ------------------------------------
 
 The float values of the bodies of TAB1 and LIST records can be read in
-two forms by the C++ modules:
+two forms by the C++ module:
 
 - the *per-field form*: each field is converted when its value is
   needed, and the lines of a body are read one after the other;
@@ -94,7 +95,7 @@ two forms by the C++ modules:
   then.
 
 The row kernel has several implementations (tiers); which one is used is
-decided once when a C++ module is loaded, from the features of the
+decided once when the C++ module is loaded, from the features of the
 processor:
 
 - ``avx512``: AVX-512 (the subsets F, BW, VL, DQ and VBMI, e.g. Intel
@@ -108,24 +109,24 @@ processor:
 The ``avx2`` and ``avx512`` tiers are built on x86-64 with GCC and Clang
 (Linux, macOS on Intel processors, MinGW, and clang-cl if its headers
 declare the intrinsics without global compiler flags) and with the
-Microsoft compiler (MSVC, Windows x64); the modules themselves are
+Microsoft compiler (MSVC, Windows x64); the module itself is
 compiled for the baseline instruction set, and only the functions of a
 tier use its instructions, which are executed only if the processor and
 the operating system support them. The ``neon`` tier is
 built on 64-bit ARM (AArch64) with GCC, Clang and MSVC (Linux, macOS,
 Windows); NEON is part of the baseline instruction set there, so this
-tier is always supported. If the modules are compiled with GCC (e.g. the
+tier is always supported. If the module is compiled with GCC (e.g. the
 Linux wheels and most installations from source under Linux), the
 ``neon`` tier is built but not chosen automatically, only if it is
 requested: on a Neoverse N2 processor, parsing with it compiled by GCC
 13 was a few percent slower than with the ``scalar`` tier, while the
 same code compiled by Clang was 10–13% faster than the scalar tier
-(``array_type="numpy"``). Modules compiled with Clang (also Apple
-Clang) or MSVC choose ``neon``. On other architectures (e.g. 32-bit
+(``array_type="numpy"``). A module compiled with Clang (also Apple
+Clang) or MSVC chooses ``neon``. On other architectures (e.g. 32-bit
 ARM, 32-bit x86), only the scalar tier is built.
 The vector tiers need GCC 8 or later, Clang 8 or later (Apple Clang 11
 or later) or MSVC 19.30 (Visual Studio 2022) or later; with an older
-compiler the modules are built with the scalar tier only.
+compiler the module is built with the scalar tier only.
 The parse results do not depend on the form or the tier: a row kernel
 converts a field only if the conversion field by field would give the
 same value, every other field is converted field by field, and the
@@ -135,15 +136,15 @@ not used for ``preserve_value_strings=True`` (which needs the strings of
 the fields), for ``load_file_into_memory=False`` and in the lookahead of
 recipes; writing is not affected.
 
-The environment variable ``ENDF_PARSERPY_CPP_BULK_BODIES``, read when a
-C++ module is loaded (i.e. before the first
-:class:`~endf_parserpy.EndfParserCpp` object of an ENDF format flavor is
-created in a Python process), selects the form and the tier of the row
+The environment variable ``ENDF_PARSERPY_CPP_BULK_BODIES``, read when
+the C++ module is loaded (i.e. when the first
+:class:`~endf_parserpy.EndfParserCpp` object is created in a Python
+process, whatever its format flavor), selects the form and the tier of the row
 kernel:
 
 - ``auto`` (the default, also if the variable is unset or empty): the
   bulk form with the fastest vector tier supported by the processor (not
-  ``neon`` in modules compiled with GCC, see above), or with the scalar
+  ``neon`` if the module is compiled with GCC, see above), or with the scalar
   row kernel if there is none (then only for the LIST bodies with a
   regular layout);
 - ``off``: the per-field form, as in versions without the bulk form; for
@@ -164,7 +165,7 @@ under Linux or macOS:
 
    ENDF_PARSERPY_CPP_BULK_BODIES=off python my_script.py
 
-The function ``_bulk_body_info`` of each C++ module returns the
+The function ``_bulk_body_info`` of the C++ module returns the
 selected tier (``selected``: ``avx512``, ``avx2``, ``neon``,
 ``scalar`` or ``off``), the name and the value of the variable (``variable``,
 ``requested``), the reason why a requested tier is not used
@@ -182,7 +183,12 @@ form, those whose conversion stopped at a field the row kernel does
 not convert, the bodies of several lines read as one block of memory
 and line by line, and, of the bodies delivered by strided copies, those
 with one copy per row, their values and their rows). It is meant for diagnostics and tests; its name and content
-may change between versions:
+may change between versions. The C++ code of all format flavors is in
+one module, so that the selection and the counters are the same for
+all flavors: the counters count the bodies read by the parsers of all
+flavors in the Python process (until version 0.18, every flavor had a
+module and counters of its own). The function is found through the
+functions of a parser:
 
 .. code:: Python
 
@@ -192,6 +198,14 @@ may change between versions:
    module = importlib.import_module(parser._parse_endf.__module__)
    print(module._bulk_body_info()["selected"])
 
+The modules of the flavors until version 0.18, e.g.
+``endf_parserpy.cpp_parsers.endf6``, are deprecated: they can still be
+imported and give the functions of the flavor, with a
+``DeprecationWarning``, and will be removed in a later version. Use
+:class:`~endf_parserpy.EndfParserCpp` with the ``endf_format`` argument
+instead, and ``importlib.import_module(parser._parse_endf.__module__)``
+as above for the diagnostic functions.
+
 
 .. _adding_recipe_flavor_sec:
 
@@ -199,12 +213,12 @@ Adding a recipe flavor to the package
 -------------------------------------
 
 :class:`~endf_parserpy.EndfParserCpp` reads and writes the format
-flavors whose C++ modules were compiled when the package was installed
-(see the ``endf_format`` argument). The simplest way to use your own
+flavors whose C++ code was compiled into the C++ module of the package
+when the package was installed (see the ``endf_format`` argument). The simplest way to use your own
 recipes with it is to add them to the package as a new flavor and to
 install the package from its source code: the installation then
-generates and compiles the C++ module of the new flavor in the same way
-as those of the flavors shipped with the package. This needs a C++
+generates the C++ code of the new flavor and compiles it into the
+module in the same way as that of the flavors shipped with the package. This needs a C++
 compiler, but no knowledge of it.
 
 As an example, we add a flavor ``myflavor`` that differs from the
@@ -305,16 +319,16 @@ data gives a zero (see :ref:`tolerated_mismatches_sec`). The flavor
    ``python -m pip install .``). This needs a C++ compiler; ``pip``
    installs the other build requirements, such as pybind11, itself.
    ``INSTALL_ENDF_PARSERPY_CPP=yes`` makes the installation fail with an
-   error if the C++ modules cannot be compiled (if no compiler is found,
+   error if the C++ module cannot be compiled (if no compiler is found,
    the error is ``Unsupported compiler -- at least C++11 support is
    needed!``). Without it, the installation then succeeds without any C++
    module, with no message unless ``pip`` is run with ``-v``, and
    :class:`~endf_parserpy.EndfParserCpp` raises an ``ImportError``
    (``Unable to import the cpp module ...``).
-   The build generates and compiles the C++ modules of all flavors in
-   ``_FORMAT_DICT``, not only of the new one, which takes several
-   minutes (about three to four minutes on a laptop processor with eight
-   threads). The variables
+   The build generates the C++ code of all flavors in ``_FORMAT_DICT``,
+   not only of the new one, and compiles it into one module, which takes
+   about a minute on a laptop processor with eight threads (about three
+   minutes with one compile job). The variables
    ``INSTALL_ENDF_PARSERPY_NUM_BUILD_JOBS`` (the number of parallel
    compile jobs) and ``INSTALL_ENDF_PARSERPY_CPP_OPTIM`` (the
    optimization flag, by default ``-O1`` on Linux and macOS and ``/O2``
@@ -323,7 +337,7 @@ data gives a zero (see :ref:`tolerated_mismatches_sec`). The flavor
 6. Use the flavor with :class:`~endf_parserpy.EndfParserCpp`, in a Python
    session started outside the root directory of the clone, so that the
    installed package is imported, not the one in the clone, which does
-   not contain the compiled modules:
+   not contain the compiled module:
 
    .. code:: Python
 
@@ -337,23 +351,32 @@ Some points to keep in mind:
 
 - After a change of a recipe, install the package again (step 5) before
   :class:`~endf_parserpy.EndfParserCpp` sees the change; the compiled
-  module of the flavor is otherwise the one of the previous
+  code of the flavor is otherwise the one of the previous
   installation.
 - An editable installation, ``INSTALL_ENDF_PARSERPY_CPP=yes python -m
-  pip install -e .``, also works: the compiled modules are then placed
+  pip install -e .``, also works: the compiled module, one file such as
+  ``_flavors.cpython-312-x86_64-linux-gnu.so`` (``_flavors.cp312-win_amd64.pyd``
+  under Windows), is then placed
   into ``endf_parserpy/cpp_parsers/`` of the clone, and a change of a
   recipe is seen by :class:`~endf_parserpy.EndfParserPy` in the next
   Python session without installing again, from any directory. For
   :class:`~endf_parserpy.EndfParserCpp`, the editable installation must
-  still be run again after a change of a recipe.
+  still be run again after a change of a recipe. An editable
+  installation of a version until 0.18 placed one module per flavor
+  there instead (e.g. ``endf6.cpython-312-x86_64-linux-gnu.so``). Python
+  would import such a file instead of the current code of the same
+  name, so the build removes these files, and importing the package
+  issues a ``RuntimeWarning`` that names any such file that is left.
 - Installing or upgrading ``endf-parserpy`` from PyPI replaces the
   package including the flavor. Keep the flavor on its branch of the
   clone, and install from the clone again after an upgrade, e.g. after
   rebasing the branch on a newer release tag.
 - The build writes the generated C++ code into
-  ``endf_parserpy/cpp_parsers/``, so that ``git status`` shows the C++
-  files there as modified or new (and, after an editable installation,
-  the compiled modules as new). Don't commit them with the flavor; the
+  ``endf_parserpy/cpp_parsers/`` (one file per flavor,
+  ``_flavor_<name>.cpp``, the module init ``_flavors.cpp`` and the code
+  shared by the flavors, ``_shared_part_<NN>.cpp``), so that
+  ``git status`` shows the C++ files there as modified, deleted or new
+  (and, after an editable installation, the compiled module as new). Don't commit them with the flavor; the
   flavor consists of its folder and the entry in ``catalogue.py``.
 - If your flavor is of general interest, consider contributing it
   through a pull request on

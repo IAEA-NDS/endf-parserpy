@@ -56,7 +56,7 @@ pin, and the flavor whose recipes a name stands for can be queried:
    # 'endf6-ext'
 
 As long as a layout version gives the same dictionaries as the latest
-flavor, it uses the recipes and the compiled C++ module of the flavor;
+flavor, it uses the recipes and the compiled C++ code of the flavor;
 it adds nothing to the installation. Several releases with the same
 layout share it in this way. When a later release changes the layout
 of the flavor, the versions of the earlier releases get one copy of the

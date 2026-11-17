@@ -103,7 +103,7 @@ Further, the next four slots are supposed to be of type ``int``
 but float numbers are present in the file.
 
 :class:`~endf_parserpy.EndfParserCpp`, which ``endf-cli validate`` uses by
-default if the C++ modules are installed, reports the same record more
+default if the C++ module is installed, reports the same record more
 compactly, with the number of the line in the file:
 
 .. code:: text

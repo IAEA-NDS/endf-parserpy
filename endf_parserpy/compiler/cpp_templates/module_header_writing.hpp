@@ -24,6 +24,10 @@ struct WritingOptions {
   bool accept_non_ascii;
   bool ignore_missing_tpid;
   std::string array_type;
+  // the tape structure (option "tape_structure", see TapeRules), and
+  // whether it was given (see ParsingOptions)
+  TapeRules tape;
+  bool tape_given;
 };
 
 
@@ -38,7 +42,9 @@ inline WritingOptions default_writing_options() {
     true,   // include_linenum
     true,   // accept_non_ascii
     false,  // ignore_missing_tpid
-    "dict"  // array_type
+    "dict",  // array_type
+    cpp_endf6_tape_rules(),  // tape
+    false  // tape_given
   };
 }
 
@@ -76,12 +82,18 @@ namespace pybind11 { namespace detail {
           value.ignore_missing_tpid = d["ignore_missing_tpid"].cast<bool>();
         else if (key_str == "array_type")
           value.array_type = d["array_type"].cast<std::string>();
+        else if (key_str == "tape_structure")
+          cpp_load_tape_rules(d["tape_structure"], value.tape);
         else
           throw std::runtime_error("unknown option `" + key_str + "` provided");
       }
 
       // use default values for missing options
       WritingOptions default_opts = default_writing_options();
+      value.tape_given = d.contains("tape_structure");
+      if (! value.tape_given) {
+        value.tape = default_opts.tape;
+      }
 
       if (! d.contains("abuse_signpos")) {
         value.abuse_signpos = default_opts.abuse_signpos;
@@ -1337,12 +1349,15 @@ inline std::string cpp_prepare_send(
   cpp_write_mat_number(line, mat);
   cpp_write_mf_number(line, mf);
   cpp_write_mt_number(line, 0);
-  cpp_write_field<DOUBLE_TYPE>(line, 0, 0.0, write_opts);
-  cpp_write_field<DOUBLE_TYPE>(line, 1, 0.0, write_opts);
-  cpp_write_field<int>(line, 2, 0, write_opts);
-  cpp_write_field<int>(line, 3, 0, write_opts);
-  cpp_write_field<int>(line, 4, 0, write_opts);
-  cpp_write_field<int>(line, 5, 0, write_opts);
+  // the columns 1-66 hold zeros, or blanks if the tape structure says so
+  if (! write_opts.tape.blank_fill) {
+    cpp_write_field<DOUBLE_TYPE>(line, 0, 0.0, write_opts);
+    cpp_write_field<DOUBLE_TYPE>(line, 1, 0.0, write_opts);
+    cpp_write_field<int>(line, 2, 0, write_opts);
+    cpp_write_field<int>(line, 3, 0, write_opts);
+    cpp_write_field<int>(line, 4, 0, write_opts);
+    cpp_write_field<int>(line, 5, 0, write_opts);
+  }
   if (write_opts.include_linenum) {
     if (mf == 0) {
       // for writing FEND/MEND/TEND record
@@ -1535,10 +1550,88 @@ inline void write_section_verbatim(
     linestr.push_back('\n');
     oss << linestr;
   }
-  if (mf != 0) {
+  // the SEND record, if the tape structure has one after the section
+  if (mf != 0 && cpp_tape_send(write_opts.tape, dict_mf, dict_mt)) {
       std::string send_line = cpp_prepare_send(mat, mf, write_opts);
       oss << send_line;
   }
+}
+
+
+// The sections of a material to be written, in the order in which they
+// are written, with their keys (MF, MT) in keys: a material in the nested
+// form {MF: {MT: section}} in ascending order of MF and MT (a parsed
+// section without the keys MF and MT gets them), a material in the list
+// form in its order, the keys of a parsed section from its keys MF and
+// MT, those of a section given as a list of lines from its first line.
+inline py::list cpp_material_sections(
+  py::object material, std::vector<std::pair<int, int>>& keys
+) {
+  py::list sections;
+  keys.clear();
+  if (py::isinstance<py::dict>(material)) {
+    auto d = py::reinterpret_borrow<py::dict>(material);
+    std::vector<int> mf_keys;
+    for (auto mf_key : d) mf_keys.push_back(py::cast<int>(mf_key.first));
+    std::sort(mf_keys.begin(), mf_keys.end());
+    for (int mf : mf_keys) {
+      py::dict mf_dict = d[py::cast(mf)];
+      std::vector<int> mt_keys;
+      for (auto mt_key : mf_dict) mt_keys.push_back(py::cast<int>(mt_key.first));
+      std::sort(mt_keys.begin(), mt_keys.end());
+      for (int mt : mt_keys) {
+        py::object section = mf_dict[py::cast(mt)];
+        if (py::isinstance<py::dict>(section)) {
+          py::dict section_dict = py::reinterpret_borrow<py::dict>(section);
+          // inject the MF and MT numbers into the dictionary if missing
+          if (! section_dict.contains("MF")) section_dict["MF"] = mf;
+          if (! section_dict.contains("MT")) section_dict["MT"] = mt;
+        }
+        sections.append(section);
+        keys.push_back(std::make_pair(mf, mt));
+      }
+    }
+    return sections;
+  }
+  if (! py::isinstance<py::list>(material)) {
+    throw std::runtime_error(
+      "a material must be a dict {MF: {MT: section}} or a list of sections"
+    );
+  }
+  int pos = 0;
+  for (auto item : py::reinterpret_borrow<py::list>(material)) {
+    py::object section = py::reinterpret_borrow<py::object>(item);
+    int mf, mt;
+    if (py::isinstance<py::dict>(section)) {
+      py::dict section_dict = py::reinterpret_borrow<py::dict>(section);
+      if (! section_dict.contains("MF") || ! section_dict.contains("MT")) {
+        throw py::value_error(
+          "the parsed section at position " + std::to_string(pos) +
+          " of the list has no MF or MT key"
+        );
+      }
+      mf = py::cast<int>(section_dict["MF"]);
+      mt = py::cast<int>(section_dict["MT"]);
+    } else if (py::isinstance<py::list>(section)) {
+      py::list lines = py::reinterpret_borrow<py::list>(section);
+      if (lines.size() == 0) {
+        throw std::runtime_error("an MF/MT section must not be represented by an empty list");
+      }
+      std::string first_line = cpp_verbatim_line_from_pyobj(lines[0], 1, 0, 0);
+      int mat;
+      cpp_verbatim_control_numbers(first_line, 1, 0, 0, mat, mf, mt);
+    } else {
+      throw py::type_error(
+        "a section must be a dict (parsed) or a list of strings (unparsed), got " +
+        std::string(py::str(section.get_type().attr("__name__"))) +
+        " at position " + std::to_string(pos) + " of the list"
+      );
+    }
+    sections.append(section);
+    keys.push_back(std::make_pair(mf, mt));
+    pos++;
+  }
+  return sections;
 }
 
 #endif // MODULE_HEADER_WRITING_HPP

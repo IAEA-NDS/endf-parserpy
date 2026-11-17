@@ -48,6 +48,11 @@ struct ParsingOptions {
   // (see cpp_tolerated_log), set by the functions called from Python
   // that report them, otherwise nullptr (no mismatch is recorded).
   cpp_tolerated_log* tolerated;
+  // The tape structure (option "tape_structure", see TapeRules), and
+  // whether it was given (otherwise the functions of a flavor use the
+  // tape structure of the flavor).
+  TapeRules tape;
+  bool tape_given;
 };
 
 
@@ -69,7 +74,9 @@ inline ParsingOptions default_parsing_options() {
     "dict",  // array_type
     nullptr,  // memory_input
     nullptr,  // current_template
-    nullptr  // tolerated
+    nullptr,  // tolerated
+    cpp_endf6_tape_rules(),  // tape
+    false  // tape_given
   };
 }
 
@@ -115,12 +122,18 @@ namespace pybind11 { namespace detail {
           value.load_file_into_memory = d["load_file_into_memory"].cast<bool>();
         else if (key_str == "array_type")
           value.array_type = d["array_type"].cast<std::string>();
+        else if (key_str == "tape_structure")
+          cpp_load_tape_rules(d["tape_structure"], value.tape);
         else
           throw std::runtime_error("unknown option `" + key_str + "` provided");
       }
 
       // use default values for missing options
       ParsingOptions default_opts = default_parsing_options();
+      value.tape_given = d.contains("tape_structure");
+      if (! value.tape_given) {
+        value.tape = default_opts.tape;
+      }
       value.memory_input = nullptr;
       value.current_template = nullptr;
       value.tolerated = nullptr;
@@ -4634,6 +4647,148 @@ inline bool cpp_lines_follow(std::istream& cont, ParsingOptions &parse_opts) {
 }
 
 
+
+// The checks made before a section (or the tape head) is read, by the
+// rules of the tape structure parse_opts.tape (see TapeRules); with the
+// rules of ENDF-6 they are those of the earlier generated function
+// _check_end_records, with the same messages.
+//
+// mat, mf and mt are the numbers of the section to be read, last_mat,
+// last_mf and last_mt those of the last section read before it (last_mf
+// is 0 before the first section and after the tape head), which are set
+// to those of the section to be read. after_fend tells whether a FEND
+// record was read since the last section.
+//
+// The sections of a material must be in ascending order of MF, and of MT
+// within an MF (unless the tape structure frees the order); a section
+// with another MAT number than the last one starts a new material, which
+// is an error (one material is read). A FEND record ends its MF: under an
+// ascending order of MF, the section after it must have a greater MF.
+// With ignore_send_records, the position of the end records is not
+// checked, so that this last rule does not apply, but the order of the
+// sections is still checked.
+inline void cpp_check_end_records(
+  bool after_fend, bool after_mend, bool after_tend,
+  int mat, int mf, int mt, int& last_mat, int& last_mf, int& last_mt,
+  bool section_encountered, bool found_tpid, CppSeenSections& seen,
+  const ParsingOptions& parse_opts
+) {
+  const TapeRules& tape = parse_opts.tape;
+  const bool isr = parse_opts.ignore_send_records;
+  if (! isr) {
+    if (after_mend || after_tend) {
+      throw std::runtime_error("No MF/MT section allowed after MEND/TEND record");
+    }
+    if (after_fend && ! section_encountered) {
+      throw std::runtime_error("FEND record without preceding MF/MT section encountered");
+    }
+    if (! tape.endf6 && mf != 0 && last_mf != 0 && mat == last_mat && mf != last_mf
+        && ! after_fend && cpp_tape_fend(tape, last_mf)) {
+      throw std::runtime_error(
+        "FEND record missing: MF=" + std::to_string(mf) + " follows MF=" +
+        std::to_string(last_mf) + ", after which the tape structure requires " +
+        "a FEND record"
+      );
+    }
+  } else if (mf != 0 && last_mf != 0 && mat != last_mat) {
+    // without the end records, a material ends where the MAT number
+    // changes; one material is read
+    throw std::runtime_error(
+      "A section of MAT=" + std::to_string(mat) + " follows the sections of MAT=" +
+      std::to_string(last_mat) + ": parse reads one material; use parse_tape " +
+      "for a tape of several materials"
+    );
+  }
+  if (mf != 0 && last_mf != 0 && mat == last_mat) {
+    bool mf_descending;
+    bool mt_descending;
+    if (tape.endf6) {
+      mf_descending = mf < last_mf || (mf == last_mf && after_fend && ! isr);
+      mt_descending = mf == last_mf && mt <= last_mt;
+    } else {
+      bool fend_split = after_fend && ! isr;
+      mf_descending = tape.mf_asc && (mf < last_mf || (mf == last_mf && fend_split));
+      mt_descending = mf == last_mf && ! fend_split && cpp_tape_mt_asc(tape, mf)
+        && (mt < last_mt || (mt == last_mt && ! cpp_tape_repeat(tape, mf, mt)));
+    }
+    if (mf_descending) {
+      throw std::runtime_error(
+        "MF sections must be in ascending order, but MF=" +
+        std::to_string(mf) + " follows MF=" + std::to_string(last_mf) +
+        (mf == last_mf ? " and its FEND record" : "")
+      );
+    } else if (mt_descending) {
+      throw std::runtime_error(
+        "MT sections must be in ascending order within an MF, but MF=" +
+        std::to_string(mf) + "/MT=" + std::to_string(mt) +
+        " follows MF=" + std::to_string(last_mf) + "/MT=" +
+        std::to_string(last_mt)
+      );
+    }
+    if (tape.check_repeat && seen.test_and_set(mf, mt)
+        && ! cpp_tape_repeat(tape, mf, mt)) {
+      throw std::runtime_error(
+        "section MF=" + std::to_string(mf) + "/MT=" + std::to_string(mt) +
+        " of MAT " + std::to_string(mat) + " occurs a second time in the " +
+        "material, which the tape structure does not allow"
+      );
+    }
+  } else if (mf != 0 && tape.check_repeat) {
+    // the first section of a material
+    seen.clear();
+    seen.test_and_set(mf, mt);
+  }
+  if (! found_tpid && ! parse_opts.ignore_missing_tpid) {
+    throw std::runtime_error("Tape ID (TPID) record missing in first line");
+  }
+  // the section becomes the last section
+  last_mat = mat;
+  last_mf = mf;
+  last_mt = mt;
+}
+
+
+// A SEND record after a section that the tape structure has without one
+// (outside the sections, not with ignore_send_records).
+inline void cpp_check_extra_send(
+  bool section_encountered, bool after_fend, int last_mf, int last_mt,
+  const ParsingOptions& parse_opts
+) {
+  if (section_encountered && ! after_fend && last_mf != 0
+      && ! cpp_tape_send(parse_opts.tape, last_mf, last_mt)) {
+    throw std::runtime_error(
+      "Unexpected SEND record after MF=" + std::to_string(last_mf) + "/MT=" +
+      std::to_string(last_mt) + ": the tape structure has no SEND record " +
+      "after this section"
+    );
+  }
+}
+
+
+// A FEND record after the sections of an MF that the tape structure has
+// without one (not with ignore_send_records).
+inline void cpp_check_fend(
+  bool section_encountered, int last_mf, const ParsingOptions& parse_opts
+) {
+  if (parse_opts.ignore_send_records || parse_opts.tape.endf6) return;
+  if (section_encountered && last_mf != 0 && ! cpp_tape_fend(parse_opts.tape, last_mf)) {
+    throw std::runtime_error(
+      "Unexpected FEND record after MF=" + std::to_string(last_mf) + ": the " +
+      "tape structure has no FEND record after the sections of this MF"
+    );
+  }
+}
+
+
+// Whether the MEND record may follow without a FEND record: the tape
+// structure has no FEND record after the sections of the last MF.
+inline bool cpp_mend_without_fend(
+  bool section_encountered, int last_mf, const ParsingOptions& parse_opts
+) {
+  return ! parse_opts.tape.endf6 && section_encountered && last_mf != 0
+    && ! cpp_tape_fend(parse_opts.tape, last_mf);
+}
+
 // The lines of a section are returned as Python strings (see
 // cpp_bytes_to_pystr).
 inline py::list read_section_verbatim(
@@ -4647,8 +4802,11 @@ inline py::list read_section_verbatim(
   int curmt;
   std::size_t content_size;
   // with ignore_send_records, the section need not end with a SEND
-  // record (see cpp_read_send), also at the end of the data
-  const bool send_optional = parse_opts.ignore_send_records && ! is_first;
+  // record (see cpp_read_send), also at the end of the data; if the tape
+  // structure has no SEND record after the section, it ends at the first
+  // line of another section or an end record, which is not read
+  const bool no_send = ! is_first && ! cpp_tape_send(parse_opts.tape, mf, mt);
+  const bool send_optional = (parse_opts.ignore_send_records && ! is_first) || no_send;
   bool at_end = false;
   while (! cont.eof()) {
     if (send_optional && ! cpp_lines_follow(cont, parse_opts)) {
@@ -4670,8 +4828,9 @@ inline py::list read_section_verbatim(
     curpos = cont.tellg();
   }
   if (send_optional) {
-    // a line that is not a SEND record (MF not 0, MT 0) is not read
-    if (! at_end && (curmf == 0 || curmt != 0)) {
+    // a line that is not a SEND record (MF not 0, MT 0) is not read, nor
+    // any line after a section without SEND record
+    if (! at_end && (no_send || curmf == 0 || curmt != 0)) {
       cont.clear();
       cont.seekg(curpos);
     }

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/01
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -44,9 +44,7 @@ def generate_endf_dict_assignments(vardict):
 def generate_parse_or_read_verbatim(funname, parse_opts):
     code = cpp.ifelse(
         aux.should_parse_section("mf", "mt", "exclude", "include"),
-        cpp_varaux.dict_assign(
-            "mfmt_dict", ["mf", "mt"], f"{funname}_istream(cont, {parse_opts})"
-        ),
+        cpp.statement(f"mfmt_list.append({funname}_istream(cont, {parse_opts}))"),
         cpp.concat(
             [
                 aux.read_section_verbatim(
@@ -58,7 +56,7 @@ def generate_parse_or_read_verbatim(funname, parse_opts):
                     "is_firstline",
                     parse_opts,
                 ),
-                cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section"),
+                cpp.statement("mfmt_list.append(verbatim_section)"),
             ]
         ),
     )

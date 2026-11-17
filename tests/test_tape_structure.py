@@ -88,12 +88,15 @@ def test_round_trip_of_the_spec_and_pickle():
 
 
 def test_cpp_options():
-    flags, sections, mf_ascending, blank = TapeStructure.from_spec(GENDF).cpp_options()
+    flags, sections, mf_ascending, blank, default = TapeStructure.from_spec(
+        GENDF
+    ).cpp_options()
     assert len(flags) == 100
     assert sections == ((1451, 4),)  # REPEAT, no SEND
-    assert (mf_ascending, blank) == (False, True)
-    flags, sections, mf_ascending, blank = ENDF6.cpp_options()
+    assert (mf_ascending, blank, default) == (False, True, 1 | 4)
+    flags, sections, mf_ascending, blank, default = ENDF6.cpp_options()
     assert set(flags) == {1 | 2 | 8} and sections == () and mf_ascending and not blank
+    assert default == 1 | 2 | 8
 
 
 @pytest.mark.parametrize(

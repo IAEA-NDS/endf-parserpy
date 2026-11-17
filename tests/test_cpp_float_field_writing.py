@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/25
-# Last modified:   2026/11/11
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -107,6 +107,7 @@ def _extract_writer():
             "#if defined(_MSC_VER) && ! defined(__clang__) && (defined(_M_X64)",
             after="inline bool cpp_fast_decimal_to_double(",
         ),
+        _extract(header, "struct TapeRules {", end="\n};\n"),
         _extract(text, "struct WritingOptions {", end="\n};\n"),
         _extract(text, "inline int cpp_int_to_padded_chars("),
         _extract(

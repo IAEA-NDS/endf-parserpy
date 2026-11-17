@@ -21,6 +21,7 @@ from .code_generator_core import (
 from .code_generator_parsing_core import (
     generate_endf_dict_assignments,
 )
+from .code_generator_parsing import tape_structure_code
 from .code_generator_writing_core import (
     get_array_accessor,
     get_element_registrar,
@@ -535,48 +536,24 @@ def generate_master_writefun(name, recipefuns):
     body += cpp.statement("int mat = 0")
     body += cpp.statement("int mf")
     body += cpp.statement("int mt")
-    body += cpp.statement("int last_mat = -9999")
-    body += cpp.statement("int last_mf = -9999")
-    body += cpp.statement("int last_mt = -9999")
-    body += cpp.statement("bool section_encountered = false")
+    # the MF of the last section written; -1 before the first one
+    body += cpp.statement("int last_mf = -1")
     body += cpp.statement("bool found_tpid = false")
-    body += cpp.statement("auto d = py::reinterpret_borrow<py::dict>(endf_dict)")
-    body += cpp.statement('py::object mf_keys = d.attr("keys")()')
-    # sort the mf keys
-    body += cpp.statement("std::vector<int> sorted_mf_keys")
-    body += cpp.line("for (auto mf_key : mf_keys) {")
-    body += cpp.statement("sorted_mf_keys.push_back(py::cast<int>(mf_key))", cpp.INDENT)
-    body += cpp.close_block()
-    body += cpp.statement("std::sort(sorted_mf_keys.begin(), sorted_mf_keys.end())")
-    body += cpp.statement("std::map<int, std::vector<int>> sorted_mfmt_keys")
-    # sort the mt keys
-    body += cpp.line("for (auto mf_key : sorted_mf_keys) {")
+    # the sections in the order in which they are written, with their keys
+    # (MF, MT): a material in the nested form in ascending order of MF and
+    # MT, a material in the list form in its order
+    body += cpp.statement("std::vector<std::pair<int, int>> cpp_keys")
     body += cpp.statement(
-        'py::object mt_keys = d[py::cast(mf_key)].attr("keys")()', cpp.INDENT
+        "py::list cpp_sections = cpp_material_sections(endf_dict, cpp_keys)"
     )
-    body += cpp.statement("std::vector<int> sorted_mt_keys")
-    body += cpp.line("for (auto mt_key : mt_keys) {", cpp.INDENT)
-    body += cpp.statement(
-        "sorted_mt_keys.push_back(py::cast<int>(mt_key))", 2 * cpp.INDENT
+    body += cpp.line("for (std::size_t cpp_k = 0; cpp_k < cpp_keys.size(); cpp_k++) {")
+    body += cpp.statement("py::object mt_dict = cpp_sections[cpp_k]", cpp.INDENT)
+    body += cpp.statement("mf = cpp_keys[cpp_k].first", cpp.INDENT)
+    body += cpp.statement("mt = cpp_keys[cpp_k].second", cpp.INDENT)
+    body += cpp.indent_code(
+        cpp.pureif("mf == 0 && mt == 0", cpp.statement("found_tpid = true")),
+        cpp.INDENT,
     )
-    body += cpp.indent_code(cpp.close_block(), cpp.INDENT)
-    body += cpp.statement(
-        "std::sort(sorted_mt_keys.begin(), sorted_mt_keys.end())", cpp.INDENT
-    )
-    body += cpp.statement("sorted_mfmt_keys[mf_key] = sorted_mt_keys", cpp.INDENT)
-    body += cpp.close_block()
-    # iterate through the sorted mf/mt combinations
-    body += cpp.line("for (auto mf_key : sorted_mf_keys) {")
-    body += cpp.statement("py::dict mf_dict = d[py::cast(mf_key)]", cpp.INDENT)
-    body += cpp.statement(
-        "std::vector<int> sorted_mt_keys = sorted_mfmt_keys[mf_key]", cpp.INDENT
-    )
-    body += cpp.line("for (auto mt_key : sorted_mt_keys) {", cpp.INDENT)
-    body += cpp.statement(
-        "py::object mt_dict = mf_dict[py::cast(mt_key)]", 2 * cpp.INDENT
-    )
-    body += cpp.statement(f"mf = mf_key", 2 * cpp.INDENT)
-    body += cpp.statement(f"mt = mt_key", 2 * cpp.INDENT)
 
     # skip section if it shouldn't be parsed
     body += cpp.indent_code(
@@ -584,18 +561,23 @@ def generate_master_writefun(name, recipefuns):
             cpp.logical_not(aux.should_parse_section("mf", "mt", "exclude", "include")),
             cpp.statement("continue"),
         ),
-        2 * cpp.INDENT,
+        cpp.INDENT,
     )
 
-    # add FEND record if required
+    # add the FEND record after the sections of the last MF where the MF
+    # changes, if the tape structure has one
     body += cpp.indent_code(
         cpp.pureif(
             cpp.logical_and(
-                ["section_encountered", "mf != last_mf", "mf != 0", "last_mf != 0"]
+                [
+                    "last_mf > 0",
+                    "mf != last_mf",
+                    "cpp_tape_fend(write_opts.tape, last_mf)",
+                ]
             ),
             cpp.statement("cont << cpp_prepare_send(mat, 0, write_opts)"),
         ),
-        2 * cpp.INDENT,
+        cpp.INDENT,
     )
 
     conditions = []
@@ -608,9 +590,6 @@ def generate_master_writefun(name, recipefuns):
             section_code = generate_section_writing_code(funname, "write_opts")
             matval = get_mat_from_mfmt_section("mt_dict")
             section_code += cpp.statement(f"mat = {matval}")
-            section_code += cpp.statement("section_encountered = true")
-            if mf == 0:
-                section_code += cpp.statement("found_tpid = true")
             statements.append(section_code)
             continue
         for mt in reversed(sorted(mfdic.keys())):
@@ -623,10 +602,6 @@ def generate_master_writefun(name, recipefuns):
             section_code = generate_section_writing_code(funname, "write_opts")
             matval = get_mat_from_mfmt_section("mt_dict")
             section_code += cpp.statement(f"mat = {matval}")
-            section_code += cpp.statement("section_encountered = true")
-            if mf == 0 and mt == 0:
-                # the tape head has been written
-                section_code += cpp.statement("found_tpid = true")
             statements.append(section_code)
             conditions.append(curcond)
 
@@ -640,23 +615,16 @@ def generate_master_writefun(name, recipefuns):
     # FEND records with an arbitrary MAT number, and the FEND record
     # between such a section and the next MF was missing
     default_code = write_section_verbatim(
-        "cont",
-        "py::cast<py::list>(endf_dict[py::cast(mf)][py::cast(mt)])",
-        "write_opts",
+        "cont", "py::cast<py::list>(mt_dict)", "write_opts"
     )
     default_code += cpp.statement(f"mat = {get_mat_from_mfmt_section('mt_dict')}")
-    default_code += cpp.statement("section_encountered = true")
-    default_code += cpp.pureif("mf == 0 && mt == 0", cpp.statement("found_tpid = true"))
 
     body += cpp.indent_code(
         cpp.conditional_branches(conditions, statements, default=default_code),
-        2 * cpp.INDENT,
+        cpp.INDENT,
     )
 
-    body += cpp.statement("last_mat = mat", 2 * cpp.INDENT)
-    body += cpp.statement("last_mf = mf", 2 * cpp.INDENT)
-    body += cpp.statement("last_mt = mt", 2 * cpp.INDENT)
-    body += cpp.indent_code(cpp.close_block(), cpp.INDENT)
+    body += cpp.statement("last_mf = mf", cpp.INDENT)
     body += cpp.close_block()
 
     # the check runs after all sections are written, so that errors in
@@ -679,14 +647,18 @@ def generate_master_writefun(name, recipefuns):
             "without a tape head"
         ),
     )
-    # add FEND, MEND and TEND record at the very end
-    body += cpp.statement("cont << cpp_prepare_send(mat, 0, write_opts)")
+    # add the FEND record after the sections of the last MF (if any is
+    # written and the tape structure has one), the MEND and TEND records
+    body += cpp.pureif(
+        cpp.logical_and(["last_mf > 0", "cpp_tape_fend(write_opts.tape, last_mf)"]),
+        cpp.statement("cont << cpp_prepare_send(mat, 0, write_opts)"),
+    )
     body += cpp.statement("cont << cpp_prepare_send(0, 0, write_opts)")
     body += cpp.statement("cont << cpp_prepare_send(-1, 0, write_opts, false)")
 
     args = (
         ("CppWriteOutput&", "cont"),
-        ("py::dict", "endf_dict"),
+        ("py::object", "endf_dict"),
         ("py::object", "exclude"),
         ("py::object", "include"),
         ("WritingOptions", f"write_opts=default_writing_options()"),
@@ -709,7 +681,7 @@ def _call_writefun(callcode):
     return code
 
 
-def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
+def generate_cpp_writefun_wrappers_string(writefuns, *extra_args, default_tape=False):
     args_str = ", ".join(arg[0] + " " + arg[1] for arg in extra_args)
     args_str = ", " + args_str if args_str != "" else args_str
     args_str2 = ", ".join(arg[1] for arg in extra_args)
@@ -717,7 +689,9 @@ def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
     code = ""
     for entry in writefuns:
         outer, inner = _split_wrapper_names(entry)
-        code += cpp.line(f"py::str {outer}(py::dict endf_dict{args_str}) {{")
+        code += cpp.line(f"py::str {outer}(py::object endf_dict{args_str}) {{")
+        if default_tape:
+            code += cpp.statement("cpp_flavor_tape_rules(write_opts)", cpp.INDENT)
         code += cpp.statement("CppWriteOutput cont", cpp.INDENT)
         code += cpp.indent_code(
             _call_writefun(f"{inner}_ostream(cont, endf_dict{args_str2})"), cpp.INDENT
@@ -729,7 +703,7 @@ def generate_cpp_writefun_wrappers_string(writefuns, *extra_args):
     return code
 
 
-def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
+def generate_cpp_writefun_wrappers_file(writefuns, *extra_args, default_tape=False):
     args_str = ", ".join(arg[0] + " " + arg[1] for arg in extra_args)
     args_str = ", " + args_str if args_str != "" else args_str
     args_str2 = ", ".join(arg[1] for arg in extra_args)
@@ -738,8 +712,10 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
     for entry in writefuns:
         outer, inner = _split_wrapper_names(entry)
         code += cpp.line(
-            f"void {outer}_file(std::string& filename, py::dict endf_dict{args_str}) {{"
+            f"void {outer}_file(std::string& filename, py::object endf_dict{args_str}) {{"
         )
+        if default_tape:
+            code += cpp.statement("cpp_flavor_tape_rules(write_opts)", cpp.INDENT)
         code += cpp.statement(
             "std::ofstream outfile(filename, std::ios::binary)", cpp.INDENT
         )
@@ -780,7 +756,7 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
 
 
 def generate_all_cpp_writefuns_code(
-    recipes, module_name, shared_registry=None, forward_decls=None
+    recipes, module_name, shared_registry=None, forward_decls=None, tape_structure=None
 ):
     """Mirror of :func:`code_generator_parsing.generate_all_cpp_parsefuns_code`
     for the write side. With ``shared_registry`` provided, deduplicate
@@ -838,17 +814,23 @@ def generate_all_cpp_writefuns_code(
     # it is called from Python (via the wrappers below), so no wrappers
     # are generated for the write functions of the single sections
     master_writefun_code = generate_master_writefun("write_endf_ostream", recipefuns)
+    # the tape structure of the flavor if it is not that of ENDF-6, the
+    # default of the options
+    tape_code = tape_structure_code(tape_structure, "WritingOptions")
+    default_tape = tape_code != ""
     writefun_wrappers_code1 = generate_cpp_writefun_wrappers_string(
         ["write_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),
         ("WritingOptions", "write_opts"),
+        default_tape=default_tape,
     )
     writefun_wrappers_code2 = generate_cpp_writefun_wrappers_file(
         ["write_endf"],
         ("py::object", "exclude"),
         ("py::object", "include"),
         ("WritingOptions", "write_opts"),
+        default_tape=default_tape,
     )
     pybind_glue = ""
     pybind_glue += cpp_boilerplate.register_cpp_writefuns(
@@ -869,6 +851,7 @@ def generate_all_cpp_writefuns_code(
 
     all_writefun_codes = (
         writefuns_code
+        + tape_code
         + master_writefun_code
         + writefun_wrappers_code1
         + writefun_wrappers_code2

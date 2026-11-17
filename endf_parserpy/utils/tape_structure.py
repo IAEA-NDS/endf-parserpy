@@ -402,9 +402,10 @@ class TapeStructure:
 
     def cpp_options(self):
         """Return the form of the rules for the options of the C++
-        module: ``(mf_flags, section_flags, mf_ascending, blank_fill)``,
-        with ``mf_flags`` as 100 bytes and ``section_flags`` as a tuple of
-        ``(1000 * MF + MT, flags)``."""
+        module: ``(mf_flags, section_flags, mf_ascending, blank_fill,
+        default_flags)``, with ``mf_flags`` as 100 bytes, ``section_flags``
+        as a tuple of ``(1000 * MF + MT, flags)`` and ``default_flags``
+        the flags of the top-level rules."""
         cached = self.__dict__.get("_cpp")
         if cached is None:
             cached = (
@@ -414,6 +415,7 @@ class TapeStructure:
                 ),
                 self.mf_ascending,
                 self.end_record_fill == "blank",
+                _flags(*self.defaults),
             )
             object.__setattr__(self, "_cpp", cached)
         return cached

@@ -296,120 +296,23 @@ def generate_cpp_parsefun(
     )
 
 
-def _generate_check_end_records_fun(funname):
-    """The checks made before a section (or the tape head) is read.
-
-    ``mat``, ``mf`` and ``mt`` are the numbers of the section to be
-    read, ``last_mat``, ``last_mf`` and ``last_mt`` those of the last
-    section read before it (``last_mf`` is 0 before the first section
-    and after the tape head), which are set to those of the section to
-    be read. ``after_fend`` tells whether a FEND record was read since
-    the last section.
-
-    The sections of a material must be in ascending order of MF, and of
-    MT within an MF; a section with another MAT number than the last
-    one starts a new material. A FEND record ends its MF: the section
-    after it must have a greater MF. With ``ignore_send_records``, the
-    position of the FEND records is not checked, so that this last rule
-    does not apply, but the order of the sections is still checked.
-    """
-    end_record_checks = cpp.pureif(
-        cpp.logical_or(["after_mend == true", "after_tend == true"]),
-        cpp.throw_runtime_error("No MF/MT section allowed after MEND/TEND record"),
-    )
-    end_record_checks += cpp.pureif(
-        cpp.logical_and(["after_fend == true", "section_encountered == false"]),
-        cpp.throw_runtime_error(
-            "FEND record without preceding MF/MT section encountered"
-        ),
-    )
-
-    mf_error = cpp.throw_runtime_error(
-        '"MF sections must be in ascending order, but MF=" + '
-        'std::to_string(mf) + " follows MF=" + std::to_string(last_mf) + '
-        '(mf == last_mf ? " and its FEND record" : "")',
-        quote=False,
-    )
-    mt_error = cpp.throw_runtime_error(
-        '"MT sections must be in ascending order within an MF, but MF=" + '
-        'std::to_string(mf) + "/MT=" + std::to_string(mt) + '
-        '" follows MF=" + std::to_string(last_mf) + "/MT=" + '
-        "std::to_string(last_mt)",
-        quote=False,
-    )
-    mf_descending = cpp.logical_or(
-        [
-            "mf < last_mf",
-            cpp.logical_and(
-                [
-                    "mf == last_mf",
-                    "after_fend == true",
-                    "parse_opts.ignore_send_records == false",
-                ]
-            ),
-        ]
-    )
-    order_checks = cpp.conditional_branches(
-        [mf_descending, cpp.logical_and(["mf == last_mf", "mt <= last_mt"])],
-        [mf_error, mt_error],
-    )
-    order_check = cpp.pureif(
-        cpp.logical_and(["mf != 0", "last_mf != 0", "mat == last_mat"]),
-        order_checks,
-    )
-
-    tpid_record_check = cpp.pureif(
-        cpp.logical_and(
-            ["found_tpid == false", "parse_opts.ignore_missing_tpid == false"]
-        ),
-        cpp.throw_runtime_error("Tape ID (TPID) record missing in first line"),
-    )
-
-    checker_body = cpp.pureif(
-        "parse_opts.ignore_send_records == false", end_record_checks
-    )
-    checker_body += order_check
-    checker_body += tpid_record_check
-    # the section becomes the last section
-    checker_body += cpp.statement("last_mat = mat")
-    checker_body += cpp.statement("last_mf = mf")
-    checker_body += cpp.statement("last_mt = mt")
-
-    args = (
-        ("bool", "after_fend"),
-        ("bool", "after_mend"),
-        ("bool", "after_tend"),
-        ("int", "mat"),
-        ("int", "mf"),
-        ("int", "mt"),
-        ("int&", "last_mat"),
-        ("int&", "last_mf"),
-        ("int&", "last_mt"),
-        ("bool", "section_encountered"),
-        ("bool", "found_tpid"),
-        ("const ParsingOptions&", "parse_opts"),
-    )
-
-    checker_fun = cpp.function(funname, checker_body, "void", *args)
-    return checker_fun
-
-
 def generate_master_parsefun(name, recipefuns):
     code = ""
-    code += cpp.line("")
-    code += _generate_check_end_records_fun("_check_end_records")
     code += cpp.line("")
 
     body = ""
     body += cpp.statement("bool is_firstline = true")
     body += cpp.statement("std::streampos curpos")
-    body += cpp.statement("py::dict mfmt_dict")
+    # the sections of the material in the order of the input
+    body += cpp.statement("py::list mfmt_list")
+    # the sections found in the material (see cpp_check_end_records)
+    body += cpp.statement("CppSeenSections seen_sections")
     body += cpp.statement("py::dict curdict")
     body += cpp.statement("int mat")
     body += cpp.statement("int mf")
     body += cpp.statement("int mt")
     body += cpp.statement("bool section_encountered = false")
-    # the MAT/MF/MT numbers of the last section (see _check_end_records)
+    # the MAT/MF/MT numbers of the last section (see cpp_check_end_records)
     body += cpp.statement("int last_mat = 0")
     body += cpp.statement("int last_mf = 0")
     body += cpp.statement("int last_mt = 0")
@@ -484,7 +387,7 @@ def generate_master_parsefun(name, recipefuns):
     # line already read by the loop, which determined the MAT/MF/MT
     # numbers of the section.
     sec_prep_code = cpp.call(
-        "_check_end_records",
+        "cpp_check_end_records",
         "after_fend",
         "after_mend",
         "after_tend",
@@ -496,6 +399,7 @@ def generate_master_parsefun(name, recipefuns):
         "last_mt",
         "section_encountered",
         "found_tpid",
+        "seen_sections",
         "parse_opts",
     )
     sec_prep_code += cpp.statement("after_fend = false")
@@ -503,6 +407,28 @@ def generate_master_parsefun(name, recipefuns):
     sec_prep_code += cpp.statement("cont.seekg(curpos)")
     sec_prep_code += cpp.pureif("mt != 0", cpp.statement("is_firstline = false"))
 
+    # a SEND record outside a section, if the tape structure is not that
+    # of ENDF-6: after a section that the structure has without SEND
+    # record, an error of its own (see cpp_check_extra_send)
+    conditions.append(
+        cpp.logical_and(
+            [
+                "parse_opts.tape.endf6 == false",
+                "parse_opts.ignore_send_records == false",
+                "mf != 0",
+                "mt == 0",
+            ]
+        )
+    )
+    statements.append(
+        cpp.statement(
+            "cpp_check_extra_send(section_encountered, after_fend, last_mf, "
+            "last_mt, parse_opts)"
+        )
+        + cpp.throw_runtime_error(
+            "Invalid line encountered! This line is outside any MF/MT section."
+        )
+    )
     # with ignore_send_records, a SEND record may also be outside a
     # section (e.g. a second one); it is checked as a SEND record
     conditions.append(
@@ -557,7 +483,7 @@ def generate_master_parsefun(name, recipefuns):
     curstat += aux.read_section_verbatim(
         "verbatim_section", "mat", "mf", "mt", "cont", "is_firstline", "parse_opts"
     )
-    curstat += cpp_varaux.dict_assign("mfmt_dict", ["mf", "mt"], "verbatim_section")
+    curstat += cpp.statement("mfmt_list.append(verbatim_section)")
     statements.append(curstat)
     conditions.append(curcond)
 
@@ -578,17 +504,34 @@ def generate_master_parsefun(name, recipefuns):
     curstat += cpp.statement("after_tend = true")
     conditions.append(curcond)
     statements.append(curstat)
-    # mend record treatment
+    # mend record treatment; without the FEND record if the tape
+    # structure has none after the sections of the last MF
     curcond = cpp.logical_and(
-        [cpp.logical_or(["after_fend == true", position_ok]), aux.is_mend("parse_opts")]
+        [
+            cpp.logical_or(
+                [
+                    "after_fend == true",
+                    position_ok,
+                    "cpp_mend_without_fend(section_encountered, last_mf, parse_opts)",
+                ]
+            ),
+            aux.is_mend("parse_opts"),
+        ]
     )
     curstat = cpp.statement("after_fend = false")
     curstat += cpp.statement("after_mend = true")
     conditions.append(curcond)
     statements.append(curstat)
-    # fend record treatment
-    curcond = aux.is_fend("mat", "parse_opts")
-    curstat = cpp.statement("after_fend = true")
+    # fend record treatment (a MEND or TEND record in the wrong place is
+    # taken as a FEND record under the rules of ENDF-6)
+    curcond = cpp.logical_and(
+        [
+            aux.is_fend("mat", "parse_opts"),
+            cpp.logical_or(["parse_opts.tape.endf6", "(mat != 0 && mat != -1)"]),
+        ]
+    )
+    curstat = cpp.statement("cpp_check_fend(section_encountered, last_mf, parse_opts)")
+    curstat += cpp.statement("after_fend = true")
     conditions.append(curcond)
     statements.append(curstat)
 
@@ -632,7 +575,7 @@ def generate_master_parsefun(name, recipefuns):
         "parse_opts.ignore_send_records == false && after_tend == false",
         eof_check,
     )
-    body += cpp.statement("return mfmt_dict")
+    body += cpp.statement("return mfmt_list")
 
     args = (
         ("std::istream&", "cont"),
@@ -642,7 +585,7 @@ def generate_master_parsefun(name, recipefuns):
         # options of the caller (see cpp_rethrow_parse_error)
         ("ParsingOptions&", "parse_opts"),
     )
-    code += cpp.function(name, body, "py::dict", *args)
+    code += cpp.function(name, body, "py::list", *args)
     code += cpp.line("")
     return code
 
@@ -677,7 +620,7 @@ def _return_parsed(callcode, stream, report_tolerated=False):
     ``tolerated`` after a successful parse."""
     code = cpp.line("try {")
     if report_tolerated:
-        code += cpp.statement(f"py::dict cpp_result = {callcode}", cpp.INDENT)
+        code += cpp.statement(f"py::list cpp_result = {callcode}", cpp.INDENT)
         code += cpp.statement(
             f"cpp_report_tolerated(cpp_tolerated, {stream}, tolerated)", cpp.INDENT
         )
@@ -694,8 +637,55 @@ def _return_parsed(callcode, stream, report_tolerated=False):
     return code
 
 
+def _default_tape_code():
+    """Set the tape structure of the flavor if the options give none (see
+    :func:`tape_structure_code`)."""
+    return cpp.statement("cpp_flavor_tape_rules(parse_opts)")
+
+
+def tape_structure_code(tape_structure, opts_type):
+    """The function ``cpp_flavor_tape_rules`` that sets the tape structure
+    of a flavor in options of the type ``opts_type`` that give none, or
+    the empty string for the structure of ENDF-6, the default of the
+    options."""
+    if tape_structure is None or tape_structure.is_endf6:
+        return ""
+    flags, sections, mf_asc, blank, default = tape_structure.cpp_options()
+    code = cpp.line(f"inline void cpp_flavor_tape_rules({opts_type}& opts) {{")
+    code += cpp.statement("if (opts.tape_given) return", cpp.INDENT)
+    code += cpp.statement(
+        "static const unsigned char mf_flags[100] = {"
+        + ", ".join(str(f) for f in flags)
+        + "}",
+        cpp.INDENT,
+    )
+    code += cpp.statement("TapeRules& t = opts.tape", cpp.INDENT)
+    code += cpp.statement(
+        "for (int i = 0; i < 100; i++) t.mf_flags[i] = mf_flags[i]", cpp.INDENT
+    )
+    code += cpp.statement("t.sections.clear()", cpp.INDENT)
+    for key, value in sections:
+        code += cpp.statement(
+            f"t.sections.push_back(std::make_pair({key}, (unsigned char) {value}))",
+            cpp.INDENT,
+        )
+    code += cpp.statement(f"t.default_flags = {default}", cpp.INDENT)
+    code += cpp.statement(f"t.mf_asc = {'true' if mf_asc else 'false'}", cpp.INDENT)
+    code += cpp.statement(f"t.blank_fill = {'true' if blank else 'false'}", cpp.INDENT)
+    code += cpp.statement("t.endf6 = false", cpp.INDENT)
+    check_repeat = (not all(f & 8 for f in flags) or not mf_asc) and (
+        any(not f & 4 for f in flags) or any(not v & 4 for _, v in sections)
+    )
+    code += cpp.statement(
+        f"t.check_repeat = {'true' if check_repeat else 'false'}", cpp.INDENT
+    )
+    code += cpp.close_block()
+    code += cpp.line("")
+    return code
+
+
 def generate_cpp_parsefun_wrappers_string(
-    parsefuns, *extra_args, report_tolerated=False
+    parsefuns, *extra_args, report_tolerated=False, default_tape=False
 ):
     # the parsing options (set below) must be among the arguments;
     # report_tolerated: the function has the last argument `tolerated`, a
@@ -712,8 +702,10 @@ def generate_cpp_parsefun_wrappers_string(
         outer, inner = _split_wrapper_names(entry)
         # the data is a Python string (each character is mapped to the
         # byte with the same code) or bytes, which are parsed in place
-        code += cpp.line(f"py::dict {outer}(py::object strcont{args_str}) {{")
+        code += cpp.line(f"py::list {outer}(py::object strcont{args_str}) {{")
         code += cpp.statement("cpp_gc_pause cpp_gc_guard", cpp.INDENT)
+        if default_tape:
+            code += cpp.indent_code(_default_tape_code(), cpp.INDENT)
         code += cpp.statement("const char* cpp_data", cpp.INDENT)
         code += cpp.statement("std::size_t cpp_size", cpp.INDENT)
         code += cpp.statement("py::object cpp_data_holder", cpp.INDENT)
@@ -743,7 +735,9 @@ def generate_cpp_parsefun_wrappers_string(
     return code
 
 
-def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args, report_tolerated=False):
+def generate_cpp_parsefun_wrappers_file(
+    parsefuns, *extra_args, report_tolerated=False, default_tape=False
+):
     # the parsing options (read below) must be among the arguments; for
     # report_tolerated, see generate_cpp_parsefun_wrappers_string
     assert any(arg[1] == "parse_opts" for arg in extra_args)
@@ -756,8 +750,10 @@ def generate_cpp_parsefun_wrappers_file(parsefuns, *extra_args, report_tolerated
     code = ""
     for entry in parsefuns:
         outer, inner = _split_wrapper_names(entry)
-        code += cpp.line(f"py::dict {outer}_file(std::string& filename{args_str}) {{")
+        code += cpp.line(f"py::list {outer}_file(std::string& filename{args_str}) {{")
         code += cpp.statement("cpp_gc_pause cpp_gc_guard", cpp.INDENT)
+        if default_tape:
+            code += cpp.indent_code(_default_tape_code(), cpp.INDENT)
         # by default, the whole file is read into memory, which makes
         # repositioning in the stream (at section starts and in lookaheads)
         # cheap; with load_file_into_memory=false, the file is read through
@@ -813,7 +809,7 @@ def _parsefun_forward_decl(istream_name):
 
 
 def generate_all_cpp_parsefuns_code(
-    recipes, module_name, shared_registry=None, forward_decls=None
+    recipes, module_name, shared_registry=None, forward_decls=None, tape_structure=None
 ):
     """Generate all per-(mf, mt) parse functions plus wrappers, master
     dispatcher, and pybind glue for one ENDF flavor.
@@ -879,6 +875,10 @@ def generate_all_cpp_parsefuns_code(
     # it is called from Python (via the wrappers below), so no wrappers
     # are generated for the parse functions of the single sections
     master_parsefun_code = generate_master_parsefun("parse_endf_istream", recipefuns)
+    # the tape structure of the flavor if it is not that of ENDF-6, the
+    # default of the options
+    tape_code = tape_structure_code(tape_structure, "ParsingOptions")
+    default_tape = tape_code != ""
     # the mismatches tolerated are appended to the list given as the
     # argument `tolerated` (see cpp_report_tolerated)
     parsefun_wrappers_code1 = generate_cpp_parsefun_wrappers_string(
@@ -887,6 +887,7 @@ def generate_all_cpp_parsefuns_code(
         ("py::object", "include"),
         ("ParsingOptions", "parse_opts"),
         report_tolerated=True,
+        default_tape=default_tape,
     )
     parsefun_wrappers_code2 = generate_cpp_parsefun_wrappers_file(
         ["parse_endf"],
@@ -894,6 +895,7 @@ def generate_all_cpp_parsefuns_code(
         ("py::object", "include"),
         ("ParsingOptions", "parse_opts"),
         report_tolerated=True,
+        default_tape=default_tape,
     )
     pybind_glue = ""
     pybind_glue += cpp_boilerplate.register_cpp_parsefuns(
@@ -915,6 +917,7 @@ def generate_all_cpp_parsefuns_code(
 
     all_parsefun_codes = (
         parsefuns_code
+        + tape_code
         + master_parsefun_code
         + parsefun_wrappers_code1
         + parsefun_wrappers_code2

@@ -101,10 +101,6 @@ KNOWN_DIFFERENCES = {
     # of a section read verbatim: its fields 1-6
     "pu:send_wrong_mf": ["full/strict"],
     "pu:send_c2": _VERBATIM,
-    # two materials of different MAT numbers in one parse with
-    # ignore_send_records: EndfParserPy rejects the second one,
-    # EndfParserCpp keeps the last of the sections with equal MF/MT
-    "tape:cu_zn": [f"{filt}/ignore_send_records" for filt in FILTERS],
 }
 
 # the tapes of several materials, which are valid tapes (check_framing)
@@ -283,16 +279,7 @@ def test_framing_check_agrees_with_full_parse(results):
 
 
 # the inputs for which the writers give different output
-KNOWN_WRITE_DIFFERENCES = {
-    # EndfParserCpp writes a FEND record (with the MAT number of the tape
-    # head) before the MEND record also if no section follows the tape
-    # head; EndfParserPy writes none
-    "tpid_only",
-    "nothing_included",
-    # EndfParserPy rejects a section whose MF differs from its key,
-    # EndfParserCpp writes it with the MF of the section
-    "wrong_mf_key",
-}
+KNOWN_WRITE_DIFFERENCES = set()
 
 
 def test_writers_agree(results):

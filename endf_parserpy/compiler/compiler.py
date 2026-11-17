@@ -12,9 +12,11 @@
 import os
 from endf_parserpy.endf_recipes import (
     get_recipe_dict,
+    get_tape_structure,
     list_endf_build_targets,
     cpp_module_basename,
 )
+from endf_parserpy.utils.tape_structure import TapeStructure, check_recipes
 from .endf2cpp import (
     generate_cpp_module_code,
     generate_cpp_flavor_code,
@@ -42,14 +44,27 @@ def is_shared_chunk_filename(basename):
 
 
 def create_cpp_parser_module(
-    cpp_module_file, module_name, recipes=None, overwrite=False, shared_registry=None
+    cpp_module_file,
+    module_name,
+    recipes=None,
+    overwrite=False,
+    shared_registry=None,
+    tape_structure=None,
 ):
     if not overwrite and os.path.exists(cpp_module_file):
         raise FileExistsError(f"file {cpp_module_file} exists already!")
     if recipes is None:
         recipes = get_recipe_dict("endf6-ext")
+    # the tape structure of the recipes (ENDF-6 by default), which the
+    # functions of the module use if their options give none; the recipes
+    # must agree with it on the SEND records
+    tape_structure = TapeStructure.from_spec(tape_structure)
+    check_recipes(recipes, tape_structure)
     cpp_module_code = generate_cpp_module_code(
-        recipes, module_name, shared_registry=shared_registry
+        recipes,
+        module_name,
+        shared_registry=shared_registry,
+        tape_structure=tape_structure,
     )
     with open(cpp_module_file, "w") as f:
         f.write(cpp_module_code)
@@ -65,7 +80,12 @@ def create_cmake_file(project_path, module_name, overwrite=False):
 
 
 def create_project_files(
-    project_path, module_name, recipes=None, path_exist_ok=False, overwrite_files=False
+    project_path,
+    module_name,
+    recipes=None,
+    path_exist_ok=False,
+    overwrite_files=False,
+    tape_structure=None,
 ):
     if recipes is None:
         recipes = get_recipe_dict("endf6-ext")
@@ -79,7 +99,11 @@ def create_project_files(
     cmake_file = os.path.join(project_path, "CMakeLists.txt")
 
     create_cpp_parser_module(
-        cpp_module_file, module_name, recipes, overwrite=overwrite_files
+        cpp_module_file,
+        module_name,
+        recipes,
+        overwrite=overwrite_files,
+        tape_structure=tape_structure,
     )
     create_cmake_file(project_path, module_name, overwrite=overwrite_files)
 
@@ -187,7 +211,10 @@ def _prepare_cpp_parsers_subpackage(
         print(f"---- compilation of {endf_flavor} ----")
         recipe = get_recipe_dict(endf_flavor)
         code = generate_cpp_flavor_code(
-            recipe, entry_name, shared_registry=shared_registry
+            recipe,
+            entry_name,
+            shared_registry=shared_registry,
+            tape_structure=get_tape_structure(endf_flavor),
         )
         _write(filename, code)
     _write(

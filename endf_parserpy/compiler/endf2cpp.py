@@ -17,7 +17,9 @@ from .code_generator_writing import generate_all_cpp_writefuns_code
 from hashlib import md5
 
 
-def generate_cpp_module_code(recipes, module_name, shared_registry=None):
+def generate_cpp_module_code(
+    recipes, module_name, shared_registry=None, tape_structure=None
+):
     """Emit one ENDF flavor's pybind11 module source.
 
     When ``shared_registry`` is provided, the heavy per-(mf, mt) parse and
@@ -30,10 +32,16 @@ def generate_cpp_module_code(recipes, module_name, shared_registry=None):
     compiled once (see :func:`generate_shared_cpp_code`).
     """
     parsefuns_code, parsefuns_pybind_glue = generate_all_cpp_parsefuns_code(
-        recipes, module_name, shared_registry=shared_registry
+        recipes,
+        module_name,
+        shared_registry=shared_registry,
+        tape_structure=tape_structure,
     )
     writefuns_code, writefuns_pybind_glue = generate_all_cpp_writefuns_code(
-        recipes, module_name, shared_registry=shared_registry
+        recipes,
+        module_name,
+        shared_registry=shared_registry,
+        tape_structure=tape_structure,
     )
 
     funs_code = parsefuns_code + writefuns_code
@@ -58,7 +66,9 @@ def flavor_namespace(entry_name):
     return f"endf_flavor_{entry_name}"
 
 
-def _generate_flavor_parts(recipes, entry_name, shared_registry=None):
+def _generate_flavor_parts(
+    recipes, entry_name, shared_registry=None, tape_structure=None
+):
     # the declarations of the shared functions that the flavor calls,
     # which must stay in the global namespace, and the code of the
     # flavor (wrappers, dispatchers and the registration of its
@@ -69,12 +79,14 @@ def _generate_flavor_parts(recipes, entry_name, shared_registry=None):
         entry_name,
         shared_registry=shared_registry,
         forward_decls=forward_decls,
+        tape_structure=tape_structure,
     )
     writefuns_code, writefuns_pybind_glue = generate_all_cpp_writefuns_code(
         recipes,
         entry_name,
         shared_registry=shared_registry,
         forward_decls=forward_decls,
+        tape_structure=tape_structure,
     )
     pybind_glue = parsefuns_pybind_glue + writefuns_pybind_glue
     namespace = flavor_namespace(entry_name)
@@ -101,7 +113,9 @@ def _with_md5_header(code, function_name):
     return header + code
 
 
-def generate_cpp_flavor_code(recipes, entry_name, shared_registry=None):
+def generate_cpp_flavor_code(
+    recipes, entry_name, shared_registry=None, tape_structure=None
+):
     """Emit the translation unit of one flavor of the module with all
     flavors.
 
@@ -114,7 +128,7 @@ def generate_cpp_flavor_code(recipes, entry_name, shared_registry=None):
     code of :func:`generate_cpp_flavors_module_code` calls it.
     """
     forward_decls, flavor_code = _generate_flavor_parts(
-        recipes, entry_name, shared_registry
+        recipes, entry_name, shared_registry, tape_structure
     )
     code = cpp_boilerplate.module_header() + forward_decls + flavor_code
     return _with_md5_header(code, "generate_cpp_flavor_code")

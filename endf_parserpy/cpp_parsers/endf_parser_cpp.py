@@ -14,8 +14,16 @@ import importlib
 import os
 from endf_parserpy.endf_recipes import (
     cpp_module_basename,
+    get_tape_structure,
     list_endf_flavors,
     resolve_endf_flavor,
+)
+from endf_parserpy.utils.tape_structure import (
+    check_material,
+    dict_form_keys,
+    is_list_form,
+    to_dict_form,
+    to_list_form,
 )
 from endf_parserpy.utils.accessories import EndfDict
 from endf_parserpy.utils.tolerated_mismatches import (
@@ -29,6 +37,7 @@ from ..endf_parser_base import (
     EndfParserBase,
     _record_init_kwargs,
     _check_array_type,
+    _check_material_form,
     _check_numpy_available,
     _write_via_temporary_file,
 )
@@ -100,6 +109,7 @@ class EndfParserCpp(EndfParserBase):
         prefer_noexp=False,
         endf_format="endf6-ext",
         standard_form_on_tie=False,
+        material_form=None,
     ):
         """Initializaton of options for parsing and writing ENDF-6 data.
 
@@ -310,9 +320,19 @@ class EndfParserCpp(EndfParserBase):
             The result is the same in both cases. Strings passed to
             :func:`parse` are always parsed in place. The Python parser
             always reads the complete file. *(parsing, C++ only)*
+        material_form : Union[None, str]
+            The form of a material returned by :func:`parse` and
+            :func:`parsefile`: ``"dict"``, ``"list"`` or ``None``
+            (default), the form of the tape structure of the flavor (see
+            the same argument of :class:`~endf_parserpy.EndfParserPy`).
+            The tape structure is that of the flavor
+            (:func:`~endf_parserpy.endf_recipes.get_tape_structure`).
+            *(parsing)*
         """
         _check_array_type(array_type)
         _check_numpy_available(array_type)
+        _check_material_form(material_form)
+        self.material_form = material_form
         self.read_opts = {
             "ignore_number_mismatch": ignore_number_mismatch,
             "ignore_zero_mismatch": ignore_zero_mismatch,
@@ -372,6 +392,12 @@ class EndfParserCpp(EndfParserBase):
                 + "during package installation. Please use the "
                 + "EndfParserPy class instead."
             ) from exc
+        # the tape structure of the flavor, given to the functions of the
+        # C++ module with the options (see TapeStructure)
+        self.tape_structure = get_tape_structure(resolved_format)
+        tape_opts = {"tape_structure": self.tape_structure.cpp_options()}
+        self._cpp_read_opts = dict(self.read_opts, **tape_opts)
+        self._cpp_write_opts = dict(self.write_opts, **tape_opts)
 
     def parse(self, lines, exclude=None, include=None):
         """Parse ENDF-6 formatted data.
@@ -409,10 +435,12 @@ class EndfParserCpp(EndfParserBase):
             lines = "\n".join(lines)
         # (the list is created before the call, see parsefile)
         tolerated = []
-        result = self._parse_endf(lines, exclude, include, self.read_opts, tolerated)
+        result = self._parse_endf(
+            lines, exclude, include, self._cpp_read_opts, tolerated
+        )
         if tolerated:
             _warn_after_parse(tolerated, None)
-        return result
+        return self._public_form(result)
 
     def _parse_and_collect(self, lines, exclude=None, include=None):
         """Parse as :func:`parse` without issuing the warning about the
@@ -423,8 +451,34 @@ class EndfParserCpp(EndfParserBase):
         if isinstance(lines, list):
             lines = "\n".join(lines)
         tolerated = []
-        result = self._parse_endf(lines, exclude, include, self.read_opts, tolerated)
-        return result, _tolerated_mismatches(tolerated)
+        result = self._parse_endf(
+            lines, exclude, include, self._cpp_read_opts, tolerated
+        )
+        return self._public_form(result), _tolerated_mismatches(tolerated)
+
+    def _public_form(self, material):
+        """The material returned by the C++ module (the list of its
+        sections) in the form asked for (see ``material_form``)."""
+        if self._public_material_form() == "dict":
+            return to_dict_form(material)
+        return material
+
+    def _material_to_write(self, endf_dict):
+        """Check a material before it is written (see check_material) and
+        return it as given to the C++ module: a material in the nested form
+        as a dictionary, whose keys label its sections, a material in the
+        list form as a list."""
+        if isinstance(endf_dict, EndfDict):
+            endf_dict = endf_dict.unwrap()
+        if is_list_form(endf_dict):
+            endf_dict = [
+                s.unwrap() if isinstance(s, EndfDict) else s for s in endf_dict
+            ]
+            check_material(endf_dict, self.tape_structure, True)
+            return endf_dict
+        sections = to_list_form(endf_dict)
+        check_material(sections, self.tape_structure, False, dict_form_keys(endf_dict))
+        return endf_dict
 
     def parsefile(self, filename, exclude=None, include=None):
         """Parse ENDF-6 formatted data stored in a file.
@@ -485,11 +539,11 @@ class EndfParserCpp(EndfParserBase):
         # was tolerated.
         tolerated = []
         result = self._parse_endf_file(
-            str(filename), exclude, include, self.read_opts, tolerated
+            str(filename), exclude, include, self._cpp_read_opts, tolerated
         )
         if tolerated:
             _warn_after_parse(tolerated, str(filename))
-        return result
+        return self._public_form(result)
 
     def write(self, endf_dict, exclude=None, include=None):
         """Convert data into the ENDF-6 format.
@@ -502,9 +556,8 @@ class EndfParserCpp(EndfParserBase):
         list[str]
             List of lines with the ENDF-6 formatted data.
         """
-        if isinstance(endf_dict, EndfDict):
-            endf_dict = endf_dict.unwrap()
-        cont = self._write_endf(endf_dict, exclude, include, self.write_opts)
+        endf_dict = self._material_to_write(endf_dict)
+        cont = self._write_endf(endf_dict, exclude, include, self._cpp_write_opts)
         lines = cont.split("\n")
         if lines[-1] == "":
             lines.pop()
@@ -554,8 +607,7 @@ class EndfParserCpp(EndfParserBase):
         owner and links); a symbolic link is followed, as by
         :func:`open`.
         """
-        if isinstance(endf_dict, EndfDict):
-            endf_dict = endf_dict.unwrap()
+        endf_dict = self._material_to_write(endf_dict)
         if os.path.exists(filename) and not overwrite:
             raise FileExistsError(
                 f"File `{filename}` already exists. "
@@ -565,7 +617,7 @@ class EndfParserCpp(EndfParserBase):
         _write_via_temporary_file(
             filename,
             lambda path: self._write_endf_file(
-                path, endf_dict, exclude, include, self.write_opts
+                path, endf_dict, exclude, include, self._cpp_write_opts
             ),
         )
 

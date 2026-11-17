@@ -691,4 +691,140 @@ inline bool should_parse_section(int mf, int mt, py::object& exclude, py::object
   }
 }
 
+
+// The tape structure of a flavor (see endf_parserpy.utils.tape_structure):
+// the rules for the end records, the order and the repetition of the
+// sections of a material, resolved by MF (mf_flags) with the exceptions
+// of single sections (sections, sorted by 1000 * MF + MT). It is passed
+// with the options of the parsing and writing functions (key
+// "tape_structure", see cpp_load_tape_rules); without it, the rules are
+// those of ENDF-6.
+const unsigned char CPP_TAPE_SEND = 1;
+const unsigned char CPP_TAPE_FEND = 2;
+const unsigned char CPP_TAPE_REPEAT = 4;
+const unsigned char CPP_TAPE_MT_ASC = 8;
+const unsigned char CPP_TAPE_HAS_SECTIONS = 16;
+const unsigned char CPP_TAPE_ENDF6_FLAGS = 1 | 2 | 8;
+
+struct TapeRules {
+  unsigned char mf_flags[100];
+  std::vector<std::pair<int, unsigned char>> sections;
+  unsigned char default_flags;
+  bool mf_asc;
+  bool blank_fill;
+  // all rules those of ENDF-6
+  bool endf6;
+  // whether a repetition must be found apart from the order (free order
+  // and a section that must not repeat)
+  bool check_repeat;
+};
+
+
+inline TapeRules cpp_endf6_tape_rules() {
+  TapeRules t;
+  for (int i = 0; i < 100; i++) t.mf_flags[i] = CPP_TAPE_ENDF6_FLAGS;
+  t.default_flags = CPP_TAPE_ENDF6_FLAGS;
+  t.mf_asc = true;
+  t.blank_fill = false;
+  t.endf6 = true;
+  t.check_repeat = false;
+  return t;
+}
+
+
+// the flags of the section MF/MT (bits CPP_TAPE_SEND and CPP_TAPE_REPEAT
+// for a section with rules of its own)
+inline unsigned char cpp_tape_flags(const TapeRules& t, int mf, int mt) {
+  if (mf < 0 || mf >= 100) return t.default_flags;
+  unsigned char f = t.mf_flags[mf];
+  if (f & CPP_TAPE_HAS_SECTIONS) {
+    int key = 1000 * mf + mt;
+    auto it = std::lower_bound(
+      t.sections.begin(), t.sections.end(), std::make_pair(key, (unsigned char) 0)
+    );
+    if (it != t.sections.end() && it->first == key) return it->second;
+  }
+  return f;
+}
+
+inline bool cpp_tape_send(const TapeRules& t, int mf, int mt) {
+  return (cpp_tape_flags(t, mf, mt) & CPP_TAPE_SEND) != 0;
+}
+
+inline bool cpp_tape_repeat(const TapeRules& t, int mf, int mt) {
+  return (cpp_tape_flags(t, mf, mt) & CPP_TAPE_REPEAT) != 0;
+}
+
+inline bool cpp_tape_fend(const TapeRules& t, int mf) {
+  unsigned char f = (mf < 0 || mf >= 100) ? t.default_flags : t.mf_flags[mf];
+  return (f & CPP_TAPE_FEND) != 0;
+}
+
+inline bool cpp_tape_mt_asc(const TapeRules& t, int mf) {
+  unsigned char f = (mf < 0 || mf >= 100) ? t.default_flags : t.mf_flags[mf];
+  return (f & CPP_TAPE_MT_ASC) != 0;
+}
+
+
+// The rules from the form of TapeStructure.cpp_options(): a tuple
+// (mf_flags as 100 bytes, ((1000 * MF + MT, flags), ...), mf_ascending,
+// blank_fill, default_flags).
+inline void cpp_load_tape_rules(py::handle obj, TapeRules& t) {
+  py::tuple tup = py::reinterpret_borrow<py::tuple>(obj);
+  if (! py::isinstance<py::tuple>(obj) || tup.size() != 5) {
+    throw std::runtime_error(
+      "the option `tape_structure` must be the result of TapeStructure.cpp_options()"
+    );
+  }
+  std::string flags = py::cast<std::string>(py::bytes(tup[0]));
+  if (flags.size() != 100) {
+    throw std::runtime_error("the option `tape_structure` must have 100 flags of the MF");
+  }
+  for (int i = 0; i < 100; i++) t.mf_flags[i] = static_cast<unsigned char>(flags[i]);
+  t.sections.clear();
+  for (auto item : py::reinterpret_borrow<py::tuple>(tup[1])) {
+    py::tuple pair = py::reinterpret_borrow<py::tuple>(item);
+    t.sections.push_back(std::make_pair(
+      py::cast<int>(pair[0]), static_cast<unsigned char>(py::cast<int>(pair[1]))
+    ));
+  }
+  std::sort(t.sections.begin(), t.sections.end());
+  t.mf_asc = py::cast<bool>(tup[2]);
+  t.blank_fill = py::cast<bool>(tup[3]);
+  t.default_flags = static_cast<unsigned char>(py::cast<int>(tup[4]));
+  bool endf6 = t.sections.empty() && t.mf_asc && ! t.blank_fill
+    && t.default_flags == CPP_TAPE_ENDF6_FLAGS;
+  bool all_asc = t.mf_asc;
+  bool any_unique = false;
+  for (int i = 0; i < 100; i++) {
+    if (t.mf_flags[i] != CPP_TAPE_ENDF6_FLAGS) endf6 = false;
+    if (! (t.mf_flags[i] & CPP_TAPE_MT_ASC)) all_asc = false;
+    if (! (t.mf_flags[i] & CPP_TAPE_REPEAT)) any_unique = true;
+  }
+  for (const auto& sec : t.sections) {
+    if (! (sec.second & CPP_TAPE_REPEAT)) any_unique = true;
+  }
+  t.endf6 = endf6;
+  t.check_repeat = ! endf6 && ! all_asc && any_unique;
+}
+
+
+// The sections MF/MT already found in a material, for the check of their
+// repetition (see TapeRules::check_repeat): a set of 100 x 1000 bits,
+// allocated when it is first used.
+struct CppSeenSections {
+  std::vector<unsigned char> bits;
+  void clear() { if (! bits.empty()) std::fill(bits.begin(), bits.end(), 0); }
+  // whether the section was found before; it is added
+  bool test_and_set(int mf, int mt) {
+    if (mf < 0 || mf >= 100 || mt < 0 || mt >= 1000) return false;
+    if (bits.empty()) bits.assign(100 * 1000 / 8, 0);
+    int k = 1000 * mf + mt;
+    unsigned char mask = static_cast<unsigned char>(1u << (k % 8));
+    bool found = (bits[k / 8] & mask) != 0;
+    bits[k / 8] |= mask;
+    return found;
+  }
+};
+
 #endif // MODULE_HEADER_HPP

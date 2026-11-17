@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2026/11/02
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -339,29 +339,14 @@ def get_mat_from_mfmt_section(mfmt_dict):
 
 
 def generate_section_writing_code(funname, write_opts):
+    # the section mt_dict (the MF and MT numbers of a parsed section are
+    # set, see cpp_material_sections)
     code = cpp.ifelse(
-        f"py::isinstance<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)])",
-        cpp.concat(
-            [
-                # inject MF and MT number into Pyton dictionary if missing
-                cpp.pureif(
-                    cpp.logical_not('mt_dict.contains("MF")'),
-                    cpp.statement('mt_dict["MF"] = mf'),
-                ),
-                cpp.pureif(
-                    cpp.logical_not('mt_dict.contains("MT")'),
-                    cpp.statement('mt_dict["MT"] = mt'),
-                ),
-                # call the mf/mt section specific write function
-                cpp.statement(
-                    f"{funname}_ostream(cont, py::cast<py::dict>(endf_dict[py::cast(mf)][py::cast(mt)]), {write_opts})"
-                ),
-            ]
+        "py::isinstance<py::dict>(mt_dict)",
+        # call the mf/mt section specific write function
+        cpp.statement(
+            f"{funname}_ostream(cont, py::cast<py::dict>(mt_dict), {write_opts})"
         ),
-        write_section_verbatim(
-            "cont",
-            "py::cast<py::list>(endf_dict[py::cast(mf)][py::cast(mt)])",
-            "write_opts",
-        ),
+        write_section_verbatim("cont", "py::cast<py::list>(mt_dict)", "write_opts"),
     )
     return code

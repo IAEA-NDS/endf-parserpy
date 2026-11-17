@@ -27,7 +27,8 @@ toolchain used for some builds.
 
 from pathlib import Path
 import pytest
-from endf_parserpy import EndfParserCpp, EndfParserPy
+
+from endf_parserpy import EndfParserCpp, EndfParserPy, to_dict_form
 from endf_parserpy.interpreter.custom_exceptions import InvalidCharacterError
 from endf_parserpy.tape import parse_tape_file, write_tape_file
 
@@ -222,7 +223,9 @@ def test_cpp_module_accepts_bytes_and_str():
     from endf_parserpy.cpp_parsers._flavors.endf6_ext import parse_endf
 
     data = cp1252_bytes()
-    res_bytes = parse_endf(data, parse_opts={})
-    res_str = parse_endf(data.decode("latin-1"), parse_opts={})
+    # the functions of the C++ module return a material as the list of
+    # its sections
+    res_bytes = to_dict_form(parse_endf(data, parse_opts={}))
+    res_str = to_dict_form(parse_endf(data.decode("latin-1"), parse_opts={}))
     assert res_bytes[1][451]["ALAB"] == " BNL     \x92 "
     assert res_bytes == res_str

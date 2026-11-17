@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -49,6 +49,14 @@ def _record_init_kwargs(init):
         return init(self, *args, **kwargs)
 
     return wrapper
+
+
+def _check_material_form(material_form):
+    """Reject unknown ``material_form`` values."""
+    if material_form not in (None, "dict", "list"):
+        raise ValueError(
+            'material_form must be None, "dict" or "list", not ' f"{material_form!r}"
+        )
 
 
 def _check_array_type(array_type):
@@ -169,6 +177,22 @@ class EndfParserBase(ABC):
     unpickling. A subclass must decorate its ``__init__`` with
     :func:`_record_init_kwargs` for this to work.
     """
+
+    # The tape structure of the flavor of the parser (see
+    # endf_parserpy.TapeStructure) and the public form of a material that
+    # the parser was asked for (None: the form of the tape structure); a
+    # parser derived from this class has the structure of ENDF-6 unless it
+    # sets these attributes.
+    tape_structure = None
+    material_form = None
+
+    def _public_material_form(self):
+        """The form in which a material is returned: ``"dict"`` or
+        ``"list"``."""
+        if self.material_form is not None:
+            return self.material_form
+        ts = self.tape_structure
+        return "dict" if ts is None else ts.material_form
 
     def __getstate__(self):
         """Return the picklable state of the parser: its constructor arguments.

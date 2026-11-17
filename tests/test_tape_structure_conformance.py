@@ -98,13 +98,10 @@ KNOWN_DIFFERENCES = {
     # of a section read verbatim: its fields 1-6
     "pu:send_wrong_mf": ["full/strict"],
     "pu:send_c2": _VERBATIM,
-    # two materials of different MAT numbers in one parse: EndfParserPy
-    # merges the sections of equal MF/MT (and fails to parse them, or,
-    # with include, keeps the lines of both), EndfParserCpp keeps the last
-    # one with ignore_send_records and rejects the second material
-    # without it
-    "tape:cu_zn": [f"{filt}/ignore_send_records" for filt in FILTERS]
-    + ["include/strict"],
+    # two materials of different MAT numbers in one parse with
+    # ignore_send_records: EndfParserPy rejects the second one,
+    # EndfParserCpp keeps the last of the sections with equal MF/MT
+    "tape:cu_zn": [f"{filt}/ignore_send_records" for filt in FILTERS],
 }
 
 # the tapes of several materials, which are valid tapes (check_framing)

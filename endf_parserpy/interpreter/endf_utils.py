@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/11
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -598,9 +598,41 @@ def _get_linenum_strings(n):
 
 
 def split_sections(lines, read_opts=None, line_numbers=None):
+    # The sections of the lines as the nested dictionary {MF: {MT: lines}};
+    # the lines of the sections with the same MF/MT numbers (e.g. of
+    # several materials with ignore_send_records) are joined. The checks
+    # are those of split_material with the tape structure of ENDF-6.
     # line_numbers: if a dictionary, it receives the indices in lines of
     # the lines of each section, as lists in the same nesting by MF and MT
     # as the lines of the sections in the result
+    numbers = [] if line_numbers is not None else None
+    mfdic = {}
+    sections = split_material(lines, read_opts, numbers)
+    for k, (mf, mt, seclines) in enumerate(sections):
+        mfdic.setdefault(mf, {}).setdefault(mt, []).extend(seclines)
+        if line_numbers is not None:
+            line_numbers.setdefault(mf, {}).setdefault(mt, []).extend(numbers[k])
+    return mfdic
+
+
+def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None):
+    """Divide the lines of a material into its sections.
+
+    Return the list of the sections ``(MF, MT, lines)`` in the order of
+    the lines, the tape head (TPID) first; the lines of a section are
+    those of its records without its end record. The framing records
+    (SEND, FEND, MEND, TEND) are checked by the rules of
+    ``tape_structure`` (a :class:`~endf_parserpy.TapeStructure`, ENDF-6 by
+    default): their position, unless ``ignore_send_records``, the order of
+    the sections and their repetition. Only one material can be read. If
+    ``line_numbers`` is a list, it receives the indices in ``lines`` of
+    the lines of each section, as one list per section.
+    """
+    from endf_parserpy.utils.tape_structure import ENDF6
+
+    ts = ENDF6 if tape_structure is None else tape_structure
+    endf6 = ts.is_endf6
+
     def make_control_error_message(sectype, secnum, expsecnum, ofs):
         return (
             f"Currently in {sectype}={expsecnum} section but encountered "
@@ -637,6 +669,17 @@ def split_sections(lines, read_opts=None, line_numbers=None):
             + "records are missing"
         )
 
+    def send_hint(mf, mt):
+        # the rule behind a missing SEND record, if not that of ENDF-6
+        if endf6:
+            return ""
+        return f" The tape structure requires a SEND record after MF={mf}/MT={mt}."
+
+    def fend_hint(mf):
+        if endf6:
+            return ""
+        return f" The tape structure requires a FEND record after MF={mf}."
+
     ignore_blank_lines = read_opts.get("ignore_blank_lines", False)
     ignore_send_records = read_opts.get("ignore_send_records", False)
     ignore_missing_tpid = read_opts.get("ignore_missing_tpid", False)
@@ -647,7 +690,7 @@ def split_sections(lines, read_opts=None, line_numbers=None):
         if not ignore_blank_lines:
             raise BlankLineError(f"Line {ofs} is a blank line.")
         ofs += 1
-    mfdic = {}
+    sections = []
     if not accept_non_ascii:
         check_line_ascii(lines[ofs], ofs + 1, width)
     th = read_ctrl(lines[ofs], read_opts=read_opts)
@@ -668,29 +711,36 @@ def split_sections(lines, read_opts=None, line_numbers=None):
             )
         ofs -= 1
     else:
-        cursec = mfdic.setdefault(th_mf, {}).setdefault(th_mt, [])
-        cursec.append(lines[0])
+        # (the first line, also after blank lines, as before)
+        sections.append((th_mf, th_mt, [lines[0]]))
         if line_numbers is not None:
-            line_numbers.setdefault(th_mf, {}).setdefault(th_mt, []).append(ofs)
+            line_numbers.append([ofs])
 
     # sec_levels: TAPE=0, MAT=1, MF=2, MT=3
     sec_level = 0
     last_mat = None
     last_mf = None
     last_mt = None
-    # the list of lines of the MF/MT section of the previous regular record
+    # the list of lines of the section of the previous regular record
     regular_sec = None
+    regular_nums = None
     regular_mf = None
     regular_mt = None
     # the MAT/MF/MT numbers of the last section, for the check of their
     # order: within a material, the sections are in ascending order of MF,
-    # and of MT within an MF, and an MF ends with its FEND record. A
-    # material ends with its MEND record or, with ignore_send_records,
-    # which does not check the position of the end records, where the MAT
-    # number changes.
+    # and of MT within an MF, and an MF ends with its FEND record (the
+    # order is free if the tape structure says so). A material ends with
+    # its MEND record or, with ignore_send_records, which does not check
+    # the position of the end records, where the MAT number changes.
     order_mat = None
     order_mf = None
     order_mt = None
+    # whether a material has ended (by its MEND record); a section after
+    # it would start a second material, which is not read
+    material_ended = False
+    # the labels (MF, MT) of the sections of the material, if a repetition
+    # is checked apart from the order (free order)
+    seen = None if endf6 else set()
     # whether a record that is not one of a section precedes the current
     # one; a record of a section after it starts a new section
     separated = True
@@ -732,14 +782,27 @@ def split_sections(lines, read_opts=None, line_numbers=None):
         is_regular_record = mat != 0 and mf != 0 and mt != 0
         # consistency checks for regular records
         if is_regular_record and not ignore_send_records:
+            if (
+                not endf6
+                and sec_level >= 3
+                and (last_mt != mt or last_mf != mf or last_mat != mat)
+                and not ts.send(last_mf, last_mt)
+            ):
+                # the section ends without a SEND record
+                sec_level = 2
+            if not endf6 and sec_level == 2 and last_mf != mf and not ts.fend(last_mf):
+                # the run of the MF ends without a FEND record
+                sec_level = 1
             if sec_level >= 3 and last_mt != mt:
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MT", mt, last_mt, ofs)
+                    + send_hint(last_mf, last_mt)
                     + long_line_hint(line)
                 )
             if sec_level >= 2 and last_mf != mf:
                 raise UnexpectedControlRecordError(
                     make_control_error_message("MF", mf, last_mf, ofs)
+                    + (fend_hint(last_mf) if sec_level == 2 else "")
                     + long_line_hint(line)
                 )
             if sec_level >= 1 and last_mat != mat:
@@ -752,36 +815,78 @@ def split_sections(lines, read_opts=None, line_numbers=None):
         if is_regular_record:
             if separated or mf != regular_mf or mt != regular_mt:
                 # a new section: the order of the sections
-                if (
-                    order_mat == mat
-                    and (ignore_send_records or sec_level != 0)
-                    and (
-                        mf < order_mf
-                        or (mf == order_mf and mt <= order_mt)
-                        or (
-                            mf == order_mf
-                            and sec_level == 1
-                            and not ignore_send_records
-                        )
-                    )
-                ):
-                    after_fend = sec_level == 1 and not ignore_send_records
+                if material_ended and not ignore_send_records:
                     raise UnexpectedControlRecordError(
-                        make_order_error_message(mat, mf, mt, after_fend, ofs)
+                        "No MF/MT section allowed after the MEND record: parse "
+                        + "reads one material; use parse_tape for a tape of "
+                        + f"several materials, in control record of line {ofs}."
                         + long_line_hint(line)
                     )
+                if ignore_send_records and order_mat is not None and mat != order_mat:
+                    # without the end records, a material ends where the
+                    # MAT number changes
+                    raise UnexpectedControlRecordError(
+                        f"A section of MAT={mat} follows the sections of "
+                        + f"MAT={order_mat}: parse reads one material; use "
+                        + "parse_tape for a tape of several materials, in "
+                        + f"control record of line {ofs}."
+                        + long_line_hint(line)
+                    )
+                if order_mat == mat and (ignore_send_records or sec_level != 0):
+                    after_fend = sec_level == 1 and not ignore_send_records
+                    # under the rules of ENDF-6, the sections are in
+                    # strictly ascending order of MF and MT, so that a
+                    # section cannot repeat
+                    if endf6:
+                        wrong_order = (
+                            mf < order_mf
+                            or (mf == order_mf and mt <= order_mt)
+                            or (mf == order_mf and after_fend)
+                        )
+                    else:
+                        wrong_order = ts.mf_ascending and (
+                            mf < order_mf or (mf == order_mf and after_fend)
+                        )
+                        if (
+                            not wrong_order
+                            and mf == order_mf
+                            and not after_fend
+                            and ts.mt_ascending(mf)
+                        ):
+                            wrong_order = mt < order_mt or (
+                                mt == order_mt and not ts.repeat(mf, mt)
+                            )
+                    if wrong_order:
+                        raise UnexpectedControlRecordError(
+                            make_order_error_message(mat, mf, mt, after_fend, ofs)
+                            + long_line_hint(line)
+                        )
+                    if seen is not None and (mf, mt) in seen and not ts.repeat(mf, mt):
+                        raise UnexpectedControlRecordError(
+                            f"The section MF={mf}/MT={mt} of MAT={mat} occurs a "
+                            + "second time in the material, which the tape "
+                            + "structure does not allow, in control record of "
+                            + f"line {ofs}."
+                            + long_line_hint(line)
+                        )
+                elif seen is not None:
+                    seen.clear()
+                if seen is not None:
+                    seen.add((mf, mt))
                 order_mat = mat
                 order_mf = mf
                 order_mt = mt
                 separated = False
-            if mf != regular_mf or mt != regular_mt or regular_sec is None:
-                regular_sec = mfdic.setdefault(mf, {}).setdefault(mt, [])
+                regular_sec = []
+                regular_nums = [] if line_numbers is not None else None
+                sections.append((mf, mt, regular_sec))
+                if line_numbers is not None:
+                    line_numbers.append(regular_nums)
                 regular_mf = mf
                 regular_mt = mt
-            cursec = regular_sec
-            cursec.append(line)
+            regular_sec.append(line)
             if line_numbers is not None:
-                line_numbers.setdefault(mf, {}).setdefault(mt, []).append(ofs)
+                regular_nums.append(ofs)
             sec_level = 3
             last_mat = mat
             last_mf = mf
@@ -798,6 +903,30 @@ def split_sections(lines, read_opts=None, line_numbers=None):
             continue
 
         # it is a section end record (SEND, FEND, MEND or TEND)
+        if not endf6:
+            if sec_level == 3 and not ts.send(last_mf, last_mt):
+                if mf != 0 and mt == 0:
+                    raise UnexpectedControlRecordError(
+                        f"Unexpected SEND record after section MF={last_mf}/"
+                        + f"MT={last_mt} of MAT={last_mat}: the tape structure "
+                        + "has no SEND record after this section, in control "
+                        + f"record of line {ofs}."
+                        + long_line_hint(line)
+                    )
+                # the section ends without a SEND record
+                sec_level = 2
+            if sec_level == 2 and not ts.fend(last_mf):
+                if mat == last_mat and mf == 0 and mt == 0:
+                    raise UnexpectedControlRecordError(
+                        f"Unexpected FEND record after MF={last_mf} of "
+                        + f"MAT={last_mat}: the tape structure has no FEND record "
+                        + "after the sections of this MF, in control record of "
+                        + f"line {ofs}."
+                        + long_line_hint(line)
+                    )
+                # the run of the MF ends without a FEND record
+                if mf == 0:
+                    sec_level = 1
         if sec_level >= 2 and mat != last_mat:
             raise UnexpectedControlRecordError(
                 make_send_error_message("MAT", mat, last_mat, ofs)
@@ -820,10 +949,17 @@ def split_sections(lines, read_opts=None, line_numbers=None):
                 make_send_error_message("MAT", mat, -1, ofs) + long_line_hint(line)
             )
         sec_level -= 1
+        if sec_level == 0:
+            material_ended = True
         # Next line just for checking all fields are zero or blank
         read_send([line], read_opts=read_opts)
 
     if not ignore_send_records:
+        if not endf6:
+            if sec_level == 3 and not ts.send(last_mf, last_mt):
+                sec_level = 2
+            if sec_level == 2 and not ts.fend(last_mf):
+                sec_level = 1
         if sec_level >= 1:
             sectype = ("MAT", "MF", "MT")[sec_level - 1]
             secnum = (mat, mf, mt)[sec_level - 1]
@@ -831,4 +967,4 @@ def split_sections(lines, read_opts=None, line_numbers=None):
         elif sec_level == 0:
             raise UnexpectedEndOfInputError("Tape End (TEND) record missing")
 
-    return mfdic
+    return sections

@@ -73,7 +73,7 @@ from .endf_utils import (
     write_tend,
     read_list,
     write_list,
-    split_sections,
+    split_material,
     skip_blank_lines,
     add_linenumbers_to_section,
 )
@@ -90,7 +90,12 @@ from .endf_recipe_utils import (
     get_responsible_recipe_parsetree,
     get_responsible_recipe_parsefun,
 )
-from endf_parserpy.endf_recipes import get_recipe_dict
+from endf_parserpy.endf_recipes import get_recipe_dict, get_tape_structure
+from endf_parserpy.utils.tape_structure import (
+    TapeStructure,
+    check_recipes,
+    to_dict_form,
+)
 from endf_parserpy.utils.debugging_utils import TrackingDict
 from .helpers import array_dict_to_list
 from .numpy_annotation import annotate_recipe_tree
@@ -111,6 +116,7 @@ from ..endf_parser_base import (
     EndfParserBase,
     _record_init_kwargs,
     _check_array_type,
+    _check_material_form,
     _check_numpy_available,
     _write_via_temporary_file,
 )
@@ -187,6 +193,8 @@ class EndfParserPy(EndfParserBase):
         parsing_funs=None,
         loglevel=logging.WARNING,
         standard_form_on_tie=False,
+        tape_structure=None,
+        material_form=None,
     ):
         """Initializaton of options for parsing and writing ENDF-6 data.
 
@@ -415,6 +423,29 @@ class EndfParserPy(EndfParserBase):
             nested dictionary with custom recipes. Inspect the default
             recipe dictionary to see the required structure
             (`from endf_parserpy.endf_recipes import endf_recipe_dictionary`)
+        tape_structure : Union[None, dict, TapeStructure]
+            The rules for the framing and the arrangement of the sections
+            of a material (see :class:`~endf_parserpy.TapeStructure`):
+            where SEND and FEND records are, the order of the sections,
+            whether a section may repeat, and the public form of a
+            material. ``None`` (default) is the tape structure of
+            ``endf_format``, which is that of ENDF-6 for every flavor
+            except ``gendf``, or that of ENDF-6 if ``recipes`` is given.
+            The recipes and the tape structure must agree on the SEND
+            records: a recipe ends with ``SEND`` if and only if the tape
+            structure has a SEND record after its sections; otherwise a
+            ``ValueError`` is raised. *(parsing, writing)*
+        material_form : Union[None, str]
+            The form of a material returned by :func:`parse` and
+            :func:`parsefile`: ``"dict"`` for the nested dictionary
+            ``{MF: {MT: section}}``, ``"list"`` for the list of the
+            sections in the order of the file (see
+            :func:`~endf_parserpy.to_list_form`), or ``None`` (default)
+            for the form of the tape structure (``"dict"`` for all
+            flavors except ``gendf``). With ``"dict"``, a material with
+            two sections with the same MF and MT numbers raises a
+            :class:`~endf_parserpy.tape.TapeStructureError`. Writing
+            accepts both forms. *(parsing)*
         loglevel : int
             Controls the level of detail for logging output. Default is
             `logging.WARN`. Many ENDF-6 files in nuclear data libraries
@@ -435,8 +466,18 @@ class EndfParserPy(EndfParserBase):
             )
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
+        _check_material_form(material_form)
+        if tape_structure is not None:
+            tape_structure = TapeStructure.from_spec(tape_structure)
+        elif recipes is None:
+            tape_structure = get_tape_structure(endf_format)
+        else:
+            tape_structure = TapeStructure.from_spec(None)
         if recipes is None:
             recipes = get_recipe_dict(endf_format)
+        check_recipes(recipes, tape_structure)
+        self.tape_structure = tape_structure
+        self.material_form = material_form
         self.tree_dic = get_recipe_parsetree_dic(recipes)
         self.parsing_funs = parsing_funs if parsing_funs is not None else {}
         # array_type="numpy": kinds of the variables recorded while parsing
@@ -1171,92 +1212,105 @@ class EndfParserPy(EndfParserBase):
             self.parse_opts["numpy_keep_floats"] = keep_floats
         tree_dic = self.tree_dic
         self.variable_descriptions = EndfDict()
-        mfmt_dic = split_sections(lines, read_opts=self.read_opts)
+        ts = self.tape_structure
+        sections = split_material(lines, read_opts=self.read_opts, tape_structure=ts)
+        # the sections in the order of the file, each as (MF, MT, lines),
+        # become the elements of the material in the list form
+        material = [seclines for _, _, seclines in sections]
         # the mismatches tolerated in the sections parsed, as tuples
-        # (MAT, MF, MT, mismatches of the section, see _tolerated_mismatch)
+        # (MAT, MF, MT, mismatches of the section, see _tolerated_mismatch,
+        # position of the section)
         tolerated = []
-        for mf in mfmt_dic:
-            if self.logger.isEnabledFor(logging.INFO):
-                write_info(self.logger, f"Parsing section MF{mf}")
-            for mt in mfmt_dic[mf]:
-                cur_ctrl = read_ctrl(mfmt_dic[mf][mt][0], read_opts=self.read_opts)
+        last_mf = None
+        for pos, (mf, mt, curlines) in enumerate(sections):
+            if mf != last_mf:
                 if self.logger.isEnabledFor(logging.INFO):
-                    write_info(self.logger, f"Parsing subsection MF/MT {mf}/{mt}")
-                curlines = mfmt_dic[mf][mt]
-                cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
-                cur_parsefun = get_responsible_recipe_parsefun(
-                    self.parsing_funs, mf, mt
-                )
-                should_skip = self.should_skip_section(mf, mt, exclude, include)
-                if cur_parsefun is not None and not should_skip:
-                    try:
+                    write_info(self.logger, f"Parsing section MF{mf}")
+                last_mf = mf
+            cur_ctrl = read_ctrl(curlines[0], read_opts=self.read_opts)
+            if self.logger.isEnabledFor(logging.INFO):
+                write_info(self.logger, f"Parsing subsection MF/MT {mf}/{mt}")
+            cur_tree = get_responsible_recipe_parsetree(tree_dic, mf, mt)
+            cur_parsefun = get_responsible_recipe_parsefun(self.parsing_funs, mf, mt)
+            should_skip = self.should_skip_section(mf, mt, exclude, include)
+            # the SEND record of the section, which the recipe reads,
+            # if the tape structure has one after it (also added for
+            # the tape head, whose recipe does not read it)
+            with_send = mf == 0 or ts.send(mf, mt)
+            if cur_parsefun is not None and not should_skip:
+                try:
+                    if with_send:
                         curlines += write_send(
                             cur_ctrl, with_ctrl=True, write_opts=self.write_opts
                         )
-                        curlines = "".join(curlines)
-                        cur_dict = cur_parsefun(curlines)
-                        cur_dict.update(cur_ctrl)
-                        mfmt_dic[mf][mt] = cur_dict
-                    except Exception as exc:
-                        raise type(exc)(
-                            f"parsing function for MF={mf}/MT={mt} failed "
-                            + "with error message:\n"
-                            + str(exc)
-                        )
-                elif cur_tree is not None and not should_skip:
-                    # we add the SEND line so that parsing fails
-                    # if the MT section cannot be completely parsed
+                    curlines = "".join(curlines)
+                    cur_dict = cur_parsefun(curlines)
+                    cur_dict.update(cur_ctrl)
+                    material[pos] = cur_dict
+                except Exception as exc:
+                    raise type(exc)(
+                        f"parsing function for MF={mf}/MT={mt} failed "
+                        + "with error message:\n"
+                        + str(exc)
+                    )
+            elif cur_tree is not None and not should_skip:
+                # we add the SEND line so that parsing fails
+                # if the MT section cannot be completely parsed
+                if with_send:
                     curlines += write_send(
                         cur_ctrl, with_ctrl=True, write_opts=self.write_opts
                     )
-                    self.reset_parser_state(rwmode="read", lines=curlines)
-                    self.current_path = EndfPath((mf, mt))
-                    if _annotate_tree(cur_tree, raise_error=numpy_mode):
-                        array_forms = {}
-                        self.parse_opts["array_forms"] = array_forms
-                        if numpy_mode:
-                            self._numpy_forms = array_forms
-                    else:
-                        array_forms = {}
-                        self.parse_opts.pop("array_forms", None)
-                    section_tolerated = []
-                    self.parse_opts["tolerated_mismatches"] = section_tolerated
-                    try:
-                        initialize_working_vars(self.datadic)
-                        self.datadic.update(cur_ctrl)
-                        self.run_instruction(cur_tree)
-                        remove_working_vars(self.datadic)
-                        mfmt_dic[mf][mt] = self.datadic
-                        if section_tolerated:
-                            tolerated.append(
-                                (cur_ctrl["MAT"], mf, mt, section_tolerated)
-                            )
-                        if array_type == "list" or numpy_mode:
-                            array_dict_to_list(mfmt_dic[mf][mt])
-                        if array_type == "list":
-                            fill_empty_elements(array_forms)
-                        if numpy_mode:
-                            convert_arrays(numpy, array_forms, keep_floats)
-                    except ParserException as exc:
-                        if not nofail:
-                            logstr = self.logbuffer.display_record_logs()
-                            self._remove_array_state_opts()
-                            raise type(exc)(
-                                "\nHere is the parser record log until failure:\n\n"
-                                + logstr
-                                + "Error message: "
-                                + str(exc)
-                                + self._last_record_hint()
-                            )
+                self.reset_parser_state(rwmode="read", lines=curlines)
+                self.current_path = EndfPath((mf, mt))
+                if _annotate_tree(cur_tree, raise_error=numpy_mode):
+                    array_forms = {}
+                    self.parse_opts["array_forms"] = array_forms
+                    if numpy_mode:
+                        self._numpy_forms = array_forms
                 else:
-                    # the section is kept verbatim as a list of its lines:
-                    # each line as read, without its line ending and with a
-                    # newline appended, the same representation as that of
-                    # EndfParserCpp, whether the lines carry line endings
-                    # (parsefile) or not (a string passed to parse)
-                    mfmt_dic[mf][mt] = [line.rstrip("\r\n") + "\n" for line in curlines]
+                    array_forms = {}
+                    self.parse_opts.pop("array_forms", None)
+                section_tolerated = []
+                self.parse_opts["tolerated_mismatches"] = section_tolerated
+                try:
+                    initialize_working_vars(self.datadic)
+                    self.datadic.update(cur_ctrl)
+                    self.run_instruction(cur_tree)
+                    remove_working_vars(self.datadic)
+                    material[pos] = self.datadic
+                    if section_tolerated:
+                        tolerated.append(
+                            (cur_ctrl["MAT"], mf, mt, section_tolerated, pos)
+                        )
+                    if array_type == "list" or numpy_mode:
+                        array_dict_to_list(material[pos])
+                    if array_type == "list":
+                        fill_empty_elements(array_forms)
+                    if numpy_mode:
+                        convert_arrays(numpy, array_forms, keep_floats)
+                except ParserException as exc:
+                    if not nofail:
+                        logstr = self.logbuffer.display_record_logs()
+                        self._remove_array_state_opts()
+                        raise type(exc)(
+                            "\nHere is the parser record log until failure:\n\n"
+                            + logstr
+                            + "Error message: "
+                            + str(exc)
+                            + self._last_record_hint()
+                        )
+            else:
+                # the section is kept verbatim as a list of its lines:
+                # each line as read, without its line ending and with a
+                # newline appended, the same representation as that of
+                # EndfParserCpp, whether the lines carry line endings
+                # (parsefile) or not (a string passed to parse)
+                material[pos] = [line.rstrip("\r\n") + "\n" for line in curlines]
         self._remove_array_state_opts()
-        return mfmt_dic, self._tolerated_in_input_lines(lines, tolerated)
+        mismatches = self._tolerated_in_input_lines(lines, tolerated)
+        if self._public_material_form() == "dict":
+            material = to_dict_form(material)
+        return material, mismatches
 
     def _tolerated_in_input_lines(self, lines, tolerated):
         # The ToleratedMismatch records of the mismatches of the sections
@@ -1266,11 +1320,16 @@ class EndfParserPy(EndfParserBase):
         # split_sections) if there are mismatches.
         if not tolerated:
             return []
-        line_numbers = {}
-        split_sections(lines, read_opts=self.read_opts, line_numbers=line_numbers)
+        line_numbers = []
+        split_material(
+            lines,
+            read_opts=self.read_opts,
+            line_numbers=line_numbers,
+            tape_structure=self.tape_structure,
+        )
         mismatches = []
-        for mat, mf, mt, entries in tolerated:
-            section_lines = line_numbers[mf][mt]
+        for mat, mf, mt, entries, pos in tolerated:
+            section_lines = line_numbers[pos]
             for kind, field, variable, line, expected, found in entries:
                 line = section_lines[min(line, len(section_lines) - 1)] + 1
                 mismatches.append(

@@ -384,6 +384,27 @@ def test_no_module_names_for_aliases():
     assert shims == sorted(HISTORICAL_MODULES)
 
 
+@pytest.mark.parametrize(
+    "targets, message",
+    [
+        (["a-b", "a_b"], "`a-b` and `a_b` give the same entry name `a_b`"),
+        (["a", "a@0.20", "a_0_20"], "`a@0.20` and `a_0_20` give the same"),
+        (["a", "a@0.20", "a-0.20"], "`a@0.20` and `a-0.20` give the same"),
+        (["_a"], "`_a` gives the entry name `_a`"),
+        (["0a"], "`0a` gives the entry name `0a`"),
+        (["a b"], "`a b` gives the entry name `a b`"),
+    ],
+)
+def test_entry_names_rejects(targets, message):
+    with pytest.raises(ValueError, match=message):
+        catalogue._check_entry_names(targets)
+
+
+def test_entry_names_of_catalogue():
+    catalogue._check_entry_names(list_endf_build_targets())
+    catalogue._check_entry_names(["endf6-ext", "endf6-ext@0.20", "endf6@0.20"])
+
+
 # the parsers with a layout version that is an alias
 
 

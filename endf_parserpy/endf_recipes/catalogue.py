@@ -219,6 +219,41 @@ def cpp_module_basename(format_spec):
     return format_spec.replace("-", "_").replace("@", "_").replace(".", "_")
 
 
+def _check_entry_names(targets):
+    """Check that the build targets have distinct, valid entry names.
+
+    The mapping by :func:`cpp_module_basename` is not injective (e.g.
+    ``a-b`` and ``a_b`` both give ``a_b``), and in the C++ module with
+    all flavors, an entry of the same name would silently replace the
+    functions of another target.
+
+    Raises
+    ------
+    ValueError
+        If two build targets have the same entry name, or an entry name
+        is not a Python identifier or starts with ``_`` (which is
+        reserved for other names of the module, e.g. ``_entries``).
+    """
+    seen = {}
+    for name in targets:
+        entry = cpp_module_basename(name)
+        if not entry.isidentifier() or entry.startswith("_"):
+            raise ValueError(
+                f"the build target `{name}` gives the entry name `{entry}` "
+                "in the C++ module, which is not an identifier without a "
+                "leading underscore"
+            )
+        if entry in seen:
+            raise ValueError(
+                f"the build targets `{seen[entry]}` and `{name}` give the "
+                f"same entry name `{entry}` in the C++ module"
+            )
+        seen[entry] = name
+
+
+_check_entry_names(_FORMAT_DICT)
+
+
 def list_endf_build_targets():
     """Return the names of the flavors with recipes of their own.
 

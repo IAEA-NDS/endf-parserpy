@@ -53,7 +53,7 @@ from endf_parserpy.interpreter.custom_exceptions import (
 from endf_parserpy.tape import parse_tape_file, write_tape
 from endf_parserpy.tape.errors import (
     AmbiguousMaterialError,
-    RepeatedSectionError,
+    AmbiguousSectionError,
     TapeStructureError,
 )
 
@@ -554,8 +554,9 @@ def test_endf_file_keeps_the_order_and_repeated_sections():
     path = TESTDATA / "am241_nuclide_production.gendf"
     with EndfFile(path, parser=parser) as ef:
         assert list(ef[0].sections()) == [(1, 451), (3, 102), (3, 102), (3, 102)]
-        with pytest.raises(RepeatedSectionError, match="occurs 3 times"):
+        with pytest.raises(AmbiguousSectionError, match="matches 3 sections"):
             ef[0][3, 102]
+        assert ef[0][3, 102, 2]["IZAM"] == 952422
         assert ef[0][1, 451]["NZ"] == 1
     with EndfFile(TESTDATA / "h1_gaminr.gam", parser=parser) as ef:
         mfs = [mf for mf, _ in ef[0].sections()]

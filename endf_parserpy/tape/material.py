@@ -11,15 +11,57 @@
 
 """Per-material state and views for :class:`EndfFile`."""
 
+from ..utils.accessories import EndfPath, _Occurrence, _Position
+
+_KEY_MESSAGE = (
+    "a section is addressed by an (MF, MT) pair, e.g. material[3, 2], by "
+    "(MF, MT, k) for the k-th section with this label, or by a section path "
+    "such as '3/102#1' or '#0'"
+)
+
 
 def _as_mfmt(key):
     """Validate and normalise an ``(MF, MT)`` section key."""
     if not (isinstance(key, tuple) and len(key) == 2):
-        raise KeyError(
-            "a section is addressed by an (MF, MT) pair, e.g. material[3, 2]"
-        )
+        raise KeyError(_KEY_MESSAGE)
     mf, mt = key
     return int(mf), int(mt)
+
+
+def _section_key(key):
+    """Split a section key of a :class:`MaterialView` into ``(mf, mt,
+    occurrence, position, subpath)``.
+
+    The key is ``(MF, MT)``, ``(MF, MT, k)`` or a section path
+    (``"3/102"``, ``"3/102#1"``, ``"#0"``, also followed by a field path).
+    """
+    if isinstance(key, tuple):
+        if len(key) == 3:
+            mf, mt = _as_mfmt(key[:2])
+            k = key[2]
+            if not isinstance(k, int) or isinstance(k, bool) or k < 0:
+                raise KeyError(f"the occurrence in {key!r} must be a non-negative int")
+            return mf, mt, k, None, None
+        mf, mt = _as_mfmt(key)
+        return mf, mt, None, None, None
+    if isinstance(key, (str, EndfPath)):
+        els = EndfPath(key)._path_elements
+
+        def rest(n):
+            return EndfPath._from_elements(els[n:]) if len(els) > n else None
+
+        if els and isinstance(els[0], _Position):
+            return None, None, None, els[0].k, rest(1)
+        if len(els) >= 2 and isinstance(els[0], int):
+            if isinstance(els[1], _Occurrence):
+                return els[0], els[1].mt, els[1].k, None, rest(2)
+            if isinstance(els[1], int):
+                return els[0], els[1], None, None, rest(2)
+        raise KeyError(
+            f"the path {str(key)!r} does not address a section; a section of a "
+            "material is addressed by MF/MT, MF/MT#k or #k"
+        )
+    raise KeyError(_KEY_MESSAGE)
 
 
 class _MaterialSlot:
@@ -62,6 +104,17 @@ class MaterialView:
         section = material[3, 2]
         material[3, 2] = edited_section
         del material[3, 2]
+
+    If the tape structure lets a label occur several times in a material
+    (e.g. ``gendf``), ``material[3, 102]`` raises an
+    :class:`~endf_parserpy.tape.AmbiguousSectionError`; ``material[3, 102, k]``
+    selects the ``k``-th section with this label (counting from 0). A key
+    can also be a section path, as for an :class:`~endf_parserpy.EndfPath`
+    applied to a material: ``material["3/102#1"]``, ``material["#0"]`` (the
+    first section; the tape head is not counted) or, reaching into the
+    section, ``material["3/102#1/IZAM"]``. Such a section is read-only for
+    now: one of several sections with the same label cannot be edited or
+    deleted yet.
 
     Reading a section returns a *view* over the parsed section whose
     mutability follows the file's ``check_edits`` mode -- read-only under
@@ -141,27 +194,61 @@ class MaterialView:
         self._check_live()
         return self._file._assemble(self._slot, detach=True, as_dict=True)
 
+    def _locate(self, key):
+        mf, mt, occurrence, position, subpath = _section_key(key)
+        mf, mt, k = self._file._locate_slot_section(
+            self._slot, mf, mt, occurrence, position
+        )
+        return mf, mt, k, subpath
+
     def __getitem__(self, key):
         self._check_live()
-        mf, mt = _as_mfmt(key)
-        section = self._file._get_slot_section(self._slot, mf, mt)
-        return self._file._view(self._slot, mf, mt, section)
+        mf, mt, k, subpath = self._locate(key)
+        return self._file._located_view(self._slot, mf, mt, k, subpath)
 
     def __setitem__(self, key, value):
         self._check_live()
-        self._file._set_slot_section(self._slot, *_as_mfmt(key), value)
+        mf, mt, occurrence, position, subpath = _section_key(key)
+        if occurrence is not None or position is not None:
+            mf, mt, k = self._file._locate_slot_section(
+                self._slot, mf, mt, occurrence, position
+            )
+            self._file._check_not_one_of_repeats(self._slot, mf, mt, k)
+        if subpath is None:
+            self._file._set_slot_section(self._slot, mf, mt, value)
+        else:
+            self._file._set_slot_field(self._slot, mf, mt, subpath, value)
 
     def __delitem__(self, key):
         self._check_live()
-        self._file._delete_slot_section(self._slot, *_as_mfmt(key))
+        mf, mt, k, subpath = self._locate(key)
+        self._file._check_not_one_of_repeats(self._slot, mf, mt, k)
+        if subpath is None:
+            self._file._delete_slot_section(self._slot, mf, mt)
+        else:
+            self._file._delete_slot_field(self._slot, mf, mt, subpath)
 
     def __contains__(self, key):
+        """Whether the material has the section, or the field, of ``key``.
+
+        An ``(MF, MT)`` pair tests whether the label occurs in the
+        material (as in :meth:`sections`). A selection that is out of range
+        answers ``False``; an ambiguous section path (``"3/102"`` for a
+        repeated label) raises
+        :class:`~endf_parserpy.tape.AmbiguousSectionError`.
+        """
         self._check_live()
+        if isinstance(key, tuple) and len(key) == 2:
+            try:
+                mfmt = _as_mfmt(key)
+            except (KeyError, TypeError, ValueError):
+                return False
+            return mfmt in self._file._slot_section_keys(self._slot)
         try:
-            mfmt = _as_mfmt(key)
-        except KeyError:
+            mf, mt, k, subpath = self._locate(key)
+        except (KeyError, IndexError):
             return False
-        return mfmt in self._file._slot_section_keys(self._slot)
+        return self._file._slot_has(self._slot, mf, mt, k, subpath)
 
     def __iter__(self):
         self._check_live()

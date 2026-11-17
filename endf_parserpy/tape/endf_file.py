@@ -53,8 +53,8 @@ from .errors import (
     StaleSourceError,
     TapeStructureError,
 )
-from .errors import RepeatedSectionError
 from .index import TapeIndex
+from ..utils.sections import ambiguous_section_error, locate_in_labels
 from ..utils.tape_structure import TapeStructure, section_label
 from .material import MaterialView, _MaterialSlot
 from .operations import write_tape, write_tape_file, _VALID_ON_ERROR, _FailedUnit
@@ -475,19 +475,35 @@ class EndfFile:
         self._secondary_indexes.clear()
 
     def _resolve_key(self, key):
-        """Resolve a path key to ``(position, mf, mt, subpath)``.
+        """Resolve a path key to ``(position, mf, mt, subpath, k)``.
 
         ``mf`` is ``None`` for a material-depth path; ``subpath`` is
-        ``None`` unless the path reaches into a section.
+        ``None`` unless the path reaches into a section. ``mf`` and ``mt``
+        are the label of the section, and ``k`` the occurrence of the
+        label if the material has several sections with it (else
+        ``None``); a section selected by its position or occurrence is
+        resolved to them. The errors of the section selection propagate.
         """
+        position, mp = self._resolve_material_key(key)
+        if mp.depth == "material":
+            return position, None, None, None, None
+        mf, mt, k = self._locate_slot_section(
+            self._materials[position],
+            mp.mf,
+            mp.mt,
+            mp.section_occurrence,
+            mp.section_position,
+        )
+        return position, mf, mt, mp.subpath, k
+
+    def _resolve_material_key(self, key):
         mp = key if isinstance(key, EndfMaterialPath) else EndfMaterialPath(key)
-        if mp.mf is not None and mp.mt is None:
+        if mp.depth == "mf":
             raise ValueError(
                 f"{mp!r} addresses a whole MF file; MF-level addressing is "
                 "not supported -- address a section as material/MF/MT"
             )
-        position = mp.resolve_material(_CurrentMaterials(self._materials))
-        return position, mp.mf, mp.mt, mp.subpath
+        return mp.resolve_material(_CurrentMaterials(self._materials)), mp
 
     def __getitem__(self, key):
         """Return the material, section or field addressed by ``key``.
@@ -506,12 +522,11 @@ class EndfFile:
                 "EndfMaterialPath (string or object); use by_mat() or "
                 "by_za() for other lookups"
             )
-        position, mf, mt, subpath = self._resolve_key(key)
+        position, mf, mt, subpath, k = self._resolve_key(key)
         slot = self._materials[position]
         if mf is None:
             return self._material_view(slot)
-        section = self._get_slot_section(slot, mf, mt)
-        return self._view(slot, mf, mt, section, subpath)
+        return self._located_view(slot, mf, mt, k, subpath)
 
     def __setitem__(self, key, value):
         """Assign the section or field addressed by an :class:`EndfMaterialPath`.
@@ -531,13 +546,22 @@ class EndfFile:
                 "EndfFile is indexed by an integer material position or an "
                 "EndfMaterialPath (string or object)"
             )
-        position, mf, mt, subpath = self._resolve_key(key)
+        position, mp = self._resolve_material_key(key)
         slot = self._materials[position]
-        if mf is None:
+        if mp.depth == "material":
             raise ValueError(
                 "a whole material cannot be assigned; use append_material() "
                 "to add a material"
             )
+        if mp.section_position is None and mp.section_occurrence is None:
+            # a label: replaced if present, added if not
+            mf, mt, k = mp.mf, mp.mt, None
+        else:
+            mf, mt, k = self._locate_slot_section(
+                slot, mp.mf, mp.mt, mp.section_occurrence, mp.section_position
+            )
+        self._check_not_one_of_repeats(slot, mf, mt, k)
+        subpath = mp.subpath
         if subpath is None:
             self._set_slot_section(slot, mf, mt, value)
         else:
@@ -554,11 +578,13 @@ class EndfFile:
                 "EndfFile is indexed by an integer material position or an "
                 "EndfMaterialPath (string or object)"
             )
-        position, mf, mt, subpath = self._resolve_key(key)
+        position, mf, mt, subpath, k = self._resolve_key(key)
         slot = self._materials[position]
         if mf is None:
             self._remove_material(position)
-        elif subpath is None:
+            return
+        self._check_not_one_of_repeats(slot, mf, mt, k)
+        if subpath is None:
             self._delete_slot_section(slot, mf, mt)
         else:
             self._delete_slot_field(slot, mf, mt, subpath)
@@ -579,18 +605,23 @@ class EndfFile:
         if not isinstance(key, (str, EndfMaterialPath)):
             return False
         try:
-            position, mf, mt, subpath = self._resolve_key(key)
+            position, mf, mt, subpath, k = self._resolve_key(key)
         except (KeyError, IndexError):
             return False
         slot = self._materials[position]
         if mf is None:
             return True
+        return self._slot_has(slot, mf, mt, k, subpath)
+
+    def _slot_has(self, slot, mf, mt, k, subpath):
+        """Whether a material has the located section MF/MT (``k``: see
+        :meth:`_locate_slot_section`) and, with ``subpath``, the field."""
         if (mf, mt) not in self._slot_section_keys_set(slot):
             return False
         if subpath is None:
             return True
         try:
-            section = self._get_slot_section(slot, mf, mt)
+            section = self._get_located(slot, mf, mt, k)
         except (KeyError, SectionParseError):
             return False
         if not isinstance(section, Mapping):
@@ -925,13 +956,86 @@ class EndfFile:
         n = sum(1 for key, _ in entry.section_list if key == (mf, mt))
         return n if n > 1 else 0
 
+    _SECTION_HINT = "material[{mf}, {mt}, k] or {mf}/{mt}#k"
+
     def _check_not_repeated(self, slot, mf, mt):
+        """Raise :class:`AmbiguousSectionError` if MF/MT, addressed without
+        an occurrence, names several sections of the material."""
         n = self._repeated_count(slot, mf, mt)
         if n:
-            raise RepeatedSectionError(
-                f"MF={mf}/MT={mt} occurs {n} times in this material; addressing "
-                "a repeated section is not supported yet"
+            labels = self._slot_section_keys(slot)
+            positions = [p for p, label in enumerate(labels) if label == (mf, mt)]
+            raise ambiguous_section_error(
+                mf, mt, positions, self._SECTION_HINT.format(mf=mf, mt=mt)
             )
+
+    def _check_not_one_of_repeats(self, slot, mf, mt, k):
+        """Reject the edit of one of several sections with the same label."""
+        if k is not None:
+            raise NotImplementedError(
+                f"MF={mf}/MT={mt} occurs {self._repeated_count(slot, mf, mt)} "
+                "times in this material; editing or deleting one of these "
+                "sections is not supported yet"
+            )
+
+    def _locate_slot_section(
+        self, slot, mf=None, mt=None, occurrence=None, position=None
+    ):
+        """Resolve a section selection of a material to ``(mf, mt, k)``.
+
+        The section is selected by its label (``mf``, ``mt``; with
+        ``occurrence`` the ``occurrence``-th section with it) or by its
+        ``position`` (the tape head not counted), as by
+        :func:`~endf_parserpy.utils.sections.locate_section`. ``k`` is the
+        occurrence of the label if the material has several sections with
+        it, else ``None``.
+        """
+        if (
+            position is None
+            and occurrence is None
+            and not self._repeated_count(slot, mf, mt)
+        ):
+            return mf, mt, None
+        labels = self._slot_section_keys(slot)
+        if position is None and (mf, mt) not in labels:
+            raise KeyError(f"this material has no MF={mf}/MT={mt} section")
+        hint = None if mf is None else self._SECTION_HINT.format(mf=mf, mt=mt)
+        p = locate_in_labels(labels, mf, mt, occurrence, position, hint)
+        label = labels[p]
+        if labels.count(label) == 1:
+            return label[0], label[1], None
+        return label[0], label[1], labels[:p].count(label)
+
+    def _get_located(self, slot, mf, mt, k):
+        """The section MF/MT of a material, or with ``k`` the ``k``-th of
+        several sections with this label (see :meth:`_locate_slot_section`)."""
+        if k is None:
+            return self._get_slot_section(slot, mf, mt)
+        return self._get_repeated_section(slot.original_position, mf, mt, k)
+
+    def _located_view(self, slot, mf, mt, k, subpath=None):
+        section = self._get_located(slot, mf, mt, k)
+        # one of several sections with the same label cannot be edited
+        # yet, so that its view is read-only in either mode
+        return self._view(slot, mf, mt, section, subpath, frozen=k is not None)
+
+    def _get_repeated_section(self, position, mf, mt, k):
+        """Parse the ``k``-th section MF/MT of the material at ``position``
+        in the file, one of several with this label."""
+        self._ensure_valid()
+        key = (position, mf, mt, k)
+        cached = self._section_cache.get(key)
+        if cached is not None:
+            return cached
+        entry = self._index[position]
+        sec_entry = [e for label, e in entry.section_list if label == (mf, mt)][k]
+        raw = self._raw_cache.get(key)
+        if raw is None:
+            raw = self._read_span(sec_entry.offset, sec_entry.length)
+            self._raw_cache.put(key, raw, sec_entry.length)
+        section = self._parse_section(entry, mf, mt, raw)
+        self._section_cache.put(key, section, sec_entry.length)
+        return section
 
     def _get_slot_section(self, slot, mf, mt):
         self._ensure_valid()
@@ -1072,7 +1176,7 @@ class EndfFile:
         parent, last = _navigate(container, subpath)
         del parent[last]
 
-    def _view(self, slot, mf, mt, section, subpath=None):
+    def _view(self, slot, mf, mt, section, subpath=None, frozen=False):
         """Wrap a canonical section in the mode-dependent view.
 
         ``check_edits="eager"`` yields a frozen (read-only) view,
@@ -1091,7 +1195,7 @@ class EndfFile:
                 section.exception,
                 section.raw_lines,
             ) from section.exception
-        if self._check_edits == "deferred":
+        if self._check_edits == "deferred" and not frozen:
 
             def touch(_slot=slot, _mf=mf, _mt=mt, _section=section):
                 _slot.overlay[(_mf, _mt)] = _section
@@ -1425,7 +1529,13 @@ class EndfFile:
         repeated = entry is not None and entry.has_repeated_sections
         if as_dict and repeated:
             for mf, mt in self._slot_section_keys_set(slot):
-                self._check_not_repeated(slot, mf, mt)
+                n = self._repeated_count(slot, mf, mt)
+                if n:
+                    raise TapeStructureError(
+                        f"MF={mf}/MT={mt} occurs {n} times in this material; the "
+                        "nested form {MF: {MT: section}} holds one section per "
+                        "MF/MT"
+                    )
         elif self._free_order or repeated:
             return self._assemble_list(slot, entry, tpid, detach)
         material = {0: {0: tpid}}

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/05/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -28,10 +28,13 @@ the candidate set to its left:
 
 The selector is followed by an ordinary ``EndfPath``, so
 ``9237#1/3/2/xstable`` selects the second material with MAT 9237 and the
-``xstable`` field of its MF=3/MT=2 section.
+``xstable`` field of its MF=3/MT=2 section. The section is selected as by
+an ``EndfPath`` applied to a material: ``MF/MT``, ``MF/MT#k`` (the
+``k``-th section with this label) or ``#k`` (the section at position
+``k``, the tape head not counted), e.g. ``9543#0/3/102#2/IZAM``.
 """
 
-from ..utils.accessories import EndfPath
+from ..utils.accessories import EndfPath, _Occurrence, _parse_selector_token
 from .errors import AmbiguousMaterialError
 
 
@@ -44,6 +47,17 @@ class EndfMaterialPath:
     :class:`EndfPath` addressing data within that material. That part
     may be truncated: a path may stop at the material, at a section
     (``material/MF/MT``), or reach down to an individual field.
+
+    The section that follows the material selector is selected in one of
+    three ways, as by an :class:`EndfPath` applied to a material:
+
+    - ``MF/MT`` selects the section with this label, which must be unique
+      in the material (else an
+      :class:`~endf_parserpy.tape.AmbiguousSectionError` is raised);
+    - ``MF/MT#k`` selects the ``k``-th section with this label, e.g.
+      ``9543/3/102#2``, for a label that occurs several times;
+    - ``#k`` selects the section at position ``k`` of the material, e.g.
+      ``#0/#1``; the tape head (MF0/MT0) is not counted.
 
     The material selector takes one of three forms:
 
@@ -68,9 +82,18 @@ class EndfMaterialPath:
 
     Attributes
     ----------
+    depth : str
+        ``"material"``, ``"mf"``, ``"section"`` or ``"field"``: where the
+        path stops.
     mf, mt : int or None
-        The section addressed by the path, or ``None`` if the path stops
-        at material level.
+        The label of the section addressed by the path, or ``None`` if the
+        path stops at material level or selects the section by its
+        position (``#k``). ``mt`` is ``None`` for a path that stops at an
+        MF.
+    section_occurrence : int or None
+        The ``k`` of ``MF/MT#k``, or ``None``.
+    section_position : int or None
+        The ``k`` of ``#k``, or ``None``.
     subpath : EndfPath or None
         The path *within* the parsed section, or ``None`` for the whole
         section.
@@ -85,15 +108,48 @@ class EndfMaterialPath:
         if parts == [""]:
             raise ValueError("an EndfMaterialPath must not be empty")
         self._parse_material(parts[0])
-        rest = parts[1:]
-        try:
-            self.mf = int(rest[0]) if len(rest) >= 1 else None
-            self.mt = int(rest[1]) if len(rest) >= 2 else None
-        except ValueError:
+        rest = [part.strip() for part in parts[1:]]
+        self.mf = None
+        self.mt = None
+        self.section_occurrence = None
+        self.section_position = None
+        if rest and rest[0].startswith("#"):
+            self.section_position = _parse_selector_token(rest[0]).k
+            nsel = 1
+        else:
+            nsel = min(len(rest), 2)
+            mt_token = rest[1] if len(rest) >= 2 else None
+            if mt_token is not None and "#" in mt_token:
+                token = _parse_selector_token(mt_token)
+                if not isinstance(token, _Occurrence):
+                    raise ValueError(
+                        f"invalid material path {self._spec!r}: the section "
+                        f"selector {mt_token!r} must be the first element "
+                        "after the material selector"
+                    )
+                self.section_occurrence = token.k
+                mt_token = str(token.mt)
+            try:
+                self.mf = int(rest[0]) if len(rest) >= 1 else None
+                self.mt = int(mt_token) if mt_token is not None else None
+            except ValueError:
+                raise ValueError(
+                    f"invalid material path {self._spec!r}: MF and MT must be integers"
+                ) from None
+        self.subpath = EndfPath("/".join(rest[nsel:])) if len(rest) > nsel else None
+        if self.subpath is not None and self.subpath._has_tokens:
             raise ValueError(
-                f"invalid material path {self._spec!r}: MF and MT must be integers"
-            ) from None
-        self.subpath = EndfPath("/".join(rest[2:])) if len(rest) > 2 else None
+                f"invalid material path {self._spec!r}: a section selector can "
+                "only follow the material selector"
+            )
+        if not rest:
+            self.depth = "material"
+        elif self.section_position is None and self.mt is None:
+            self.depth = "mf"
+        elif self.subpath is None:
+            self.depth = "section"
+        else:
+            self.depth = "field"
 
     def _parse_material(self, token):
         try:

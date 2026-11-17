@@ -28,15 +28,6 @@ class TapeStructureError(TapeError):
     """
 
 
-class RepeatedSectionError(TapeError, KeyError):
-    """Raised when a section with MF and MT numbers that occur more than
-    once in a material (as the tape structure of the flavor allows) is
-    addressed by these numbers, which do not name one of them."""
-
-    def __str__(self):
-        return str(self.args[0]) if self.args else ""
-
-
 class AmbiguousMaterialError(TapeError, LookupError):
     """Raised when a MAT number matches several materials.
 

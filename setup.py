@@ -4,6 +4,7 @@ import logging
 import sys
 import os
 import platform
+import re
 from pybind11.setup_helpers import (
     Pybind11Extension,
     build_ext as pybind11_build_ext,
@@ -104,7 +105,70 @@ def remove_stale_flavor_extensions(directory):
     return removed
 
 
+def optimization_flags(args, compiler_type):
+    """The optimization flags of a compiler command line, in their order
+    (the last one applies): ``-O...`` and, for MSVC, ``/O...``."""
+    pattern = r"^[-/]O" if compiler_type == "msvc" else r"^-O"
+    return [a for a in args if re.match(pattern, a)]
+
+
+def build_info_macros(compiler, ext, debug):
+    """The compile definitions with the build information of the module,
+    which its function ``_build_info`` reports: the origin (a wheel built
+    by cibuildwheel or a build with setup.py), the build type and the
+    optimization flags of the command line of the compiler, i.e. the
+    flags of the compiler (with those of Python's configuration and of
+    the environment variable CFLAGS), then those of the extension.
+
+    The values are hexadecimal digits (see
+    ``endf_parserpy.compiler.cpp_boilerplate_reading.build_info_value``),
+    which need no quoting for GCC, Clang or MSVC.
+    """
+    add_project_dir_to_syspath()
+    from endf_parserpy.compiler.cpp_boilerplate_reading import (
+        BUILD_INFO_MACROS,
+        build_info_value,
+    )
+
+    compiler_type = getattr(compiler, "compiler_type", "")
+    if compiler_type == "msvc":
+        if not getattr(compiler, "initialized", True):
+            compiler.initialize()
+        base = getattr(
+            compiler, "compile_options_debug" if debug else "compile_options", []
+        )
+    else:
+        base = getattr(compiler, "compiler_so_cxx", None) or getattr(
+            compiler, "compiler_so", []
+        )
+    args = list(base or []) + list(ext.extra_compile_args or [])
+    origin = "cibuildwheel" if os.environ.get("CIBUILDWHEEL") == "1" else "setup.py"
+    values = {
+        "origin": origin,
+        "build_type": "Debug" if debug else "Release",
+        "optimization_flags": " ".join(optimization_flags(args, compiler_type)),
+    }
+    return [
+        (BUILD_INFO_MACROS[key], build_info_value(value))
+        for key, value in values.items()
+    ]
+
+
 class CustomBuildExt(pybind11_build_ext):
+    def build_extension(self, ext):
+        # the build information, from the command line of the compiler
+        # (known only now), replacing that of an earlier attempt
+        add_project_dir_to_syspath()
+        from endf_parserpy.compiler.compiler import CPP_MODULE_NAME
+
+        if ext.name == CPP_PACKAGE_PREFIX + CPP_MODULE_NAME:
+            macros = build_info_macros(self.compiler, ext, self.debug)
+            names = set(name for name, _ in macros)
+            ext.define_macros = [
+                m for m in (ext.define_macros or []) if m[0] not in names
+            ] + macros
+        super().build_extension(ext)
+
     def _create_dynamic_files(self):
         # package functionality is already needed during building the package
         add_project_dir_to_syspath()

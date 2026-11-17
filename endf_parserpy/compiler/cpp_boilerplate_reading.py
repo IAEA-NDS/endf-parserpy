@@ -130,6 +130,121 @@ _BULK_BODY_INFO = r"""    // the selected row kernel, the tiers and the CPU feat
     """
 
 
+# The names of the compile definitions with the values of the build that
+# _build_info reports, set by setup.py and by the CMakeLists.txt of
+# create_project_files. Each value is the text as "0x" followed by two
+# hexadecimal digits per byte (see build_info_value), a preprocessing
+# number that needs no quoting on the command line of any compiler or
+# build tool; the module turns it into a string with the preprocessor
+# (#) and decodes it.
+BUILD_INFO_MACROS = {
+    "origin": "ENDF_PARSERPY_BUILD_ORIGIN",
+    "build_type": "ENDF_PARSERPY_BUILD_TYPE",
+    "optimization_flags": "ENDF_PARSERPY_BUILD_OPTIM",
+}
+
+
+def build_info_value(text):
+    """The value of a compile definition of ``BUILD_INFO_MACROS`` for
+    ``text``, e.g. ``0x2d4f31`` for ``-O1``."""
+    return "0x" + text.encode("utf-8").hex()
+
+
+_BUILD_INFO = r"""// how the module was built, for diagnostics and benchmark records;
+    // the content may change between versions. The compiler and the C++
+    // standard are those of the compiler; the origin, the build type and
+    // the optimization flags are given by the build (setup.py or the
+    // CMakeLists.txt of create_project_files) as compile definitions
+    // with the text in hexadecimal digits after "0x", and are "unknown"
+    // if the build gave none.
+    #define ENDF_PARSERPY_BUILD_STR_(x) #x
+    #define ENDF_PARSERPY_BUILD_STR(x) ENDF_PARSERPY_BUILD_STR_(x)
+    m.def("_build_info", []() {
+      auto decode = [](const char* hex) -> std::string {
+        auto digit = [](char c) -> int {
+          if (c >= '0' && c <= '9') return c - '0';
+          if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+          if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+          return -1;
+        };
+        std::string text;
+        if (hex[0] != '0' || (hex[1] != 'x' && hex[1] != 'X')) {
+          return "unknown";
+        }
+        for (const char* p = hex + 2; *p != '\0'; p += 2) {
+          int high = digit(p[0]);
+          int low = p[1] != '\0' ? digit(p[1]) : -1;
+          if (high < 0 || low < 0) {
+            return "unknown";
+          }
+          text += static_cast<char>(high * 16 + low);
+        }
+        return text;
+      };
+      (void) decode;
+      py::dict info;
+      info["compiler"] = cpp_row_compiler();
+    #if defined(__clang__)
+      info["compiler_version"] = __clang_version__;
+    #elif defined(__GNUC__)
+      info["compiler_version"] = __VERSION__;
+    #elif defined(_MSC_FULL_VER)
+      info["compiler_version"] = std::to_string(_MSC_FULL_VER);
+    #else
+      info["compiler_version"] = "unknown";
+    #endif
+    #if defined(_MSVC_LANG)
+      long cplusplus = _MSVC_LANG;
+    #else
+      long cplusplus = __cplusplus;
+    #endif
+      info["cplusplus"] = cplusplus;
+      const char* standard = cplusplus >= 202302L ? "C++23"
+        : cplusplus >= 202002L ? "C++20"
+        : cplusplus >= 201703L ? "C++17"
+        : cplusplus >= 201402L ? "C++14"
+        : cplusplus >= 201103L ? "C++11"
+        : "C++98";
+      info["cpp_standard"] = standard;
+    #ifdef NDEBUG
+      info["ndebug"] = true;
+    #else
+      info["ndebug"] = false;
+    #endif
+      std::string origin = "unknown";
+      std::string build_type = "unknown";
+      std::string optim = "unknown";
+    #ifdef ENDF_PARSERPY_BUILD_ORIGIN
+      origin = decode(ENDF_PARSERPY_BUILD_STR(ENDF_PARSERPY_BUILD_ORIGIN));
+    #endif
+    #ifdef ENDF_PARSERPY_BUILD_TYPE
+      build_type = decode(ENDF_PARSERPY_BUILD_STR(ENDF_PARSERPY_BUILD_TYPE));
+    #endif
+    #ifdef ENDF_PARSERPY_BUILD_OPTIM
+      optim = decode(ENDF_PARSERPY_BUILD_STR(ENDF_PARSERPY_BUILD_OPTIM));
+    #endif
+      info["origin"] = origin;
+      info["build_type"] = build_type;
+      // the optimization flags of the compiler command line in their
+      // order, and the last one, which applies; "none" if there is none
+      info["optimization_flags"] = optim;
+      std::string last = optim;
+      if (optim != "unknown") {
+        size_t end = optim.find_last_not_of(' ');
+        if (end == std::string::npos) {
+          last = "none";
+        } else {
+          size_t start = optim.find_last_of(' ', end);
+          start = start == std::string::npos ? 0 : start + 1;
+          last = optim.substr(start, end - start + 1);
+        }
+      }
+      info["optimization"] = last;
+      return info;
+    });
+    """
+
+
 def register_reading_options():
     """Code in the module init of a C++ module of one flavor: the
     diagnostic functions and the warning about the row kernel."""
@@ -138,18 +253,20 @@ def register_reading_options():
         + _LINE_READ_COUNTS
         + _ROW_SELECTION_WARNING
         + _BULK_BODY_INFO
+        + _BUILD_INFO
     )
     return _registration_code(code)
 
 
 def register_diagnostic_functions():
-    """Code that defines the diagnostic functions ``_line_read_counts``
-    and ``_bulk_body_info`` in the module ``m``.
+    """Code that defines the diagnostic functions ``_line_read_counts``,
+    ``_bulk_body_info`` and ``_build_info`` in the module ``m``.
 
     In the module with all flavors, the counters are those of the whole
-    module, which every flavor entry exposes.
+    module, which every flavor entry exposes, and so is the build
+    information, which is the same for all entries.
     """
-    return _registration_code(_LINE_READ_COUNTS + _BULK_BODY_INFO)
+    return _registration_code(_LINE_READ_COUNTS + _BULK_BODY_INFO + _BUILD_INFO)
 
 
 def row_selection_warning():

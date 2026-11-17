@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/04/12
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -20,6 +20,8 @@ from .cpp_types.cpp_vartype_handling import (
 from .cpp_boilerplate_reading import (
     register_reading_options,
     module_header_reading,
+    BUILD_INFO_MACROS,
+    build_info_value,
 )
 from .cpp_boilerplate_writing import module_header_writing
 
@@ -92,6 +94,8 @@ def register_cpp_writefuns(writefuns, *extra_args):
 
 
 def generate_cmake_content(module_name):
+    macros = BUILD_INFO_MACROS
+    origin = build_info_value("cmake")
     code = cpp.indent_code(
         f"""
         cmake_minimum_required(VERSION 3.12)
@@ -125,6 +129,43 @@ def generate_cmake_content(module_name):
         pybind11_add_module({module_name} MODULE {module_name}.cpp)
 
         set_property(TARGET {module_name} PROPERTY CXX_STANDARD 11)
+
+        # The build information that the function _build_info of the
+        # module reports: the origin, the build type and the optimization
+        # flags of the build type, each as hexadecimal digits after "0x"
+        # (string(HEX) needs CMake 3.18; with an older CMake, the module
+        # reports "unknown"), which need no quoting with any generator
+        if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
+          if(CMAKE_CONFIGURATION_TYPES)
+            set(build_info_configs ${{CMAKE_CONFIGURATION_TYPES}})
+          else()
+            set(build_info_configs ${{CMAKE_BUILD_TYPE}})
+          endif()
+          set(build_info_type "")
+          set(build_info_optim "")
+          foreach(build_info_config IN LISTS build_info_configs)
+            string(TOUPPER "${{build_info_config}}" build_info_upper)
+            separate_arguments(build_info_flags NATIVE_COMMAND
+              "${{CMAKE_CXX_FLAGS}} ${{CMAKE_CXX_FLAGS_${{build_info_upper}}}}")
+            set(build_info_optim_flags "")
+            foreach(build_info_flag IN LISTS build_info_flags)
+              if(build_info_flag MATCHES "^[-/]O")
+                list(APPEND build_info_optim_flags "${{build_info_flag}}")
+              endif()
+            endforeach()
+            list(JOIN build_info_optim_flags " " build_info_text)
+            string(HEX "${{build_info_text}}" build_info_hex)
+            string(APPEND build_info_optim
+              "$<$<CONFIG:${{build_info_config}}>:0x${{build_info_hex}}>")
+            string(HEX "${{build_info_config}}" build_info_hex)
+            string(APPEND build_info_type
+              "$<$<CONFIG:${{build_info_config}}>:0x${{build_info_hex}}>")
+          endforeach()
+          target_compile_definitions({module_name} PRIVATE
+            {macros["origin"]}={origin}
+            {macros["build_type"]}=${{build_info_type}}
+            {macros["optimization_flags"]}=${{build_info_optim}})
+        endif()
         """,
         -8,
     )

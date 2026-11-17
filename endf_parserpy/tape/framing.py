@@ -55,6 +55,7 @@ from .index import (
     _scan_file_into,
 )
 from ..interpreter.endf_utils import ctrl_field_value
+from ..utils.tape_structure import ENDF6, TapeStructure
 from .records import _MAT_COLS, _MF_COLS, _MT_COLS
 
 
@@ -195,7 +196,7 @@ class _Checker:
     any case (see :meth:`order`).
     """
 
-    def __init__(self, check_ascii, number_opts, structure=True):
+    def __init__(self, check_ascii, number_opts, structure=True, tape_structure=None):
         # the results of the checks of the control fields and of the
         # columns 1-66 by their text: framing records repeat a few forms
         self.ctrl_cache = {}
@@ -203,6 +204,9 @@ class _Checker:
         self.check_ascii = check_ascii
         self.number_opts = number_opts
         self.structure = structure
+        # the rules of the tape structure (see TapeStructure): under those
+        # of ENDF-6, the checks are the same as before
+        self.ts = ENDF6 if tape_structure is None else tape_structure
         self.problems = []  # (offset, message)
         self.level = 0
         self.mat = self.mf = self.mt = None
@@ -223,9 +227,32 @@ class _Checker:
     def problem(self, offset, message):
         self.problems.append((offset, message))
 
+    def implicit_ends(self):
+        """The ends of a section and of an MF without end records, as the
+        tape structure has them: a section without SEND record ends at the
+        next record that is not one of it, an MF without FEND record at the
+        next record that is not one of its sections."""
+        if self.level == 3 and not self.ts.send(self.mf, self.mt):
+            self.level = 2
+        if self.level == 2 and not self.ts.fend(self.mf):
+            self.level = 1
+
     def expected(self):
         """Describe what may follow at the current position."""
         mat, mf, mt = self.mat, self.mf, self.mt
+        ts = self.ts
+        if self.level == 3 and not ts.send(mf, mt):
+            if ts.fend(mf):
+                return (
+                    f"a record of section MF={mf}/MT={mt} of MAT {mat}, a section "
+                    f"of MF={mf} of MAT {mat} or the FEND record ({_ctrl(mat, 0, 0)})"
+                )
+            return (
+                f"a record of section MF={mf}/MT={mt} of MAT {mat}, a section "
+                f"of MAT {mat} or the MEND record ({_ctrl(0, 0, 0)})"
+            )
+        if self.level == 2 and not ts.fend(mf):
+            return f"a section of MAT {mat} or the MEND record ({_ctrl(0, 0, 0)})"
         if self.level == 3:
             return (
                 f"a record of section MF={mf}/MT={mt} of MAT {mat} or its SEND "
@@ -315,6 +342,16 @@ class _Checker:
             # the record with the invalid field was a line of the section
             self.level = 3
             return
+        if level >= 2 and not (level == 3 and (mf, mt) == (self.mf, self.mt)):
+            # the section (and its MF) may end without end records
+            self.implicit_ends()
+            if self.level < level and self.level == 1 and mat == self.mat:
+                # a section of another MF of the material after an MF
+                # without FEND record
+                self.mat, self.mf, self.mt = mat, mf, mt
+                self.level = 3
+                return
+            level = self.level
         if level == 3 and (mf, mt) == (self.mf, self.mt):
             # e.g. a damaged MAT field in a line of the section, which
             # remains the current section
@@ -360,6 +397,7 @@ class _Checker:
         changes. Must be called before :meth:`section`.
         """
         mat, mf, mt = numbers
+        ts = self.ts
         last = self.last_section
         if not self.separated and last is not None and (mf, mt) == last[1:]:
             return  # the section continues
@@ -370,12 +408,27 @@ class _Checker:
             self.sections = {(mf, mt)}  # a new material
             return
         _, last_mf, last_mt = last
-        if (mf, mt) in self.sections:
-            self.problem(
-                offset,
-                f"section MF={mf}/MT={mt} of MAT {mat} occurs a second time "
-                "in the material",
-            )
+        mt_asc = ts.mt_ascending(mf) and not (after_fend and self.structure)
+        if (mf, mt) in self.sections and not ts.repeat(mf, mt):
+            if ts.is_endf6:
+                message = (
+                    f"section MF={mf}/MT={mt} of MAT {mat} occurs a second time "
+                    "in the material"
+                )
+            else:
+                message = (
+                    f"section MF={mf}/MT={mt} of MAT {mat} occurs a second time "
+                    "in the material, which the tape structure does not allow"
+                )
+            self.problem(offset, message)
+        elif not ts.mf_ascending:
+            if mf == last_mf and mt_asc and mt < last_mt:
+                self.problem(
+                    offset,
+                    f"section MF={mf}/MT={mt} of MAT {mat} follows section "
+                    f"MF={last_mf}/MT={last_mt}; the tape structure requires "
+                    "ascending MT within an MF",
+                )
         elif mf == last_mf and after_fend and self.structure:
             self.problem(
                 offset,
@@ -383,7 +436,7 @@ class _Checker:
                 f"of MF={last_mf}; the FEND record ends the MF, so that the "
                 "next section must have a greater MF",
             )
-        elif mf < last_mf or (mf == last_mf and mt < last_mt):
+        elif mf < last_mf or (mf == last_mf and mt_asc and mt < last_mt):
             self.problem(
                 offset,
                 f"section MF={mf}/MT={mt} of MAT {mat} follows section "
@@ -397,6 +450,21 @@ class _Checker:
         self.assumed_send = None
         mat, mf, mt = numbers
         level = self.level
+        if level == 3 and kind == "SEND" and not self.ts.send(self.mf, self.mt):
+            # a SEND record after a section without one
+            self.mismatch(offset, kind, numbers)
+            self.level = 2
+            return
+        if kind in ("FEND", "MEND", "TEND"):
+            if level == 3 and not self.ts.send(self.mf, self.mt):
+                self.level = level = 2
+            if level == 2 and kind == "FEND" and not self.ts.fend(self.mf):
+                # a FEND record after the sections of an MF without one
+                self.mismatch(offset, kind, numbers)
+                self.level = 1
+                return
+            if level == 2 and kind != "FEND" and not self.ts.fend(self.mf):
+                self.level = level = 1
         if kind == "SEND":
             if level == 3:
                 if (mat, mf, mt) != (self.mat, self.mf, 0):
@@ -446,6 +514,7 @@ class _Checker:
             self.mismatch(offset, kind, numbers)
 
     def end_of_file(self, offset):
+        self.implicit_ends()
         missing = {
             3: "SEND, FEND, MEND and TEND records",
             2: "FEND, MEND and TEND records",
@@ -518,6 +587,7 @@ def check_framing(
     accept_non_ascii=False,
     accept_spaces=False,
     accept_d_exponent=False,
+    tape_structure=None,
 ):
     """Check the framing records of the ENDF tape stored at ``path``.
 
@@ -574,9 +644,15 @@ def check_framing(
     :class:`TapeIndex`), ``accept_non_ascii`` accepts other characters,
     and ``accept_spaces`` and ``accept_d_exponent`` concern the reading
     of the zeros in the float fields of the framing records.
+
+    ``tape_structure`` (a :class:`~endf_parserpy.TapeStructure` or its
+    dictionary; ENDF-6 by default) gives the rules of the flavor: where
+    SEND and FEND records are, the order of the sections and whether a
+    section may repeat.
     """
     problems, _, _ = _check_framing_and_index(
         path,
+        tape_structure=tape_structure,
         ignore_send_records=ignore_send_records,
         ignore_blank_lines=ignore_blank_lines,
         ignore_missing_tpid=ignore_missing_tpid,
@@ -587,7 +663,9 @@ def check_framing(
     return problems
 
 
-def _check_framing_and_index(path, *, ignore_missing_tpid=False, **options):
+def _check_framing_and_index(
+    path, *, ignore_missing_tpid=False, tape_structure=None, **options
+):
     """Check the framing records of a file and build its index in one scan.
 
     Return ``(problems, index, error)``: the result of
@@ -606,7 +684,8 @@ def _check_framing_and_index(path, *, ignore_missing_tpid=False, **options):
     # record and do not rely on the MEND records, so that neither does
     # the index (see _ScanState)
     lenient = bool(options.get("ignore_send_records"))
-    st = _ScanState(ignore_missing_tpid, events, lenient=lenient)
+    ts = TapeStructure.from_spec(tape_structure)
+    st = _ScanState(ignore_missing_tpid, events, lenient=lenient, tape_structure=ts)
     index = error = None
     with open(path, "rb") as fh:
         try:
@@ -619,7 +698,7 @@ def _check_framing_and_index(path, *, ignore_missing_tpid=False, **options):
         except TapeStructureError as exc:
             # e.g. no tape head: the event _EV_NO_TPID is the last one
             error = exc
-    return _check_events(path, events, **options), index, error
+    return _check_events(path, events, tape_structure=ts, **options), index, error
 
 
 def _check_events(
@@ -631,6 +710,7 @@ def _check_events(
     accept_non_ascii=False,
     accept_spaces=False,
     accept_d_exponent=False,
+    tape_structure=None,
 ):
     """Apply the rules of :func:`check_framing` to the events of a scan."""
     check_structure = not ignore_send_records
@@ -638,6 +718,7 @@ def _check_events(
         check_ascii=not accept_non_ascii,
         number_opts=(accept_spaces, accept_d_exponent),
         structure=check_structure,
+        tape_structure=TapeStructure.from_spec(tape_structure),
     )
     end_offset = None  # the offset after the TEND record
     for kind, offset, line, mat, mf, mt in events:

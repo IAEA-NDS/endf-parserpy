@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/11
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -17,6 +17,7 @@ from ..cmd_utils import (
 from endf_parserpy import EndfParserCpp
 from endf_parserpy.tape import SectionParseError
 from endf_parserpy.tape.framing import _check_framing_and_index
+from endf_parserpy.utils.tape_structure import section_label
 from endf_parserpy.utils.tolerated_mismatches import (
     EndfToleratedMismatchWarning,
     format_tolerated_mismatches,
@@ -122,7 +123,11 @@ def _sections_parse_at_once(endf_file, material, keys, fast_parser, tolerated=No
         starts = {}
         text = endf_file._sections_tape(material.position, keys, starts)
         result, mismatches = parse_and_collect(fast_parser, text)
-        if not all(mt in result.get(mf, ()) for mf, mt in keys):
+        if isinstance(result, list):
+            labels = {section_label(s)[1:] for s in result}
+            if not all(key in labels for key in keys):
+                return False
+        elif not all(mt in result.get(mf, ()) for mf, mt in keys):
             return False
     except Exception:  # noqa: BLE001
         return False
@@ -171,6 +176,8 @@ def _framing_detail(parser, file):
     """
     opts = getattr(parser, "read_opts", None) or {}
     kwargs = {name: bool(opts.get(name) or False) for name in _FRAMING_OPTIONS}
+    # the rules of the tape structure of the flavor of the parser
+    kwargs["tape_structure"] = getattr(parser, "tape_structure", None)
     try:
         problems, index, _ = _check_framing_and_index(file, **kwargs)
     except OSError:
@@ -241,20 +248,34 @@ def _validate_sections(parser, file, fast_parser, index=None, tolerated=None):
         return False, str(exc)
     multi = len(endf_file) > 1
     for material in endf_file:
+        # a material with sections of the same MF and MT numbers (as the
+        # tape structure may allow) is validated section by section, the
+        # sections by their position in the material
+        repeated = endf_file._index[material.position].has_repeated_sections
+        position = 0
         for _, mf_keys in groupby(material.sections(), key=lambda key: key[0]):
             mf_keys = list(mf_keys)
-            if fast_parser is not None and _sections_parse_at_once(
-                endf_file, material, mf_keys, fast_parser, tolerated
+            first = position
+            position += len(mf_keys)
+            if (
+                fast_parser is not None
+                and not repeated
+                and _sections_parse_at_once(
+                    endf_file, material, mf_keys, fast_parser, tolerated
+                )
             ):
                 continue
-            for mf, mt in mf_keys:
+            for k, (mf, mt) in enumerate(mf_keys, start=first):
                 # the warning about the mismatches tolerated in the section
                 # (issued by EndfFile) is caught for the report of the file
                 caught = []
                 try:
                     with warnings.catch_warnings(record=True) as caught:
                         warnings.simplefilter("always", EndfToleratedMismatchWarning)
-                        material[mf, mt]
+                        if repeated:
+                            endf_file._section_at(material.position, k)
+                        else:
+                            material[mf, mt]
                 except Exception as exc:  # noqa: BLE001
                     _keep_tolerated(caught, None, None)
                     prefix = (

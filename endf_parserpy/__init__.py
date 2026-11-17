@@ -25,6 +25,12 @@ from .utils.endf6_plumbing import update_directory
 from .utils.math_utils import EndfFloat
 from .errors import EndfParserpyError
 from .utils.tolerated_mismatches import EndfToleratedMismatchWarning
+from .utils.tape_structure import (
+    TapeStructure,
+    section_label,
+    to_dict_form,
+    to_list_form,
+)
 from .tape import (
     parse_tape,
     parse_tape_file,
@@ -53,6 +59,10 @@ __all__ = (
     "EndfPath",
     "EndfVariable",
     "EndfFloat",
+    "TapeStructure",
+    "section_label",
+    "to_dict_form",
+    "to_list_form",
     "compare_objects",
     "list_parsed_sections",
     "list_unparsed_sections",

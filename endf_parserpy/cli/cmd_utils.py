@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/11
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -11,6 +11,7 @@
 
 
 import os
+import re
 import sys
 import platform
 from copy import copy
@@ -19,6 +20,7 @@ from .. import (
     EndfParserPy,
     EndfParserCpp,
     EndfFile,
+    EndfMaterialPath,
 )
 
 
@@ -237,21 +239,49 @@ def format_material_table(endf_file):
     return "\n".join(lines)
 
 
+_MAT_OCCURRENCE = re.compile(r"[0-9]+#[0-9]+")
+
+
+def is_material_qualified(raw_path):
+    """Whether a CLI path begins with a material selector.
+
+    The first component decides: ``MAT#k`` is a material selector, and so
+    is ``#k`` when it stands alone or is followed by an MF number or a
+    section position (``#0``, ``#0/3/2``, ``#0/#2``). A ``#k`` followed by
+    a field name (``#2/IZAM``) is the section at position ``k`` of a
+    single material, and a path that begins with an MF number
+    (``3/102#1/IZAM``) has no material selector.
+    """
+    parts = [part.strip() for part in str(raw_path).strip().strip("/").split("/")]
+    first = parts[0]
+    if _MAT_OCCURRENCE.fullmatch(first):
+        return True
+    if not first.startswith("#"):
+        return False
+    if len(parts) == 1:
+        return True
+    second = parts[1]
+    return second.isdigit() or second.startswith("#")
+
+
 def resolve_material_path(endf_file, raw_path):
     """Resolve a CLI path argument to a material-qualified path string.
 
-    A path containing ``#`` is treated as an
-    :class:`~endf_parserpy.EndfMaterialPath` and used as given. A path
-    without ``#`` is a plain :class:`~endf_parserpy.EndfPath`; it is
+    A path that begins with a material selector (see
+    :func:`is_material_qualified`) is treated as an
+    :class:`~endf_parserpy.EndfMaterialPath` and used as given. Any
+    other path is a plain :class:`~endf_parserpy.EndfPath`, which may
+    begin with a section selector (``3/102#1``, ``#2/IZAM``); it is
     accepted only when ``endf_file`` holds a single material (it is then
     addressed against that material via the ``#0`` selector). On a
     multi-material file a selector-less path is rejected with a listing
-    of the available materials.
+    of the available materials. A bare ``#k`` is the material at tape
+    position ``k``; the section at position ``k`` is ``#0/#k``.
     """
     # surrounding slashes are optional in CLI paths (e.g. "/3/2" and
     # "3/2" are the same); strip them so the path composes cleanly
     raw_path = str(raw_path).strip().strip("/")
-    if "#" in raw_path:
+    if is_material_qualified(raw_path):
         return raw_path
     if len(endf_file) == 1:
         return f"#0/{raw_path}" if raw_path else "#0"
@@ -263,6 +293,44 @@ def resolve_material_path(endf_file, raw_path):
     )
     print(msg, file=sys.stderr)
     sys.exit(1)
+
+
+def section_label_of(endf_file, material_path):
+    """Return the label ``(MF, MT)`` of the section a material-qualified
+    path addresses, also for a section selected by its position (``#k``).
+
+    Raises the errors of the selection, e.g. :class:`IndexError` for a
+    position that is out of range.
+    """
+    mp = EndfMaterialPath(material_path)
+    if mp.section_position is None:
+        return mp.mf, mp.mt
+    material = endf_file[selector_of(material_path)]
+    keys = material.sections()
+    if mp.section_position >= len(keys):
+        raise IndexError(
+            f"section position {mp.section_position} out of range; the "
+            f"material has {len(keys)} sections"
+        )
+    return keys[mp.section_position]
+
+
+def section_names(keys):
+    """The names ``MF/MT`` of the sections of a material, in its order,
+    with ``#k`` added for a label that occurs several times."""
+    counts = {}
+    for key in keys:
+        counts[key] = counts.get(key, 0) + 1
+    seen = {}
+    names = []
+    for mf, mt in keys:
+        if counts[(mf, mt)] > 1:
+            k = seen.get((mf, mt), 0)
+            seen[(mf, mt)] = k + 1
+            names.append(f"{mf}/{mt}#{k}")
+        else:
+            names.append(f"{mf}/{mt}")
+    return names
 
 
 def selector_of(material_path):

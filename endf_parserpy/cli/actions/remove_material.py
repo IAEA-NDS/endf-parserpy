@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/18
-# Last modified:   2026/05/18
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -69,7 +69,7 @@ def perform_action(args):
         except Exception as exc:  # noqa: BLE001
             _fail(f"cannot read {file}: {exc}")
         resolved = resolve_material_path(endf_file, selector)
-        if EndfMaterialPath(resolved).mf is not None:
+        if EndfMaterialPath(resolved).depth != "material":
             _fail(
                 f"the selector {selector!r} must select a whole material "
                 "(e.g. '#0' or '2925#0'), not a section"

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/05/18
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -15,11 +15,13 @@ from ..cmd_utils import (
     add_common_cmd_parser_args,
     get_endf_parser,
     open_endf_file,
+    is_material_qualified,
     resolve_material_path,
+    section_label_of,
     selector_of,
     export_endf_file,
 )
-from endf_parserpy import EndfPath, EndfMaterialPath
+from endf_parserpy import EndfMaterialPath
 
 
 COMMAND_NAME = "replace"
@@ -72,11 +74,11 @@ def _is_field_path(raw_path):
     A malformed path is treated as not field-depth; the genuine error is
     reported later, when the path is resolved against a file.
     """
-    raw_path = str(raw_path).strip()
+    raw_path = str(raw_path).strip().strip("/")
     try:
-        if "#" in raw_path:
-            return EndfMaterialPath(raw_path).subpath is not None
-        return len(EndfPath(raw_path)) > 2
+        if not is_material_qualified(raw_path):
+            raw_path = f"#0/{raw_path}"
+        return EndfMaterialPath(raw_path).depth == "field"
     except Exception:  # noqa: BLE001
         return False
 
@@ -88,21 +90,23 @@ def _path_kind(material_path):
     ``"section"`` (selector, MF and MT) or ``"field"`` (a path reaching
     into a section).
     """
-    mp = EndfMaterialPath(material_path)
-    if mp.mf is None:
-        return "material"
-    if mp.mt is None:
-        return "mf"
-    if mp.subpath is None:
-        return "section"
-    return "field"
+    return EndfMaterialPath(material_path).depth
 
 
-def _location(mp):
-    """Render the MF[/MT] an :class:`EndfMaterialPath` addresses."""
-    if mp.mt is None:
-        return f"MF={mp.mf}"
-    return f"MF={mp.mf}/MT={mp.mt}"
+def _location(mf, mt):
+    """Render the MF[/MT] a path addresses."""
+    if mt is None:
+        return f"MF={mf}"
+    return f"MF={mf}/MT={mt}"
+
+
+def _label(endf_file, resolved, kind):
+    """The ``(MF, MT)`` a path addresses (``MT`` is ``None`` for an MF),
+    also for a section selected by its position."""
+    if kind in ("section", "field"):
+        return section_label_of(endf_file, resolved)
+    mp = EndfMaterialPath(resolved)
+    return mp.mf, mp.mt
 
 
 def _open(file, parser, role):
@@ -177,14 +181,17 @@ def _replace_element(
                 f"path addresses a {target_kind}; both must address the "
                 "same kind of object"
             )
-        src_mp = EndfMaterialPath(src_resolved)
-        dst_mp = EndfMaterialPath(dst_resolved)
-        if (src_mp.mf, src_mp.mt) != (dst_mp.mf, dst_mp.mt):
+        try:
+            src_label = _label(source, src_resolved, source_kind)
+            dst_label = _label(dest, dst_resolved, target_kind)
+        except Exception as exc:  # noqa: BLE001
+            _fail(f"cannot resolve the sections the paths address: {exc}")
+        if src_label != dst_label:
             # a section keeps its own MF/MT in its records, so copying it
             # to a different MF/MT would silently land it back at its own
             _fail(
-                f"the source addresses {_location(src_mp)} but the target "
-                f"addresses {_location(dst_mp)}; a section or MF file must "
+                f"the source addresses {_location(*src_label)} but the target "
+                f"addresses {_location(*dst_label)}; a section or MF file must "
                 "be copied to the same MF/MT, since it carries its own "
                 "MF/MT in its records"
             )

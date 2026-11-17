@@ -3,12 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2026/10/25
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+import re
 import sys
 from collections.abc import (
     Mapping,
@@ -44,6 +45,95 @@ def _check_resizable(obj, action):
             f"cannot {action} a numpy array, as its size is fixed; "
             + "assign a new array to the enclosing element instead"
         )
+
+
+_POSITION_TOKEN = re.compile(r"#([0-9]+)")
+_OCCURRENCE_TOKEN = re.compile(r"([0-9]+)#([0-9]+)")
+
+
+class _Position:
+    """The section selector ``#k`` of an :class:`EndfPath`: the section at
+    position ``k`` of a material (the tape head not counted)."""
+
+    __slots__ = ("k",)
+
+    def __init__(self, k):
+        self.k = k
+
+    def __str__(self):
+        return f"#{self.k}"
+
+    def __repr__(self):
+        return f"_Position({self.k})"
+
+    def __eq__(self, other):
+        return isinstance(other, _Position) and other.k == self.k
+
+    def __hash__(self):
+        return hash(("#", self.k))
+
+
+class _Occurrence:
+    """The element ``MT#k`` of the section selector ``MF/MT#k`` of an
+    :class:`EndfPath`: the ``k``-th section labelled MF/MT."""
+
+    __slots__ = ("mt", "k")
+
+    def __init__(self, mt, k):
+        self.mt = mt
+        self.k = k
+
+    def __str__(self):
+        return f"{self.mt}#{self.k}"
+
+    def __repr__(self):
+        return f"_Occurrence({self.mt}, {self.k})"
+
+    def __eq__(self, other):
+        return isinstance(other, _Occurrence) and (other.mt, other.k) == (
+            self.mt,
+            self.k,
+        )
+
+    def __hash__(self):
+        return hash((self.mt, "#", self.k))
+
+
+_SELECTOR_TOKENS = (_Position, _Occurrence)
+
+
+def _parse_selector_token(token):
+    m = _POSITION_TOKEN.fullmatch(token)
+    if m:
+        return _Position(int(m.group(1)))
+    m = _OCCURRENCE_TOKEN.fullmatch(token)
+    if m:
+        return _Occurrence(int(m.group(1)), int(m.group(2)))
+    raise ValueError(
+        f"invalid section selector '{token}'; expected MF/MT, MF/MT#k or #k "
+        "with non-negative integers"
+    )
+
+
+def _path_str(path_elements):
+    return "/".join(str(x) for x in path_elements)
+
+
+def _check_placement(path_elements):
+    """Raise if a section selector token is not at the start of a path."""
+    for i, el in enumerate(path_elements):
+        if isinstance(el, _Position) and i != 0:
+            raise ValueError(
+                f"the section selector '{el}' must be the first element of "
+                f"the path '{_path_str(path_elements)}'"
+            )
+        if isinstance(el, _Occurrence) and (
+            i != 1 or not isinstance(path_elements[0], int)
+        ):
+            raise ValueError(
+                f"the occurrence '{el}' must follow the MF at the start of the "
+                f"path '{_path_str(path_elements)}'"
+            )
 
 
 def recursive_equality_check(obj1, obj2, ids):
@@ -130,7 +220,38 @@ class EndfPath(Sequence):
     using the ``==`` operator. Also iterating over the individual
     keys within a reference works, which are returned as
     :class:`EndfPath` instances.
+
+    **Sections of a material.** Applied to a material, the first
+    elements of a path select a section, in one of three ways:
+
+    - ``MF/MT``, e.g. ``3/102``: the section with this label, which must
+      be unique in the material;
+    - ``MF/MT#k``, e.g. ``3/102#2``: the ``k``-th section with this label,
+      for a label that occurs several times (as the tape structure of
+      ``gendf`` allows);
+    - ``#k``, e.g. ``#0``: the section at position ``k`` of the material.
+
+    ``k`` counts from 0, and the positions do not count the tape head
+    (MF0/MT0), which is selected by its label ``0/0``. On a material in
+    the list form as returned by ``parse``, whose element 0 is the tape
+    head, ``#k`` is therefore the list element ``material[k + 1]``. The
+    rest of the path, e.g. ``3/102#2/IZAM``, addresses data within the
+    section as before.
+
+    A list is taken as a material in the list form if its first element
+    is a section: a mapping with the keys ``MF`` and ``MT``, or a list of
+    strings (an unparsed section). On such a list, a path must begin with
+    a section selector, ``MF/MT`` included; an ``MF`` alone does not
+    select a section. A mapping (the nested form ``{MF: {MT: section}}``)
+    is walked by its keys as before; ``MF/MT#k`` and ``#k`` work on it
+    as well, with the position in the canonical order (ascending MF,
+    then MT). Other lists, e.g. arrays in the ``array_type="list"`` mode,
+    are walked as before. The functions of :mod:`endf_parserpy.utils.sections`
+    (e.g. :func:`~endf_parserpy.get_section`) do the same without a path.
     """
+
+    # set by the constructor; paths created otherwise have no selector
+    _has_tokens = False
 
     def __init__(self, pathspec="", array_type="dict", leading="dict"):
         """The EndfPath constructor accepts the following parameters.
@@ -170,9 +291,17 @@ class EndfPath(Sequence):
         """
         if isinstance(pathspec, EndfPath):
             self._path_elements = pathspec._path_elements
+            self._has_tokens = pathspec._has_tokens
             self.array_type = pathspec.array_type
             self.leading = pathspec.leading
             return
+        self._set_elements(pathspec)
+        if self._has_tokens:
+            _check_placement(self._path_elements)
+        self.array_type = array_type
+        self.leading = leading
+
+    def _set_elements(self, pathspec):
         if isinstance(pathspec, int):
             pathspec = str(pathspec)
         if isinstance(pathspec, str):
@@ -180,8 +309,28 @@ class EndfPath(Sequence):
         if not isinstance(pathspec, Sequence):
             raise TypeError("expected pathspec to be sequence or string")
         self._path_elements = self._standardize_path_tuple(pathspec)
-        self.array_type = array_type
-        self.leading = leading
+
+    @classmethod
+    def _unchecked(cls, pathspec):
+        """An :class:`EndfPath` whose selector tokens may be anywhere; for
+        the pieces of a path, e.g. in ``+``, whose placement is checked
+        on the whole path."""
+        if isinstance(pathspec, EndfPath):
+            return pathspec
+        new = cls.__new__(cls)
+        new._set_elements(pathspec)
+        new.array_type = "dict"
+        new.leading = "dict"
+        return new
+
+    @classmethod
+    def _from_elements(cls, path_elements):
+        new = cls.__new__(cls)
+        new._path_elements = tuple(path_elements)
+        new._has_tokens = any(isinstance(x, _SELECTOR_TOKENS) for x in path_elements)
+        new.array_type = "dict"
+        new.leading = "dict"
+        return new
 
     def _standardize_path_tuple(self, path_tuple):
         p = path_tuple
@@ -189,10 +338,23 @@ class EndfPath(Sequence):
         p = (x.strip() for x in p)
         p = (x for x in p if x != "")
         res = tuple()
+        has_tokens = False
         for t in p:
-            res = res + self._expand_array_notation(t)
-        res = tuple(int(x) if x.isdigit() else x for x in res)
+            if "#" in t:
+                # a section selector (#k, or MT#k of MF/MT#k), recognised
+                # before the array notation, which it must not contain
+                res = res + (_parse_selector_token(t),)
+                has_tokens = True
+            else:
+                res = res + self._expand_array_notation(t)
+        if has_tokens:
+            res = tuple(
+                int(x) if isinstance(x, str) and x.isdigit() else x for x in res
+            )
+        else:
+            res = tuple(int(x) if x.isdigit() else x for x in res)
         self._validate_path(res)
+        self._has_tokens = has_tokens
         return res
 
     def _expand_array_notation(self, extvarname):
@@ -209,7 +371,7 @@ class EndfPath(Sequence):
 
     def _validate_path(self, path_elements):
         for el in path_elements:
-            if not isinstance(el, int):
+            if not isinstance(el, (int, _Position, _Occurrence)):
                 if (
                     not el.replace("_", "").isalnum() or el[0].isdigit()
                 ) and not el == "*":
@@ -229,24 +391,32 @@ class EndfPath(Sequence):
         return f"EndfPath('{str(self)}')"
 
     def __getitem__(self, key):
-        return EndfPath(self._path_elements[key])
+        elements = self._path_elements[key]
+        if not isinstance(key, slice):
+            elements = (elements,)
+        # the elements are standardized already; a slice may cut off the
+        # MF before an occurrence, which is reported when it is applied
+        return EndfPath._from_elements(elements)
 
     def __len__(self, *args, **kwargs):
         return len(self._path_elements)
 
     def __add__(self, other):
         if not isinstance(other, EndfPath):
-            other = EndfPath(other)
+            other = EndfPath._unchecked(other)
         # The path elements of both are already standardized, and
         # standardizing their concatenation would leave it unchanged.
         new_endfpath = EndfPath.__new__(EndfPath)
         new_endfpath._path_elements = self._path_elements + other._path_elements
+        new_endfpath._has_tokens = self._has_tokens or other._has_tokens
+        if new_endfpath._has_tokens:
+            _check_placement(new_endfpath._path_elements)
         new_endfpath.array_type = self.array_type
         new_endfpath.leading = self.leading
         return new_endfpath
 
     def __radd__(self, other):
-        other = EndfPath(other)
+        other = EndfPath._unchecked(other)
         return other.__add__(self)
 
     def __int__(self):
@@ -274,10 +444,76 @@ class EndfPath(Sequence):
         >>> p = EndfPath('a/1/b')
         >>> assert p.get(testdict) == 5
         """
+        if self._has_tokens or isinstance(dict_like, (list, EndfList)):
+            entered = self._enter(dict_like)
+            if entered is not None:
+                material, mf, mt, occurrence, position, rest = entered
+                cur = _sections().get_section(
+                    material, mf, mt, occurrence, position=position
+                )
+                for el in rest:
+                    cur = cur[el]
+                return cur
         cur = dict_like
         for el in self._path_elements:
             cur = cur[el]
         return cur
+
+    def _enter(self, root):
+        """Resolve the section selector at the start of the path.
+
+        Returns ``None`` if the path is to be walked key by key (the root
+        is no material in the list form, and the path has no selector
+        token), else ``(material, mf, mt, occurrence, position, rest)``
+        with ``rest`` the elements of the path within the section.
+        """
+        sections = _sections()
+        if isinstance(root, EndfObject):
+            root = root.unwrap()
+        els = self._path_elements
+        if self._has_tokens:
+            _check_placement(els)
+        if sections.is_section_list(root):
+            in_list = True
+        elif self._has_tokens:
+            if not (
+                isinstance(root, Mapping) and all(isinstance(k, int) for k in root)
+            ):
+                raise ValueError(
+                    f"the path '{self}' starts with a section selector, but the "
+                    "object is not a material (a list of sections or a dict "
+                    "{MF: {MT: section}})"
+                )
+            in_list = False
+        else:
+            return None
+        if not els:
+            return None
+        first = els[0]
+        if isinstance(first, _Position):
+            return root, None, None, None, first.k, els[1:]
+        second = els[1] if len(els) > 1 else None
+        if isinstance(first, int):
+            if isinstance(second, _Occurrence):
+                return root, first, second.mt, second.k, None, els[2:]
+            if in_list:
+                if second is None:
+                    raise ValueError(
+                        f"the path '{self}' stops at MF={first}, which addresses "
+                        "no section of a material in the list form; use MF/MT, "
+                        "MF/MT#k or #k"
+                    )
+                if isinstance(second, int):
+                    return root, first, second, None, None, els[2:]
+        if in_list and "*" in els[:2]:
+            raise ValueError(
+                f"the wildcard '*' in the section selector of '{self}' is not "
+                "supported for a material in the list form"
+            )
+        raise ValueError(
+            f"the path '{self}' does not address a section of a material in the "
+            "list form; a path on such a material starts with MF/MT, MF/MT#k or #k"
+        )
 
     def set(self, dict_like, value):
         """Insert an object into a nested dictionary at the :class:`EndfPath` location.
@@ -306,9 +542,40 @@ class EndfPath(Sequence):
         """
         if isinstance(value, EndfObject):
             value = value.unwrap()
+        if self._has_tokens or isinstance(dict_like, (list, EndfList)):
+            entered = self._enter(dict_like)
+            if entered is not None:
+                material, mf, mt, occurrence, position, rest = entered
+                if not rest:
+                    self._set_section(material, mf, mt, occurrence, position, value)
+                    return
+                # a field: the section must exist; none is created
+                section = _sections().get_section(
+                    material, mf, mt, occurrence, position=position
+                )
+                self._set_in(section, rest, value)
+                return
+        self._set_in(dict_like, self._path_elements, value)
+
+    def _set_section(self, material, mf, mt, occurrence, position, section):
+        sections = _sections()
+        if position is not None:
+            sections.set_section(material, section, position=position)
+            return
+        if isinstance(section, MutableMapping):
+            section.setdefault("MF", mf)
+            section.setdefault("MT", mt)
+        label = sections._label(section)
+        if label != (mf, mt):
+            raise ValueError(
+                f"the section has MF={label[0]}/MT={label[1]}, but the path "
+                f"'{self}' addresses MF={mf}/MT={mt}"
+            )
+        sections.set_section(material, section, occurrence)
+
+    def _set_in(self, dict_like, pathels, value):
         cur = dict_like
         in_leading = True
-        pathels = self._path_elements
         num_pathels = len(pathels)
         dict_mode = self.array_type == "dict"
         for i, el in enumerate(pathels):
@@ -379,11 +646,32 @@ class EndfPath(Sequence):
         >>> p = EndfPath('a/1')
         >>> p.remove(testdict)
         """
+        pathels = self._path_elements
         cur = dict_like
-        for el in self._path_elements[:-1]:
+        if self._has_tokens or isinstance(dict_like, (list, EndfList)):
+            entered = self._enter(dict_like)
+            if entered is not None:
+                material, mf, mt, occurrence, position, rest = entered
+                if not rest:
+                    _sections().remove_section(
+                        material, mf, mt, occurrence, position=position
+                    )
+                    return
+                cur = _sections().get_section(
+                    material, mf, mt, occurrence, position=position
+                )
+                pathels = rest
+        for el in pathels[:-1]:
             cur = cur[el]
         _check_resizable(cur, "remove an element from")
-        del cur[self._path_elements[-1]]
+        del cur[pathels[-1]]
+
+
+def _sections():
+    # imported on first use: the module imports from this one
+    from . import sections
+
+    return sections
 
 
 class EndfVariable:
@@ -415,6 +703,15 @@ class EndfVariable:
             endf_dict = endf_dict.unwrap()
         if not isinstance(endf_path, EndfPath):
             endf_path = EndfPath(endf_path)
+        els = endf_path._path_elements
+        selector_len = 1 if els and isinstance(els[0], _Position) else 2
+        if len(els) <= selector_len and (
+            endf_path._has_tokens or _sections().is_section_list(endf_dict)
+        ):
+            raise ValueError(
+                "EndfVariable needs a field path in a material in the list form "
+                f"or with a section selector, not the section path '{endf_path}'"
+            )
         if not endf_path.exists(endf_dict):
             if value is None:
                 raise KeyError(f"variable `{endf_path}` does not exist")
@@ -564,17 +861,30 @@ class EndfObject:
         ret = recursive_equality_check(obj1, obj2, set())
         return ret
 
-    def __getitem__(self, key):
-        if isinstance(key, (str, int)):
-            endf_path = EndfPath(key, self._array_type, self._leading)
-        elif isinstance(key, Sequence):
-            endf_path = EndfPath("", self._array_type, self._leading)
-            for p in key:
-                endf_path += p
-        else:
-            raise ValueError("unsupported key data type")
+    def _positional(self, key):
+        """Whether ``key`` is a Python int that indexes a material in the
+        list form positionally (the tape head counted), as a list does."""
+        return (
+            isinstance(key, int)
+            and isinstance(self, EndfList)
+            and _sections().is_section_list(self._store)
+        )
 
-        ret = endf_path.get(self._store)
+    def __getitem__(self, key):
+        if self._positional(key):
+            ret = self._store[key]
+            index = key if key >= 0 else key + len(self._store)
+            endf_path = EndfPath._from_elements((index,))
+        else:
+            if isinstance(key, (str, int)):
+                endf_path = EndfPath(key, self._array_type, self._leading)
+            elif isinstance(key, Sequence):
+                endf_path = EndfPath("", self._array_type, self._leading)
+                for p in key:
+                    endf_path += p
+            else:
+                raise ValueError("unsupported key data type")
+            ret = endf_path.get(self._store)
 
         if isinstance(ret, MutableMapping) and not isinstance(ret, EndfDict):
             ret = EndfDict(ret, self._array_type)
@@ -590,6 +900,9 @@ class EndfObject:
     def __setitem__(self, key, value):
         if isinstance(value, EndfObject):
             value = value.unwrap()
+        if self._positional(key):
+            self._store[key] = value
+            return
         if isinstance(key, (str, int)):
             endf_path = EndfPath(key, self._array_type, self._leading)
         elif isinstance(key, Sequence):
@@ -601,6 +914,9 @@ class EndfObject:
         endf_path.set(self._store, value)
 
     def __delitem__(self, key):
+        if self._positional(key):
+            del self._store[key]
+            return
         if not isinstance(key, EndfPath):
             endf_path = EndfPath(key, self._array_type, self._leading)
         endf_path.remove(self._store)

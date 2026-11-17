@@ -812,7 +812,9 @@ def _parsefun_forward_decl(istream_name):
     )
 
 
-def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
+def generate_all_cpp_parsefuns_code(
+    recipes, module_name, shared_registry=None, forward_decls=None
+):
     """Generate all per-(mf, mt) parse functions plus wrappers, master
     dispatcher, and pybind glue for one ENDF flavor.
 
@@ -849,7 +851,12 @@ def generate_all_cpp_parsefuns_code(recipes, module_name, shared_registry=None):
                 generate_cpp_parsefun(canonical_istream, recipe, mf=mf, mt=mt_),
             )
         if canonical_istream not in forward_decls_seen:
-            parsefuns_code += _parsefun_forward_decl(canonical_istream)
+            # the declarations go into the list `forward_decls` if given,
+            # e.g. to place them outside of the namespace of the flavor
+            if forward_decls is None:
+                parsefuns_code += _parsefun_forward_decl(canonical_istream)
+            else:
+                forward_decls.append(_parsefun_forward_decl(canonical_istream))
             forward_decls_seen.add(canonical_istream)
         return canonical
 

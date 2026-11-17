@@ -3,15 +3,15 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/16
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
 """Tests of the generated C++ code: the assignment of the shared parse
-and write functions to the shared translation units, and the functions
-of a flavor module.
+and write functions to the shared translation units, the functions of a
+flavor, and the translation units of the module with all flavors.
 
 The shared functions were assigned to the chunks round-robin by recipe
 hash, which put the two largest recipes (parse and write function each)
@@ -28,6 +28,8 @@ import pytest
 
 from endf_parserpy.compiler.endf2cpp import (
     balanced_chunk_assignment,
+    generate_cpp_flavor_code,
+    generate_cpp_flavors_module_code,
     generate_cpp_module_code,
     generate_shared_cpp_code,
 )
@@ -192,3 +194,51 @@ def test_module_without_per_section_wrappers(dedup):
         ("write_endf", "writing function"),
         ("write_endf_file", "writing function"),
     ]
+
+
+# --- the module with all flavors ---------------------------------------
+
+
+def test_flavor_code_in_namespace():
+    # the code of a flavor, whose functions have the same names in every
+    # flavor, is in a namespace of its own; the declarations of the shared
+    # functions, which are defined in the shared chunks, are outside it
+    registry = {}
+    code = generate_cpp_flavor_code(
+        {3: {1: RECIPE_SMALL, 2: RECIPE_LARGE}}, "my_flavor", shared_registry=registry
+    )
+    head, sep, rest = code.partition("\nnamespace endf_flavor_my_flavor {\n")
+    assert sep
+    body, sep, tail = rest.partition("\n}  // namespace endf_flavor_my_flavor\n")
+    assert sep and tail.strip() == ""
+    for side, suffix in (("parse", "_istream"), ("write", "_ostream")):
+        for canonical, _code in registry[side].values():
+            declaration = re.compile(
+                r"^\S.*\b" + canonical + suffix + r"\(.*\);$", re.M
+            )
+            assert len(declaration.findall(head)) == 1
+            assert canonical + suffix + "(" in body
+    assert "void register_functions(py::module_& m) {" in body
+    registered = re.findall(r'm\.def\("(\w+)", &\w+, "([^"]*)"', body)
+    assert [name for name, _ in registered] == [
+        "parse_endf",
+        "parse_endf_file",
+        "write_endf",
+        "write_endf_file",
+    ]
+    assert "PYBIND11_MODULE" not in code
+
+
+def test_flavors_module_init():
+    code = generate_cpp_flavors_module_code("_flavors", ["a", "b_0_20"])
+    assert code.count("PYBIND11_MODULE(_flavors, m) {") == 1
+    for entry in ("a", "b_0_20"):
+        assert (
+            f"namespace endf_flavor_{entry} {{\n"
+            "  void register_functions(py::module_& m);\n}"
+        ) in code
+        assert (
+            f'cpp_register_flavor(m, sys_modules, "{entry}", '
+            f"&endf_flavor_{entry}::register_functions);"
+        ) in code
+    assert 'm.attr("_entries") = py::make_tuple("a", "b_0_20");' in code

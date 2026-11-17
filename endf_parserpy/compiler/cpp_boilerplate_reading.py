@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/18
-# Last modified:   2026/11/08
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -22,8 +22,12 @@ def module_header_reading():
     return code
 
 
-def register_reading_options():
-    code = r"""
+def _registration_code(code):
+    return cpp.indent_code(code, -4)
+
+
+# the commented-out registration of ParsingOptions (kept for reference)
+_PARSING_OPTIONS_COMMENT = r"""
     // static bool parsing_options_registered = false;
     // if (! parsing_options_registered) {
     //   py::class_<ParsingOptions>(m, "ParsingOptions")
@@ -39,7 +43,10 @@ def register_reading_options():
     //   parsing_options_registered = true;
     // }
 
-    // numbers of lines read as views and as copies (see CppLine) since
+"""
+
+
+_LINE_READ_COUNTS = r"""    // numbers of lines read as views and as copies (see CppLine) since
     // the module was loaded or the last reset, for tests
     m.def("_line_read_counts", [](bool reset) {
       cpp_line_read_counts& counts = cpp_line_read_counter();
@@ -51,7 +58,10 @@ def register_reading_options():
       return res;
     }, py::arg("reset") = false);
 
-    // the row kernel for float fields, selected once when the module is
+"""
+
+
+_ROW_SELECTION_WARNING = r"""    // the row kernel for float fields, selected once when the module is
     // loaded (see cpp_row_selected)
     {
       const cpp_row_selection& sel = cpp_row_selected();
@@ -64,7 +74,10 @@ def register_reading_options():
       }
     }
 
-    // the selected row kernel, the tiers and the CPU features, for tests
+"""
+
+
+_BULK_BODY_INFO = r"""    // the selected row kernel, the tiers and the CPU features, for tests
     // and diagnostics; the content may change between versions
     m.def("_bulk_body_info", []() {
       const cpp_row_selection& sel = cpp_row_selected();
@@ -115,7 +128,34 @@ def register_reading_options():
       return info;
     });
     """
-    return cpp.indent_code(code, -4)
+
+
+def register_reading_options():
+    """Code in the module init of a C++ module of one flavor: the
+    diagnostic functions and the warning about the row kernel."""
+    code = (
+        _PARSING_OPTIONS_COMMENT
+        + _LINE_READ_COUNTS
+        + _ROW_SELECTION_WARNING
+        + _BULK_BODY_INFO
+    )
+    return _registration_code(code)
+
+
+def register_diagnostic_functions():
+    """Code that defines the diagnostic functions ``_line_read_counts``
+    and ``_bulk_body_info`` in the module ``m``.
+
+    In the module with all flavors, the counters are those of the whole
+    module, which every flavor entry exposes.
+    """
+    return _registration_code(_LINE_READ_COUNTS + _BULK_BODY_INFO)
+
+
+def row_selection_warning():
+    """Code that issues the warning about the requested row kernel, once
+    when the module is loaded."""
+    return _registration_code(_ROW_SELECTION_WARNING)
 
 
 def parsefun_header(fun_name):

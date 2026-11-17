@@ -779,7 +779,9 @@ def generate_cpp_writefun_wrappers_file(writefuns, *extra_args):
     return code
 
 
-def generate_all_cpp_writefuns_code(recipes, module_name, shared_registry=None):
+def generate_all_cpp_writefuns_code(
+    recipes, module_name, shared_registry=None, forward_decls=None
+):
     """Mirror of :func:`code_generator_parsing.generate_all_cpp_parsefuns_code`
     for the write side. With ``shared_registry`` provided, deduplicate
     write_recipe_<hash>_ostream bodies across flavors into _shared.cpp,
@@ -808,7 +810,12 @@ def generate_all_cpp_writefuns_code(recipes, module_name, shared_registry=None):
                 generate_cpp_writefun(canonical_ostream, recipe, mf=mf, mt=mt_),
             )
         if canonical_ostream not in forward_decls_seen:
-            writefuns_code += _writefun_forward_decl(canonical_ostream)
+            # the declarations go into the list `forward_decls` if given,
+            # e.g. to place them outside of the namespace of the flavor
+            if forward_decls is None:
+                writefuns_code += _writefun_forward_decl(canonical_ostream)
+            else:
+                forward_decls.append(_writefun_forward_decl(canonical_ostream))
             forward_decls_seen.add(canonical_ostream)
         return canonical
 

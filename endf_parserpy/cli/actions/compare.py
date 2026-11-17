@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/05/18
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -18,6 +18,7 @@ from ..cmd_utils import (
 )
 import sys
 from endf_parserpy import compare_objects
+from endf_parserpy.utils.debugging_utils import _compare_objects
 
 
 COMMAND_NAME = "compare"
@@ -77,6 +78,78 @@ def _pair_materials(endf_file1, endf_file2):
     return pairs, unpaired1, unpaired2
 
 
+def _section_keys(material):
+    """The keys ``(MF, MT, k)`` of the sections of a material in its
+    order, ``k`` the occurrence of the label."""
+    seen = defaultdict(int)
+    keys = []
+    for mf, mt in material.sections():
+        keys.append((mf, mt, seen[(mf, mt)]))
+        seen[(mf, mt)] += 1
+    return keys
+
+
+def _compare_materials(material1, material2, files, atol, rtol):
+    """Compare two paired materials section by section.
+
+    The sections are paired by label and occurrence: the k-th section
+    MF/MT of one material with the k-th of the other. A material without
+    repeated labels is compared as the ``{MF: {MT: section}}`` dict, as
+    before; the paths of a label that repeats in either material carry
+    ``#k``. A section without a partner, and a different order of the
+    paired sections, are differences.
+    """
+    keys1 = _section_keys(material1)
+    keys2 = _section_keys(material2)
+    repeated = {(mf, mt) for mf, mt, k in keys1 + keys2 if k > 0}
+    set1, set2 = set(keys1), set(keys2)
+
+    def name(key):
+        mf, mt, k = key
+        return f"{mf}/{mt}#{k}" if (mf, mt) in repeated else f"{mf}/{mt}"
+
+    is_equal = True
+    if not repeated:
+        is_equal = compare_objects(
+            parsed_material_dict(material1),
+            parsed_material_dict(material2),
+            atol=atol,
+            rtol=rtol,
+            fail_on_diff=False,
+        )
+    else:
+        for key in keys1:
+            if key not in set2:
+                print(f"unpaired: section {name(key)} only in {files[0]}")
+                is_equal = False
+                continue
+            mf, mt, k = key
+            same = _compare_objects(
+                material1[mf, mt, k].detach(),
+                material2[mf, mt, k].detach(),
+                curpath=f"/{name(key)}",
+                atol=atol,
+                rtol=rtol,
+                fail_on_diff=False,
+            )
+            is_equal = is_equal and same
+        for key in keys2:
+            if key not in set1:
+                print(f"unpaired: section {name(key)} only in {files[1]}")
+                is_equal = False
+    order1 = [key for key in keys1 if key in set2]
+    order2 = [key for key in keys2 if key in set1]
+    if order1 != order2:
+        print(
+            f"section order differs: {files[0]} has "
+            + ", ".join(name(key) for key in order1)
+            + f"; {files[1]} has "
+            + ", ".join(name(key) for key in order2)
+        )
+        is_equal = False
+    return is_equal
+
+
 def _open(file, parser):
     """Open ``file`` as an :class:`EndfFile`, or exit cleanly with status 2."""
     try:
@@ -101,14 +174,7 @@ def _compare_endf_files(parser, files, atol, rtol):
                 f"=== comparing #{material1.position} (MAT {material1.mat}) "
                 f"<-> #{material2.position} (MAT {material2.mat}) ==="
             )
-        is_equal = compare_objects(
-            parsed_material_dict(material1),
-            parsed_material_dict(material2),
-            atol=atol,
-            rtol=rtol,
-            fail_on_diff=False,
-        )
-        if not is_equal:
+        if not _compare_materials(material1, material2, files, atol, rtol):
             all_equal = False
     for material in unpaired1:
         print(

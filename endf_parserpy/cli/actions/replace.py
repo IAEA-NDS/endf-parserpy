@@ -120,18 +120,19 @@ def _open(file, parser, role):
 def _extract(endf_file, resolved, kind):
     """Return the object addressed by ``resolved`` in ``endf_file``.
 
-    A ``"material"`` or ``"mf"`` path yields a ``{(MF, MT): section}``
-    mapping of every section it covers; a ``"section"`` or ``"field"``
-    path yields the detached section dict or the plain field value.
+    A ``"material"`` or ``"mf"`` path yields the list of ``(MF, MT,
+    section)`` of every section it covers, in the order of the material;
+    a ``"section"`` or ``"field"`` path yields the detached section dict
+    or the plain field value.
     """
     if kind in ("material", "mf"):
         material = endf_file[selector_of(resolved)]
         mf_scope = EndfMaterialPath(resolved).mf  # None for a whole material
-        sections = {
-            (mf, mt): material[mf, mt].detach()
-            for (mf, mt) in material.sections()
+        sections = [
+            (mf, mt, material[f"#{position}"].detach())
+            for position, (mf, mt) in enumerate(material.sections())
             if mf_scope is None or mf == mf_scope
-        }
+        ]
         if kind == "mf" and not sections:
             _fail(f"the source has no MF={mf_scope} section to copy")
         return sections
@@ -142,20 +143,42 @@ def _extract(endf_file, resolved, kind):
     return obj
 
 
+def _has_repeats(labels):
+    return len(labels) != len(set(labels))
+
+
 def _install(endf_file, resolved, kind, obj):
     """Write ``obj`` (as produced by :func:`_extract`) into ``endf_file``."""
     if kind in ("section", "field"):
         endf_file[resolved] = obj
         return
-    # "material" or "mf": replace whole sections so that the destination's
-    # covered sections become exactly the source's
+    # "material" or "mf": the destination's covered sections become
+    # exactly the source's
     material = endf_file[selector_of(resolved)]
-    for mfmt, section in obj.items():
-        material[mfmt] = section
     mf_scope = EndfMaterialPath(resolved).mf  # None for a whole material
-    for mf, mt in list(material.sections()):
-        if (mf_scope is None or mf == mf_scope) and (mf, mt) not in obj:
-            del material[mf, mt]
+    covered = [
+        position
+        for position, (mf, mt) in enumerate(material.sections())
+        if mf_scope is None or mf == mf_scope
+    ]
+    source_labels = [(mf, mt) for mf, mt, _ in obj]
+    target_labels = [material.sections()[position] for position in covered]
+    if not (_has_repeats(source_labels) or _has_repeats(target_labels)):
+        # every label names one section: replace by label, so that the
+        # other sections keep their places
+        for mf, mt, section in obj:
+            material[mf, mt] = section
+        for mf, mt in target_labels:
+            if (mf, mt) not in source_labels:
+                del material[mf, mt]
+        return
+    # a label names several sections: copy the sequence of the source in
+    # its order, in place of the covered sections of the destination
+    first = covered[0] if covered else None
+    for position in reversed(covered):
+        del material[f"#{position}"]
+    for i, (_, _, section) in enumerate(obj):
+        material.insert_section(section, None if first is None else first + i)
 
 
 def _replace_element(

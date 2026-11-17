@@ -3,15 +3,14 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/12/07
-# Last modified:   2026/10/26
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
-import warnings
-
 from endf_parserpy.recipe_parser import get_recipe_parser as _get_parser
+from endf_parserpy.utils.deprecation import warn_deprecated
 from endf_parserpy.utils.tree_utils import is_tree
 from hashlib import md5
 
@@ -21,12 +20,10 @@ def get_string_hash(inpstr):
 
 
 def _warn_deprecated_cache_args(names):
-    warnings.warn(
+    warn_deprecated(
         f"the argument(s) {', '.join(f'`{n}`' for n in names)} are "
         "deprecated and have no effect: ENDF recipes are parsed when "
-        "needed and not cached anymore",
-        DeprecationWarning,
-        stacklevel=3,
+        "needed and not cached anymore"
     )
 
 

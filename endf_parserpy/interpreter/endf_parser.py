@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/16
+# Last modified:   2026/11/17
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -11,10 +11,10 @@
 
 from collections.abc import Mapping
 import logging
-import warnings
 import weakref
 import re
 from .logging_utils import setup_logger, release_logger, write_info, RingBuffer
+from endf_parserpy.utils.deprecation import warn_deprecated
 from endf_parserpy.utils.tolerated_mismatches import (
     ToleratedMismatch,
     warn_tolerated_mismatches,
@@ -428,12 +428,10 @@ class EndfParserPy(EndfParserBase):
         _check_array_type(array_type)
         _check_numpy_available(array_type)
         if cache_dir is not None or print_cache_info is not None:
-            warnings.warn(
+            warn_deprecated(
                 "the arguments `cache_dir` and `print_cache_info` are "
                 "deprecated and have no effect: ENDF recipes are parsed "
-                "whenever this class is instantiated and not cached anymore",
-                DeprecationWarning,
-                stacklevel=2,
+                "whenever this class is instantiated and not cached anymore"
             )
         # obtain the parsing tree for the language
         # in which ENDF reading recipes are formulated
@@ -1649,24 +1647,19 @@ class EndfParserPy(EndfParserBase):
 # DEPRECATED NAME
 
 
-warnings.simplefilter("always", DeprecationWarning)
-
-
 class BasicEndfParser(EndfParserPy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        warnings.warn(
+        warn_deprecated(
             "The name of the Python parser class is now `EndfParserPy`. "
-            "The alias `BasicEndfParser` should not be used anymore.",
-            DeprecationWarning,
+            "The alias `BasicEndfParser` should not be used anymore."
         )
 
 
 class EndfParser(EndfParserPy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        warnings.warn(
+        warn_deprecated(
             "The name of the Python parser class is now `EndfParserPy`. "
-            "The alias `EndfParser` should not be used anymore.",
-            DeprecationWarning,
+            "The alias `EndfParser` should not be used anymore."
         )

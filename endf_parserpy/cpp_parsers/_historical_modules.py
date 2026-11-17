@@ -31,8 +31,9 @@ import importlib
 import importlib.machinery
 import os
 import re
-import sys
 import warnings
+
+from endf_parserpy.utils.deprecation import warn_deprecated
 
 
 # the C++ module of the package, with one entry per build target
@@ -111,36 +112,6 @@ def warn_stale_extension_files(directory=None):
     return paths
 
 
-def _is_import_frame(frame):
-    # the frames of the import system: importlib._bootstrap and
-    # importlib._bootstrap_external, which warnings.warn skips itself,
-    # and importlib.import_module, which it does not skip
-    filename = frame.f_code.co_filename
-    if "importlib" in filename and "_bootstrap" in filename:
-        return True
-    return (
-        os.path.basename(filename) == "__init__.py"
-        and os.path.basename(os.path.dirname(filename)) == "importlib"
-    )
-
-
-def _importer_stacklevel():
-    # The stacklevel of warnings.warn, called in deprecated_entry, that
-    # names the code importing the shim. Like warnings.warn, it does not
-    # count the frames of importlib._bootstrap; it counts the frames of
-    # this module, of the shim and of importlib.import_module.
-    level = 1  # deprecated_entry
-    frame = sys._getframe(2)  # the shim
-    level += 1
-    frame = frame.f_back
-    while frame is not None and _is_import_frame(frame):
-        filename = frame.f_code.co_filename
-        if not ("importlib" in filename and "_bootstrap" in filename):
-            level += 1
-        frame = frame.f_back
-    return level + 1
-
-
 def _endf_format_of_entry(entry_name):
     from endf_parserpy.endf_recipes import (
         cpp_module_basename,
@@ -164,18 +135,17 @@ def deprecated_entry(module_name):
         The full name of the shim, e.g. ``endf_parserpy.cpp_parsers.endf6``.
     """
     entry_name = module_name.rsplit(".", 1)[-1]
-    stacklevel = _importer_stacklevel()
     flavors = importlib.import_module(CPP_MODULE)
     endf_format = _endf_format_of_entry(entry_name)
-    warnings.warn(
+    # attributed to the code importing the shim (an import statement or
+    # importlib.import_module), see endf_parserpy.utils.deprecation
+    warn_deprecated(
         f"The module {module_name} is deprecated and will be removed in a "
         "later release: the C++ functions of all flavors are now in one "
         "module. To parse and write, use "
         f'EndfParserCpp(endf_format="{endf_format}"); for the diagnostic '
         "functions _bulk_body_info and _line_read_counts, use "
         "importlib.import_module(parser._parse_endf.__module__) of such a "
-        "parser.",
-        DeprecationWarning,
-        stacklevel=stacklevel,
+        "parser."
     )
     return getattr(flavors, entry_name)

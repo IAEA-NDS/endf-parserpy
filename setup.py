@@ -74,6 +74,36 @@ def determine_optimization_flags(optim_flag):
     return []
 
 
+def remove_stale_flavor_extensions(directory):
+    """Remove the extension modules of the flavors from before the module
+    with all flavors (e.g. ``endf6.cpython-311-x86_64-linux-gnu.so``) in
+    ``directory``, for any Python version and platform.
+
+    In a source checkout with an in-place build, such a file would be
+    imported instead of the Python module of the same name that stands
+    for the entry of the flavor in the module with all flavors. Only the
+    files of the old flavor modules are removed (see
+    ``endf_parserpy.cpp_parsers._historical_modules``), no other file.
+
+    Returns the paths of the removed files.
+    """
+    add_project_dir_to_syspath()
+    from endf_parserpy.cpp_parsers._historical_modules import (
+        is_stale_extension_filename,
+    )
+
+    if not os.path.isdir(directory):
+        return []
+    removed = []
+    for basename in sorted(os.listdir(directory)):
+        path = os.path.join(directory, basename)
+        if is_stale_extension_filename(basename) and os.path.isfile(path):
+            os.remove(path)
+            removed.append(path)
+            logger.info(f"Removed the extension module of the old layout {path}")
+    return removed
+
+
 class CustomBuildExt(pybind11_build_ext):
     def _create_dynamic_files(self):
         # package functionality is already needed during building the package
@@ -95,8 +125,28 @@ class CustomBuildExt(pybind11_build_ext):
             if ext.name == CPP_PACKAGE_PREFIX + CPP_MODULE_NAME:
                 ext.sources = sources
 
+    def _remove_stale_flavor_extensions(self):
+        # the old flavor modules in the source tree (from an in-place
+        # build) and in the build directory, whose content setuptools
+        # copies into the installation or the wheel
+        cpp_parsers = os.path.join("endf_parserpy", "cpp_parsers")
+        directories = [
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), cpp_parsers)
+        ]
+        if self.build_lib:
+            directories.append(os.path.join(self.build_lib, cpp_parsers))
+        removed = []
+        for directory in directories:
+            removed.extend(remove_stale_flavor_extensions(directory))
+        if removed:
+            logger.info(
+                f"Removed {len(removed)} extension module(s) of the flavors "
+                "from before the module with all flavors"
+            )
+
     def run(self):
         self._create_dynamic_files()
+        self._remove_stale_flavor_extensions()
         super().run()
 
 

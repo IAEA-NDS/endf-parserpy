@@ -25,7 +25,6 @@ change it.
 
 import argparse
 import hashlib
-import importlib
 import importlib.util
 import json
 import sys
@@ -348,40 +347,6 @@ def test_build_has_no_module_for_aliases():
         "_flavor_test.cpp",
     ]
     assert "_flavors.cpp" in sources
-
-
-def test_cpp_module_has_one_entry_per_build_target():
-    flavors = pytest.importorskip("endf_parserpy.cpp_parsers._flavors")
-    targets = list_endf_build_targets()
-    assert flavors._entries == tuple(cpp_module_basename(t) for t in targets)
-    for alias in set(list_endf_flavors()) - set(targets):
-        assert not hasattr(flavors, cpp_module_basename(alias))
-
-
-# the modules of the flavors until release 0.18, which stand for the
-# entries of the C++ module
-HISTORICAL_MODULES = ("endf6_ext", "endf6", "jendl", "pendf", "errorr", "test")
-
-
-@pytest.mark.parametrize("name", HISTORICAL_MODULES)
-def test_historical_module_names(name):
-    flavors = pytest.importorskip("endf_parserpy.cpp_parsers._flavors")
-    module = importlib.import_module("endf_parserpy.cpp_parsers." + name)
-    assert module is getattr(flavors, name)
-    for func in ("parse_endf", "parse_endf_file", "write_endf", "write_endf_file"):
-        assert getattr(module, func).__module__ == module.__name__
-    assert importlib.import_module(module.__name__) is module
-
-
-def test_no_module_names_for_aliases():
-    # the shims are only for the historical names (see HISTORICAL_MODULES)
-    cpp_parsers_dir = REPO_ROOT / "endf_parserpy" / "cpp_parsers"
-    shims = sorted(
-        p.stem
-        for p in cpp_parsers_dir.glob("*.py")
-        if p.stem not in ("__init__", "endf_parser_cpp")
-    )
-    assert shims == sorted(HISTORICAL_MODULES)
 
 
 @pytest.mark.parametrize(

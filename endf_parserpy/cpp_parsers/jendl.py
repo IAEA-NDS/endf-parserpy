@@ -9,16 +9,21 @@
 #
 ############################################################
 
-"""The functions of the flavor `jendl` in the C++ module.
+"""Deprecated: the functions of the flavor `jendl` in the C++ module.
 
 Until release 0.18, every flavor had a C++ module of its own, e.g.
 ``endf_parserpy.cpp_parsers.jendl``. The functions of all flavors are
 now in one module, ``endf_parserpy.cpp_parsers._flavors``, and this
-module stands for the entry ``jendl`` of it, so that code importing
-the module of the flavor keeps working.
+module stands for its entry ``jendl``, so that code importing the module
+of the flavor keeps working. Importing it issues a
+``DeprecationWarning``; it will be removed in a later release. Use
+``EndfParserCpp(endf_format="jendl")`` instead, and
+``importlib.import_module(parser._parse_endf.__module__)`` of such a
+parser for the diagnostic functions ``_bulk_body_info`` and
+``_line_read_counts``.
 """
 
 import sys
-from . import _flavors
+from ._historical_modules import deprecated_entry
 
-sys.modules[__name__] = _flavors.jendl
+sys.modules[__name__] = deprecated_entry(__name__)

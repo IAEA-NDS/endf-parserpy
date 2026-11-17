@@ -18,9 +18,13 @@ Imports endf_parserpy and fails (exit status 1)
 - if the package is imported from a directory given with ``--not-under``
   (e.g. the source checkout, so that the tests that follow run against
   the installed package and not against the checkout);
-- if the C++ module, one of its entries (one per build target) or one
-  of the module names of the flavors until release 0.18 is missing or
-  cannot be imported;
+- if the C++ module or one of its entries (one per build target) is
+  missing or cannot be imported;
+- if one of the module names of the flavors until release 0.18 (the
+  deprecated shims) cannot be imported, does not issue its
+  ``DeprecationWarning`` or does not give the entry of the C++ module;
+- if the package directory contains an extension module of the old
+  layout (one module per flavor), which would shadow a shim;
 - if ``_bulk_body_info()`` of the C++ module does not name a row kernel
   tier that is built and supported.
 
@@ -35,9 +39,10 @@ import importlib
 import os
 import platform
 import sys
+import warnings
 
 # the C++ module of the package (see setup.py) and the module names of
-# the flavors until release 0.18, which stand for its entries
+# the flavors until release 0.18, deprecated shims for its entries
 CPP_MODULE = "endf_parserpy.cpp_parsers._flavors"
 HISTORICAL_MODULES = ("endf6", "endf6_ext", "errorr", "jendl", "pendf", "test")
 
@@ -115,12 +120,26 @@ def main():
         for name in HISTORICAL_MODULES:
             modname = "endf_parserpy.cpp_parsers." + name
             try:
-                shim = importlib.import_module(modname)
+                with warnings.catch_warnings(record=True) as record:
+                    warnings.simplefilter("always")
+                    shim = importlib.import_module(modname)
             except Exception as exc:
                 errors.append(f"{modname}: cannot be imported ({exc!r})")
                 continue
             if shim is not getattr(mod, name, None):
                 errors.append(f"{modname}: is not the entry `{name}` of {CPP_MODULE}")
+            if not any(issubclass(w.category, DeprecationWarning) for w in record):
+                errors.append(f"{modname}: no DeprecationWarning on import")
+
+    try:
+        from endf_parserpy.cpp_parsers._historical_modules import (
+            stale_extension_files,
+        )
+    except ImportError as exc:
+        errors.append(f"the check of stale extension modules failed ({exc!r})")
+    else:
+        for path in stale_extension_files():
+            errors.append(f"{path}: extension module of the old layout")
 
     for err in errors:
         print("ERROR: " + err)

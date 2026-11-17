@@ -695,10 +695,12 @@ inline bool should_parse_section(int mf, int mt, py::object& exclude, py::object
 // The tape structure of a flavor (see endf_parserpy.utils.tape_structure):
 // the rules for the end records, the order and the repetition of the
 // sections of a material, resolved by MF (mf_flags) with the exceptions
-// of single sections (sections, sorted by 1000 * MF + MT). It is passed
-// with the options of the parsing and writing functions (key
-// "tape_structure", see cpp_load_tape_rules); without it, the rules are
-// those of ENDF-6.
+// of single sections (sections, sorted by 1000 * MF + MT). The rules are
+// read at run time from the options of the parsing and writing functions
+// (key "tape_structure", see cpp_load_tape_rules). Options without them
+// get the structure compiled into the module: that of its flavor
+// (cpp_flavor_tape_rules, generated if the structure is not that of
+// ENDF-6), otherwise that of ENDF-6.
 const unsigned char CPP_TAPE_SEND = 1;
 const unsigned char CPP_TAPE_FEND = 2;
 const unsigned char CPP_TAPE_REPEAT = 4;

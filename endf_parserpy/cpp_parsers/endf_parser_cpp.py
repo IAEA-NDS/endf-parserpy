@@ -82,6 +82,20 @@ class EndfParserCpp(EndfParserBase):
     note that most but not all options of the
     :class:`~endf_parserpy.endf_parser.EndfParserPy` class
     are implemented in this class.
+
+    The tape structure of the flavor
+    (:func:`~endf_parserpy.endf_recipes.get_tape_structure`) is compiled
+    into the C++ module as the default of the options, from which the
+    functions of the module read the rules at run time. The module also
+    accepts a tape structure in the option ``"tape_structure"``, which
+    the functions of a standalone module can be given (see
+    :ref:`generating_cpp_code_sec`). This class does not pass it and has
+    no ``tape_structure`` argument, as the compiled recipes fix the SEND
+    records; it uses the structure of the flavor on the Python side only
+    for the default form of a material (``material_form``) and for the
+    checks of a material before it is written. A custom tape structure
+    goes with custom recipes, in :class:`~endf_parserpy.EndfParserPy`
+    (argument ``tape_structure``) or in a standalone module.
     """
 
     @_record_init_kwargs
@@ -325,7 +339,8 @@ class EndfParserCpp(EndfParserBase):
             (default), the form of the tape structure of the flavor (see
             the same argument of :class:`~endf_parserpy.EndfParserPy`).
             The tape structure is that of the flavor
-            (:func:`~endf_parserpy.endf_recipes.get_tape_structure`).
+            (:func:`~endf_parserpy.endf_recipes.get_tape_structure`; see
+            the description of the class).
             *(parsing)*
         """
         _check_array_type(array_type)
@@ -391,11 +406,14 @@ class EndfParserCpp(EndfParserBase):
                 + "during package installation. Please use the "
                 + "EndfParserPy class instead."
             ) from exc
-        # the tape structure of the flavor, given to the functions of the
-        # C++ module with the options (see TapeStructure)
+        # The tape structure of the flavor, on the Python side only for the
+        # default form of a material (_public_form) and the checks before
+        # writing (check_material). It is not passed to the C++ module:
+        # the options give no "tape_structure", so that the functions of
+        # the entry of the flavor use the structure compiled into them
+        # (see cpp_flavor_tape_rules), which agrees with the SEND records
+        # of the compiled recipes.
         self.tape_structure = get_tape_structure(resolved_format)
-        # (the functions of the entry of a flavor use its tape structure
-        # if the options give none, see cpp_flavor_tape_rules)
         self._cpp_read_opts = self.read_opts
         self._cpp_write_opts = self.write_opts
 

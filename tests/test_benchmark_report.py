@@ -14,6 +14,7 @@ Performance page, on the test data and synthetic directories (without
 the ENDF/B-VIII.1 data)."""
 
 import copy
+import datetime
 import importlib.util
 import json
 import os
@@ -341,6 +342,16 @@ def test_readme_sentence():
         "(single core of an Intel Core i7-1165G7 laptop, warm file cache; "
         "measured with version 0.19.0)."
     )
+    # a development build installed from a checkout
+    results["software"]["git_describe"] = "v0.18.0-42-g135ffaa"
+    results["software"]["endf_parserpy"] = "0.18.0"
+    date = datetime.date.fromisoformat(results["started"][:10])
+    assert br.readme_sentence(results).endswith(
+        f"measured on the development version of {date.strftime('%B %Y')})."
+    )
+    assert br._measurement_line(results).endswith(
+        "with endf-parserpy 0.18.0 (development version v0.18.0-42-g135ffaa)."
+    )
 
 
 def test_short_cpu_name():
@@ -351,6 +362,164 @@ def test_short_cpu_name():
         "AMD Ryzen 7 5800X 8-Core"
     )
     assert br.short_cpu_name("Apple M1") == "Apple M1"
+
+
+# --- the software -----------------------------------------------------
+
+_PACKAGE_FILES = {
+    "endf_parserpy/__init__.py": '__version__ = "0.18.0"\n',
+    "endf_parserpy/sub/module.py": "x = 1\n",
+}
+
+
+def _run_git(repo, *args):
+    return subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=test"]
+        + ["-c", "user.email=test@example.org", "-c", "commit.gpgsign=false"]
+        + ["-c", "tag.gpgsign=false", *args],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+
+def _git_checkout(path):
+    """A git repository with the package files, a tag v0.18.0 and one
+    commit after it."""
+    _make_library(path, _PACKAGE_FILES)
+    _run_git(path, "init", "-q")
+    _run_git(path, "add", ".")
+    _run_git(path, "commit", "-q", "-m", "first")
+    _run_git(path, "tag", "v0.18.0")
+    _make_library(path, {"README": "readme\n"})
+    _run_git(path, "add", "README")
+    _run_git(path, "commit", "-q", "-m", "second")
+    return _run_git(path, "rev-parse", "HEAD")
+
+
+def _fake_install(monkeypatch, site, source, direct_url):
+    """Install the package files of ``source`` into ``site`` as pip
+    would, with a ``RECORD`` and, unless None, a ``direct_url.json``,
+    and make the tool see this installed package."""
+    from importlib import metadata
+
+    lines = []
+    for relpath in _PACKAGE_FILES:
+        target = Path(site) / relpath
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(Path(source) / relpath, target)
+        digest = br._record_sha256(target)
+        lines.append(f"{relpath},sha256={digest},{target.stat().st_size}")
+    dist_info = Path(site) / "endf_parserpy-0.18.0.dist-info"
+    dist_info.mkdir()
+    (dist_info / "METADATA").write_text(
+        "Metadata-Version: 2.1\nName: endf-parserpy\nVersion: 0.18.0\n"
+    )
+    for name in ("METADATA", "RECORD"):
+        lines.append(f"{dist_info.name}/{name},,")
+    if direct_url is not None:
+        (dist_info / "direct_url.json").write_text(json.dumps(direct_url))
+        lines.append(f"{dist_info.name}/direct_url.json,,")
+    (dist_info / "RECORD").write_text("\n".join(lines) + "\n")
+    dist = metadata.Distribution.at(dist_info)
+    monkeypatch.setattr(br, "_distribution", lambda: dist)
+    monkeypatch.setattr(br, "_package_dir", lambda: str(Path(site) / "endf_parserpy"))
+    monkeypatch.setattr(br, "cpp_module_info", lambda: {"available": False})
+
+
+def _software(tmp_path):
+    record = br.software_record()
+    # neither the URL nor a local path is recorded
+    text = json.dumps(record)
+    assert "file:" not in text and "https:" not in text
+    assert str(tmp_path) not in text
+    assert str(Path(tmp_path).resolve()) not in text
+    return record
+
+
+def test_installed_from_checkout(tmp_path, monkeypatch):
+    checkout = tmp_path / "checkout"
+    commit = _git_checkout(checkout)
+    direct_url = {"dir_info": {}, "url": checkout.as_uri()}
+    _fake_install(monkeypatch, tmp_path / "site", checkout, direct_url)
+    record = _software(tmp_path)
+    assert record["package_location"] == "installed from a checkout"
+    assert record["git_commit"] == commit
+    assert record["git_describe"] == "v0.18.0-1-g" + commit[:7]
+    assert "warnings" not in record
+
+
+def test_installed_from_modified_checkout(tmp_path, monkeypatch, capsys):
+    checkout = tmp_path / "checkout"
+    commit = _git_checkout(checkout)
+    direct_url = {"dir_info": {}, "url": checkout.as_uri()}
+    _fake_install(monkeypatch, tmp_path / "site", checkout, direct_url)
+    # the checkout moves on after the install
+    (checkout / "endf_parserpy" / "sub" / "module.py").write_text("x = 2\n")
+    _run_git(checkout, "commit", "-q", "-a", "-m", "third")
+    record = _software(tmp_path)
+    new_commit = _run_git(checkout, "rev-parse", "HEAD")
+    assert new_commit != commit
+    assert record["git_commit"] == new_commit + "+modified"
+    assert len(record["warnings"]) == 1
+    assert "+modified" in record["warnings"][0]
+    # the table of the page shows the marker
+    results = _results()
+    results["software"] = record
+    assert f"commit {new_commit[:12]}+modified" in br.render_machine(results)
+    # a .py file in the checkout that is not installed
+    (checkout / "endf_parserpy" / "sub" / "module.py").write_text("x = 1\n")
+    (checkout / "endf_parserpy" / "new.py").write_text("y = 1\n")
+    _run_git(checkout, "add", ".")
+    _run_git(checkout, "commit", "-q", "-m", "fourth")
+    assert _software(tmp_path)["git_commit"].endswith("+modified")
+
+
+def test_installed_from_directory_without_git(tmp_path, monkeypatch):
+    directory = tmp_path / "directory"
+    _make_library(directory, _PACKAGE_FILES)
+    direct_url = {"dir_info": {}, "url": directory.as_uri()}
+    _fake_install(monkeypatch, tmp_path / "site", directory, direct_url)
+    record = _software(tmp_path)
+    assert record["package_location"] == "installed from a directory"
+    assert record["git_commit"] is None
+    assert record["git_describe"] is None
+
+
+def test_installed_from_vcs_url(tmp_path, monkeypatch):
+    checkout = tmp_path / "checkout"
+    commit = _git_checkout(checkout)
+    direct_url = {
+        "url": "https://example.org/endf-parserpy.git",
+        "vcs_info": {"vcs": "git", "commit_id": commit, "requested_revision": "dev"},
+    }
+    _fake_install(monkeypatch, tmp_path / "site", checkout, direct_url)
+    monkeypatch.setattr(br, "_tool_checkout", lambda: None)
+    record = _software(tmp_path)
+    assert record["package_location"] == "installed from a repository"
+    assert record["git_commit"] == commit
+    assert record["git_describe"] is None
+    # with the commit in the checkout of the tool, also the describe
+    monkeypatch.setattr(br, "_tool_checkout", lambda: str(checkout))
+    record = _software(tmp_path)
+    assert record["git_describe"] == "v0.18.0-1-g" + commit[:7]
+
+
+@pytest.mark.parametrize(
+    "direct_url",
+    [None, {"dir_info": {"editable": True}, "url": "file:///somewhere"}],
+)
+def test_installed_without_direct_url(tmp_path, monkeypatch, direct_url):
+    # a wheel from PyPI; an editable install is imported from its
+    # source tree and not looked at here
+    checkout = tmp_path / "checkout"
+    _git_checkout(checkout)
+    _fake_install(monkeypatch, tmp_path / "site", checkout, direct_url)
+    record = _software(tmp_path)
+    assert record["package_location"] == "installed"
+    assert record["git_commit"] is None
+    assert record["git_describe"] is None
+    assert "warnings" not in record
 
 
 # --- measure ----------------------------------------------------------

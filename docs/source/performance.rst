@@ -95,6 +95,10 @@ Reproducing the numbers
    ``decay-version.VIII.1`` and so on.
 2. Install endf-parserpy and numpy, e.g.
    ``python -m pip install endf-parserpy numpy``.
+   The results record the version of a release; for a package
+   installed from a git checkout, also the commit and ``git describe``
+   of the checkout, with ``+modified`` if the installed ``.py`` files
+   differ from those of the checkout, and for a git URL the commit.
 3. Run the measurement with the tool of the repository,
    ``tools/benchmark_report.py``, from a directory that does not
    contain an ``endf_parserpy`` source tree, which would be imported

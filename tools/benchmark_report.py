@@ -46,6 +46,7 @@ disk speed is not measured.
 """
 
 import argparse
+import base64
 import datetime
 import gc
 import hashlib
@@ -58,6 +59,8 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.parse
+import urllib.request
 import warnings
 
 
@@ -280,21 +283,136 @@ def _git(checkout, *args):
     return out.stdout.strip()
 
 
-def package_location():
-    """Where the imported endf_parserpy is: ``"installed"`` or
-    ``"source tree"`` (a checkout, e.g. by ``PYTHONPATH``), and whether
-    it is under the current directory, which shadows an installed
-    package; the checkout for the git commit."""
+def _package_dir():
     import endf_parserpy
 
-    package_dir = os.path.dirname(os.path.abspath(endf_parserpy.__file__))
+    return os.path.dirname(os.path.abspath(endf_parserpy.__file__))
+
+
+def _distribution():
+    """The installed distribution of endf-parserpy, None if there is none."""
+    from importlib import metadata
+
+    try:
+        return metadata.distribution("endf-parserpy")
+    except metadata.PackageNotFoundError:
+        return None
+
+
+def _record_sha256(path):
+    """The sha256 of a file in the form of the ``RECORD`` of a wheel:
+    urlsafe base64 without padding."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return base64.urlsafe_b64encode(h.digest()).rstrip(b"=").decode("ascii")
+
+
+def _installed_py_differs(dist, checkout):
+    """Whether the ``.py`` files of the package installed as ``dist``
+    differ from those in ``checkout``: a hash in ``RECORD`` that differs
+    from the file in the checkout, a file missing in the checkout, or a
+    ``.py`` file tracked in the checkout that is not installed."""
+    installed = set()
+    for entry in dist.files or ():
+        path = str(entry).replace("\\", "/")
+        if not (path.startswith("endf_parserpy/") and path.endswith(".py")):
+            continue
+        installed.add(path)
+        if entry.hash is None or entry.hash.mode != "sha256":
+            return True
+        local = os.path.join(checkout, *path.split("/"))
+        if not os.path.isfile(local) or _record_sha256(local) != entry.hash.value:
+            return True
+    if not installed:
+        return True
+    tracked = _git(checkout, "ls-files", "--", "endf_parserpy")
+    if tracked is None:
+        return True
+    return any(p.endswith(".py") and p not in installed for p in tracked.splitlines())
+
+
+def _installed_location(package_dir):
+    """The origin of an installed package from the ``direct_url.json``
+    (PEP 610) of its distribution: a dictionary with ``kind``,
+    ``checkout``, ``commit`` and ``warnings``. The URL itself is not
+    returned, so that no local path reaches the results."""
+    location = {"kind": "installed", "checkout": None, "commit": None, "warnings": []}
+    dist = _distribution()
+    if dist is None:
+        return location
+    # only the distribution of the imported package counts
+    init = dist.locate_file("endf_parserpy/__init__.py")
+    try:
+        if not os.path.samefile(init, os.path.join(package_dir, "__init__.py")):
+            return location
+    except OSError:
+        return location
+    try:
+        text = dist.read_text("direct_url.json")
+        direct_url = json.loads(text) if text else None
+    except (OSError, ValueError):
+        direct_url = None
+    if not isinstance(direct_url, dict):
+        return location
+    url = direct_url.get("url", "")
+    vcs_info = direct_url.get("vcs_info")
+    dir_info = direct_url.get("dir_info")
+    if isinstance(vcs_info, dict):
+        location["kind"] = "installed from a repository"
+        commit = vcs_info.get("commit_id")
+        if isinstance(commit, str) and re.fullmatch(r"[0-9a-f]{7,64}", commit):
+            location["commit"] = commit
+    elif isinstance(dir_info, dict) and not dir_info.get("editable"):
+        if not url.startswith("file:"):
+            return location
+        directory = urllib.request.url2pathname(urllib.parse.urlparse(url).path)
+        location["kind"] = "installed from a directory"
+        if _git(directory, "rev-parse", "--show-toplevel") is None:
+            return location
+        location["kind"] = "installed from a checkout"
+        location["checkout"] = directory
+        if _installed_py_differs(dist, directory):
+            location["modified"] = True
+            location["warnings"].append(
+                "the installed .py files of endf_parserpy differ from those "
+                "of the checkout it was installed from; the commit is marked "
+                "+modified"
+            )
+    return location
+
+
+def _tool_checkout():
+    """The checkout of this tool, if it is one."""
+    parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return parent if os.path.exists(os.path.join(parent, ".git")) else None
+
+
+def package_location():
+    """Where the imported endf_parserpy is, as ``kind``: ``"source tree"``
+    (a checkout, e.g. by ``PYTHONPATH`` or an editable install),
+    ``"installed from a checkout"``, ``"installed from a directory"``
+    (not a git checkout), ``"installed from a repository"`` (a VCS URL)
+    or ``"installed"`` (e.g. a wheel from PyPI), the latter four from the
+    ``direct_url.json`` of the distribution; whether it is under the
+    current directory, which shadows an installed package; the checkout
+    for the git commit; the commit of a VCS URL; whether the installed
+    files differ from the checkout (``modified``); and warnings."""
+    package_dir = _package_dir()
     parent = os.path.dirname(package_dir)
-    checkout = parent if os.path.exists(os.path.join(parent, ".git")) else None
-    return {
-        "kind": "source tree" if checkout else "installed",
-        "under_cwd": _is_under(package_dir, os.getcwd()),
-        "checkout": checkout,
-    }
+    if os.path.exists(os.path.join(parent, ".git")):
+        location = {
+            "kind": "source tree",
+            "checkout": parent,
+            "commit": None,
+            "warnings": [],
+        }
+    else:
+        location = _installed_location(package_dir)
+    location["under_cwd"] = _is_under(package_dir, os.getcwd())
+    location.setdefault("modified", False)
+    return location
 
 
 def cpp_module_info():
@@ -327,10 +445,11 @@ def cpp_module_info():
     return info
 
 
-def software_record():
+def software_record(location=None):
     import endf_parserpy
 
-    location = package_location()
+    if location is None:
+        location = package_location()
     record = {
         "python": platform.python_version(),
         "python_implementation": platform.python_implementation(),
@@ -353,6 +472,22 @@ def software_record():
             )
             record["git_commit"] = commit + ("+dirty" if dirty else "")
             record["git_describe"] = _git(location["checkout"], "describe", "--tags")
+    elif location["commit"]:
+        record["git_commit"] = location["commit"]
+        # a describe only if the checkout of this tool has the commit
+        tool_checkout = _tool_checkout()
+        if (
+            tool_checkout
+            and _git(tool_checkout, "cat-file", "-e", location["commit"] + "^{commit}")
+            is not None
+        ):
+            record["git_describe"] = _git(
+                tool_checkout, "describe", "--tags", location["commit"]
+            )
+    if record["git_commit"] and location["modified"]:
+        record["git_commit"] += "+modified"
+    if location["warnings"]:
+        record["warnings"] = list(location["warnings"])
     record["cpp_module"] = cpp_module_info()
     return record
 
@@ -796,6 +931,8 @@ def measure(args):
             "installed package",
             file=sys.stderr,
         )
+    for text in location["warnings"]:
+        print(f"warning: {text}", file=sys.stderr)
 
     started = _now()
     files, ignored, library = discover(root, sublibraries)
@@ -879,7 +1016,7 @@ def measure(args):
             "max_py_seconds_per_file": args.max_py_seconds_per_file,
         },
         "machine": machine_record(args.pin_cpu),
-        "software": software_record(),
+        "software": software_record(location),
         "load_average": {"start": load_start, "end": None},
         "manifest": manifest,
         "ignored": ignored,
@@ -1443,7 +1580,8 @@ def render_machine(results):
     ]
     version = s.get("endf_parserpy")
     if s.get("git_commit"):
-        version += f", commit {s['git_commit'][:12]}"
+        commit, plus, suffix = s["git_commit"].partition("+")
+        version += f", commit {commit[:12]}{plus}{suffix}"
     rows.append(["endf-parserpy", version])
     rows.append(["C++ module", text(cpp.get("origin"))])
     if build:

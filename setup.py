@@ -247,6 +247,10 @@ def main():
         ext_modules=ext_modules,
         zip_safe=False,
         include_package_data=True,
+        # the C++ sources are listed as package data because they are the
+        # sources of the extension module, but they are not needed once
+        # it is compiled
+        exclude_package_data={"endf_parserpy.cpp_parsers": ["*.cpp"]},
     )
 
 

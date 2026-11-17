@@ -287,7 +287,7 @@ class EndfPath(Sequence):
         >>> p3 = EndfPath(('a', '1', '2', 'c'))
         >>> p4 = EndfPath(('a', 1, '2', 'c'))
         >>> p5 = EndfPath('a[1,2]/c')
-        >>> p6 = EndfPath('a[1]']) + EndfPath('2/c')
+        >>> p6 = EndfPath('a[1]') + EndfPath('2/c')
         >>> assert p1 == p2 and p2 == p3 and p3 == p4
         >>> assert p4 == p5 and p5 == p6
         """
@@ -1025,15 +1025,16 @@ class EndfObject:
         """Get the :class:`EndfPath` associated with this :class:`EndfDict`.
 
         If this :class:`EndfDict` was retrieved from another :class:`EndfDict`,
-        the ``path`` attribute contains the associated location in
-        the nested dictionary.
+        the ``path`` attribute contains the location relative to that
+        :class:`EndfDict`, i.e. the key or path used to retrieve it.
 
         Example
         -------
-        >>> testdict = {'a': {'b': 'c'}}
+        >>> testdict = {'a': {'b': {'c': 5}}}
         >>> viewdict = EndfDict(testdict)
         >>> viewdict2 = viewdict['a/b']
         >>> assert viewdict2.path == EndfPath('a/b')
+        >>> assert viewdict['a']['b'].path == EndfPath('b')
         """
         return self._path
 
@@ -1041,7 +1042,7 @@ class EndfObject:
 class EndfDict(EndfObject, MutableMapping):
     """EndfDict class extends :class:`dict` with :class:`EndfPath` functionality.
 
-    The :class:`EndfDict` class behaves like a :class:`list`
+    The :class:`EndfDict` class behaves like a :class:`dict`
     but offers in addition enhanced indexing capabilities.
     This class is derived from the :class:`EndfObject` class
     and inherits its methods.

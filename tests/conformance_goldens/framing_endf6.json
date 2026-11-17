@@ -1,0 +1,2540 @@
+{
+ "order:mf_descending": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     61,
+     "section MF=1/MT=451 of MAT 3564 follows section MF=8/MT=457; the sections of a material must be in ascending order of MF, and of MT within an MF"
+    ]
+   ],
+   "strict": [
+    [
+     61,
+     "section MF=1/MT=451 of MAT 3564 follows section MF=8/MT=457; the sections of a material must be in ascending order of MF, and of MT within an MF"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  }
+ },
+ "order:mf_split_by_fend": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=1 and its FEND record\nLine 43: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after the FEND record of MF=1 of MAT=3564 in control record of line 42."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=1 and its FEND record\nLine 43: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after the FEND record of MF=1 of MAT=3564 in control record of line 42."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     43,
+     "section MF=1/MT=452 of MAT 3564 follows the FEND record of MF=1; the FEND record ends the MF, so that the next section must have a greater MF"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=1 and its FEND record\nLine 43: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after the FEND record of MF=1 of MAT=3564 in control record of line 42."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=1 and its FEND record\nLine 43: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after the FEND record of MF=1 of MAT=3564 in control record of line 42."
+  }
+ },
+ "order:mt_descending": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     6,
+     "section MF=1/MT=451 of MAT 3564 follows section MF=1/MT=452; the sections of a material must be in ascending order of MF, and of MT within an MF"
+    ]
+   ],
+   "strict": [
+    [
+     6,
+     "section MF=1/MT=451 of MAT 3564 follows section MF=1/MT=452; the sections of a material must be in ascending order of MF, and of MT within an MF"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  }
+ },
+ "order:mt_repeated": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 46: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 45."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 46: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 45."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 46: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 45."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 46: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 45."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     46,
+     "section MF=1/MT=451 of MAT 3564 occurs a second time in the material"
+    ]
+   ],
+   "strict": [
+    [
+     46,
+     "section MF=1/MT=451 of MAT 3564 occurs a second time in the material"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 46: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 45."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 46: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 45."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 46: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 45."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 46: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 45."
+  }
+ },
+ "order:mt_repeated_next": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     42,
+     "section MF=1/MT=451 of MAT 3564 occurs a second time in the material"
+    ]
+   ],
+   "strict": [
+    [
+     42,
+     "section MF=1/MT=451 of MAT 3564 occurs a second time in the material"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  }
+ },
+ "pu:blank_after_fend": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 46 is a blank line."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 46 is a blank line."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 46 is a blank line."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 46 is a blank line."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     47,
+     "blank line"
+    ]
+   ],
+   "strict": [
+    [
+     47,
+     "blank line"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 46 is a blank line."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 46 is a blank line."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 46 is a blank line."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 46 is a blank line."
+  }
+ },
+ "pu:blank_after_mend": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
+   "py": "BlankLineError: Line 106 is a blank line."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
+   "py": "BlankLineError: Line 106 is a blank line."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
+   "py": "BlankLineError: Line 106 is a blank line."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
+   "py": "BlankLineError: Line 106 is a blank line."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     107,
+     "blank line"
+    ]
+   ],
+   "strict": [
+    [
+     107,
+     "blank line"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
+   "py": "BlankLineError: Line 106 is a blank line."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
+   "py": "BlankLineError: Line 106 is a blank line."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
+   "py": "BlankLineError: Line 106 is a blank line."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
+   "py": "BlankLineError: Line 106 is a blank line."
+  }
+ },
+ "pu:blank_after_send": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
+   "py": "BlankLineError: Line 41 is a blank line."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
+   "py": "BlankLineError: Line 41 is a blank line."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
+   "py": "BlankLineError: Line 41 is a blank line."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
+   "py": "BlankLineError: Line 41 is a blank line."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     42,
+     "blank line"
+    ]
+   ],
+   "strict": [
+    [
+     42,
+     "blank line"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
+   "py": "BlankLineError: Line 41 is a blank line."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
+   "py": "BlankLineError: Line 41 is a blank line."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
+   "py": "BlankLineError: Line 41 is a blank line."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
+   "py": "BlankLineError: Line 41 is a blank line."
+  }
+ },
+ "pu:blank_after_tend": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ },
+ "pu:blank_before_tpid": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
+   "py": "BlankLineError: Line 0 is a blank line."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
+   "py": "BlankLineError: Line 0 is a blank line."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
+   "py": "BlankLineError: Line 0 is a blank line."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
+   "py": "BlankLineError: Line 0 is a blank line."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     1,
+     "blank line"
+    ]
+   ],
+   "strict": [
+    [
+     1,
+     "blank line"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
+   "py": "BlankLineError: Line 0 is a blank line."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
+   "py": "BlankLineError: Line 0 is a blank line."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
+   "py": "BlankLineError: Line 0 is a blank line."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
+   "py": "BlankLineError: Line 0 is a blank line."
+  }
+ },
+ "pu:end_records_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nTemplate: SEND\nEnd of the data reached after line 103",
+   "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MT=457 section. Required Section End records are missing"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nTemplate: SEND\nEnd of the data reached after line 103",
+   "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MT=457 section. Required Section End records are missing"
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     103,
+     "the file ends here, the SEND, FEND, MEND and TEND records are missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nTemplate: SEND\nEnd of the data reached after line 103",
+   "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MT=457 section. Required Section End records are missing"
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nTemplate: SEND\nEnd of the data reached after line 103",
+   "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MT=457 section. Required Section End records are missing"
+  }
+ },
+ "pu:fend_extra": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 46."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 46."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     47,
+     "expected a section of MAT 3564 or the MEND record (MAT/MF/MT 0/0/0), found a FEND record (MAT/MF/MT 3564/0/0)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 46."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 46."
+  }
+ },
+ "pu:fend_last_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=0 in control record of line 104."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=0 in control record of line 104."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     105,
+     "expected a section of MF=8 of MAT 3564 or the FEND record (MAT/MF/MT 3564/0/0), found a MEND record (MAT/MF/MT 0/0/0); the FEND record is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=0 in control record of line 104."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=0 in control record of line 104."
+  }
+ },
+ "pu:fend_mf_text": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MF number field: \" x\" (columns 71-72)\nLine 46: \"                                                                  3564 x  0\"",
+   "py": "ValueError: invalid MF number field: \" x\" (columns 71-72)"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: invalid MF number field: \" x\" (columns 71-72)\nLine 46: \"                                                                  3564 x  0\"",
+   "py": "ValueError: invalid MF number field: \" x\" (columns 71-72)"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MF number field: \" x\" (columns 71-72)\nLine 46: \"                                                                  3564 x  0\"",
+   "py": "ValueError: invalid MF number field: \" x\" (columns 71-72)"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: invalid MF number field: \" x\" (columns 71-72)\nLine 46: \"                                                                  3564 x  0\"",
+   "py": "ValueError: invalid MF number field: \" x\" (columns 71-72)"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     46,
+     "invalid MF field \" x\" (columns 71-72)"
+    ]
+   ],
+   "strict": [
+    [
+     46,
+     "invalid MF field \" x\" (columns 71-72)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MF number field: \" x\" (columns 71-72)\nLine 46: \"                                                                  3564 x  0\"",
+   "py": "ValueError: invalid MF number field: \" x\" (columns 71-72)"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: invalid MF number field: \" x\" (columns 71-72)\nLine 46: \"                                                                  3564 x  0\"",
+   "py": "ValueError: invalid MF number field: \" x\" (columns 71-72)"
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MF number field: \" x\" (columns 71-72)\nLine 46: \"                                                                  3564 x  0\"",
+   "py": "ValueError: invalid MF number field: \" x\" (columns 71-72)"
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: invalid MF number field: \" x\" (columns 71-72)\nLine 46: \"                                                                  3564 x  0\"",
+   "py": "ValueError: invalid MF number field: \" x\" (columns 71-72)"
+  }
+ },
+ "pu:fend_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=8 in control record of line 45."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=8 in control record of line 45."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     46,
+     "expected a section of MF=1 of MAT 3564 or the FEND record (MAT/MF/MT 3564/0/0), found a record of section MF=8/MT=457 of MAT 3564; the FEND record of MF=1 is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=8 in control record of line 45."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Currently in MF=1 section but encountered MF=8 in control record of line 45."
+  }
+ },
+ "pu:fend_mt_blank": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ },
+ "pu:fend_n1": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                      7           3564 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                      7           3564 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                      7           3564 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                      7           3564 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     46,
+     "the fields 1-6 (columns 1-66) of the FEND record must be zero or blank, but field 5 is not: \"                                                      7\""
+    ]
+   ],
+   "strict": [
+    [
+     46,
+     "the fields 1-6 (columns 1-66) of the FEND record must be zero or blank, but field 5 is not: \"                                                      7\""
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                      7           3564 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                      7           3564 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                      7           3564 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                      7           3564 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  }
+ },
+ "pu:fend_non_ascii": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"     \\x7f     \" (field 1, columns 1-11)\nLine 46: \"     \\x7f                                                            3564 0  0\"",
+   "py": "InvalidFloatError: malformed number field: '     \\x7f     ' (a tab, an underscore or a character outside printable ASCII is not part of a number)"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: malformed number field: \"     \\x7f     \" (field 1, columns 1-11)\nLine 46: \"     \\x7f                                                            3564 0  0\"",
+   "py": "InvalidFloatError: malformed number field: '     \\x7f     ' (a tab, an underscore or a character outside printable ASCII is not part of a number)"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"     \\x7f     \" (field 1, columns 1-11)\nLine 46: \"     \\x7f                                                            3564 0  0\"",
+   "py": "InvalidFloatError: malformed number field: '     \\x7f     ' (a tab, an underscore or a character outside printable ASCII is not part of a number)"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: malformed number field: \"     \\x7f     \" (field 1, columns 1-11)\nLine 46: \"     \\x7f                                                            3564 0  0\"",
+   "py": "InvalidFloatError: malformed number field: '     \\x7f     ' (a tab, an underscore or a character outside printable ASCII is not part of a number)"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     46,
+     "column 6 of the FEND record contains the byte 0x7f, which is not a printable ASCII character (codes 32 to 126) as required by the ENDF-6 format; use the option accept_non_ascii=True to accept it"
+    ],
+    [
+     46,
+     "the fields 1-6 (columns 1-66) of the FEND record must be zero or blank, but field 1 is not: \"     \u007f\""
+    ]
+   ],
+   "strict": [
+    [
+     46,
+     "column 6 of the FEND record contains the byte 0x7f, which is not a printable ASCII character (codes 32 to 126) as required by the ENDF-6 format; use the option accept_non_ascii=True to accept it"
+    ],
+    [
+     46,
+     "the fields 1-6 (columns 1-66) of the FEND record must be zero or blank, but field 1 is not: \"     \u007f\""
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"     \\x7f     \" (field 1, columns 1-11)\nLine 46: \"     \\x7f                                                            3564 0  0\"",
+   "py": "InvalidFloatError: malformed number field: '     \\x7f     ' (a tab, an underscore or a character outside printable ASCII is not part of a number)"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: malformed number field: \"     \\x7f     \" (field 1, columns 1-11)\nLine 46: \"     \\x7f                                                            3564 0  0\"",
+   "py": "InvalidFloatError: malformed number field: '     \\x7f     ' (a tab, an underscore or a character outside printable ASCII is not part of a number)"
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"     \\x7f     \" (field 1, columns 1-11)\nLine 46: \"     \\x7f                                                            3564 0  0\"",
+   "py": "InvalidFloatError: malformed number field: '     \\x7f     ' (a tab, an underscore or a character outside printable ASCII is not part of a number)"
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: malformed number field: \"     \\x7f     \" (field 1, columns 1-11)\nLine 46: \"     \\x7f                                                            3564 0  0\"",
+   "py": "InvalidFloatError: malformed number field: '     \\x7f     ' (a tab, an underscore or a character outside printable ASCII is not part of a number)"
+  }
+ },
+ "pu:fend_wrong_mat": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 45."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 45."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     46,
+     "expected a section of MF=1 of MAT 3564 or the FEND record (MAT/MF/MT 3564/0/0), found a FEND record (MAT/MF/MT 3565/0/0)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 45."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 45."
+  }
+ },
+ "pu:fend_wrong_mf": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                                  3564 1  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=0 but encountered MF=1 in control record of line 45."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                                  3564 1  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=0 but encountered MF=1 in control record of line 45."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     46,
+     "expected a section of MF=1 of MAT 3564 or the FEND record (MAT/MF/MT 3564/0/0), found a SEND record (MAT/MF/MT 3564/1/0)"
+    ],
+    [
+     47,
+     "expected a section of MF=1 of MAT 3564 or the FEND record (MAT/MF/MT 3564/0/0), found a record of section MF=8/MT=457 of MAT 3564; the FEND record of MF=1 is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                                  3564 1  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=0 but encountered MF=1 in control record of line 45."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \"                                                                  3564 1  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=0 but encountered MF=1 in control record of line 45."
+  }
+ },
+ "pu:fend_zeros": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ },
+ "pu:mend_ctrl_blank": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ },
+ "pu:mend_extra": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=0 in control record of line 106."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=0 in control record of line 106."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     107,
+     "expected a section of a new material or the TEND record (MAT/MF/MT -1/0/0), found a MEND record (MAT/MF/MT 0/0/0)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=0 in control record of line 106."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=0 in control record of line 106."
+  }
+ },
+ "pu:mend_mat_nonzero": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 107",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 105."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 107",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 105."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     106,
+     "expected a section of MAT 3564 or the MEND record (MAT/MF/MT 0/0/0), found a FEND record (MAT/MF/MT 3564/0/0)"
+    ],
+    [
+     107,
+     "expected a section of MAT 3564 or the MEND record (MAT/MF/MT 0/0/0), found a TEND record (MAT/MF/MT -1/0/0); the MEND record is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 107",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 105."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 107",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=3564 in control record of line 105."
+  }
+ },
+ "pu:mend_mat_text": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MAT number field: \"  ab\" (columns 67-70)\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          0  ab 0  0\"",
+   "py": "ValueError: invalid MAT number field: \"  ab\" (columns 67-70)"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: invalid MAT number field: \"  ab\" (columns 67-70)\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          0  ab 0  0\"",
+   "py": "ValueError: invalid MAT number field: \"  ab\" (columns 67-70)"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MAT number field: \"  ab\" (columns 67-70)\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          0  ab 0  0\"",
+   "py": "ValueError: invalid MAT number field: \"  ab\" (columns 67-70)"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: invalid MAT number field: \"  ab\" (columns 67-70)\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          0  ab 0  0\"",
+   "py": "ValueError: invalid MAT number field: \"  ab\" (columns 67-70)"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     106,
+     "invalid MAT field \"  ab\" (columns 67-70)"
+    ]
+   ],
+   "strict": [
+    [
+     106,
+     "invalid MAT field \"  ab\" (columns 67-70)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MAT number field: \"  ab\" (columns 67-70)\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          0  ab 0  0\"",
+   "py": "ValueError: invalid MAT number field: \"  ab\" (columns 67-70)"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: invalid MAT number field: \"  ab\" (columns 67-70)\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          0  ab 0  0\"",
+   "py": "ValueError: invalid MAT number field: \"  ab\" (columns 67-70)"
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MAT number field: \"  ab\" (columns 67-70)\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          0  ab 0  0\"",
+   "py": "ValueError: invalid MAT number field: \"  ab\" (columns 67-70)"
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: invalid MAT number field: \"  ab\" (columns 67-70)\nLine 106: \" 0.000000+0 0.000000+0          0          0          0          0  ab 0  0\"",
+   "py": "ValueError: invalid MAT number field: \"  ab\" (columns 67-70)"
+  }
+ },
+ "pu:mend_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 105."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 105."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     106,
+     "expected a section of MAT 3564 or the MEND record (MAT/MF/MT 0/0/0), found a TEND record (MAT/MF/MT -1/0/0); the MEND record is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 105."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 105."
+  }
+ },
+ "pu:mend_tend_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 105",
+   "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MAT=3564 section. Required Section End records are missing"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 105",
+   "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MAT=3564 section. Required Section End records are missing"
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     105,
+     "the file ends here, the MEND and TEND records are missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 105",
+   "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MAT=3564 section. Required Section End records are missing"
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Material End (MEND) and Tape End (TEND) records missing\nEnd of the data reached after line 105",
+   "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MAT=3564 section. Required Section End records are missing"
+  }
+ },
+ "pu:mend_text": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"abc        \" (field 1, columns 1-11)\nLine 106: \"abc                                                                  0 0  0\"",
+   "py": "InvalidFloatError: could not convert string to float: 'abc'"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: malformed number field: \"abc        \" (field 1, columns 1-11)\nLine 106: \"abc                                                                  0 0  0\"",
+   "py": "InvalidFloatError: could not convert string to float: 'abc'"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"abc        \" (field 1, columns 1-11)\nLine 106: \"abc                                                                  0 0  0\"",
+   "py": "InvalidFloatError: could not convert string to float: 'abc'"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: malformed number field: \"abc        \" (field 1, columns 1-11)\nLine 106: \"abc                                                                  0 0  0\"",
+   "py": "InvalidFloatError: could not convert string to float: 'abc'"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     106,
+     "the fields 1-6 (columns 1-66) of the MEND record must be zero or blank, but field 1 is not: \"abc\""
+    ]
+   ],
+   "strict": [
+    [
+     106,
+     "the fields 1-6 (columns 1-66) of the MEND record must be zero or blank, but field 1 is not: \"abc\""
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"abc        \" (field 1, columns 1-11)\nLine 106: \"abc                                                                  0 0  0\"",
+   "py": "InvalidFloatError: could not convert string to float: 'abc'"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: malformed number field: \"abc        \" (field 1, columns 1-11)\nLine 106: \"abc                                                                  0 0  0\"",
+   "py": "InvalidFloatError: could not convert string to float: 'abc'"
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"abc        \" (field 1, columns 1-11)\nLine 106: \"abc                                                                  0 0  0\"",
+   "py": "InvalidFloatError: could not convert string to float: 'abc'"
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: malformed number field: \"abc        \" (field 1, columns 1-11)\nLine 106: \"abc                                                                  0 0  0\"",
+   "py": "InvalidFloatError: could not convert string to float: 'abc'"
+  }
+ },
+ "pu:mf_descending": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     61,
+     "section MF=1/MT=451 of MAT 3564 follows section MF=8/MT=457; the sections of a material must be in ascending order of MF, and of MT within an MF"
+    ]
+   ],
+   "strict": [
+    [
+     61,
+     "section MF=1/MT=451 of MAT 3564 follows section MF=8/MT=457; the sections of a material must be in ascending order of MF, and of MT within an MF"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 61: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 60."
+  }
+ },
+ "pu:mf_split_by_fend": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=1 and its FEND record\nLine 43: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after the FEND record of MF=1 of MAT=3564 in control record of line 42."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=1 and its FEND record\nLine 43: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after the FEND record of MF=1 of MAT=3564 in control record of line 42."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     43,
+     "section MF=1/MT=452 of MAT 3564 follows the FEND record of MF=1; the FEND record ends the MF, so that the next section must have a greater MF"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=1 and its FEND record\nLine 43: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after the FEND record of MF=1 of MAT=3564 in control record of line 42."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=1 and its FEND record\nLine 43: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after the FEND record of MF=1 of MAT=3564 in control record of line 42."
+  }
+ },
+ "pu:record_mf0_mt451": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 42: \" 0.000000+0 0.000000+0          0          0          0          03564 0451\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 42: \" 0.000000+0 0.000000+0          0          0          0          03564 0451\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 42: \" 0.000000+0 0.000000+0          0          0          0          03564 0451\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 42: \" 0.000000+0 0.000000+0          0          0          0          03564 0451\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     42,
+     "found a record with MAT/MF/MT 3564/0/451, which is neither a record of a section nor a SEND, FEND, MEND or TEND record"
+    ]
+   ],
+   "strict": [
+    [
+     42,
+     "expected a section of MF=1 of MAT 3564 or the FEND record (MAT/MF/MT 3564/0/0), found a record with MAT/MF/MT 3564/0/451, which is neither a record of a section nor a SEND, FEND, MEND or TEND record"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 42: \" 0.000000+0 0.000000+0          0          0          0          03564 0451\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 42: \" 0.000000+0 0.000000+0          0          0          0          03564 0451\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 42: \" 0.000000+0 0.000000+0          0          0          0          03564 0451\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 42: \" 0.000000+0 0.000000+0          0          0          0          03564 0451\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  }
+ },
+ "pu:section_after_tend": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 49: \" 9.424400+4 2.419676+2          0          0          0          63564 8457\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 49: \" 9.424400+4 2.419676+2          0          0          0          63564 8457\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     49,
+     "only blank lines may follow the TEND record (the end of the tape), found a line that is not blank"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 49: \" 9.424400+4 2.419676+2          0          0          0          63564 8457\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 49: \" 9.424400+4 2.419676+2          0          0          0          63564 8457\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  }
+ },
+ "pu:section_after_tend_twice": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 108: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 107."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 108: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 108: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 107."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 108: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     108,
+     "section MF=1/MT=451 of MAT 3564 occurs a second time in the material"
+    ]
+   ],
+   "strict": [
+    [
+     108,
+     "only blank lines may follow the TEND record (the end of the tape), found a line that is not blank"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 108: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 107."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 108: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 108: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 107."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 108: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  }
+ },
+ "pu:section_twice": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     42,
+     "section MF=1/MT=451 of MAT 3564 occurs a second time in the material"
+    ]
+   ],
+   "strict": [
+    [
+     42,
+     "section MF=1/MT=451 of MAT 3564 occurs a second time in the material"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=451\nLine 42: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=451 in MF=1 of MAT=3564 in control record of line 41."
+  }
+ },
+ "pu:sections_descending": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     6,
+     "section MF=1/MT=451 of MAT 3564 follows section MF=1/MT=452; the sections of a material must be in ascending order of MF, and of MT within an MF"
+    ]
+   ],
+   "strict": [
+    [
+     6,
+     "section MF=1/MT=451 of MAT 3564 follows section MF=1/MT=452; the sections of a material must be in ascending order of MF, and of MT within an MF"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: MT sections must be in ascending order within an MF, but MF=1/MT=451 follows MF=1/MT=452\nLine 6: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of an MF must be in ascending order of MT, but encountered MT=451 after MT=452 in MF=1 of MAT=3564 in control record of line 5."
+  }
+ },
+ "pu:send_blank": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ },
+ "pu:send_c2": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     41,
+     "the fields 1-6 (columns 1-66) of the SEND record must be zero or blank, but field 2 is not: \" 0.000000+0        2.5          0          0          0          0\""
+    ]
+   ],
+   "strict": [
+    [
+     41,
+     "the fields 1-6 (columns 1-66) of the SEND record must be zero or blank, but field 2 is not: \" 0.000000+0        2.5          0          0          0          0\""
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nTemplate: SEND\nLine 41: \" 0.000000+0        2.5          0          0          0          03564 1  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nTemplate: SEND\nLine 41: \" 0.000000+0        2.5          0          0          0          03564 1  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  }
+ },
+ "pu:send_extra": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \" 0.000000+0 0.000000+0          0          0          0          03564 1  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=0 but encountered MF=1 in control record of line 45."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \" 0.000000+0 0.000000+0          0          0          0          03564 1  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=0 but encountered MF=1 in control record of line 45."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     46,
+     "expected a section of MF=1 of MAT 3564 or the FEND record (MAT/MF/MT 3564/0/0), found a SEND record (MAT/MF/MT 3564/1/0)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \" 0.000000+0 0.000000+0          0          0          0          03564 1  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=0 but encountered MF=1 in control record of line 45."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 46: \" 0.000000+0 0.000000+0          0          0          0          03564 1  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=0 but encountered MF=1 in control record of line 45."
+  }
+ },
+ "pu:send_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: expected SEND of MF/MT 1/451\nLine 41: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: Currently in MT=451 section but encountered MT=452 in control record of line 40."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: expected SEND of MF/MT 1/451\nLine 41: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: Currently in MT=451 section but encountered MT=452 in control record of line 40."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     41,
+     "expected a record of section MF=1/MT=451 of MAT 3564 or its SEND record (MAT/MF/MT 3564/1/0), found a record of section MF=1/MT=452 of MAT 3564; the SEND record of section MF=1/MT=451 is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Expected SEND record does not contain one!\nTemplate: SEND\nLine 41: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: Currently in MT=451 section but encountered MT=452 in control record of line 40."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: expected SEND of MF/MT 1/451\nLine 41: \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"",
+   "py": "UnexpectedControlRecordError: Currently in MT=451 section but encountered MT=452 in control record of line 40."
+  }
+ },
+ "pu:send_mt_text": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MT number field: \" ab\" (columns 73-75)\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 1 ab\"",
+   "py": "ValueError: invalid MT number field: \" ab\" (columns 73-75)"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: invalid MT number field: \" ab\" (columns 73-75)\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 1 ab\"",
+   "py": "ValueError: invalid MT number field: \" ab\" (columns 73-75)"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MT number field: \" ab\" (columns 73-75)\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 1 ab\"",
+   "py": "ValueError: invalid MT number field: \" ab\" (columns 73-75)"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: invalid MT number field: \" ab\" (columns 73-75)\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 1 ab\"",
+   "py": "ValueError: invalid MT number field: \" ab\" (columns 73-75)"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     41,
+     "invalid MT field \" ab\" (columns 73-75)"
+    ]
+   ],
+   "strict": [
+    [
+     41,
+     "invalid MT field \" ab\" (columns 73-75)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MT number field: \" ab\" (columns 73-75)\nTemplate: SEND\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 1 ab\"",
+   "py": "ValueError: invalid MT number field: \" ab\" (columns 73-75)"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: invalid MT number field: \" ab\" (columns 73-75)\nTemplate: SEND\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 1 ab\"",
+   "py": "ValueError: invalid MT number field: \" ab\" (columns 73-75)"
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MT number field: \" ab\" (columns 73-75)\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 1 ab\"",
+   "py": "ValueError: invalid MT number field: \" ab\" (columns 73-75)"
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: invalid MT number field: \" ab\" (columns 73-75)\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 1 ab\"",
+   "py": "ValueError: invalid MT number field: \" ab\" (columns 73-75)"
+  }
+ },
+ "pu:send_wrong_mat": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 40."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 40."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     41,
+     "expected a record of section MF=1/MT=451 of MAT 3564 or its SEND record (MAT/MF/MT 3564/1/0), found a SEND record (MAT/MF/MT 3565/1/0)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 40."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=3564 but encountered MAT=3565 in control record of line 40."
+  }
+ },
+ "pu:send_wrong_mf": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: expected SEND of MF/MT 1/451\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 2  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=1 but encountered MF=2 in control record of line 40."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: expected SEND of MF/MT 1/451\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 2  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=1 but encountered MF=2 in control record of line 40."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     41,
+     "expected a record of section MF=1/MT=451 of MAT 3564 or its SEND record (MAT/MF/MT 3564/1/0), found a SEND record (MAT/MF/MT 3564/2/0)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=1 but encountered MF=2 in control record of line 40."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: expected SEND of MF/MT 1/451\nLine 41: \" 0.000000+0 0.000000+0          0          0          0          03564 2  0\"",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MF=1 but encountered MF=2 in control record of line 40."
+  }
+ },
+ "pu:tend_l2": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \"                                           1                        -1 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \"                                           1                        -1 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \"                                           1                        -1 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \"                                           1                        -1 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     107,
+     "the fields 1-6 (columns 1-66) of the TEND record must be zero or blank, but field 4 is not: \"                                           1\""
+    ]
+   ],
+   "strict": [
+    [
+     107,
+     "the fields 1-6 (columns 1-66) of the TEND record must be zero or blank, but field 4 is not: \"                                           1\""
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \"                                           1                        -1 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \"                                           1                        -1 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \"                                           1                        -1 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Invalid line encountered! This line is outside any MF/MT section.\nLine 107: \"                                           1                        -1 0  0\"",
+   "py": "NotSectionEndError: Not a Section End (SEND) record"
+  }
+ },
+ "pu:tend_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedEndOfInputError: Tape End (TEND) record missing"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedEndOfInputError: Tape End (TEND) record missing"
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     106,
+     "the file ends here, the TEND record is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedEndOfInputError: Tape End (TEND) record missing"
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 106",
+   "py": "UnexpectedEndOfInputError: Tape End (TEND) record missing"
+  }
+ },
+ "pu:tend_mt_text": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MT number field: \"  q\" (columns 73-75)\nLine 107: \"                                                                    -1 0  q\"",
+   "py": "ValueError: invalid MT number field: \"  q\" (columns 73-75)"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: invalid MT number field: \"  q\" (columns 73-75)\nLine 107: \"                                                                    -1 0  q\"",
+   "py": "ValueError: invalid MT number field: \"  q\" (columns 73-75)"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MT number field: \"  q\" (columns 73-75)\nLine 107: \"                                                                    -1 0  q\"",
+   "py": "ValueError: invalid MT number field: \"  q\" (columns 73-75)"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: invalid MT number field: \"  q\" (columns 73-75)\nLine 107: \"                                                                    -1 0  q\"",
+   "py": "ValueError: invalid MT number field: \"  q\" (columns 73-75)"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     107,
+     "invalid MT field \"  q\" (columns 73-75)"
+    ]
+   ],
+   "strict": [
+    [
+     107,
+     "invalid MT field \"  q\" (columns 73-75)"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MT number field: \"  q\" (columns 73-75)\nLine 107: \"                                                                    -1 0  q\"",
+   "py": "ValueError: invalid MT number field: \"  q\" (columns 73-75)"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: invalid MT number field: \"  q\" (columns 73-75)\nLine 107: \"                                                                    -1 0  q\"",
+   "py": "ValueError: invalid MT number field: \"  q\" (columns 73-75)"
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: invalid MT number field: \"  q\" (columns 73-75)\nLine 107: \"                                                                    -1 0  q\"",
+   "py": "ValueError: invalid MT number field: \"  q\" (columns 73-75)"
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: invalid MT number field: \"  q\" (columns 73-75)\nLine 107: \"                                                                    -1 0  q\"",
+   "py": "ValueError: invalid MT number field: \"  q\" (columns 73-75)"
+  }
+ },
+ "pu:tend_neg_zero": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ },
+ "pu:tend_twice": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     108,
+     "only blank lines may follow the TEND record (the end of the tape), found a line that is not blank"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  }
+ },
+ "pu:tend_wrong_mat": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 107",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=-2 in control record of line 106."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 107",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=-2 in control record of line 106."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     107,
+     "expected a section of a new material or the TEND record (MAT/MF/MT -1/0/0), found a FEND record (MAT/MF/MT -2/0/0)"
+    ],
+    [
+     107,
+     "the file ends here, the TEND record is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 107",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=-2 in control record of line 106."
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: Reached End-Of-File but Tape End (TEND) record missing\nEnd of the data reached after line 107",
+   "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=-1 but encountered MAT=-2 in control record of line 106."
+  }
+ },
+ "pu:text_after_tend": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"text       \" (field 1, columns 1-11)\nLine 108: \"text\"",
+   "py": "InvalidFloatError: could not convert string to float: 'text\\n'"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: malformed number field: \"text       \" (field 1, columns 1-11)\nLine 108: \"text\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"text       \" (field 1, columns 1-11)\nLine 108: \"text\"",
+   "py": "InvalidFloatError: could not convert string to float: 'text\\n'"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: malformed number field: \"text       \" (field 1, columns 1-11)\nLine 108: \"text\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     108,
+     "the fields 1-6 (columns 1-66) of the MEND record must be zero or blank, but field 1 is not: \"text\""
+    ]
+   ],
+   "strict": [
+    [
+     108,
+     "only blank lines may follow the TEND record (the end of the tape), found a line that is not blank"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"text       \" (field 1, columns 1-11)\nLine 108: \"text\"",
+   "py": "InvalidFloatError: could not convert string to float: 'text\\n'"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: malformed number field: \"text       \" (field 1, columns 1-11)\nLine 108: \"text\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: malformed number field: \"text       \" (field 1, columns 1-11)\nLine 108: \"text\"",
+   "py": "InvalidFloatError: could not convert string to float: 'text\\n'"
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: malformed number field: \"text       \" (field 1, columns 1-11)\nLine 108: \"text\"",
+   "py": "UnexpectedControlRecordError: Already encountered Tape End (TEND) record. Nothing else is allowed to follow afterwards."
+  }
+ },
+ "pu:valid": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "exclude_mt/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "full/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  },
+  "include/strict": {
+   "cpp": null,
+   "py": null,
+   "same_result": true
+  }
+ },
+ "tape:cu_zn": {
+  "exclude/ignore_send_records": {
+   "cpp": null,
+   "py": "NotSectionEndError: \nHere is the parser record log until failure:\n\n-------- Line 0 -----------\nTemplate:  [ MAT , 2 , 151 / ZA , AWR , 0 , 0 , NIS , 0 ] HEAD\nLine:     \" 2.906300+4 6.238900+1          0          0          1          02925 2151    1\"\n\n-------- Line 1 -----------\nTemplate:  [ MAT , 2 , 151 / ZAI , ABN , 0 , LFW , NER , 0 ] CONT\nLine:     \" 2.906300+4 1.000000+0          0          0          1          02925 2151    2\"\n\n-------- Line 2 -----------\nTemplate:  [ MAT , 2 , 151 / EL , EH , LRU , LRF , NRO , NAPS ] CONT\nLine:     \" 1.000000-5 9.950000+4          1          3          0          12925 2151    3\"\n\n-------- Line 3 -----------\nTemplate:  [ MAT , 2 , 151 / SPI , AP , LAD , 0 , NLS , NLSC ] CONT\nLine:     \" 1.500000+0 6.700000-1          1          0          2          32925 2151    4\"\n\n-------- Line 4 -----------\nTemplate:  [ MAT , 2 , 151 / AWRI , APL , L , 0 , 6 * NRS , NRS / \n { ER [ k ] , AJ [ k ] , GN [ k ] , GG [ k ] , GFA [ k ] , GFB [ k ] } { k = 1 to NRS } ] LIST\nLine:     \" 6.238900+1 6.700000-1          0          0       1296        2162925 2151    5\"\n\n-------- Line 221 -----------\nTemplate:  [ MAT , 2 , 151 / AWRI , APL , L , 0 , 6 * NRS , NRS / \n { ER [ k ] , AJ [ k ] , GN [ k ] , GG [ k ] , GFA [ k ] , GFB [ k ] } { k = 1 to NRS } ] LIST\nLine:     \" 6.238900+1 6.700000-1          1          0        228         382925 2151  222\"\n\n-------- Line 260 -----------\nTemplate:  SEND\nLine:     \" 3.006400+4 6.338000+1          0          0          1          03025 2151    1\"\n\nError message: Not a Section End (SEND) record"
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 25121: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "NotSectionEndError: \nHere is the parser record log until failure:\n\n-------- Line 0 -----------\nTemplate:  [ MAT , 2 , 151 / ZA , AWR , 0 , 0 , NIS , 0 ] HEAD\nLine:     \" 2.906300+4 6.238900+1          0          0          1          02925 2151    1\"\n\n-------- Line 1 -----------\nTemplate:  [ MAT , 2 , 151 / ZAI , ABN , 0 , LFW , NER , 0 ] CONT\nLine:     \" 2.906300+4 1.000000+0          0          0          1          02925 2151    2\"\n\n-------- Line 2 -----------\nTemplate:  [ MAT , 2 , 151 / EL , EH , LRU , LRF , NRO , NAPS ] CONT\nLine:     \" 1.000000-5 9.950000+4          1          3          0          12925 2151    3\"\n\n-------- Line 3 -----------\nTemplate:  [ MAT , 2 , 151 / SPI , AP , LAD , 0 , NLS , NLSC ] CONT\nLine:     \" 1.500000+0 6.700000-1          1          0          2          32925 2151    4\"\n\n-------- Line 4 -----------\nTemplate:  [ MAT , 2 , 151 / AWRI , APL , L , 0 , 6 * NRS , NRS / \n { ER [ k ] , AJ [ k ] , GN [ k ] , GG [ k ] , GFA [ k ] , GFB [ k ] } { k = 1 to NRS } ] LIST\nLine:     \" 6.238900+1 6.700000-1          0          0       1296        2162925 2151    5\"\n\n-------- Line 221 -----------\nTemplate:  [ MAT , 2 , 151 / AWRI , APL , L , 0 , 6 * NRS , NRS / \n { ER [ k ] , AJ [ k ] , GN [ k ] , GG [ k ] , GFA [ k ] , GFB [ k ] } { k = 1 to NRS } ] LIST\nLine:     \" 6.238900+1 6.700000-1          1          0        228         382925 2151  222\"\n\n-------- Line 260 -----------\nTemplate:  SEND\nLine:     \" 3.006400+4 6.338000+1          0          0          1          03025 2151    1\"\n\nError message: Not a Section End (SEND) record"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": null,
+   "py": "NotSectionEndError: \nHere is the parser record log until failure:\n\n-------- Line 0 -----------\nTemplate:  [ MAT , 2 , 151 / ZA , AWR , 0 , 0 , NIS , 0 ] HEAD\nLine:     \" 2.906300+4 6.238900+1          0          0          1          02925 2151    1\"\n\n-------- Line 1 -----------\nTemplate:  [ MAT , 2 , 151 / ZAI , ABN , 0 , LFW , NER , 0 ] CONT\nLine:     \" 2.906300+4 1.000000+0          0          0          1          02925 2151    2\"\n\n-------- Line 2 -----------\nTemplate:  [ MAT , 2 , 151 / EL , EH , LRU , LRF , NRO , NAPS ] CONT\nLine:     \" 1.000000-5 9.950000+4          1          3          0          12925 2151    3\"\n\n-------- Line 3 -----------\nTemplate:  [ MAT , 2 , 151 / SPI , AP , LAD , 0 , NLS , NLSC ] CONT\nLine:     \" 1.500000+0 6.700000-1          1          0          2          32925 2151    4\"\n\n-------- Line 4 -----------\nTemplate:  [ MAT , 2 , 151 / AWRI , APL , L , 0 , 6 * NRS , NRS / \n { ER [ k ] , AJ [ k ] , GN [ k ] , GG [ k ] , GFA [ k ] , GFB [ k ] } { k = 1 to NRS } ] LIST\nLine:     \" 6.238900+1 6.700000-1          0          0       1296        2162925 2151    5\"\n\n-------- Line 221 -----------\nTemplate:  [ MAT , 2 , 151 / AWRI , APL , L , 0 , 6 * NRS , NRS / \n { ER [ k ] , AJ [ k ] , GN [ k ] , GG [ k ] , GFA [ k ] , GFB [ k ] } { k = 1 to NRS } ] LIST\nLine:     \" 6.238900+1 6.700000-1          1          0        228         382925 2151  222\"\n\n-------- Line 260 -----------\nTemplate:  SEND\nLine:     \" 3.006400+4 6.338000+1          0          0          1          03025 2151    1\"\n\nError message: Not a Section End (SEND) record"
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 25121: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "NotSectionEndError: \nHere is the parser record log until failure:\n\n-------- Line 0 -----------\nTemplate:  [ MAT , 2 , 151 / ZA , AWR , 0 , 0 , NIS , 0 ] HEAD\nLine:     \" 2.906300+4 6.238900+1          0          0          1          02925 2151    1\"\n\n-------- Line 1 -----------\nTemplate:  [ MAT , 2 , 151 / ZAI , ABN , 0 , LFW , NER , 0 ] CONT\nLine:     \" 2.906300+4 1.000000+0          0          0          1          02925 2151    2\"\n\n-------- Line 2 -----------\nTemplate:  [ MAT , 2 , 151 / EL , EH , LRU , LRF , NRO , NAPS ] CONT\nLine:     \" 1.000000-5 9.950000+4          1          3          0          12925 2151    3\"\n\n-------- Line 3 -----------\nTemplate:  [ MAT , 2 , 151 / SPI , AP , LAD , 0 , NLS , NLSC ] CONT\nLine:     \" 1.500000+0 6.700000-1          1          0          2          32925 2151    4\"\n\n-------- Line 4 -----------\nTemplate:  [ MAT , 2 , 151 / AWRI , APL , L , 0 , 6 * NRS , NRS / \n { ER [ k ] , AJ [ k ] , GN [ k ] , GG [ k ] , GFA [ k ] , GFB [ k ] } { k = 1 to NRS } ] LIST\nLine:     \" 6.238900+1 6.700000-1          0          0       1296        2162925 2151    5\"\n\n-------- Line 221 -----------\nTemplate:  [ MAT , 2 , 151 / AWRI , APL , L , 0 , 6 * NRS , NRS / \n { ER [ k ] , AJ [ k ] , GN [ k ] , GG [ k ] , GFA [ k ] , GFB [ k ] } { k = 1 to NRS } ] LIST\nLine:     \" 6.238900+1 6.700000-1          1          0        228         382925 2151  222\"\n\n-------- Line 260 -----------\nTemplate:  SEND\nLine:     \" 3.006400+4 6.338000+1          0          0          1          03025 2151    1\"\n\nError message: Not a Section End (SEND) record"
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": null,
+   "py": "NotSectionEndError: \nHere is the parser record log until failure:\n\n-------- Line 581 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         56          1          12925 1451  582\"\n\n-------- Line 582 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         57          1          12925 1451  583\"\n\n-------- Line 583 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         58          1          12925 1451  584\"\n\n-------- Line 584 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         59          1          12925 1451  585\"\n\n-------- Line 585 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         60          1          12925 1451  586\"\n\n-------- Line 586 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         61          1          12925 1451  587\"\n\n-------- Line 587 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         62          1          12925 1451  588\"\n\n-------- Line 588 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         63          1          12925 1451  589\"\n\n-------- Line 589 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         64          1          12925 1451  590\"\n\n-------- Line 590 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         65          1          12925 1451  591\"\n\n-------- Line 591 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         66          1          12925 1451  592\"\n\n-------- Line 592 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         67          1          12925 1451  593\"\n\n-------- Line 593 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         68          1          12925 1451  594\"\n\n-------- Line 594 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         69          1          12925 1451  595\"\n\n-------- Line 595 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         70          1          12925 1451  596\"\n\n-------- Line 596 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         71          1          12925 1451  597\"\n\n-------- Line 597 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         72          1          12925 1451  598\"\n\n-------- Line 598 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14        102          1          52925 1451  599\"\n\n-------- Line 599 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               15        102         90          12925 1451  600\"\n\n-------- Line 600 -----------\nTemplate:  SEND\nLine:     \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"\n\nError message: Not a Section End (SEND) record"
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 25121: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "NotSectionEndError: \nHere is the parser record log until failure:\n\n-------- Line 581 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         56          1          12925 1451  582\"\n\n-------- Line 582 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         57          1          12925 1451  583\"\n\n-------- Line 583 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         58          1          12925 1451  584\"\n\n-------- Line 584 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         59          1          12925 1451  585\"\n\n-------- Line 585 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         60          1          12925 1451  586\"\n\n-------- Line 586 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         61          1          12925 1451  587\"\n\n-------- Line 587 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         62          1          12925 1451  588\"\n\n-------- Line 588 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         63          1          12925 1451  589\"\n\n-------- Line 589 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         64          1          12925 1451  590\"\n\n-------- Line 590 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         65          1          12925 1451  591\"\n\n-------- Line 591 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         66          1          12925 1451  592\"\n\n-------- Line 592 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         67          1          12925 1451  593\"\n\n-------- Line 593 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         68          1          12925 1451  594\"\n\n-------- Line 594 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         69          1          12925 1451  595\"\n\n-------- Line 595 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         70          1          12925 1451  596\"\n\n-------- Line 596 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         71          1          12925 1451  597\"\n\n-------- Line 597 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14         72          1          12925 1451  598\"\n\n-------- Line 598 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               14        102          1          52925 1451  599\"\n\n-------- Line 599 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                               15        102         90          12925 1451  600\"\n\n-------- Line 600 -----------\nTemplate:  SEND\nLine:     \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"\n\nError message: Not a Section End (SEND) record"
+  },
+  "include/ignore_send_records": {
+   "cpp": null,
+   "py": null,
+   "same_result": false
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 25121: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": null
+  }
+ },
+ "tape:pu_twice": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 107: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 106."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 107: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "NotSectionEndError: \nHere is the parser record log until failure:\n\n-------- Line 19 -----------\nTemplate:  [ MAT , 8 , 457 / 0.0 , STYP , LCON , LCOV , 6 , NER / \n FD , dFD , ERAV , dERAV , FC , dFC ] LIST\nLine:     \" 0.000000+0 5.000000+0          0          0          6          03564 8457\"\n\n-------- Line 21 -----------\nTemplate:  [ MAT , 8 , 457 / 0.0 , STYP , LCON , LCOV , 6 , NER / \n FD , dFD , ERAV , dERAV , FC , dFC ] LIST\nLine:     \" 0.000000+0 8.000000+0          0          0          6         113564 8457\"\n\n-------- Line 23 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 4.969974+2 2.216578+1          0          0          6          03564 8457\"\n\n-------- Line 25 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.191341+3 6.281525+1          0          0          6          03564 8457\"\n\n-------- Line 27 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 2.509945+3 7.700109+1          0          0          6          03564 8457\"\n\n-------- Line 29 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.019903+4 4.514674+2          0          0          6          03564 8457\"\n\n-------- Line 31 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.352203+4 3.560937+2          0          0          6          03564 8457\"\n\n-------- Line 33 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.687717+4 4.557982+2          0          0          6          03564 8457\"\n\n-------- Line 35 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 2.224260+4 2.000000+3          0          0          6          03564 8457\"\n\n-------- Line 37 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 3.845200+4 2.000000+3          0          0          6          03564 8457\"\n\n-------- Line 39 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 4.255920+4 2.000000+3          0          0          6          03564 8457\"\n\n-------- Line 41 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 4.383620+4 2.000000+3          0          0          6          03564 8457\"\n\n-------- Line 43 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 4.398030+4 2.000000+3          0          0          6          03564 8457\"\n\n-------- Line 45 -----------\nTemplate:  [ MAT , 8 , 457 / 0.0 , STYP , LCON , LCOV , 6 , NER / \n FD , dFD , ERAV , dERAV , FC , dFC ] LIST\nLine:     \" 0.000000+0 9.000000+0          0          0          6          53564 8457\"\n\n-------- Line 47 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 3.249799+3 4.016403+2          0          0          6          03564 8457\"\n\n-------- Line 49 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.360841+4 1.257712+3          0          0          6          03564 8457\"\n\n-------- Line 51 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.410581+4 8.022025+2          0          0          6          03564 8457\"\n\n-------- Line 53 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.711284+4 1.388382+3          0          0          6          03564 8457\"\n\n-------- Line 55 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 2.036123+4 1.669079+3          0          0          6          03564 8457\"\n\n-------- Line 57 -----------\nTemplate:  SEND\nLine:     \" 9.424400+4 2.419676+2          0          0          0          63564 8457\"\n\nError message: Not a Section End (SEND) record"
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 107: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 106."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 107: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "NotSectionEndError: \nHere is the parser record log until failure:\n\n-------- Line 0 -----------\nTemplate:  [ MAT , 1 , 452 / ZA , AWR , 0 , LNU , 0 , 0 ] HEAD\nLine:     \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"\n\n-------- Line 1 -----------\nTemplate:  [ MAT , 1 , 452 / 0.0 , 0.0 , 0 , 0 , NC , 0 / { C [ k ] } { k = 1 to NC } ] LIST\nLine:     \" 0.000000+0 0.000000+0          0          0          1          03564 1452\"\n\n-------- Line 3 -----------\nTemplate:  SEND\nLine:     \" 9.424400+4 2.419676+2          0          1          0          03564 1452\"\n\nError message: Not a Section End (SEND) record"
+  },
+  "framing": {
+   "ignore_send_records": [
+    [
+     107,
+     "section MF=1/MT=451 of MAT 3564 occurs a second time in the material"
+    ],
+    [
+     147,
+     "section MF=1/MT=452 of MAT 3564 occurs a second time in the material"
+    ],
+    [
+     152,
+     "section MF=8/MT=457 of MAT 3564 occurs a second time in the material"
+    ]
+   ],
+   "strict": []
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 107: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 106."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 107: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "NotSectionEndError: \nHere is the parser record log until failure:\n\n-------- Line 20 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"************************ Energy  Balance ************************ 3564 1451\"\n\n-------- Line 21 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Mean Gamma Energy:      1.271E-2 +- 3.496E-3 keV                  3564 1451\"\n\n-------- Line 22 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Mean X-Ray+511 Energy:  1.268E0 +- 8.963E-2 keV                   3564 1451\"\n\n-------- Line 23 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Mean CE+Auger Energy:   6.571E0 +- 7.040E-1 keV                   3564 1451\"\n\n-------- Line 24 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Mean B- Energy:         0.000E0 +- 0.000E0 keV                    3564 1451\"\n\n-------- Line 25 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Mean B+ Energy:         0.000E0 +- 0.000E0 keV                    3564 1451\"\n\n-------- Line 26 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Mean Neutrino Energy:   0.000E0 +- 0.000E0 keV                    3564 1451\"\n\n-------- Line 27 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Mean Neutron Energy:    0.000E0 +- 0.000E0 keV                    3564 1451\"\n\n-------- Line 28 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Mean Proton Energy:     0.000E0 +- 0.000E0 keV                    3564 1451\"\n\n-------- Line 29 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Mean Alpha Energy:      4.575E3 +- 5.162E1 keV                    3564 1451\"\n\n-------- Line 30 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Mean Recoil Energy:     7.500E1 +- 8.462E-1 keV                   3564 1451\"\n\n-------- Line 31 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Sum Mean Energies:      4.658E3 +- 5.163E1 keV                    3564 1451\"\n\n-------- Line 32 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Q effective:            4.890E3 keV                               3564 1451\"\n\n-------- Line 33 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Missing Energy:         2.321E2 keV                               3564 1451\"\n\n-------- Line 34 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"Deviation:              4.747E0 %                                 3564 1451\"\n\n-------- Line 35 -----------\nTemplate:  [ MAT , 1 , 451 / DESCRIPTION [ i ] ] TEXT\nLine:     \"************************ End Description ************************ 3564 1451\"\n\n-------- Line 36 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                                1        451         39          03564 1451\"\n\n-------- Line 37 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                                1        452          3          03564 1451\"\n\n-------- Line 38 -----------\nTemplate:  [ MAT , 1 , 451 / blank , blank , MFx [ i ] , MTx [ i ] , NCx [ i ] , MOD [ i ] ] DIR\nLine:     \"                                8        457         57          03564 1451\"\n\n-------- Line 39 -----------\nTemplate:  SEND\nLine:     \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"\n\nError message: Not a Section End (SEND) record"
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 107: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "UnexpectedControlRecordError: The sections of a material must be in ascending order of MF, but encountered MF=1 after MF=8 of MAT=3564 in control record of line 106."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: No MF/MT section allowed after MEND/TEND record\nLine 107: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",
+   "py": "NotSectionEndError: \nHere is the parser record log until failure:\n\n-------- Line 19 -----------\nTemplate:  [ MAT , 8 , 457 / 0.0 , STYP , LCON , LCOV , 6 , NER / \n FD , dFD , ERAV , dERAV , FC , dFC ] LIST\nLine:     \" 0.000000+0 5.000000+0          0          0          6          03564 8457\"\n\n-------- Line 21 -----------\nTemplate:  [ MAT , 8 , 457 / 0.0 , STYP , LCON , LCOV , 6 , NER / \n FD , dFD , ERAV , dERAV , FC , dFC ] LIST\nLine:     \" 0.000000+0 8.000000+0          0          0          6         113564 8457\"\n\n-------- Line 23 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 4.969974+2 2.216578+1          0          0          6          03564 8457\"\n\n-------- Line 25 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.191341+3 6.281525+1          0          0          6          03564 8457\"\n\n-------- Line 27 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 2.509945+3 7.700109+1          0          0          6          03564 8457\"\n\n-------- Line 29 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.019903+4 4.514674+2          0          0          6          03564 8457\"\n\n-------- Line 31 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.352203+4 3.560937+2          0          0          6          03564 8457\"\n\n-------- Line 33 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.687717+4 4.557982+2          0          0          6          03564 8457\"\n\n-------- Line 35 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 2.224260+4 2.000000+3          0          0          6          03564 8457\"\n\n-------- Line 37 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 3.845200+4 2.000000+3          0          0          6          03564 8457\"\n\n-------- Line 39 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 4.255920+4 2.000000+3          0          0          6          03564 8457\"\n\n-------- Line 41 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 4.383620+4 2.000000+3          0          0          6          03564 8457\"\n\n-------- Line 43 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 4.398030+4 2.000000+3          0          0          6          03564 8457\"\n\n-------- Line 45 -----------\nTemplate:  [ MAT , 8 , 457 / 0.0 , STYP , LCON , LCOV , 6 , NER / \n FD , dFD , ERAV , dERAV , FC , dFC ] LIST\nLine:     \" 0.000000+0 9.000000+0          0          0          6          53564 8457\"\n\n-------- Line 47 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 3.249799+3 4.016403+2          0          0          6          03564 8457\"\n\n-------- Line 49 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.360841+4 1.257712+3          0          0          6          03564 8457\"\n\n-------- Line 51 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.410581+4 8.022025+2          0          0          6          03564 8457\"\n\n-------- Line 53 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 1.711284+4 1.388382+3          0          0          6          03564 8457\"\n\n-------- Line 55 -----------\nTemplate:  [ MAT , 8 , 457 / ER , dER , 0 , 0 , NT , 0 / \n RTYP , TYPE , RI , dRI , RIS , dRIS ] LIST\nLine:     \" 2.036123+4 1.669079+3          0          0          6          03564 8457\"\n\n-------- Line 57 -----------\nTemplate:  SEND\nLine:     \" 9.424400+4 2.419676+2          0          0          0          63564 8457\"\n\nError message: Not a Section End (SEND) record"
+  }
+ },
+ "write": {
+  "nothing_included": {
+   "cpp": {
+    "error": null,
+    "text": " 0.000000+0 0.000000+0          0          0          0          0   0 0  0    0\n 0.000000+0 0.000000+0          0          0          0          0   0 0  0    0\n 0.000000+0 0.000000+0          0          0          0          0  -1 0  0    0"
+   },
+   "py": {
+    "error": null,
+    "text": " 0.000000+0 0.000000+0          0          0          0          0   0 0  0    0\n 0.000000+0 0.000000+0          0          0          0          0  -1 0  0    0"
+   }
+  },
+  "pu": {
+   "cpp": {
+    "error": null,
+    "text": "sha256:7cbd06fa67953e36a3a0feaa338fc6083c536ab26ef5e08560bf6cb3958b1e3e"
+   },
+   "py": {
+    "error": null,
+    "text": "sha256:7cbd06fa67953e36a3a0feaa338fc6083c536ab26ef5e08560bf6cb3958b1e3e"
+   }
+  },
+  "pu_exclude_1": {
+   "cpp": {
+    "error": null,
+    "text": "sha256:43b1bb07963e5eae172d0630e15cc67d2ae26cfdc713b4a6abed7eb78b0f0e79"
+   },
+   "py": {
+    "error": null,
+    "text": "sha256:43b1bb07963e5eae172d0630e15cc67d2ae26cfdc713b4a6abed7eb78b0f0e79"
+   }
+  },
+  "pu_include_8": {
+   "cpp": {
+    "error": null,
+    "text": "sha256:5d030bb0e0cd73a7531e9322fd94652c25a796eea69f8673950d3dd8747e9b6f"
+   },
+   "py": {
+    "error": null,
+    "text": "sha256:5d030bb0e0cd73a7531e9322fd94652c25a796eea69f8673950d3dd8747e9b6f"
+   }
+  },
+  "tpid_only": {
+   "cpp": {
+    "error": null,
+    "text": " $Rev:: 1450     $  $Date:: 2018-01-17#$                             1 0  0    0\n 0.000000+0 0.000000+0          0          0          0          0   1 0  0    0\n 0.000000+0 0.000000+0          0          0          0          0   0 0  0    0\n 0.000000+0 0.000000+0          0          0          0          0  -1 0  0    0"
+   },
+   "py": {
+    "error": null,
+    "text": " $Rev:: 1450     $  $Date:: 2018-01-17#$                             1 0  0    0\n 0.000000+0 0.000000+0          0          0          0          0   0 0  0    0\n 0.000000+0 0.000000+0          0          0          0          0  -1 0  0    0"
+   }
+  },
+  "wrong_mf_key": {
+   "cpp": {
+    "error": null,
+    "text": "sha256:e268d8348db7101f22e414c85831d3daf3babc529d634fa98cf246ce20b1fced"
+   },
+   "py": {
+    "error": "UnexpectedControlRecordError: expected MF=1 but found MF=2",
+    "text": null
+   }
+  }
+ }
+}

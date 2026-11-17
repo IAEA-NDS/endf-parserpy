@@ -45,6 +45,11 @@ and for one section (key ``"section"``)::
         "end_record_fill": "blank",
     }
 
+Every rule can be given at the top level, ``send`` too, and ``send``
+also per MF: ``{"send": False}`` is a format without SEND records, whose
+recipes end without ``SEND``, and ``{"mf": {3: {"send": False}}}`` one
+without SEND records after the sections of MF3 only.
+
 The rule that applies to a section MF/MT is the first one found in this
 order: the entry of the section ``(MF, MT)``, the entry of the MF, the
 top-level value, the value of ENDF-6. The rules and the levels at which
@@ -69,6 +74,9 @@ the FEND record of an MF must have a greater MF. With
 ``mt_order="ascending"``, the MT numbers increase within a run; if the
 section may repeat, the copies must follow each other. Copies of a
 section that are not separated by any record are read as one section.
+In particular, without SEND records (``"send": False``), two copies of
+the same section directly after each other are read as one section,
+even if the section may repeat.
 The tape head (TPID, MF0/MT0) is outside these rules.
 
 :class:`TapeStructure` is the validated and resolved form of such a
@@ -173,7 +181,9 @@ class TapeStructure:
 
     Create it with :meth:`from_spec` from a dictionary (see the module
     documentation); :data:`ENDF6` is the structure of ENDF-6. The object
-    is immutable, hashable and can be pickled.
+    is immutable, hashable and can be pickled. The rules ``send`` and
+    ``repeat`` can be given globally, per MF and per section, ``fend``
+    and ``mt_order`` globally and per MF, the others globally only.
 
     Attributes
     ----------

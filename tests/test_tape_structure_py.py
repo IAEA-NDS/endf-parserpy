@@ -184,6 +184,139 @@ def test_second_material_rejected():
     )
 
 
+# --- no SEND records at all ------------------------------------------------
+
+# A format without SEND records: ``send`` given globally (or per MF), with
+# a recipe of MF3 that ends without SEND; MF3/MT1 and MF3/MT2 follow each
+# other without a record between them.
+NO_SEND_GLOBAL = {"send": False}
+NO_SEND_MF3 = {"mf": {3: {"send": False}}}
+_HEAD_MF3 = "[MAT, 3, MT/ ZA, AWR, 0, 0, 0, 0] HEAD\n"
+_ZEROS = " 0.000000+0" * 2 + "          0" * 4
+_HEAD = " 2.605600+4 5.545400+1" + "          0" * 4
+
+
+def _ln(text, mat, mf, mt):
+    return text.ljust(66) + f"{mat:4d}{mf:2d}{mt:3d}"
+
+
+def _no_send_tape(*sections):
+    """A tape of MAT=2631 with the HEAD records of the sections MF3/MT
+    (``sections``, an MT number or a line given as it is), without SEND
+    records."""
+    lines = [_ln(" tape id", 1, 0, 0)]
+    lines += [_ln(_HEAD, 2631, 3, s) if isinstance(s, int) else s for s in sections]
+    lines += [_ln(_ZEROS, 2631, 0, 0), _ln(_ZEROS, 0, 0, 0), _ln(_ZEROS, -1, 0, 0)]
+    return "\n".join(lines) + "\n"
+
+
+def _no_send_recipes(send=""):
+    return {0: {0: get_recipe_dict("endf6")[0][0]}, 3: _HEAD_MF3 + send}
+
+
+@pytest.mark.parametrize("spec", [NO_SEND_GLOBAL, NO_SEND_MF3])
+def test_no_send_records_parse(spec):
+    tape = _no_send_tape(1, 2)
+    parser = EndfParserPy(recipes=_no_send_recipes(), tape_structure=spec)
+    material = parser.parse(tape)
+    assert sorted(material) == [0, 3]
+    assert sorted(material[3]) == [1, 2]
+    assert material[3][2] == {
+        "MAT": 2631,
+        "MF": 3,
+        "MT": 2,
+        "ZA": 26056.0,
+        "AWR": 55.454,
+    }
+    as_list = EndfParserPy(
+        recipes=_no_send_recipes(), tape_structure=spec, material_form="list"
+    ).parse(tape)
+    assert _labels(as_list) == [(0, 0), (3, 1), (3, 2)]
+    # read verbatim, each section is its line, without a SEND record
+    verbatim = parser.parse(tape, exclude=[3])
+    assert verbatim[3] == {
+        1: [_ln(_HEAD, 2631, 3, 1) + "\n"],
+        2: [_ln(_HEAD, 2631, 3, 2) + "\n"],
+    }
+
+
+@pytest.mark.parametrize("spec", [NO_SEND_GLOBAL, NO_SEND_MF3])
+def test_no_send_records_write(spec):
+    tape = _no_send_tape(1, 2)
+    parser = EndfParserPy(
+        recipes=_no_send_recipes(), tape_structure=spec, include_linenum=False
+    )
+    for material in (parser.parse(tape), parser.parse(tape, exclude=[3])):
+        written = parser.write(material)
+        # no SEND records; the FEND, MEND and TEND records
+        assert [line.rstrip() for line in written] == _lines_of(tape)
+        assert parser.parse(written) == parser.parse(tape)
+
+
+@pytest.mark.parametrize(
+    "spec, rule", [(NO_SEND_GLOBAL, "global rule"), (NO_SEND_MF3, "rule of MF=3")]
+)
+def test_no_send_records_recipe_with_send(spec, rule):
+    with pytest.raises(ValueError) as exc:
+        EndfParserPy(recipes=_no_send_recipes("SEND\n"), tape_structure=spec)
+    assert str(exc.value) == (
+        "the recipe for MF=3 ends with a SEND record, but the tape structure has "
+        f"no SEND record after the sections of MF=3 ({rule}); remove SEND from "
+        'the recipe or set "send": True'
+    )
+
+
+def test_no_send_records_send_in_the_data():
+    send = _ln(_ZEROS, 2631, 3, 0)
+    tape = _no_send_tape(1, 2, send)
+    parser = EndfParserPy(recipes=_no_send_recipes(), tape_structure=NO_SEND_GLOBAL)
+    for kwargs in ({}, {"exclude": [3]}):
+        with pytest.raises(UnexpectedControlRecordError) as exc:
+            parser.parse(tape, **kwargs)
+        assert str(exc.value) == (
+            "Unexpected SEND record after section MF=3/MT=2 of MAT=2631: the tape "
+            "structure has no SEND record after this section, in control record "
+            "of line 4."
+        )
+
+
+def test_no_send_records_copies_are_one_section():
+    # nothing separates two copies of a section, so that they are read as
+    # one section (of two lines), even if the section may repeat
+    tape = _no_send_tape(1, 1)
+    spec = dict(NO_SEND_GLOBAL, repeat=True)
+    parser = EndfParserPy(
+        recipes=_no_send_recipes(), tape_structure=spec, material_form="list"
+    )
+    assert _labels(parser.parse(tape)) == [(0, 0), (3, 1)]
+    material = parser.parse(tape, exclude=[3])
+    assert _labels(material) == [(0, 0), (3, 1)]
+    assert len(material[1]) == 2
+
+
+def test_no_send_records_tape_layer(tmp_path):
+    from endf_parserpy.tape import TapeIndex, check_framing
+
+    path = tmp_path / "no_send.endf"
+    tape = _no_send_tape(1, 2)
+    path.write_text(tape, encoding="latin-1")
+    for spec in (NO_SEND_GLOBAL, NO_SEND_MF3):
+        assert check_framing(path, tape_structure=spec) == []
+        for index in (
+            TapeIndex.from_file(path, tape_structure=spec),
+            TapeIndex.from_lines(_lines_of(tape), tape_structure=spec),
+        ):
+            assert len(index) == 1
+            assert [key for key, _ in index[0].section_list] == [(3, 1), (3, 2)]
+    # under the rules of ENDF-6, the SEND records are missing
+    assert [p.line for p in check_framing(path)] == [3, 4]
+    # a SEND record in the data: the line of the error of the parser
+    path.write_text(_no_send_tape(1, 2, _ln(_ZEROS, 2631, 3, 0)), encoding="latin-1")
+    problems = check_framing(path, tape_structure=NO_SEND_GLOBAL)
+    assert [p.line for p in problems] == [4]
+    assert "found a SEND record (MAT/MF/MT 2631/3/0)" in problems[0].message
+
+
 # --- writing ---------------------------------------------------------------
 
 

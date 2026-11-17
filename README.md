@@ -166,6 +166,9 @@ ENDF-6 recipe files and helped in numerous discussions
 to convey a good understanding of the technical details of
 the ENDF-6 format that enabled the creation of this package.
 
+
+## Development and AI assistance
+
 endf-parserpy, including the formal recipe language, the parser
 architecture and the compiler that translates recipes into C++ code,
 was designed and developed without AI assistance from its beginning
@@ -176,5 +179,15 @@ exclusively, for the multi-material interface (`TapeIndex`, `EndfFile`
 and the multi-material support of `endf-cli`, version 0.17), the
 support for numpy arrays (`array_type="numpy"`, version 0.18), finding
 and fixing bugs, and the performance optimization of the recipe
-compiler and the generated C++ backend. All AI-assisted changes were
-reviewed and tested before inclusion.
+compiler and the generated C++ backend.
+
+All AI-assisted changes were reviewed and tested before inclusion.
+Beyond the test suite, changes to reading and writing were checked on
+evaluated nuclear data files, by read-write-read round trips and by
+comparing the parse results and the written output with those of the
+previous version. For the larger changes, this covered all files of
+the ENDF/B-VIII.1 neutron sublibrary and of the ENDF/B-VIII.0 thermal
+scattering, decay data and electro-atomic sublibraries. The optimized
+number conversion of the C++ parser is tested against a reference
+conversion, exhaustively for the number layouts it accelerates, and
+its vectorized variants against the scalar one.

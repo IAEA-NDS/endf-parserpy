@@ -214,9 +214,11 @@ Limitations
 - GROUPR writes nuclide production (input ``10/``) as additional MF3
   sections with the MT of the reaction, e.g. several MF3/MT102
   sections that differ in ``IZAM``. The structural index of
-  :class:`~endf_parserpy.EndfFile` currently keeps only the last of
-  several sections with the same MF/MT in a material. Such sections can
-  only be read one by one, as a single section.
+  :class:`~endf_parserpy.EndfFile` holds one section per MF/MT in a
+  material, so that opening such a tape raises a
+  :class:`~endf_parserpy.tape.TapeStructureError` naming the section
+  and the lines at which the sections start. Such sections can only be
+  read one by one, as a single section.
 - To write the numbers in the forms of NJOY, parse with
   ``preserve_value_strings=True``. Writing from the values with
   ``prefer_noexp=True`` and ``standard_form_on_tie=True`` gives the

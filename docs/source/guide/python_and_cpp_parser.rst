@@ -87,7 +87,11 @@ supplying the ``select`` argument. Instead of the default,
 
    parser = EndfParserFactory.create(select="cpp")
 
-This invocation is equivalent to ``parser = EndfParserCpp()``.
+This invocation is equivalent to ``parser = EndfParserCpp()``: the
+arguments of :meth:`~endf_parserpy.EndfParserFactory.create` that both
+classes take have the defaults of the classes, e.g.
+``ignore_blank_lines=False``, which rejects blank lines (a final line
+ending, or its absence, is not a blank line).
 
 In summary, the :meth:`endf_parserpy.EndfParserFactory.create` method
 helps the user to pick the best available parser type and provides

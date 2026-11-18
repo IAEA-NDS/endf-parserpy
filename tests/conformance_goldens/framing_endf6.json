@@ -240,20 +240,20 @@
  },
  "pu:blank_after_fend": {
   "exclude/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
-   "py": "BlankLineError: Line 47 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 47 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
-   "py": "BlankLineError: Line 47 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 47 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude_mt/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
-   "py": "BlankLineError: Line 47 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 47 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude_mt/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
-   "py": "BlankLineError: Line 47 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 47 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "framing": {
    "ignore_send_records": [
@@ -270,38 +270,38 @@
    ]
   },
   "full/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
-   "py": "BlankLineError: Line 47 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 47 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "full/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
-   "py": "BlankLineError: Line 47 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 47 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "include/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
-   "py": "BlankLineError: Line 47 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 47 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "include/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 47: \"                                                                                \"",
-   "py": "BlankLineError: Line 47 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 47: \"                                                                                \"",
+   "py": "BlankLineError: Line 47 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   }
  },
  "pu:blank_after_mend": {
   "exclude/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
-   "py": "BlankLineError: Line 107 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 107: \"\"",
+   "py": "BlankLineError: Line 107 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
-   "py": "BlankLineError: Line 107 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 107: \"\"",
+   "py": "BlankLineError: Line 107 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude_mt/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
-   "py": "BlankLineError: Line 107 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 107: \"\"",
+   "py": "BlankLineError: Line 107 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude_mt/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
-   "py": "BlankLineError: Line 107 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 107: \"\"",
+   "py": "BlankLineError: Line 107 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "framing": {
    "ignore_send_records": [
@@ -318,38 +318,38 @@
    ]
   },
   "full/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
-   "py": "BlankLineError: Line 107 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 107: \"\"",
+   "py": "BlankLineError: Line 107 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "full/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
-   "py": "BlankLineError: Line 107 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 107: \"\"",
+   "py": "BlankLineError: Line 107 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "include/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
-   "py": "BlankLineError: Line 107 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 107: \"\"",
+   "py": "BlankLineError: Line 107 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "include/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 107: \"\"",
-   "py": "BlankLineError: Line 107 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 107: \"\"",
+   "py": "BlankLineError: Line 107 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   }
  },
  "pu:blank_after_send": {
   "exclude/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
-   "py": "BlankLineError: Line 42 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 42: \"\"",
+   "py": "BlankLineError: Line 42 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
-   "py": "BlankLineError: Line 42 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 42: \"\"",
+   "py": "BlankLineError: Line 42 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude_mt/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
-   "py": "BlankLineError: Line 42 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 42: \"\"",
+   "py": "BlankLineError: Line 42 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude_mt/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
-   "py": "BlankLineError: Line 42 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 42: \"\"",
+   "py": "BlankLineError: Line 42 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "framing": {
    "ignore_send_records": [
@@ -366,20 +366,20 @@
    ]
   },
   "full/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
-   "py": "BlankLineError: Line 42 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 42: \"\"",
+   "py": "BlankLineError: Line 42 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "full/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
-   "py": "BlankLineError: Line 42 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 42: \"\"",
+   "py": "BlankLineError: Line 42 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "include/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
-   "py": "BlankLineError: Line 42 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 42: \"\"",
+   "py": "BlankLineError: Line 42 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "include/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 42: \"\"",
-   "py": "BlankLineError: Line 42 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 42: \"\"",
+   "py": "BlankLineError: Line 42 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   }
  },
  "pu:blank_after_tend": {
@@ -430,20 +430,20 @@
  },
  "pu:blank_before_tpid": {
   "exclude/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
-   "py": "BlankLineError: Line 1 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 1: \"\"",
+   "py": "BlankLineError: Line 1 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
-   "py": "BlankLineError: Line 1 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 1: \"\"",
+   "py": "BlankLineError: Line 1 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude_mt/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
-   "py": "BlankLineError: Line 1 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 1: \"\"",
+   "py": "BlankLineError: Line 1 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "exclude_mt/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
-   "py": "BlankLineError: Line 1 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 1: \"\"",
+   "py": "BlankLineError: Line 1 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "framing": {
    "ignore_send_records": [
@@ -460,20 +460,20 @@
    ]
   },
   "full/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
-   "py": "BlankLineError: Line 1 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 1: \"\"",
+   "py": "BlankLineError: Line 1 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "full/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
-   "py": "BlankLineError: Line 1 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 1: \"\"",
+   "py": "BlankLineError: Line 1 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "include/ignore_send_records": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
-   "py": "BlankLineError: Line 1 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 1: \"\"",
+   "py": "BlankLineError: Line 1 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   },
   "include/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nLine 1: \"\"",
-   "py": "BlankLineError: Line 1 is a blank line."
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nLine 1: \"\"",
+   "py": "BlankLineError: Line 1 is a blank line. Remove it, or create the parser with ignore_blank_lines=True to skip blank lines."
   }
  },
  "pu:end_records_missing": {
@@ -483,7 +483,7 @@
    "same_result": true
   },
   "exclude/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nTemplate: SEND\nEnd of the data reached after line 103",
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nTemplate: SEND\nEnd of the data reached after line 103",
    "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MT=457 section. Required Section End records are missing"
   },
   "exclude_mt/ignore_send_records": {
@@ -492,7 +492,7 @@
    "same_result": true
   },
   "exclude_mt/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nTemplate: SEND\nEnd of the data reached after line 103",
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nTemplate: SEND\nEnd of the data reached after line 103",
    "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MT=457 section. Required Section End records are missing"
   },
   "framing": {
@@ -510,7 +510,7 @@
    "same_result": true
   },
   "full/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nTemplate: SEND\nEnd of the data reached after line 103",
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nTemplate: SEND\nEnd of the data reached after line 103",
    "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MT=457 section. Required Section End records are missing"
   },
   "include/ignore_send_records": {
@@ -519,7 +519,7 @@
    "same_result": true
   },
   "include/strict": {
-   "cpp": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option\nTemplate: SEND\nEnd of the data reached after line 103",
+   "cpp": "RuntimeError: Blank line detected: remove it, or create the parser with ignore_blank_lines=True to skip blank lines\nTemplate: SEND\nEnd of the data reached after line 103",
    "py": "UnexpectedEndOfInputError: Reached the End-Of-File but still in an open MT=457 section. Required Section End records are missing"
   }
  },

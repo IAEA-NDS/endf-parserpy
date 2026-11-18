@@ -61,6 +61,25 @@ ENDF_PARSER_ARGS = (
 )
 
 
+# the hints of the error messages of the parsers that name a constructor
+# argument, and their form on the command line, where each such argument
+# is an option (see ENDF_PARSER_ARGS)
+_CLI_HINTS = (
+    (
+        "create the parser with ignore_blank_lines=True",
+        "use the option --ignore_blank_lines",
+    ),
+)
+
+
+def cli_message(text):
+    """An error message of a parser as shown by a command: the hints that
+    name an argument of the parser constructor name the option instead."""
+    for parser_hint, cli_hint in _CLI_HINTS:
+        text = text.replace(parser_hint, cli_hint)
+    return text
+
+
 def add_common_cmd_parser_args(parser, defaults=None):
     """Add common arguments to command-line argument parser.
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -11,6 +11,7 @@
 
 from ..cmd_utils import (
     add_common_cmd_parser_args,
+    cli_message,
     get_endf_parser,
     open_endf_file,
 )
@@ -348,7 +349,7 @@ def _validate_endf_files(parser, files, fast_parser=None):
             any_failed = True
             print("\n" + "=" * 80)
             print(f"  Validation of {file} failed for the following reason:\n")
-            print(detail)
+            print(cli_message(detail))
         else:
             # mismatches tolerated as requested by the options (e.g.
             # --ignore_zero_mismatch): the file passes, and they are listed

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/12
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -338,7 +338,8 @@ def generate_master_parsefun(name, recipefuns):
                 cpp.statement("curpos = cont.tellg()") + cpp.statement("continue"),
                 # else branch
                 cpp.throw_runtime_error(
-                    "Blank line detected: Correct file or use `ignore_blank_lines` option"
+                    "Blank line detected: remove it, or create the parser with "
+                    "ignore_blank_lines=True to skip blank lines"
                 ),
             ),
         )

@@ -3650,7 +3650,8 @@ inline void cpp_read_line(
   }
   if (cpp_is_blank_line(line)) {
     throw std::runtime_error(
-      "Blank line detected: Correct file or use `ignore_blank_lines` option"
+      "Blank line detected: remove it, or create the parser with "
+      "ignore_blank_lines=True to skip blank lines"
     );
   }
   std::size_t size = cpp_pad_short_line(line);

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -538,6 +538,20 @@ def write_endf_numbers(vals, to_int=False, write_opts=None):
     return lines
 
 
+# the hint of the error for a blank line (see blank_line_message), also in
+# the message of EndfParserCpp (see BLANK_LINE_MESSAGE of the C++ module)
+BLANK_LINE_HINT = (
+    "Remove it, or create the parser with ignore_blank_lines=True "
+    "to skip blank lines."
+)
+
+
+def blank_line_message(linenum):
+    # the start "Line <n> is a blank line." is kept, as EndfFile translates
+    # the line number (see endf_file._LINE_NUMBER_PATTERNS)
+    return f"Line {linenum} is a blank line. {BLANK_LINE_HINT}"
+
+
 def is_blank_line(line):
     # a line of blanks and tabs (without its line ending) as in
     # EndfParserCpp; other characters that str.strip removes, e.g. a form
@@ -688,7 +702,7 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
     ofs = 0
     while is_blank_line(lines[ofs]):
         if not ignore_blank_lines:
-            raise BlankLineError(f"Line {ofs + 1} is a blank line.")
+            raise BlankLineError(blank_line_message(ofs + 1))
         ofs += 1
     sections = []
     if not accept_non_ascii:
@@ -757,7 +771,7 @@ def split_material(lines, read_opts=None, line_numbers=None, tape_structure=None
             if ignore_blank_lines:
                 continue
             else:
-                raise BlankLineError(f"Line {ofs + 1} is a blank line.")
+                raise BlankLineError(blank_line_message(ofs + 1))
         if not accept_non_ascii:
             check_line_ascii(line, ofs + 1, width)
         if sec_level == -1:

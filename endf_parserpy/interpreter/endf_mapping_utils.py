@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/10/26
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -40,7 +40,7 @@ from .helpers import (
 import re
 from fractions import Fraction
 from endf_parserpy.utils.math_utils import EndfFloat, math_op
-from endf_parserpy.utils.debugging_utils import TrackingDict
+from endf_parserpy.utils.debugging_utils import TrackingDict, TrackingList
 
 
 # Arithmetic of ENDF recipe expressions
@@ -277,6 +277,8 @@ def _get_array_value_in_dict_mode(varname, array_cont, idcs, raise_if_missing):
             raise UnavailableIndexError(
                 f"index {idx} does not exist in array {varname}"
             )
+        if _is_list_form(curdic):
+            _raise_list_form_in_dict_mode(varname, curdic)
         if idx in curdic:
             curdic = curdic[idx]
         elif not raise_if_missing:
@@ -286,6 +288,33 @@ def _get_array_value_in_dict_mode(varname, array_cont, idcs, raise_if_missing):
                 f"index {idx} does not exist in array {varname}"
             )
     return curdic
+
+
+def _is_list_form(obj):
+    # a list, a tuple or a numpy array, in which `idx in obj` would look
+    # for a value instead of an index; only for containers other than
+    # dict and TrackingDict (the arrays of dict mode)
+    # (also wrapped for check_arrays, see TrackingList)
+    if isinstance(obj, TrackingList):
+        return True
+    return isinstance(obj, (list, tuple)) or hasattr(obj, "__array_interface__")
+
+
+def _raise_list_form_in_dict_mode(varname, obj):
+    # data parsed with array_type "list" or "numpy" and written without
+    # this option, e.g. with EndfParserPy() (see the corresponding error
+    # of EndfParserCpp, index_shifter_dict_from_other)
+    if isinstance(obj, TrackingList):
+        obj = obj._baselist
+    typename = type(obj).__module__ + "." + type(obj).__qualname__
+    if typename.startswith("builtins."):
+        typename = typename[len("builtins.") :]
+    raise UnavailableIndexError(
+        f"the array {varname} is a `{typename}`, but writing with array_type "
+        '"dict" (the default) expects a dict for each array: data parsed with '
+        'array_type "list" or "numpy" must be written with the same '
+        'array_type, e.g. with EndfParserPy(array_type="numpy")'
+    )
 
 
 def _get_array_value_in_list_mode(varname, array_cont, idcs, raise_if_missing):

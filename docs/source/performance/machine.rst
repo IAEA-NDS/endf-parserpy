@@ -34,7 +34,7 @@
    * - numpy
      - 2.4.6
    * - endf-parserpy
-     - 0.18.0, commit e16c324e1875
+     - 0.18.0, commit e16c324e1875+dirty
    * - C++ module
      - source build
    * - Compiler

@@ -40,12 +40,10 @@ can be suppressed by using an additional argument:
    parser = EndfParserFactory.create(warn_slow=False)
 
 
-In addition, this function can take the arguments that are supported
-by the :class:`~endf_parserpy.EndfParserPy` or
-the :class:`~endf_parserpy.EndfParserCpp` class, except
-``material_form`` and ``tape_structure``, which it does not accept
-(they raise a :exc:`TypeError`); create the parser class directly to
-use them.
+In addition, this function takes every argument of
+the :class:`~endf_parserpy.EndfParserPy` and
+the :class:`~endf_parserpy.EndfParserCpp` class, with the default of the
+class that is selected.
 It will then select the appropriate parser according to argument compatibility.
 For instance, using the ``loglevel`` argument, not supported by
 the C++ parser, will force the selection of the Python parser:
@@ -87,11 +85,12 @@ supplying the ``select`` argument. Instead of the default,
 
    parser = EndfParserFactory.create(select="cpp")
 
-This invocation is equivalent to ``parser = EndfParserCpp()``: the
-arguments of :meth:`~endf_parserpy.EndfParserFactory.create` that both
-classes take have the defaults of the classes, e.g.
-``ignore_blank_lines=False``, which rejects blank lines (a final line
-ending, or its absence, is not a blank line).
+This invocation is equivalent to ``parser = EndfParserCpp()``, and
+``select="python"`` to ``parser = EndfParserPy()``: the arguments of
+:meth:`~endf_parserpy.EndfParserFactory.create` have the defaults of the
+class that is selected, e.g. ``ignore_blank_lines=False``, which rejects
+blank lines (a final line ending, or its absence, is not a blank line),
+and ``check_arrays=True`` for the Python parser.
 
 In summary, the :meth:`endf_parserpy.EndfParserFactory.create` method
 helps the user to pick the best available parser type and provides

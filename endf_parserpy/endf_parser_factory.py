@@ -80,7 +80,7 @@ class EndfParserFactory:
         preserve_value_strings=False,
         include_linenum=True,
         width=11,  # Python only
-        check_arrays=False,  # Python only
+        check_arrays=None,  # Python only (None: True for EndfParserPy)
         strict_datatypes=False,
         array_type="dict",
         explain_missing_variable=None,  # Python only
@@ -93,6 +93,8 @@ class EndfParserFactory:
         validate_control_records=False,  # C++ only
         load_file_into_memory=True,  # C++ only
         standard_form_on_tie=False,
+        material_form=None,
+        tape_structure=None,  # Python only
     ):
         """Create an ENDF parser instance.
 
@@ -102,10 +104,37 @@ class EndfParserFactory:
         :class:`~endf_parserpy.EndfParserCpp` (C++ parser) class
         depending on the supplied arguments. The three parameters
         described below control the behavior of the parser factory.
-        All other parameters are arguments to the constructor of the
-        :class:`~endf_parserpy.EndfParserPy` or
-        :class:`~endf_parserpy.EndfParserCpp` class
-        and most of them are available for both classes.
+        All other parameters are the arguments of the constructors of
+        the :class:`~endf_parserpy.EndfParserPy` and
+        :class:`~endf_parserpy.EndfParserCpp` classes, each one with the
+        default of the class that is selected, so that, e.g.,
+        ``create(select="cpp")`` is equivalent to ``EndfParserCpp()``
+        and ``create(select="python")`` to ``EndfParserPy()``.
+
+        Most of them are arguments of both classes. Those of only
+        ``EndfParserPy`` (``fuzzy_matching``, ``width``,
+        ``check_arrays``, ``strict_datatypes``,
+        ``explain_missing_variable``, ``cache_dir``,
+        ``print_cache_info``, ``recipes``, ``parsing_funs``,
+        ``loglevel`` and ``tape_structure``) and of only
+        ``EndfParserCpp`` (``validate_control_records`` and
+        ``load_file_into_memory``) are handled as follows:
+
+        - An argument of only ``EndfParserPy`` given with a value
+          that ``EndfParserCpp`` does not have (e.g. ``loglevel=20``,
+          a ``tape_structure`` or ``check_arrays=True``) selects the
+          Python parser with ``select="fastest"`` (with a
+          :exc:`UserWarning` unless ``warn_slow=False``), raises a
+          :exc:`ValueError` with ``select="cpp"`` or
+          ``require_compat=True``.
+        - ``check_arrays`` defaults to ``None``: ``True``, the default
+          of ``EndfParserPy``, if the Python parser is selected
+          (also if ``select="fastest"`` falls back on it because the
+          C++ parser is not available), and ``False`` for the C++
+          parser, which has no array checks.
+        - An argument of only ``EndfParserCpp`` with a value other
+          than its default (``validate_control_records=True``)
+          raises a :exc:`ValueError` if the Python parser is selected.
 
         Parameters
         ----------
@@ -218,7 +247,7 @@ class EndfParserFactory:
             )
             and _check_param("C++", "width", [11], parser_args, do_raise, warn_slow)
             and _check_param(
-                "C++", "check_arrays", [False], parser_args, do_raise, warn_slow
+                "C++", "check_arrays", [None, False], parser_args, do_raise, warn_slow
             )
             and _check_param(
                 "C++", "strict_datatypes", [False], parser_args, do_raise, warn_slow
@@ -238,6 +267,9 @@ class EndfParserFactory:
             and _check_param(
                 "C++", "loglevel", [None], parser_args, do_raise, warn_slow
             )
+            and _check_param(
+                "C++", "tape_structure", [None], parser_args, do_raise, warn_slow
+            )
         )
 
     @staticmethod
@@ -253,4 +285,5 @@ class EndfParserFactory:
         parser_args.pop("recipes", None)
         parser_args.pop("parsing_funs", None)
         parser_args.pop("loglevel", None)
+        parser_args.pop("tape_structure", None)
         return EndfParserCpp(**parser_args)

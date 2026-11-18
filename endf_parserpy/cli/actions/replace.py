@@ -15,6 +15,7 @@ from ..cmd_utils import (
     add_common_cmd_parser_args,
     get_endf_parser,
     open_endf_file,
+    parse_error_message,
     is_material_qualified,
     resolve_material_path,
     section_label_of,
@@ -114,7 +115,7 @@ def _open(file, parser, role):
     try:
         return open_endf_file(file, parser)
     except Exception as exc:  # noqa: BLE001
-        _fail(f"cannot read {role} file {file}: {exc}")
+        _fail(f"cannot read {role} file {file}: {parse_error_message(exc)}")
 
 
 def _extract(endf_file, resolved, kind):
@@ -214,7 +215,9 @@ def _replace_element(
         source_kind = _path_kind(src_resolved)
         obj = _extract(source, src_resolved, source_kind)
     except Exception as exc:  # noqa: BLE001
-        _fail(f"cannot read {src_resolved} from {sourcefile}: {exc}")
+        _fail(
+            f"cannot read {src_resolved} from {sourcefile}: " + parse_error_message(exc)
+        )
     for outfile in destfiles:
         dest = _open(outfile, parser, "target")
         dst_resolved = resolve_material_path(dest, target_path)
@@ -247,7 +250,9 @@ def _replace_element(
         try:
             _install(dest, dst_resolved, target_kind, obj)
         except Exception as exc:  # noqa: BLE001
-            _fail(f"cannot write {dst_resolved} in {outfile}: {exc}")
+            _fail(
+                f"cannot write {dst_resolved} in {outfile}: " + parse_error_message(exc)
+            )
         try:
             export_endf_file(dest, outfile, create_backup)
         except ValueError as exc:

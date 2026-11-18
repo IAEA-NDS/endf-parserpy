@@ -22,6 +22,8 @@ from .. import (
     EndfFile,
     EndfMaterialPath,
 )
+from ..interpreter.custom_exceptions import ParserException
+from ..tape import SectionParseError
 
 
 OS_NAME = platform.system()
@@ -69,6 +71,14 @@ _CLI_HINTS = (
         "create the parser with ignore_blank_lines=True",
         "use the option --ignore_blank_lines",
     ),
+    # EndfParserPy and EndfParserCpp
+    ("Set `accept_nan_inf=True` to allow", "Use the option --accept_nan_inf to allow"),
+    ("Set `accept_nan_inf=true` to allow", "Use the option --accept_nan_inf to allow"),
+    # the check of the framing records (validate)
+    (
+        "use the option accept_non_ascii=True to accept it",
+        "use the option --accept_non_ascii to accept it",
+    ),
 )
 
 
@@ -78,6 +88,95 @@ def cli_message(text):
     for parser_hint, cli_hint in _CLI_HINTS:
         text = text.replace(parser_hint, cli_hint)
     return text
+
+
+# the errors of a parse of the commands: EndfFile raises SectionParseError
+# for a section, with the error of the parser as its cause; the functions
+# of endf_parserpy.utils (e.g. update_directory) raise the errors of the
+# Python parser (ParserException) also with the C++ parser
+PARSE_ERRORS = (SectionParseError, ParserException)
+
+
+def parse_failure_detail(exc):
+    """Describe why a section failed to parse.
+
+    For a :class:`SectionParseError`, this is the line of the file at
+    which the section starts and the message of the error raised by the
+    parser (its cause), with the line numbers it gives counted in the
+    file (see :attr:`SectionParseError.detail`). The name of the error is
+    added for a built-in exception other than ``RuntimeError`` (the
+    errors of the C++ parser), whose message may not say what failed,
+    e.g. ``IndexError: list index out of range``. For another error, it
+    is its message.
+    """
+    if not isinstance(exc, SectionParseError) or exc.__cause__ is None:
+        return str(exc)
+    parts = []
+    if exc.line is not None:
+        parts.append(f"The section starts at line {exc.line} of the file.")
+    cause = exc.__cause__
+    message = exc.detail if exc.detail is not None else str(cause)
+    message = message.strip("\n")
+    if type(cause).__module__ == "builtins" and not isinstance(cause, RuntimeError):
+        message = f"{type(cause).__name__}: {message}"
+    parts.append(message)
+    return "\n".join(parts)
+
+
+def parse_error_message(exc):
+    """The message of a failed parse as the commands show it.
+
+    For a :class:`SectionParseError`, its message (which section failed)
+    followed by :func:`parse_failure_detail` on the next lines; for
+    another error, its message. The hints name the options of the
+    command line (see :func:`cli_message`).
+    """
+    if isinstance(exc, SectionParseError) and exc.__cause__ is not None:
+        text = f"{exc}\n{parse_failure_detail(exc)}"
+    else:
+        text = str(exc).strip("\n")
+    return cli_message(text)
+
+
+def fail_on_parse_error(command, what, exc, status=1):
+    """Print the error of the failed parse of ``what`` (e.g. the name of
+    a file) on stderr, without a traceback, and exit with ``status``."""
+    print(
+        f"{command}: cannot parse {what}: {parse_error_message(exc)}",
+        file=sys.stderr,
+    )
+    sys.exit(status)
+
+
+def located_parse_error(exc, endf_file, positions=None):
+    """The error to report for the failed parse ``exc`` of a part of
+    ``endf_file`` that is larger than a section.
+
+    Such a parse (e.g. of a material by
+    :func:`~endf_parserpy.parse_tape_file` or
+    :func:`~endf_parserpy.update_directory`) gives the line numbers of
+    the parsed text, which are those of the file only for the first
+    material. The materials at ``positions`` (all if ``None``) are then
+    parsed section by section, and the :class:`SectionParseError` of the
+    first section that fails is returned, which names the section and
+    gives the lines of the file. If all sections parse, or ``exc`` is a
+    :class:`SectionParseError` itself, ``exc`` is returned.
+    """
+    if isinstance(exc, SectionParseError):
+        return exc
+    if positions is None:
+        positions = range(len(endf_file))
+    try:
+        for position in positions:
+            material = endf_file[position]
+            for k in range(len(material.sections())):
+                try:
+                    material[f"#{k}"]
+                except SectionParseError as found:
+                    return found
+    except Exception:  # noqa: BLE001
+        pass
+    return exc
 
 
 def add_common_cmd_parser_args(parser, defaults=None):
@@ -235,6 +334,18 @@ def open_endf_file(file, parser, **kwargs):
         opts = getattr(parser, "read_opts", None) or {}
         kwargs["ignore_missing_tpid"] = bool(opts.get("ignore_missing_tpid") or False)
     return EndfFile(file, parser=parser, **kwargs)
+
+
+def open_endf_file_or_exit(command, file, parser, status=1, **kwargs):
+    """Open ``file`` with :func:`open_endf_file`; if it cannot be read
+    (e.g. a missing file, or a tape that ends in the middle of a
+    material), print the error on stderr, without a traceback, and exit
+    with ``status``."""
+    try:
+        return open_endf_file(file, parser, **kwargs)
+    except Exception as exc:  # noqa: BLE001
+        print(f"{command}: cannot read {file}: {exc}", file=sys.stderr)
+        sys.exit(status)
 
 
 def parsed_material_dict(material):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/05/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -11,9 +11,12 @@
 
 import sys
 from ..cmd_utils import (
+    PARSE_ERRORS,
     add_common_cmd_parser_args,
+    fail_on_parse_error,
+    located_parse_error,
     get_endf_parser,
-    open_endf_file,
+    open_endf_file_or_exit,
     export_endf_file,
 )
 from endf_parserpy import update_directory
@@ -43,15 +46,19 @@ def perform_action(args):
 
 
 def _update_mf1mt451_directory(parser, file, create_backup):
-    endf_file = open_endf_file(file, parser)
+    endf_file = open_endf_file_or_exit(COMMAND_NAME, file, parser)
     for material in endf_file:
         if (1, 451) not in material.sections():
             continue
         # update_directory() needs a complete single-material tape dict
         # with MF1/MT451 as a parsed mapping; the other sections may stay
         # as their raw on-disk lines, which is what to_tape_dict() yields.
-        mat_dict = material.to_tape_dict()
-        mat_dict[1][451] = material[1, 451].detach()
-        update_directory(mat_dict, parser)
+        try:
+            mat_dict = material.to_tape_dict()
+            mat_dict[1][451] = material[1, 451].detach()
+            update_directory(mat_dict, parser)
+        except PARSE_ERRORS as exc:
+            exc = located_parse_error(exc, endf_file, [material.position])
+            fail_on_parse_error(COMMAND_NAME, file, exc)
         endf_file[f"#{material.position}/1/451"] = mat_dict[1][451]
     export_endf_file(endf_file, file, create_backup)

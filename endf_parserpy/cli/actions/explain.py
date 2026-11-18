@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -13,7 +13,8 @@ import sys
 from ..cmd_utils import (
     add_common_cmd_parser_args,
     get_endf_parser,
-    open_endf_file,
+    open_endf_file_or_exit,
+    parse_error_message,
     resolve_material_path,
     section_label_of,
 )
@@ -40,7 +41,7 @@ def perform_action(args):
 
 
 def _explain_endf_variable(parser, endfpath, file):
-    endf_file = open_endf_file(file, parser)
+    endf_file = open_endf_file_or_exit(COMMAND_NAME, file, parser)
     resolved = resolve_material_path(endf_file, endfpath)
     mp = EndfMaterialPath(resolved)
     if mp.depth in ("material", "mf"):
@@ -59,7 +60,10 @@ def _explain_endf_variable(parser, endfpath, file):
         endf_file[section_path]
         mf, mt = section_label_of(endf_file, resolved)
     except Exception as exc:  # noqa: BLE001
-        print(f"cannot access section {section_path}: {exc}", file=sys.stderr)
+        print(
+            f"cannot access section {section_path}: {parse_error_message(exc)}",
+            file=sys.stderr,
+        )
         sys.exit(1)
     # parser.explain() expects a section-relative path (MF/MT/field...)
     # by label, without the material selector and an occurrence: the

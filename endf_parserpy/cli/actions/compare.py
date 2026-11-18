@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -11,9 +11,11 @@
 
 from collections import defaultdict
 from ..cmd_utils import (
+    PARSE_ERRORS,
     add_common_cmd_parser_args,
+    fail_on_parse_error,
     get_endf_parser,
-    open_endf_file,
+    open_endf_file_or_exit,
     parsed_material_dict,
 )
 import sys
@@ -23,9 +25,17 @@ from endf_parserpy.utils.debugging_utils import _compare_objects
 
 COMMAND_NAME = "compare"
 
+# exit status for a file that cannot be read or parsed (diff exits with 2
+# for an error, 1 if the files differ)
+EXIT_ERROR = 2
+
 
 def add_subparser(subparsers):
-    parser_compare = subparsers.add_parser(COMMAND_NAME)
+    parser_compare = subparsers.add_parser(
+        COMMAND_NAME,
+        epilog="exit status: 0 if the files are equal, 1 if they differ, "
+        "2 if a file cannot be read or parsed",
+    )
     add_common_cmd_parser_args(parser_compare)
     parser_compare.add_argument(
         "--atol", type=float, default=1e-8, help="absolute tolerance"
@@ -111,8 +121,8 @@ def _compare_materials(material1, material2, files, atol, rtol):
     is_equal = True
     if not repeated:
         is_equal = compare_objects(
-            parsed_material_dict(material1),
-            parsed_material_dict(material2),
+            _parsed(lambda: parsed_material_dict(material1), files[0]),
+            _parsed(lambda: parsed_material_dict(material2), files[1]),
             atol=atol,
             rtol=rtol,
             fail_on_diff=False,
@@ -125,8 +135,8 @@ def _compare_materials(material1, material2, files, atol, rtol):
                 continue
             mf, mt, k = key
             same = _compare_objects(
-                material1[mf, mt, k].detach(),
-                material2[mf, mt, k].detach(),
+                _parsed(lambda: material1[mf, mt, k].detach(), files[0]),
+                _parsed(lambda: material2[mf, mt, k].detach(), files[1]),
                 curpath=f"/{name(key)}",
                 atol=atol,
                 rtol=rtol,
@@ -150,13 +160,20 @@ def _compare_materials(material1, material2, files, atol, rtol):
     return is_equal
 
 
+def _parsed(get, file):
+    """Return ``get()``, the parsed data of a material or a section of
+    ``file``; if it fails to parse, exit cleanly with status 2."""
+    try:
+        return get()
+    except PARSE_ERRORS as exc:
+        fail_on_parse_error(COMMAND_NAME, file, exc, EXIT_ERROR)
+
+
 def _open(file, parser):
     """Open ``file`` as an :class:`EndfFile`, or exit cleanly with status 2."""
-    try:
-        return open_endf_file(file, parser, on_error="raise")
-    except Exception as exc:  # noqa: BLE001
-        print(f"compare: cannot read {file}: {exc}", file=sys.stderr)
-        sys.exit(2)
+    return open_endf_file_or_exit(
+        COMMAND_NAME, file, parser, EXIT_ERROR, on_error="raise"
+    )
 
 
 def _compare_endf_files(parser, files, atol, rtol):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/17
-# Last modified:   2026/05/18
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -13,7 +13,7 @@ import sys
 from ..cmd_utils import (
     add_common_cmd_parser_args,
     get_endf_parser,
-    open_endf_file,
+    open_endf_file_or_exit,
     format_material_table,
 )
 
@@ -30,7 +30,7 @@ def add_subparser(subparsers):
 def perform_action(args):
     assert args["subcommand"] == COMMAND_NAME
     parser = get_endf_parser(args)
-    endf_file = open_endf_file(args["file"], parser)
+    endf_file = open_endf_file_or_exit(COMMAND_NAME, args["file"], parser)
     count = len(endf_file)
     label = "material" if count == 1 else "materials"
     print(f"{args['file']}: {count} {label}")

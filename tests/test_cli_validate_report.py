@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/01
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -27,7 +27,11 @@ from pathlib import Path
 import pytest
 
 from endf_parserpy.cli.actions import validate
-from endf_parserpy.cli.cmd_utils import add_common_cmd_parser_args, get_endf_parser
+from endf_parserpy.cli.cmd_utils import (
+    add_common_cmd_parser_args,
+    get_endf_parser,
+    parse_failure_detail,
+)
 from endf_parserpy.tape import EndfFile, SectionParseError
 from endf_parserpy.tape.endf_file import _message_in_file_lines
 
@@ -247,10 +251,10 @@ def test_builtin_exception_named():
         except IndexError as cause:
             raise SectionParseError("failed", line=12, detail=str(cause)) from cause
     except SectionParseError as exc:
-        detail = validate._failure_detail(exc)
+        detail = parse_failure_detail(exc)
     assert detail == (
         "The section starts at line 12 of the file.\n"
         "IndexError: list index out of range"
     )
     # errors other than SectionParseError are reported by their message
-    assert validate._failure_detail(ValueError("no tape")) == "no tape"
+    assert parse_failure_detail(ValueError("no tape")) == "no tape"

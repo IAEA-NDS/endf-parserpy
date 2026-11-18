@@ -14,9 +14,9 @@ from ..cmd_utils import (
     cli_message,
     get_endf_parser,
     open_endf_file,
+    parse_failure_detail,
 )
 from endf_parserpy import EndfParserCpp
-from endf_parserpy.tape import SectionParseError
 from endf_parserpy.tape.framing import _check_framing_and_index
 from endf_parserpy.utils.tape_structure import section_label
 from endf_parserpy.utils.tolerated_mismatches import (
@@ -284,7 +284,7 @@ def _validate_sections(parser, file, fast_parser, index=None, tolerated=None):
                         if multi
                         else ""
                     )
-                    detail = _failure_detail(exc)
+                    detail = parse_failure_detail(exc)
                     return False, f"{prefix}section MF={mf}/MT={mt}:\n{detail}"
                 _keep_tolerated(caught, tolerated, (material.position, mf, mt))
     return True, None
@@ -311,31 +311,6 @@ def _tolerated_detail(tolerated):
     if not mismatches:
         return None, 0
     return format_tolerated_mismatches(mismatches), len(mismatches)
-
-
-def _failure_detail(exc):
-    """Describe why a section failed to parse.
-
-    For a :class:`SectionParseError`, this is the line of the file at
-    which the section starts and the message of the error raised by the
-    parser (its cause), with the line numbers it gives counted in the
-    file (see :attr:`SectionParseError.detail`). The name of the error is
-    added for a built-in exception other than ``RuntimeError`` (the
-    errors of the C++ parser), whose message may not say what failed,
-    e.g. ``IndexError: list index out of range``.
-    """
-    if not isinstance(exc, SectionParseError) or exc.__cause__ is None:
-        return str(exc)
-    parts = []
-    if exc.line is not None:
-        parts.append(f"The section starts at line {exc.line} of the file.")
-    cause = exc.__cause__
-    message = exc.detail if exc.detail is not None else str(cause)
-    message = message.strip("\n")
-    if type(cause).__module__ == "builtins" and not isinstance(cause, RuntimeError):
-        message = f"{type(cause).__name__}: {message}"
-    parts.append(message)
-    return "\n".join(parts)
 
 
 def _validate_endf_files(parser, files, fast_parser=None):

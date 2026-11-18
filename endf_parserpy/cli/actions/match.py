@@ -17,6 +17,7 @@ from ..cmd_utils import (
     add_common_cmd_parser_args,
     get_endf_parser,
     open_endf_file,
+    parse_error_message,
     parsed_material_dict,
 )
 from glob import glob
@@ -122,9 +123,12 @@ def _match_endf_files(parser, files, tree):
     for file in files:
         try:
             endf_file = open_endf_file(file, parser, on_error="raise")
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             any_failed = True
-            print(f"parsing failed: {file}", file=sys.stderr)
+            print(
+                f"parsing failed: {file}: {parse_error_message(exc)}",
+                file=sys.stderr,
+            )
             continue
         multi = len(endf_file) > 1
         for material in endf_file:
@@ -133,9 +137,12 @@ def _match_endf_files(parser, files, tree):
                 label = f"{file} (material #{material.position}, MAT {material.mat})"
             try:
                 endf_dict = parsed_material_dict(material)
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 any_failed = True
-                print(f"parsing failed: {label}", file=sys.stderr)
+                print(
+                    f"parsing failed: {label}: {parse_error_message(exc)}",
+                    file=sys.stderr,
+                )
                 continue
             opts = {"filename": label, "print": "match"}
             if eval_tree_print(tree, endf_dict, opts):

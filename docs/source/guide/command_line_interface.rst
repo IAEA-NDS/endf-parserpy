@@ -144,6 +144,35 @@ option, the tape is read as ENDF-6, which does not allow a label to
 occur twice in a material, and the command fails.
 
 
+.. _cli_parse_errors:
+
+Files that cannot be parsed
+---------------------------
+
+If a subcommand cannot parse a file, it prints on the standard error
+which section failed, the line of the file at which the section starts
+and the message of the parser, with the line it is about, and stops
+with an exit code other than ``0``, e.g. for a blank line in MF3/MT1:
+
+.. code-block:: text
+
+   $ endf-cli show 3/1/AWR file.endf
+   cannot access #0/3/1/AWR: MF=3/MT=1 of the material at position 0 failed to parse
+   The section starts at line 604 of the file.
+   Blank line detected: remove it, or use the option --ignore_blank_lines to skip blank lines
+   Template: [ MAT , 3 , MT / QM , QI , 0 , LR , NR , NP / E / xs ] TAB1 ( xstable )
+   Line 609: ""
+
+If the file can be parsed with an option, as here, the message names
+it. The exit code is ``1``, except for ``compare`` and ``match``, which
+exit with ``2`` (see their sections). ``validate`` gives the same
+message in its report on the standard output. The message of the Python
+parser (``--no-cpp``) lists the records it has read up to the failure. A file
+that cannot be read at all, e.g. a missing file or a tape that ends in
+the middle of a material, is reported in the same way (``show: cannot
+read file.endf: ...``).
+
+
 Comparing
 ---------
 
@@ -178,6 +207,10 @@ section 3/102#2 only in <file>``. If the paired sections are in a
 different order, as a free-order tape structure allows, one line
 ``section order differs: <file1> has 1/451, 23/501, ...; <file2> has
 ...`` reports it, and it counts as a difference.
+
+The exit code follows the ``diff`` convention: ``0`` if the files are
+equal, ``1`` if they differ, and ``2`` if a file cannot be read or
+:ref:`parsed <cli_parse_errors>`.
 
 
 Validating

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/03/24
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -14,7 +14,10 @@ import json
 from pathlib import Path
 from ..cmd_utils import (
     add_common_cmd_parser_args,
+    fail_on_parse_error,
     get_endf_parser,
+    located_parse_error,
+    open_endf_file,
 )
 from endf_parserpy import parse_tape_file, write_tape_file
 from endf_parserpy.utils.user_tools import sanitize_fieldname_types
@@ -65,7 +68,12 @@ def perform_action(args):
 
 def _convert_to_json(parser, sourcefile, destfile, json_dump_kwargs):
     destfile = Path(destfile)
-    materials = parse_tape_file(sourcefile, parser=parser, on_error="raise")
+    try:
+        materials = parse_tape_file(sourcefile, parser=parser, on_error="raise")
+    except Exception as exc:  # noqa: BLE001
+        fail_on_parse_error(
+            COMMAND_NAME, sourcefile, _section_error(parser, sourcefile, exc)
+        )
     # A single-material tape is written as a JSON object, a multi-material
     # tape as a JSON array of material objects (design decision D); the
     # json->endf direction tells the two apart by container type.
@@ -78,6 +86,16 @@ def _convert_to_json(parser, sourcefile, destfile, json_dump_kwargs):
     with open(destfile, "w") as f:
         json.dump(payload, f, **json_dump_kwargs)
     return 0
+
+
+def _section_error(parser, sourcefile, exc):
+    """The error to report for the failed parse ``exc`` of ``sourcefile``
+    (see :func:`located_parse_error`)."""
+    try:
+        endf_file = open_endf_file(sourcefile, parser)
+    except Exception:  # noqa: BLE001
+        return exc
+    return located_parse_error(exc, endf_file)
 
 
 def _convert_to_endf(parser, sourcefile, destfile):

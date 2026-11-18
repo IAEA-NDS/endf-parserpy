@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -74,9 +74,9 @@ class EndfMaterialPath:
     Parameters
     ----------
     pathspec : str or EndfMaterialPath
-        The path. For example, ``"9237#1/3/2/TEMP"`` addresses the
-        ``TEMP`` field of the MF=3/MT=2 section of the second material
-        with MAT 9237, ``"#0/1/451"`` the whole MF=1/MT=451 section of
+        The path. For example, ``"9237#1/1/451/TEMP"`` addresses the
+        ``TEMP`` field (the temperature) of the MF=1/MT=451 section of
+        the second material with MAT 9237, ``"#0/1/451"`` the whole MF=1/MT=451 section of
         the first material on the tape, and ``"2925/3/1"`` the
         MF=3/MT=1 section of the material with MAT 2925.
 
@@ -180,7 +180,7 @@ class EndfMaterialPath:
             ) from None
 
     def resolve_material(self, index):
-        """Resolve the material selector against a :class:`TapeIndex`.
+        """Resolve the material selector against a :class:`~endf_parserpy.TapeIndex`.
 
         Returns the zero-based position of the selected material.
         """

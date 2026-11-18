@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/18
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -38,8 +38,8 @@ def add_subparser(subparsers):
         dest="source_path",
         type=str,
         required=True,
-        help="material selector (#k or MAT#k) of the material to insert "
-        "from the source file",
+        help="required: material selector (#k or MAT#k) of the material to "
+        "insert from the source file",
     )
     parser_insert.add_argument(
         "--after",

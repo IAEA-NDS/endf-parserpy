@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2025/06/02
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -138,10 +138,12 @@ def update_directory(endf_dic, parser=None, lines=None, read_opts=None):
     endf_dic : dict
         Dictionary of appropriate structure with ENDF-6 data.
     parser : EndfParserBase
-        An :class:`~endf_parserpy.EndfParserBase` instance
+        An :class:`~endf_parserpy.EndfParserBase` instance, used to
+        write ``endf_dic`` to determine the lengths of the sections.
+        It is required unless ``lines`` is provided.
     lines: list[str]
         A list of strings with the ENDF-6 formatted data
-        corresponding to the data in ``endf_dict``.
+        corresponding to the data in ``endf_dic``.
         If this argument is provided, the ``parser``
         argument will be ignored.
     read_opts : dict
@@ -153,7 +155,7 @@ def update_directory(endf_dic, parser=None, lines=None, read_opts=None):
     active_read_opts = {}
     if not lines:
         if not parser:
-            raise TypeError("provide either`parser` or `lines` argument")
+            raise TypeError("provide either `parser` or `lines` argument")
         lines = parser.write(endf_dic)
         active_read_opts.update(parser.read_opts)
     active_read_opts.update(read_opts)

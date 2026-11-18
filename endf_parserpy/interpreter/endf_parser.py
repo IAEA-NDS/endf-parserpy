@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -308,7 +308,7 @@ class EndfParserPy(EndfParserBase):
             If ``True`` (default), allow non-finite numeric values
             (``NaN``, ``+inf``, ``-inf`` literals as well as values
             that overflow to ``±inf``) in float fields. If ``False``,
-            such values raise an :class:`InvalidFloatError` during
+            such values raise an ``InvalidFloatError`` during
             parsing. *(parsing)*
         accept_d_exponent: bool
             If ``True`` (default), accept a Fortran double-precision
@@ -316,7 +316,7 @@ class EndfParserPy(EndfParserBase):
             ``5.438673D-4`` is read as ``5.438673e-4``. Such numbers do
             not conform to the ENDF-6 format but are found in some
             evaluated data files. If ``False``, they raise an
-            :class:`InvalidFloatError` during parsing. On writing, the
+            ``InvalidFloatError`` during parsing. On writing, the
             ``D`` character is never emitted (output is formatted
             according to ``keep_E``), unless the original string
             representation is preserved and written verbatim (see
@@ -346,11 +346,12 @@ class EndfParserPy(EndfParserBase):
         preserve_value_strings : bool
             If ``True``, also the string representations of float numbers will
             be recorded during the parsing process (via the
-            :class:`~endf_parserpy.interpreter.fortran_utils.EndfFloat` class).
+            :class:`~endf_parserpy.EndfFloat` class).
             These string representations when available will be used verbatim
-            for outputting ENDF-6 formatted data (irrespective of the
-            ``preserve_value_strings`` option), overruling any of the other
-            options provided for controling the output format of floats.
+            for outputting ENDF-6 formatted data (by any parser, whether it
+            was created with ``preserve_value_strings=True`` or not), overruling
+            any of the other options provided for controlling the output
+            format of floats.
             *(parsing)*
         include_linenum : bool
             Controls whether the 5-digit line number should be
@@ -409,7 +410,7 @@ class EndfParserPy(EndfParserBase):
             ``DeprecationWarning``. ENDF recipes were previously
             converted into parse trees with the Lark package and cached
             in this directory; they are now parsed by
-            :mod:`endf_parserpy.recipe_parser` whenever this class is
+            ``endf_parserpy.recipe_parser`` whenever this class is
             instantiated, which takes a fraction of a second.
         print_cache_info : bool
             Deprecated and ignored (see ``cache_dir``); providing it
@@ -419,16 +420,34 @@ class EndfParserPy(EndfParserBase):
             The default `endf6-ext` tolerates deviations from the
             ENDF-6 format encountered in some nuclear data libraries.
             Other choices are `endf6` for strict compliance with the
-            ENDF-6 formats manual and `jendl` with JENDL specific
-            conventions, which are also implemented in `endf6-ext`.
-            A layout version, e.g. `endf6-ext@0.19`, keeps the layout of
+            ENDF-6 formats manual, `jendl` with JENDL specific
+            conventions, which are also implemented in `endf6-ext`,
+            `pendf` and `errorr` for the PENDF and ERRORR files of
+            NJOY2016, `gendf` for its GENDF files and `test` for the
+            tests of the package;
+            ``endf_parserpy.endf_recipes.list_endf_flavors()`` lists
+            them all. A layout version, e.g. `endf6-ext@0.19`, keeps the layout of
             the dictionaries of a flavor when the flavor changes it
             (see :ref:`layout_versions_sec`).
         recipes : dict_like
-            The default ENDF-6 recipes can be overrided by providing a
+            The default ENDF-6 recipes can be overridden by providing a
             nested dictionary with custom recipes. Inspect the default
             recipe dictionary to see the required structure
-            (`from endf_parserpy.endf_recipes import endf_recipe_dictionary`)
+            (``from endf_parserpy.endf_recipes import get_recipe_dict``,
+            then ``get_recipe_dict("endf6-ext")``).
+        parsing_funs : dict_like
+            Python functions that parse sections instead of the recipes,
+            in a nested dictionary of the same structure as ``recipes``:
+            a function under ``parsing_funs[MF][MT]`` parses the section
+            MF/MT, one under ``parsing_funs[MF]`` (or
+            ``parsing_funs[MF][-1]``) all sections of MF that have no
+            function of their own. A function receives the lines of the
+            section as one string and returns a dictionary, to which the
+            ``MAT``, ``MF`` and ``MT`` numbers are added. ``include`` and
+            ``exclude`` apply to these sections as to the others. The
+            sections are written by their recipes. Only supported by
+            this class, not by :class:`~endf_parserpy.EndfParserCpp`.
+            *(parsing)*
         tape_structure : Union[None, dict, TapeStructure]
             The rules for the framing and the arrangement of the sections
             of a material (see :class:`~endf_parserpy.TapeStructure`):
@@ -578,7 +597,7 @@ class EndfParserPy(EndfParserBase):
 
         Returns
         -------
-        str
+        Optional[str]
             If ``stdout=True`` return ``None``,
             otherwise the description as a ``str``.
         """
@@ -1190,6 +1209,12 @@ class EndfParserPy(EndfParserBase):
             See explanation of parameter ``nofail`` in
             :func:`parsefile` for details.
 
+        Returns
+        -------
+        Union[dict, list]
+            The material, in the form described for the return value
+            of :func:`parsefile`.
+
         Notes
         -----
         Mismatches tolerated by the options ``ignore_zero_mismatch``,
@@ -1656,12 +1681,17 @@ class EndfParserPy(EndfParserBase):
 
         Returns
         -------
-        dict
-            A nested dictionary. The keys of the first level are
+        Union[dict, list]
+            The material. In the nested form (``material_form="dict"``,
+            the form of all flavors except ``gendf``), a nested
+            dictionary: the keys of the first level are
             MF numbers and of the second level MT numbers.
             The structure of the :class:`dict` stored under a specific
             `MF`/`MT` combination is determined by the
-            corresponding ENDF recipe.
+            corresponding ENDF recipe. In the list form
+            (``material_form="list"``, the form of the ``gendf``
+            flavor), the list of the sections in the order of the file,
+            the tape head first (see :func:`~endf_parserpy.to_list_form`).
 
         Mismatches tolerated by the options ``ignore_zero_mismatch``,
         ``ignore_number_mismatch`` and ``ignore_varspec_mismatch`` are

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -76,6 +76,8 @@ class FailedMaterial(_FailedUnit):
         The exception raised while parsing the material.
     raw_lines : list[str]
         The lines of the single-material tape that failed to parse.
+
+    The MAT number of the material is given by the property :attr:`mat`.
     """
 
     @property

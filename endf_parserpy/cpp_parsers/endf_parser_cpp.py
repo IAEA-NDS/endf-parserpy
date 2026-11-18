@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -80,7 +80,7 @@ class EndfParserCpp(EndfParserBase):
     Please note that this class may not be usable if the compilation
     of the C++ module codes failed during package installation. Further
     note that most but not all options of the
-    :class:`~endf_parserpy.endf_parser.EndfParserPy` class
+    :class:`~endf_parserpy.EndfParserPy` class
     are implemented in this class.
 
     The tape structure of the flavor
@@ -242,11 +242,12 @@ class EndfParserCpp(EndfParserBase):
         preserve_value_strings : bool
             If ``True``, also the string representations of float numbers will
             be recorded during the parsing process (via the
-            :class:`~endf_parserpy.interpreter.fortran_utils.EndfFloat` class).
+            :class:`~endf_parserpy.EndfFloat` class).
             These string representations when available will be used verbatim
-            for outputting ENDF-6 formatted data (irrespective of the
-            ``preserve_value_strings`` option), overruling any of the other
-            options provided for controling the output format of floats.
+            for outputting ENDF-6 formatted data (by any parser, whether it
+            was created with ``preserve_value_strings=True`` or not), overruling
+            any of the other options provided for controlling the output
+            format of floats.
             *(parsing)*
         include_linenum : bool
             Controls whether the 5-digit line number should be
@@ -310,9 +311,13 @@ class EndfParserCpp(EndfParserBase):
             The default `endf6-ext` tolerates deviations from the
             ENDF-6 format encountered in some nuclear data libraries.
             Other choices are `endf6` for strict compliance with the
-            ENDF-6 formats manual and `jendl` with JENDL specific
-            conventions, which are also implemented in `endf6-ext`.
-            A layout version, e.g. `endf6-ext@0.19`, keeps the layout of
+            ENDF-6 formats manual, `jendl` with JENDL specific
+            conventions, which are also implemented in `endf6-ext`,
+            `pendf` and `errorr` for the PENDF and ERRORR files of
+            NJOY2016, `gendf` for its GENDF files and `test` for the
+            tests of the package;
+            ``endf_parserpy.endf_recipes.list_endf_flavors()`` lists
+            them all. A layout version, e.g. `endf6-ext@0.19`, keeps the layout of
             the dictionaries of a flavor when the flavor changes it
             (see :ref:`layout_versions_sec`).
         validate_control_records : bool
@@ -440,7 +445,7 @@ class EndfParserCpp(EndfParserBase):
 
         Returns
         -------
-        dict
+        Union[dict, list]
             See explanation in :func:`parsefile`.
 
         Mismatches tolerated by the options ``ignore_zero_mismatch``,
@@ -544,12 +549,17 @@ class EndfParserCpp(EndfParserBase):
 
         Returns
         -------
-        dict
-            A nested dictionary. The keys of the first level are
+        Union[dict, list]
+            The material. In the nested form (``material_form="dict"``,
+            the form of all flavors except ``gendf``), a nested
+            dictionary: the keys of the first level are
             MF numbers and of the second level MT numbers.
             The structure of the :class:`dict` stored under a specific
             `MF`/`MT` combination is determined by the
-            corresponding ENDF recipe.
+            corresponding ENDF recipe. In the list form
+            (``material_form="list"``, the form of the ``gendf``
+            flavor), the list of the sections in the order of the file,
+            the tape head first (see :func:`~endf_parserpy.to_list_form`).
 
         Mismatches tolerated by the options ``ignore_zero_mismatch``,
         ``ignore_number_mismatch`` and ``ignore_varspec_mismatch`` are

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -28,7 +28,7 @@ section after the tape head (MF0/MT0), as in :class:`~endf_parserpy.EndfFile`
 and :class:`~endf_parserpy.TapeIndex`. On a material in the list form as
 returned by ``parse``, whose element 0 is the tape head, the position
 ``k`` is therefore the list element ``material[k + 1]``. The tape head
-itself is selected by its label, ``0/0``. :func:`iter_sections` gives the
+itself is selected by its label, ``0/0``. :func:`~endf_parserpy.iter_sections` gives the
 position of each section.
 
 The functions work on both forms of a material (see
@@ -51,7 +51,7 @@ from collections.abc import Mapping
 from .tape_structure import _line_label
 
 SectionEntry = namedtuple("SectionEntry", "position mf mt occurrence section")
-SectionEntry.__doc__ = """A section of a material, as yielded by :func:`iter_sections`.
+SectionEntry.__doc__ = """A section of a material, as yielded by :func:`~endf_parserpy.iter_sections`.
 
 Attributes
 ----------
@@ -270,7 +270,7 @@ def _prepare(material, mf, mt, occurrence, position):
 def iter_sections(material, *, head=False):
     """Iterate over the sections of a material.
 
-    Yields a :class:`SectionEntry` ``(position, mf, mt, occurrence,
+    Yields a :class:`~endf_parserpy.utils.sections.SectionEntry` ``(position, mf, mt, occurrence,
     section)`` for each section, in the order of the material (the order
     of the list, or the canonical order of the nested form). ``position``
     is the position ``#k`` and ``occurrence`` the ``k`` of ``MF/MT#k``;
@@ -279,8 +279,17 @@ def iter_sections(material, *, head=False):
 
     Example
     -------
+    >>> material = [
+    ...     {"MF": 0, "MT": 0},     # the tape head
+    ...     {"MF": 1, "MT": 451},
+    ...     {"MF": 3, "MT": 102},
+    ...     {"MF": 3, "MT": 102},
+    ... ]
     >>> for entry in iter_sections(material):
     ...     print(f"#{entry.position}: {entry.mf}/{entry.mt}#{entry.occurrence}")
+    #0: 1/451#0
+    #1: 3/102#0
+    #2: 3/102#1
     """
     material = _unwrap(material)
     _check_material(material)

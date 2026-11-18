@@ -35,9 +35,14 @@ functions and classes involved:
 Exceptions
 ----------
 
-All exceptions raised by ``endf-parserpy`` derive from
+The exception classes defined by ``endf-parserpy`` derive from
 :class:`~endf_parserpy.EndfParserpyError`. The tape interface
-raises the :class:`TapeError` subclasses listed below.
+raises the :class:`TapeError` subclasses listed below. Not derived
+from it are the errors of :class:`~endf_parserpy.EndfParserCpp`, which
+are :exc:`RuntimeError`, and the standard exceptions that the package
+raises e.g. for a missing key or section or an invalid argument, such
+as :exc:`KeyError`, :exc:`IndexError` and :exc:`ValueError` from the
+:mod:`section functions <endf_parserpy.utils.sections>`.
 
 .. autoexception:: endf_parserpy.EndfParserpyError
 

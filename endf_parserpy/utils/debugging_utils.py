@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2026/10/23
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -74,11 +74,17 @@ def compare_objects(
         of a difference. Otherwise, the function will fully compare the objects
         and return ``True`` if the two objects are equal and ``False`` if they
         exhibit differences. The second option is mostly useful in combination
-        with ``diff_log=True``.
+        with a :class:`list` passed as ``diff_log``.
     diff_log : Union[None, List]
         A :class:`list` object can be passed which will be filled with
         strings that indicate the differences found.
-        This option is only useful in combination with ``fail_on_diff=false``.
+        This option is only useful in combination with ``fail_on_diff=False``.
+
+    Returns
+    -------
+    bool
+        ``True`` if the two objects are equal (within the tolerances),
+        ``False`` otherwise (only with ``fail_on_diff=False``).
     """
     if isinstance(obj1, EndfDict):
         obj1 = obj1.unwrap()

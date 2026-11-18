@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -11,7 +11,7 @@
 
 """Lazy, memory-bounded, editable access to a multi-material ENDF file.
 
-:class:`EndfFile` indexes a tape on construction and reads and parses
+:class:`~endf_parserpy.EndfFile` indexes a tape on construction and reads and parses
 individual sections from disk only when they are accessed, keeping the
 results in bounded caches (see :mod:`endf_parserpy.tape.cache`). A
 single section is parsed by wrapping its records in a minimal
@@ -234,13 +234,13 @@ class _CurrentMaterials:
 class FailedSection(_FailedUnit):
     """Internal placeholder for a section that could not be parsed.
 
-    When the :class:`EndfFile` was opened with ``on_error="mark"`` a
+    When the :class:`~endf_parserpy.EndfFile` was opened with ``on_error="mark"`` a
     section that fails to parse is kept as a :class:`FailedSection` so
-    that the bulk operations (:meth:`~EndfFile.query`,
-    :meth:`~EndfFile.build_index`, :meth:`~EndfFile.export`) can skip it
+    that the bulk operations (:meth:`~endf_parserpy.EndfFile.query`,
+    :meth:`~endf_parserpy.EndfFile.build_index`, :meth:`~endf_parserpy.EndfFile.export`) can skip it
     or write it back verbatim instead of aborting. Accessing such a
     section directly (``endf_file[path]`` or ``material[mf, mt]``)
-    raises :class:`SectionParseError`, with this object's
+    raises :class:`~endf_parserpy.tape.SectionParseError`, with this object's
     :attr:`exception` kept as the cause; a :class:`FailedSection` is
     therefore never handed back to the caller.
 
@@ -272,7 +272,7 @@ class FailedSection(_FailedUnit):
 class EndfFile:
     """Lazy, memory-bounded, editable view of a multi-material ENDF file.
 
-    The file is indexed on construction (see :class:`TapeIndex`).
+    The file is indexed on construction (see :class:`~endf_parserpy.TapeIndex`).
     Section data is read from disk and parsed only on access and is then
     held in bounded caches. Materials are addressed by zero-based
     position::
@@ -299,9 +299,14 @@ class EndfFile:
         Budgets, in raw-text-equivalent bytes, for the parsed-section
         and raw-text caches.
     on_error : {"raise", "mark"}
-        Whether a section that fails to parse raises
-        :class:`SectionParseError` or is returned as a
-        :class:`FailedSection`.
+        What happens to a section that fails to parse. Accessing it
+        directly (``endf_file[path]`` or ``material[mf, mt]``) raises
+        :class:`~endf_parserpy.tape.SectionParseError` in both modes. With ``"mark"`` (the
+        default), the section is marked as failed, and :meth:`query` and
+        :meth:`build_index` skip the material for a field of this
+        section; with ``"raise"``, they raise
+        :class:`~endf_parserpy.tape.SectionParseError` as well. :meth:`export` writes a
+        section that was not edited back verbatim in both modes.
     check_edits : {"eager", "deferred"}
         When the recipe-conformity of an edited section is checked.
         ``"eager"`` (the default) renders every edited section through
@@ -314,7 +319,7 @@ class EndfFile:
     verify_source : bool
         If true, the file's size and mtime are checked against the
         index before every disk read; a change raises
-        :class:`StaleSourceError`.
+        :class:`~endf_parserpy.tape.StaleSourceError`.
     ignore_missing_tpid : bool
         If true, a file whose first record is already a section record
         (instead of the tape head demanded by the ENDF-6 format) is
@@ -327,10 +332,10 @@ class EndfFile:
 
     Notes
     -----
-    An :class:`EndfFile` is not safe for concurrent use from several
+    An :class:`~endf_parserpy.EndfFile` is not safe for concurrent use from several
     threads: its caches, material list and edit overlays are plain,
     unguarded state, so any access racing with another is undefined.
-    Use one :class:`EndfFile` per thread.
+    Use one :class:`~endf_parserpy.EndfFile` per thread.
     """
 
     def __init__(
@@ -411,7 +416,7 @@ class EndfFile:
     def _ensure_valid(self):
         """Raise if the object was invalidated by an export onto its source.
 
-        After :meth:`export` overwrites the file the :class:`EndfFile`
+        After :meth:`export` overwrites the file the :class:`~endf_parserpy.EndfFile`
         was opened from, the structural index no longer matches the
         bytes on disk, so lazily reading any untouched section would
         return garbage. The object is therefore invalidated; every data
@@ -448,7 +453,7 @@ class EndfFile:
         return len(self._materials)
 
     def _material_view(self, slot):
-        """Return the (cached) :class:`MaterialView` of a slot."""
+        """Return the (cached) :class:`~endf_parserpy.tape.MaterialView` of a slot."""
         view = self._material_views.get(slot)
         if view is None:
             view = MaterialView(self, slot)
@@ -458,7 +463,7 @@ class EndfFile:
     def _remove_material(self, position):
         """Delete the material at ``position`` and drop its cached view.
 
-        Dropping the :class:`MaterialView` keeps ``_material_views`` from
+        Dropping the :class:`~endf_parserpy.tape.MaterialView` keeps ``_material_views`` from
         accumulating entries for materials that no longer exist; an
         external reference to the view stays valid as an *invalid* view
         (its :attr:`~MaterialView.position` then raises). The named
@@ -515,7 +520,7 @@ class EndfFile:
 
         ``key`` is an integer material position or an
         :class:`EndfMaterialPath` (string or object). A material-depth
-        path yields a :class:`MaterialView`, a section-depth path a
+        path yields a :class:`~endf_parserpy.tape.MaterialView`, a section-depth path a
         section view and a field-depth path the value at that field.
         """
         self._ensure_valid()
@@ -597,7 +602,7 @@ class EndfFile:
 
         An ``int`` is tested as a material position. A malformed path or
         an ambiguous bare-MAT selector is genuinely ill-posed and
-        propagates its :class:`ValueError` / :class:`AmbiguousMaterialError`
+        propagates its :class:`ValueError` / :class:`~endf_parserpy.tape.AmbiguousMaterialError`
         rather than being answered ``False``. A field-depth path whose
         section cannot be parsed answers ``False`` -- the field is not
         reachable -- regardless of the ``on_error`` mode.
@@ -632,13 +637,13 @@ class EndfFile:
         return section_has(section, subpath)
 
     def __iter__(self):
-        """Iterate over the materials as :class:`MaterialView` objects."""
+        """Iterate over the materials as :class:`~endf_parserpy.tape.MaterialView` objects."""
         self._ensure_valid()
         for position in range(len(self._materials)):
             yield self._material_view(self._materials[position])
 
     def materials(self):
-        """Return all materials as a list of :class:`MaterialView` objects."""
+        """Return all materials as a list of :class:`~endf_parserpy.tape.MaterialView` objects."""
         return list(self)
 
     def _position_of(self, slot):
@@ -661,7 +666,10 @@ class EndfFile:
         mat : int
             ENDF MAT number of the new material.
         za, awr : optional
-            Identifiers, used by :meth:`by_za` and the index.
+            Identifiers, used by :meth:`by_za` and the index. They are not
+            derived from the material: if they are omitted, they are
+            ``None`` for the appended material, which :meth:`by_za` then
+            does not find, until the exported tape is opened again.
 
         Returns
         -------
@@ -753,7 +761,7 @@ class EndfFile:
 
         ``occurrence`` (zero-based) selects among several materials that
         share a MAT number, as on a PENDF tape. Without it, a MAT number
-        that is not unique raises :class:`AmbiguousMaterialError`.
+        that is not unique raises :class:`~endf_parserpy.tape.AmbiguousMaterialError`.
         """
         self._ensure_valid()
         positions = self._positions(mat=mat)
@@ -796,10 +804,10 @@ class EndfFile:
         ``path`` is an :class:`EndfMaterialPath` or a string of the form
         ``material[/MF/MT[/field...]]``. This is the explicit-method
         synonym of ``endf_file[path]``: a material-depth path yields a
-        :class:`MaterialView`, a section-depth path a section view (see
-        :mod:`endf_parserpy.tape.views`) and a field-depth path the value
+        :class:`~endf_parserpy.tape.MaterialView`, a section-depth path a section view (see
+        ``endf_parserpy.tape.views``) and a field-depth path the value
         at that field. If the addressed section cannot be parsed a
-        :class:`SectionParseError` is raised regardless of ``on_error``.
+        :class:`~endf_parserpy.tape.SectionParseError` is raised regardless of ``on_error``.
         """
         return self[path]
 
@@ -892,7 +900,7 @@ class EndfFile:
         ``check_edits="eager"`` mode hands it out: a nested ``dict`` or
         ``list`` as a read-only view, a numpy array read-only and a
         scalar as is, so that it cannot change the tape.
-        Returns a list of :class:`MaterialView`.
+        Returns a list of :class:`~endf_parserpy.tape.MaterialView`.
         """
         self._ensure_valid()
         if (value is _UNSET) == (predicate is None):
@@ -1341,7 +1349,7 @@ class EndfFile:
 
         ``check_edits="eager"`` yields a frozen (read-only) view,
         ``"deferred"`` a live write-through view. A
-        :class:`FailedSection` raises :class:`SectionParseError`. With a
+        :class:`FailedSection` raises :class:`~endf_parserpy.tape.SectionParseError`. With a
         ``subpath`` the view is navigated to that field, returning a
         nested view or a bare scalar. ``touch`` is the callback of a live
         view; by default it installs the section into the overlay of the
@@ -1599,7 +1607,7 @@ class EndfFile:
         return [m._replace(line=start + m.line - first) for m in mismatches]
 
     def _section_parse_error(self, message, position, mf, mt, exc, lines):
-        """Return the :class:`SectionParseError` for a section of the file.
+        """Return the :class:`~endf_parserpy.tape.SectionParseError` for a section of the file.
 
         ``exc`` is the exception raised by the parser for the section of
         the material at ``position`` (of the index) with the raw lines
@@ -1898,12 +1906,12 @@ class EndfFile:
         material has been deleted is written as its tape head (TPID)
         followed by the tape end (TEND).
 
-        Exporting onto the file the :class:`EndfFile` was opened from is
+        Exporting onto the file the :class:`~endf_parserpy.EndfFile` was opened from is
         permitted, but it leaves the in-memory structural index stale
         (the byte offsets of untouched sections have moved). The object
         is therefore *invalidated*: every subsequent operation raises
-        :class:`StaleSourceError`, and the file must be re-opened with a
-        new :class:`EndfFile` to continue. Exporting to any other path
+        :class:`~endf_parserpy.tape.StaleSourceError`, and the file must be re-opened with a
+        new :class:`~endf_parserpy.EndfFile` to continue. Exporting to any other path
         leaves the object usable.
         """
         self._ensure_valid()
@@ -1971,7 +1979,7 @@ class EndfFile:
 
     @property
     def index(self):
-        """The underlying :class:`TapeIndex` (describes the file on disk)."""
+        """The underlying :class:`~endf_parserpy.TapeIndex` (describes the file on disk)."""
         return self._index
 
     @property

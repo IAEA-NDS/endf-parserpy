@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -91,6 +91,8 @@ def add_common_cmd_parser_args(parser, defaults=None):
                 f"Default for this command: {arg_def}. "
                 "Consult the help of the equally named EndfParserPy constructor argument"
             )
+        elif arg_str == "print_cache_info":
+            help_text = "Deprecated and ignored: it has no effect"
         else:
             help_text = "Consult the help of the equally named EndfParserPy constructor argument"
         kwargs = {

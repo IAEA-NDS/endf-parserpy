@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2023/12/27
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2023-2024 International Atomic Energy Agency (IAEA)
 #
@@ -267,7 +267,7 @@ class EndfPath(Sequence):
             It can be a composite key given in a string with
             individual keys separated by a slash, e.g. ``a/b/1``
             or equivalently ``a/b[1]``. This argument can
-            also be a tuple containing the indvidual keys,
+            also be a tuple containing the individual keys,
             e.g. ``('a', 'b', 1)``.
         array_type : str
             Must be either ``"dict"`` or ``"list"`` and determines
@@ -445,7 +445,7 @@ class EndfPath(Sequence):
 
         Example
         -------
-        >>> testdict = {'a': 1: {'b': 5}}
+        >>> testdict = {'a': {1: {'b': 5}}}
         >>> p = EndfPath('a/1/b')
         >>> assert p.get(testdict) == 5
         """
@@ -527,7 +527,7 @@ class EndfPath(Sequence):
         ----------
         dict_like : dict
             The (nested) dictionary to be extended/altered.
-        value : Object
+        value : object
             The object that should be inserted at the location
             referenced by this :class:`EndfPath` instance.
 
@@ -544,6 +544,7 @@ class EndfPath(Sequence):
         >>> p = EndfPath('a/b/c')
         >>> p.set(testdict, 12)
         >>> print(testdict)
+        {'a': {'b': {'c': 12}}}
         """
         if isinstance(value, EndfObject):
             value = value.unwrap()
@@ -627,6 +628,9 @@ class EndfPath(Sequence):
         >>> testdict = {'a': {1: 10}}
         >>> p = EndfPath('a/1')
         >>> p.exists(testdict)
+        True
+        >>> EndfPath('a/2').exists(testdict)
+        False
         """
         try:
             self.get(dict_like)
@@ -703,6 +707,12 @@ class EndfVariable:
         endf_dict : dict
             A (nested) :class:`dict`-like object that contains a key
             referenced by the ``endf_path`` argument.
+        value : object
+            If the ``endf_dict`` has no key at the location of
+            ``endf_path``, this value is stored there (intermediate
+            dictionaries are created if missing). If it is ``None`` (the
+            default), a missing key raises a :exc:`KeyError` instead.
+            An existing value is not changed.
         """
         if isinstance(endf_dict, EndfDict):
             endf_dict = endf_dict.unwrap()
@@ -741,10 +751,16 @@ class EndfVariable:
     def name(self):
         """Name of the associated key in the nested dictionary.
 
+        The name is returned as an :class:`EndfPath` with one element,
+        the last element of the path of the variable; ``str(v.name)``
+        gives the key as a string.
+
         Example
         -------
         >>> v = EndfVariable('a/b', {'a': {'b': 5}})
-        >>> assert v.name == 'b'
+        >>> assert v.name == EndfPath('b')
+        >>> str(v.name)
+        'b'
         """
         return self._varname
 
@@ -752,7 +768,7 @@ class EndfVariable:
     def value(self):
         """Value of the associated key in the nested dictionary.
 
-        The value of this propert can also be modified, which
+        The value of this property can also be modified, which
         accordingly modifies the value stored under the associated
         key in the nested :class:`dict`-like object.
 
@@ -960,14 +976,14 @@ class EndfObject:
     def unwrap(self, recursive=False):
         """Returns the underlying base object.
 
-        The :class:`EndfObject` class can be regarded as an interface wrapping
+        The :class:`~endf_parserpy.utils.accessories.EndfObject` class can be regarded as an interface wrapping
         around an underlying :class:`dict`- or :class:`list`-like object.
         This function permits the retrieval of the underlying object.
 
         Parameters
         ----------
         recursive : bool
-            If ``True``, all :class:`EndfObject` objects present in the
+            If ``True``, all :class:`~endf_parserpy.utils.accessories.EndfObject` objects present in the
             underlying object are recursively converted to their base type,
             i.e. either :class:`dict` or :class:`list`.
 
@@ -979,14 +995,14 @@ class EndfObject:
         Note
         ----
         The use of ``recursive=True`` is only necessary if the
-        user has stored an :class:`EndfObject` object anywhere in the
+        user has stored an :class:`~endf_parserpy.utils.accessories.EndfObject` object anywhere in the
         underlying base object. In contrast, if an attempt
-        is made to store an :class:`EndfObject` object in another
-        :class:`EndfObject` object, the former object is (non-recursively)
+        is made to store an :class:`~endf_parserpy.utils.accessories.EndfObject` object in another
+        :class:`~endf_parserpy.utils.accessories.EndfObject` object, the former object is (non-recursively)
         unwrapped (with :func:`unwrap`) before being stored. Therefore,
         as long as the underlying base object is only
         accessed via an :class:`EndfDict` instance, there should never be
-        an :class:`EndfObject` object in the underlying base object.
+        an :class:`~endf_parserpy.utils.accessories.EndfObject` object in the underlying base object.
 
         Example
         -------
@@ -1005,9 +1021,9 @@ class EndfObject:
         """Get the :class:`EndfDict` instance associated with the root dictionary.
 
         Any :class:`dict`-like object retrieved from an :class:`EndfDict`
-        (termed the root ``EndfDict``) is automatically enwrapped in
-        an :class:`EndfDict` instances before being returned to the user.
-        The ``root`` attribute of the returned :class:`EndfDict` instances
+        (termed the root ``EndfDict``) is automatically wrapped in
+        an :class:`EndfDict` instance before being returned to the user.
+        The ``root`` attribute of the returned :class:`EndfDict` instance
         holds a reference to the root :class:`EndfDict` object.
 
         Example
@@ -1015,7 +1031,7 @@ class EndfObject:
         >>> testdict = {'a': {'b': {'c': 'd'}}}
         >>> viewdict = EndfDict(testdict)
         >>> assert id(viewdict) == id(viewdict.root)
-        >>> viewdict2 = testdict['a/b']
+        >>> viewdict2 = viewdict['a/b']
         >>> assert id(viewdict2.root) == id(viewdict)
         """
         return self._root
@@ -1040,11 +1056,15 @@ class EndfObject:
 
 
 class EndfDict(EndfObject, MutableMapping):
-    """EndfDict class extends :class:`dict` with :class:`EndfPath` functionality.
+    """EndfDict class adds :class:`EndfPath` functionality to a :class:`dict`.
 
     The :class:`EndfDict` class behaves like a :class:`dict`
     but offers in addition enhanced indexing capabilities.
-    This class is derived from the :class:`EndfObject` class
+    It is a :class:`collections.abc.MutableMapping` that wraps the
+    dictionary, not a subclass of :class:`dict`:
+    ``isinstance(EndfDict(), dict)`` is ``False``, and :meth:`unwrap`
+    returns the wrapped dictionary.
+    This class is derived from the :class:`~endf_parserpy.utils.accessories.EndfObject` class
     and inherits its methods.
     """
 
@@ -1079,11 +1099,15 @@ class EndfDict(EndfObject, MutableMapping):
 
 
 class EndfList(EndfObject, MutableSequence):
-    """EndfList class extends :class:`list` with :class:`EndfPath` functionality.
+    """EndfList class adds :class:`EndfPath` functionality to a :class:`list`.
 
-    The :class:`EndfDict` class behaves like a :class:`list`
+    The :class:`EndfList` class behaves like a :class:`list`
     but offers enhanced indexing capabilities.
-    This class is derived from the :class:`EndfObject` class
+    It is a :class:`collections.abc.MutableSequence` that wraps the
+    list, not a subclass of :class:`list`:
+    ``isinstance(EndfList([]), list)`` is ``False``, and :meth:`unwrap`
+    returns the wrapped list.
+    This class is derived from the :class:`~endf_parserpy.utils.accessories.EndfObject` class
     and inherits its methods.
     """
 
@@ -1094,7 +1118,7 @@ class EndfList(EndfObject, MutableSequence):
         ----------
         obj : Optional[list]
             If ``obj`` is provided, the instantiated
-            :class:`EndfDict` class provides a view object.
+            :class:`EndfList` class provides a view object.
             Otherwise, the created instance will be initialized
             with an empty list.
         array_type: str

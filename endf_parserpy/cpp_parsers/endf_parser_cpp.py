@@ -15,7 +15,6 @@ import os
 from endf_parserpy.endf_recipes import (
     cpp_module_basename,
     get_tape_structure,
-    list_endf_flavors,
     resolve_endf_flavor,
 )
 from endf_parserpy.utils.tape_structure import (
@@ -382,11 +381,11 @@ class EndfParserCpp(EndfParserBase):
             "array_type": array_type,
         }
         # an alias, e.g. a layout version without changes, uses the
-        # entry of the flavor it stands for
-        if endf_format in list_endf_flavors():
-            resolved_format = resolve_endf_flavor(endf_format)
-        else:
-            resolved_format = endf_format
+        # entry of the flavor it stands for; an unknown name raises the
+        # TypeError of EndfParserPy (see get_recipe_dict) before the C++
+        # module is imported, so that it is not taken for a flavor whose
+        # module could not be compiled
+        resolved_format = resolve_endf_flavor(endf_format)
         entry_name = cpp_module_basename(resolved_format)
         location = f"{_CPP_MODULE}.{entry_name}"
         # the functions of the flavor from its entry in the C++ module

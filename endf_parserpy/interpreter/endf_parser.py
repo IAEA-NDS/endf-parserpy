@@ -124,6 +124,7 @@ from ..endf_parser_base import (
     _check_array_type,
     _check_material_form,
     _check_numpy_available,
+    _normalize_section_selections,
     _write_via_temporary_file,
 )
 
@@ -1164,14 +1165,9 @@ class EndfParserPy(EndfParserBase):
         self.current_path = parser_state["current_path"]
 
     def should_skip_section(self, mf, mt, exclude=None, include=None):
-        if include is not None:
-            if isinstance(include, int):
-                include = (include,)
-            include = tuple(tuple(p) if hasattr(p, "__iter__") else p for p in include)
-        if exclude is not None:
-            if isinstance(exclude, int):
-                exclude = (exclude,)
-            exclude = tuple(tuple(p) if hasattr(p, "__iter__") else p for p in exclude)
+        # an [MF, MT] pair may be a list, and a malformed entry raises (see
+        # _normalize_section_selection)
+        exclude, include = _normalize_section_selections(exclude, include)
 
         if exclude is None:
             if include is not None:
@@ -1233,6 +1229,8 @@ class EndfParserPy(EndfParserBase):
         tolerated mismatches (see
         :class:`~endf_parserpy.utils.tolerated_mismatches.ToleratedMismatch`)
         with the lines counted in ``lines``."""
+        # checked before the parse, also if no section is selected
+        exclude, include = _normalize_section_selections(exclude, include)
         # each character corresponds to a byte of an ENDF-6 file (see
         # text_encoding), so characters above U+00FF cannot occur
         check_input(lines)
@@ -1446,6 +1444,7 @@ class EndfParserPy(EndfParserBase):
         list[str]
             List of lines with the ENDF-6 formatted data.
         """
+        exclude, include = _normalize_section_selections(exclude, include)
         ts = self.tape_structure
         if zero_as_blank is None:
             zero_as_blank = ts.end_record_fill == "blank"
@@ -1663,6 +1662,11 @@ class EndfParserPy(EndfParserBase):
             For instance, ``(3,)`` would exclude MF section 3 and
             ``(3, (2, 151))`` would exclude MF section 3 and additionally
             MF=2/MT=151.
+            A list can be given instead of a tuple, also for a pair,
+            e.g. ``[3, [2, 151]]``, and a single integer stands for
+            a tuple with this MF number. Any other entry, e.g. a pair
+            with one or three numbers or a string, raises a
+            :exc:`ValueError` or :exc:`TypeError`.
             Useful to speed up the parsing process or to ensure
             a verbatim copy of data in a read/write sequence.
         include : Union[None, tuple[Union[int, tuple[int, int]]]]

@@ -38,6 +38,7 @@ from ..endf_parser_base import (
     _check_array_type,
     _check_material_form,
     _check_numpy_available,
+    _normalize_section_selections,
     _write_via_temporary_file,
 )
 
@@ -454,6 +455,9 @@ class EndfParserCpp(EndfParserBase):
         :class:`~endf_parserpy.EndfToleratedMismatchWarning`
         at the end of the call (see :func:`parsefile`).
         """
+        # an [MF, MT] pair may be a list, which the C++ module does not
+        # find in the selection (see _normalize_section_selection)
+        exclude, include = _normalize_section_selections(exclude, include)
         if isinstance(lines, list):
             lines = "\n".join(lines)
         # (the list is created before the call, see parsefile)
@@ -471,6 +475,8 @@ class EndfParserCpp(EndfParserBase):
         tolerated mismatches (see
         :class:`~endf_parserpy.utils.tolerated_mismatches.ToleratedMismatch`)
         with the lines counted in ``lines``."""
+        # see parse
+        exclude, include = _normalize_section_selections(exclude, include)
         if isinstance(lines, list):
             lines = "\n".join(lines)
         tolerated = []
@@ -538,6 +544,11 @@ class EndfParserCpp(EndfParserBase):
             For instance, ``(3,)`` would exclude MF section 3 and
             ``(3, (2, 151))`` would exclude MF section 3 and additionally
             MF=2/MT=151.
+            A list can be given instead of a tuple, also for a pair,
+            e.g. ``[3, [2, 151]]``, and a single integer stands for
+            a tuple with this MF number. Any other entry, e.g. a pair
+            with one or three numbers or a string, raises a
+            :exc:`ValueError` or :exc:`TypeError`.
             Useful to speed up the parsing process or to ensure
             a verbatim copy of data in a read/write sequence.
         include : Union[None, tuple[Union[int, tuple[int, int]]]]
@@ -572,6 +583,8 @@ class EndfParserCpp(EndfParserBase):
         by the recipe instead. The warning can be filtered with the
         :mod:`warnings` module.
         """
+        # see parse
+        exclude, include = _normalize_section_selections(exclude, include)
         # The list is created before the call: an object tracked by the
         # garbage collector created after it, when the collector runs
         # again (see cpp_gc_pause), would start a collection over the
@@ -596,6 +609,8 @@ class EndfParserCpp(EndfParserBase):
         list[str]
             List of lines with the ENDF-6 formatted data.
         """
+        # see parse
+        exclude, include = _normalize_section_selections(exclude, include)
         endf_dict = self._material_to_write(endf_dict)
         cont = self._write_endf(endf_dict, exclude, include, self._cpp_write_opts)
         lines = cont.split("\n")
@@ -647,6 +662,8 @@ class EndfParserCpp(EndfParserBase):
         owner and links); a symbolic link is followed, as by
         :func:`open`.
         """
+        # see parse
+        exclude, include = _normalize_section_selections(exclude, include)
         endf_dict = self._material_to_write(endf_dict)
         if os.path.exists(filename) and not overwrite:
             raise FileExistsError(

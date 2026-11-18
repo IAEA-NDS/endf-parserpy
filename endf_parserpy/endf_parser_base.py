@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -12,6 +12,7 @@
 import typing
 import inspect
 import functools
+import numbers
 import os
 import secrets
 import shutil
@@ -87,6 +88,64 @@ def _check_numpy_available(array_type):
                 "array_type `numpy` requires the numpy package, "
                 "which could not be imported"
             ) from exc
+
+
+def _is_int(value):
+    return isinstance(value, numbers.Integral) and not isinstance(value, bool)
+
+
+def _normalize_section_selection(selection, name):
+    """Return the ``include`` or ``exclude`` argument ``selection`` (named
+    ``name`` in the messages) in the form used by both parsers: ``None``,
+    or a tuple of MF numbers (int) and ``(MF, MT)`` tuples.
+
+    A single MF number stands for a tuple with this number, and an
+    ``[MF, MT]`` pair may be given as a list (or another sequence) as
+    well as a tuple. Any other entry raises an exception: a
+    :exc:`TypeError` for an entry or selection of a wrong type, a
+    :exc:`ValueError` for a pair without exactly two numbers.
+    """
+    if selection is None:
+        return None
+    if _is_int(selection):
+        return (int(selection),)
+    if isinstance(selection, (str, bytes, dict)) or not hasattr(selection, "__iter__"):
+        raise TypeError(
+            f"`{name}` must be a sequence of MF numbers and (MF, MT) pairs, "
+            f"e.g. (3, (1, 451)), not {selection!r}"
+        )
+    normalized = []
+    for entry in selection:
+        if _is_int(entry):
+            normalized.append(int(entry))
+            continue
+        if isinstance(entry, (str, bytes, dict)) or not hasattr(entry, "__iter__"):
+            raise TypeError(
+                f"invalid entry {entry!r} in `{name}`: an entry must be an MF "
+                "number (int) or an (MF, MT) pair of two ints, e.g. 3 or (3, 1)"
+            )
+        pair = tuple(entry)
+        if len(pair) != 2:
+            raise ValueError(
+                f"invalid entry {entry!r} in `{name}`: an (MF, MT) pair must "
+                f"have two numbers, not {len(pair)}"
+            )
+        if not (_is_int(pair[0]) and _is_int(pair[1])):
+            raise TypeError(
+                f"invalid entry {entry!r} in `{name}`: the MF and MT numbers "
+                "of a pair must be ints"
+            )
+        normalized.append((int(pair[0]), int(pair[1])))
+    return tuple(normalized)
+
+
+def _normalize_section_selections(exclude, include):
+    """The ``exclude`` and ``include`` arguments of a parse or write as
+    normalized by :func:`_normalize_section_selection`."""
+    return (
+        _normalize_section_selection(exclude, "exclude"),
+        _normalize_section_selection(include, "include"),
+    )
 
 
 MfNumberType = MtNumberType = int

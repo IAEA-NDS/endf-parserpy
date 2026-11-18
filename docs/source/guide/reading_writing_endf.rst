@@ -128,7 +128,8 @@ also use the ``exclude`` argument, e.g.
 to parse everything except MF=3,4,5. Both inclusion and exclusion
 can be performed more fine-grained at the level of MT sections.
 For example, to include everything of MF=6 and only MT=1 from MF=3,
-specify ``include=[6, (3, 1)]``.
+specify ``include=[6, [3, 1]]``. The MF/MT pair can be given as a
+list or a tuple, e.g. ``include=[6, (3, 1)]``, in both parsers.
 
 If one wants to check which MF/MT sections have been parsed,
 one can utilize the

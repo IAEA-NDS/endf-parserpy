@@ -579,8 +579,9 @@ for which the ``<MATCH-EXPR>`` applies, and also all the variables
 and associated values appearing in the ``<MATCH-EXPR>``.
 Wildcards in file names are supported, e.g. ``*.endf``.
 The exit code follows the ``grep`` convention: ``0`` if at least one
-material matched, ``1`` if none did, and ``2`` if a file or material
-could not be parsed -- so ``match`` can be used as a test in a script.
+material matched, ``1`` if none did, and ``2`` if the query is invalid
+or a file or material could not be parsed -- so ``match`` can be used
+as a test in a script.
 
 .. note::
 
@@ -600,8 +601,10 @@ operators, e.g. ``/3/1/ZA <= 25056 & /1/451/LRP == 1``.
 .. note::
 
    Please be aware that all :ref:`EndfPaths <endf_path_class>`
-   in the ``<MATCH-EXPR>`` must start with a ``/`` character, e.g.
-   ``/3/1/ZA``; ``3/1/ZA`` is not a valid query.
+   must start with a ``/`` character, e.g. ``/3/1/ZA``. A query with a
+   path without the slash, as any other syntax error in the query, gives
+   an error message (``invalid query ...``, with a hint about the slash)
+   and the exit code ``2``.
 
 
 In more detail, the order relations ``==``, ``!=``, ``>``, ``>=``, ``<``, ``<=``

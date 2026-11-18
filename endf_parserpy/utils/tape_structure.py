@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -24,7 +24,7 @@ the recipes give:
   occur more than once in a material;
 - **public form:** whether ``parse`` returns a material as the nested
   dictionary ``{MF: {MT: section}}`` or as a list of sections in file
-  order (see :func:`to_dict_form` and :func:`to_list_form`);
+  order (see :func:`~endf_parserpy.to_dict_form` and :func:`~endf_parserpy.to_list_form`);
 - **fill of the end records:** whether the columns 1-66 of the SEND, FEND,
   MEND and TEND records that are written hold zeros or blanks.
 
@@ -677,7 +677,7 @@ def _lenient_label(section):
 
 def dict_form_keys(material):
     """The keys ``(MF, MT)`` of a material in the nested form, in the
-    order of :func:`to_list_form`."""
+    order of :func:`~endf_parserpy.to_list_form`."""
     return [(mf, mt) for mf in sorted(material) for mt in sorted(material[mf])]
 
 
@@ -854,7 +854,7 @@ def check_verbatim_labels(lines, mf, mt):
 
 def check_nested_material(material):
     """Check a material in the nested form before it is written, in one
-    pass: the checks of :func:`to_list_form` (the keys ``MF`` and ``MT`` of
+    pass: the checks of :func:`~endf_parserpy.to_list_form` (the keys ``MF`` and ``MT`` of
     a parsed section) and the MAT rule of :func:`check_material`, which are
     all that apply to the nested form, as the conversion gives the
     canonical order. Used by EndfParserCpp, whose C++ module writes the

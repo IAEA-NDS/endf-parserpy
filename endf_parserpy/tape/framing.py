@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/08
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -601,7 +601,7 @@ def check_framing(
     :class:`~endf_parserpy.EndfParserPy` checks them, for any number of
     materials:
 
-    * the tape head (TPID) is the first line (see :class:`TapeIndex`);
+    * the tape head (TPID) is the first line (see :class:`~endf_parserpy.TapeIndex`);
     * every section ends with a SEND record ``[MAT, MF, 0]`` with the
       MAT and MF numbers of the section, every MF of a material with a
       FEND record ``[MAT, 0, 0]`` with the MAT number of the material,
@@ -611,7 +611,7 @@ def check_framing(
     * the sections of a material are in ascending order of MF, and of
       MT within an MF, and an MF ends with its FEND record, so that the
       next section has a greater MF; in particular, a section (MF/MT)
-      occurs only once in a material (otherwise :class:`EndfFile` would
+      occurs only once in a material (otherwise :class:`~endf_parserpy.EndfFile` would
       only see one of them). A record of a section after a record that
       is not one of a section starts a new section;
     * only blank lines (blanks and tabs) may follow the TEND record, and
@@ -641,7 +641,7 @@ def check_framing(
     MT≠0) is a problem anywhere,
     ``ignore_blank_lines`` accepts blank lines anywhere,
     ``ignore_missing_tpid`` accepts a tape without a tape head (as
-    :class:`TapeIndex`), ``accept_non_ascii`` accepts other characters,
+    :class:`~endf_parserpy.TapeIndex`), ``accept_non_ascii`` accepts other characters,
     and ``accept_spaces`` and ``accept_d_exponent`` concern the reading
     of the zeros in the float fields of the framing records.
 
@@ -670,7 +670,7 @@ def _check_framing_and_index(
 
     Return ``(problems, index, error)``: the result of
     :func:`check_framing` with the same options, and the
-    :class:`TapeIndex` of the file built by
+    :class:`~endf_parserpy.TapeIndex` of the file built by
     :meth:`TapeIndex.from_file` with ``ignore_missing_tpid``, or ``None``
     and the :class:`TapeStructureError` that it raises. With
     ``ignore_send_records``, the index is built as the parsers read the

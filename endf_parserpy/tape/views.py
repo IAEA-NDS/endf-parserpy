@@ -3,13 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/16
-# Last modified:   2026/10/25
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
-"""Recursive section views for path-addressed :class:`EndfFile` access.
+"""Recursive section views for path-addressed :class:`~endf_parserpy.EndfFile` access.
 
 A section retrieved from an :class:`~endf_parserpy.EndfFile` is never a
 defensive copy; it is a lazy *view* over the canonical cached section

@@ -6,6 +6,8 @@ sections
 .. automodule:: endf_parserpy.utils.sections
    :no-members:
 
+.. currentmodule:: endf_parserpy
+
 .. autofunction:: iter_sections
 
 .. autoclass:: endf_parserpy.utils.sections.SectionEntry

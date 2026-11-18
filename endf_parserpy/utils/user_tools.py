@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -80,7 +80,7 @@ def list_parsed_sections(dic):
     ----------
     dic : Union[dict, list]
         A material in the form as returned by the
-        ``.parsefile()`` method of the :class:`endf_parserpy.endf_parser.EndfParserPy` class,
+        ``.parsefile()`` method of the :class:`~endf_parserpy.EndfParserPy` class,
         the nested dictionary or the list of its sections.
 
     Returns

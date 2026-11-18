@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -788,7 +788,7 @@ class TapeIndex:
 
     Attributes
     ----------
-    materials : list[MaterialIndexEntry]
+    materials : list[~endf_parserpy.tape.MaterialIndexEntry]
         The materials, in tape order.
     tpid_line : str or None
         The tape head (TPID) record, or ``None`` for a tape without a
@@ -847,7 +847,7 @@ class TapeIndex:
         the index are ``None``. With a ``tape_structure`` (see
         :class:`~endf_parserpy.TapeStructure`) that allows repeated
         sections, a material may hold several sections with the same MF
-        and MT numbers (see :attr:`MaterialIndexEntry.section_list`);
+        and MT numbers (see :attr:`~endf_parserpy.tape.MaterialIndexEntry.section_list`);
         otherwise they are an error.
         """
         path = os.fspath(path)

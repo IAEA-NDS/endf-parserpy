@@ -3,13 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
-"""Per-material state and views for :class:`EndfFile`."""
+"""Per-material state and views for :class:`~endf_parserpy.EndfFile`."""
 
 from ..utils.accessories import EndfPath, _Occurrence, _Position
 
@@ -29,7 +29,7 @@ def _as_mfmt(key):
 
 
 def _section_key(key):
-    """Split a section key of a :class:`MaterialView` into ``(mf, mt,
+    """Split a section key of a :class:`~endf_parserpy.tape.MaterialView` into ``(mf, mt,
     occurrence, position, subpath)``.
 
     The key is ``(MF, MT)``, ``(MF, MT, k)`` or a section path
@@ -87,15 +87,15 @@ class _SectionRef:
 
 
 class _MaterialSlot:
-    """Mutable per-material state in an :class:`EndfFile`.
+    """Mutable per-material state in an :class:`~endf_parserpy.EndfFile`.
 
     A slot represents one material in the (possibly edited) tape. For a
     material that came from the file ``original_position`` indexes the
-    backing :class:`TapeIndex`; for a material added in memory it is
+    backing :class:`~endf_parserpy.TapeIndex`; for a material added in memory it is
     ``None``. ``overlay`` holds sections that were set or added (keyed
     by ``(MF, MT)``), and ``deleted`` the ``(MF, MT)`` keys removed from
     the original material. ``removed`` is set when the material itself
-    is deleted from the tape, which invalidates any :class:`MaterialView`
+    is deleted from the tape, which invalidates any :class:`~endf_parserpy.tape.MaterialView`
     bound to the slot.
 
     A material whose sections are not identified by their labels alone
@@ -135,7 +135,7 @@ class _MaterialSlot:
 
 
 class MaterialView:
-    """A handle to one material of an :class:`EndfFile`.
+    """A handle to one material of an :class:`~endf_parserpy.EndfFile`.
 
     Sections are addressed by an ``(MF, MT)`` pair and parsed lazily on
     access. A section can be read, replaced, added or deleted::
@@ -161,7 +161,7 @@ class MaterialView:
     Reading a section returns a *view* over the parsed section whose
     mutability follows the file's ``check_edits`` mode -- read-only under
     ``"eager"`` and a live write-through view under ``"deferred"`` (see
-    :mod:`endf_parserpy.tape.views`). A section that failed to parse
+    ``endf_parserpy.tape.views``). A section that failed to parse
     raises :class:`~endf_parserpy.tape.SectionParseError` on access.
 
     The view is bound to the underlying material, so it stays valid if

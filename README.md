@@ -79,6 +79,7 @@ parser = EndfParserFactory.create()
 # parser = EndfParserFactory.create(array_type="numpy")
 endf_dict = parser.parsefile('input.endf')
 endf_dict[3][1]['AWR'] = 99.99
+# raises FileExistsError if output.endf exists (overwrite=True replaces it)
 parser.writefile('output.endf', endf_dict)
 ```
 

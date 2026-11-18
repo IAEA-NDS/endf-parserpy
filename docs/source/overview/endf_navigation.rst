@@ -24,16 +24,18 @@ Similarly, it is convenient to use a path for referring to a
 variable or section in an ENDF-6 dictionary. The path is
 constructed by combining the keys of the nested dictionaries
 to a single string using a ``/`` character as separator.
-For instance, there may be a variable ``AJ`` in a Python dictionary
-``endf_dict`` accessible via:
+For instance, a file with resolved resonance parameters in the
+R-matrix limited format (LRF=7), such as ``n-017_Cl_035.endf`` of
+ENDF/B-VIII.1, has a variable ``AJ`` (the spin of a spin group) in its
+Python dictionary ``endf_dict`` accessible via:
 
 .. code::
 
-   endf_dict[2][151]['isotope'][1]['range'][1]['spingroup'][1]['AJ']
+   endf_dict[2][151]['isotope'][1]['range'][1]['j_group'][1]['AJ']
 
 The corresponding :class:`~endf_parserpy.EndfPath` would be given by
 
-``2/151/isotope/1/range/1/spingroup/1/AJ``
+``2/151/isotope/1/range/1/j_group/1/AJ``
 
 Some objects in a nested dictionary can be considered as an array
 of objects and we may want to use `numpy <https://numpy.org/>`_-like syntax.
@@ -42,7 +44,7 @@ of the form ``isotope[1]``, which is equivalent to ``isotope/1``.
 Making use of this alternative notation, the path above
 could be equally written as:
 
-``2/151/isotope[1]/range[1]/spingroup[1]/AJ``
+``2/151/isotope[1]/range[1]/j_group[1]/AJ``
 
 The class :class:`~endf_parserpy.EndfPath` provides
 a container for the storage of a path. However, paths become
@@ -90,11 +92,21 @@ The rest of the path addresses data within the section as before, e.g.
    from endf_parserpy import EndfParserPy, EndfPath, iter_sections
 
    parser = EndfParserPy(endf_format="gendf")
-   material = parser.parsefile("am241.gendf")   # a list of sections
-   EndfPath("3/102#2/IZAM").get(material)        # the third MF3/MT102
+   material = parser.parsefile("am241_nuclide_production.gendf")  # a list of sections
+   EndfPath("3/102#2/IZAM").get(material)        # 952422.0, of the third MF3/MT102
    EndfPath("#1").get(material) is material[2]   # True: the head is material[0]
    for entry in iter_sections(material):
        print(f"#{entry.position}: {entry.mf}/{entry.mt}#{entry.occurrence}")
+
+The GENDF file ``am241_nuclide_production.gendf`` is in the directory
+``tests/testdata/gendf`` of the repository. The loop prints:
+
+.. code:: text
+
+   #0: 1/451#0
+   #1: 3/102#0
+   #2: 3/102#1
+   #3: 3/102#2
 
 On a material in the nested form ``{MF: {MT: section}}``, a path is
 walked by its keys as before, and ``MF/MT#0`` and ``#k`` work as well;
@@ -145,7 +157,7 @@ via:
 
 .. code:: python
 
-   aj = endf_dict['2/151/isotope[1]/range[1]/spingroup[1]/AJ']
+   aj = endf_dict['2/151/isotope[1]/range[1]/j_group[1]/AJ']
 
 
 An :class:`~endf_parserpy.EndfDict` instance also
@@ -154,14 +166,14 @@ so the same variable could also be accessed via the notation:
 
 .. code:: python
 
-   aj = endf_dict[2, 151, 'isotope', 1, 'range', 1, 'spingroup', 1, 'AJ']
+   aj = endf_dict[2, 151, 'isotope', 1, 'range', 1, 'j_group', 1, 'AJ']
 
 
 It's also possible to mix these two notation forms, e.g.
 
 .. code:: python
 
-   aj = endf_dict[2, 151, 'isotope/1', 'range[1]', 'spingroup', '1/AJ']
+   aj = endf_dict[2, 151, 'isotope/1', 'range[1]', 'j_group', '1/AJ']
 
 
 The flexible notation allows to write down specific
@@ -188,7 +200,7 @@ dictionaries. For example, the assignment
 
 .. code:: python
 
-    endf_dict['2/151/isotope[1]/range[2]/spingroup[3]/AJ'] = 12.
+    endf_dict['2/151/isotope[1]/range[2]/j_group[3]/AJ'] = 12.
 
 will create all intermediate dictionaries, hence this instruction
 even works for an empty dictionary ``endf_dict = EndfDict({})``.
@@ -216,7 +228,7 @@ and a dictionary:
 
 .. code:: python
 
-   ajvar = EndfVariable('2/151/isotope[1]/range[1]/spingroup[1]/AJ', endf_dict)
+   ajvar = EndfVariable('2/151/isotope[1]/range[1]/j_group[1]/AJ', endf_dict)
 
 Any change of the value of ``AJ`` in ``endf_dict`` will be
 reflected in ``ajvar.value`` and vice-versa. This class may

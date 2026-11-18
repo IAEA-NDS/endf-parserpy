@@ -40,9 +40,12 @@ can be suppressed by using an additional argument:
    parser = EndfParserFactory.create(warn_slow=False)
 
 
-In addition, this function can take any arguments that are supported
+In addition, this function can take the arguments that are supported
 by the :class:`~endf_parserpy.EndfParserPy` or
-the :class:`~endf_parserpy.EndfParserCpp` class.
+the :class:`~endf_parserpy.EndfParserCpp` class, except
+``material_form`` and ``tape_structure``, which it does not accept
+(they raise a :exc:`TypeError`); create the parser class directly to
+use them.
 It will then select the appropriate parser according to argument compatibility.
 For instance, using the ``loglevel`` argument, not supported by
 the C++ parser, will force the selection of the Python parser:
@@ -51,7 +54,7 @@ the C++ parser, will force the selection of the Python parser:
 
    from endf_parserpy import EndfParserPy
    parser = EndfParserFactory.create(loglevel=30)
-   assert type(parser) = EndfParserPy
+   assert type(parser) is EndfParserPy
 
 From the viewpoint of a developer, it may be pertinent to have some
 guarantee that initialization arguments are compatible with both

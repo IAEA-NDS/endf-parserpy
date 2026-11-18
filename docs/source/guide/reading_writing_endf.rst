@@ -43,8 +43,10 @@ format can be read without failure. For the purpose of
 :ref:`format validation <format_validation_sec>`, one would
 adopt parameters to enforce strict compliance with the ENDF-6 format.
 
-The only argument that is relevant for reading is ``accept_spaces``
-whose default is ``True``. With this default, numbers with spaces inserted
+An argument that is relevant for reading is ``accept_spaces``
+whose default is ``True``; the other arguments relevant for reading
+are described below and in the documentation of the
+:class:`~endf_parserpy.EndfParserPy` class. With this default, numbers with spaces inserted
 will be accepted, such as ``1.234 +3``. However, even ENDF-6 files
 with some numbers leaking into neighboring fields may be successfully
 read then, but with nonsensical values. Because this issue can be easily
@@ -61,7 +63,8 @@ such as ``5.438673D-4``, are accepted. They do not conform to the
 ENDF-6 format but occur in some evaluated data files. When such data
 are written again, the ``D`` character is never emitted: the numbers
 are output in the usual ENDF-6 notation, e.g. ``5.438673-4`` (or
-``5.438673e-4`` with ``keep_E=True``), unless
+``5.43867e-4`` with ``keep_E=True``, as the ``e`` takes one of the
+eleven character slots), unless
 ``preserve_value_strings=True`` is used, in which case the original
 strings are written verbatim.
 
@@ -125,7 +128,7 @@ also use the ``exclude`` argument, e.g.
 to parse everything except MF=3,4,5. Both inclusion and exclusion
 can be performed more fine-grained at the level of MT sections.
 For example, to include everything of MF=6 and only MT=1 from MF=3,
-specify ``include=[6, [3, 1]]``.
+specify ``include=[6, (3, 1)]``.
 
 If one wants to check which MF/MT sections have been parsed,
 one can utilize the
@@ -261,7 +264,7 @@ the decimal notation, so that ``␣3.007000+3`` becomes ``3007``.
 The choice
 ``skip_intzero=True`` will skip the zero of a number
 in decimal notation if the integer part is zero, e.g.,
-``0.1234`` will become ``.12345``, giving in some situations
+``0.1234`` will become ``.1234``, giving in some situations
 one extra digit of precision.
 Therefore, for maximal output precision (and ugly display)
 initialize the :class:`~endf_parserpy.EndfParserPy` instance like this:
@@ -327,3 +330,8 @@ the original ``endf_dict``:
 
    test_dict = parser.parsefile('output.endf')
    compare_objects(endf_dict, test_dict, atol=1e-6, rtol=1e-6, fail_on_diff=False)
+
+The function returns ``True`` if the two dictionaries agree within the
+given tolerances. Otherwise, it prints the differences and returns
+``False``; pass a list as ``diff_log`` to collect the messages as
+well.

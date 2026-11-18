@@ -110,7 +110,7 @@ Install endf-parserpy
 
    Under Windows (assuming Microsoft Visual C++), you can do:
 
-   .. code:: bash
+   .. code:: bat
 
       set INSTALL_ENDF_PARSERPY_CPP_OPTIM=/Od
 

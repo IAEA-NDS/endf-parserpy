@@ -146,9 +146,9 @@ keys are expected to be dictionaries with integer keys.
 The range of the available integer keys can be inferred from the
 loop statement that involves the variable appearing in the pair of
 square brackets. For instance, the counter variable ``i`` runs from
-``1`` to the value of variable ``NWD`` and hence the dictionary
+``1`` to ``NWD-5`` and hence the dictionary
 stored under the ``DESCRIPTION`` key in ``mf1_mt451_dict`` (see above)
-is expected to contain all integers between 1 and the value of ``NWD``
+is expected to contain all integers between 1 and ``NWD-5``
 as keys. The third element in ``DESCRIPTION`` could then
 be accessed via ``mf1_mt451_dict['DESCRIPTION'][3]``.
 Also multidimensional arrays are possible, e.g. ``arr2d[i, j]``
@@ -246,7 +246,7 @@ as described in :ref:`an earlier section on this page
 <basic_mapping_of_variables>`. Variable names of the last two slots,
 here ``NR`` and ``NP`` are ignored because they can be inferred from
 the length of the :class:`list` datatypes ``NBT``, ``INT`` and (here)
-``E`` and ``XS``.
+``E`` and ``xs``.
 
 Matters for the TAB2 record are similar.
 Consider the following example:
@@ -289,8 +289,8 @@ TAB2 record specification, an equally named key is expected to be present
 in the Python dictionary. This key is then associated with
 another dictionary that contains ``NBT``, ``INT`` and the two keys named
 according to the variable names in the last two slots,
-here ``E`` and ``XS``. These variables could be accessed by
-``mf3_mt1_section['xstable']['NBT']``, etc.
+here ``E`` and ``xs``. These variables could be accessed by
+``mf3_mt1_dict['xstable']['NBT']``, etc.
 
 
 Particularities of LIST records

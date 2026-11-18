@@ -151,6 +151,13 @@ realized with the :class:`list` datatype or as dictionaries
 with contiguous integer keys. The nesting of dictionaries
 can be used to organize ENDF-6 data in sections, subsections,
 etc.
+Two options depart from this choice where it matters: with
+``array_type="numpy"``, arrays are numpy arrays (see
+:ref:`arrays as numpy arrays <arrays_as_numpy_sec>`), and with
+``preserve_value_strings=True``, floats are
+:class:`~endf_parserpy.EndfFloat` objects, which keep the original
+strings of the numbers (see
+:ref:`perfect precision <guide_perfect_precision>`).
 As these datatypes are all standard in Python,
 programmers can easily operate with them, without the need
 to digest additional documentation.

@@ -309,10 +309,31 @@ inline V cpp_cast_vector(const py::object& obj) {
 template <typename V>
 inline V index_shifter_as(const py::object& obj);
 
+// An array in dict mode that is not a dict. An array in the list form (a
+// list, a tuple or a numpy array), e.g. of data parsed with array_type
+// "list" or "numpy" and written without this option, raises a ValueError
+// naming the option, instead of the error of the conversion of the list to
+// a dict ("dictionary update sequence element #0 has length 66; 2 is
+// required"). Another mapping is converted. Not inlined: only reached for
+// an array that is not a dict, so that the access of a dict is unchanged.
+INDEX_SHIFTER_NOINLINE inline py::dict index_shifter_dict_from_other(const py::object& obj) {
+    PyObject* p = obj.ptr();
+    if (PyList_Check(p) || PyTuple_Check(p) || index_shifter_is_buffer_array(obj)) {
+        throw py::value_error(
+            std::string("an array of the data to write is a `") + Py_TYPE(p)->tp_name
+            + "`, but writing with array_type \"dict\" (the default) expects a "
+            "dict for each array: data parsed with array_type \"list\" or "
+            "\"numpy\" must be written with the same array_type, e.g. with "
+            "write_opts={\"array_type\": \"numpy\"} for the functions of the "
+            "module or with EndfParserCpp(array_type=\"numpy\")");
+    }
+    return py::cast<py::dict>(obj);
+}
+
 template <>
 inline py::dict index_shifter_as<py::dict>(const py::object& obj) {
     if (PyDict_Check(obj.ptr())) return py::reinterpret_borrow<py::dict>(obj);
-    return py::cast<py::dict>(obj);
+    return index_shifter_dict_from_other(obj);
 }
 
 template <>

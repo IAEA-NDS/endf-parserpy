@@ -313,7 +313,13 @@ one can be done by
 
    endf-cli replace /1/451 source.endf target.endf
 
-The source and the target must have the same MAT number.
+The copied sections keep the MAT number of their records, so a section,
+an MF or a whole material can only be copied between materials with the
+same MAT number; otherwise ``replace`` stops with an error message and
+exit code 1, and the target file is left unchanged. A field within a
+section, which is copied into the section of the target, can also be
+copied between materials with different MAT numbers.
+
 
 Replacing content can also be done on a more fine-grained level. As an
 advanced example, a specific spin group in MF2/MT151 of a file with

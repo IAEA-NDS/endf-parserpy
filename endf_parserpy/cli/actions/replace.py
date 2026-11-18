@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -181,6 +181,30 @@ def _install(endf_file, resolved, kind, obj):
         material.insert_section(section, None if first is None else first + i)
 
 
+def _check_same_mat(source, src_resolved, dest, dst_resolved, outfile):
+    """Exit with a clean error if the sections copied from the source
+    material would get into a target material with another MAT number.
+
+    The sections keep the MAT number of their records, and all sections
+    of a material must have the same MAT number, so the file could not be
+    written; the MAT number is not rewritten.
+    """
+    try:
+        src_mat = source[selector_of(src_resolved)].mat
+        dst_mat = dest[selector_of(dst_resolved)].mat
+    except Exception:  # noqa: BLE001
+        # reported by the replacement itself
+        return
+    if src_mat != dst_mat:
+        _fail(
+            f"the source material has MAT={src_mat} but the target material "
+            f"in {outfile} has MAT={dst_mat}; the copied sections keep their "
+            "MAT number and all sections of a material must have the same "
+            "MAT number, so sections can only be replaced between materials "
+            "with the same MAT number"
+        )
+
+
 def _replace_element(
     parser, source_path, target_path, sourcefile, destfiles, create_backup
 ):
@@ -218,11 +242,18 @@ def _replace_element(
                 "be copied to the same MF/MT, since it carries its own "
                 "MF/MT in its records"
             )
+        if source_kind != "field":
+            _check_same_mat(source, src_resolved, dest, dst_resolved, outfile)
         try:
             _install(dest, dst_resolved, target_kind, obj)
         except Exception as exc:  # noqa: BLE001
             _fail(f"cannot write {dst_resolved} in {outfile}: {exc}")
-        export_endf_file(dest, outfile, create_backup)
+        try:
+            export_endf_file(dest, outfile, create_backup)
+        except ValueError as exc:
+            # e.g. a rule of the tape structure that the edited material
+            # breaks; the file is left unchanged
+            _fail(f"cannot write {outfile}: {exc}")
     return 0
 
 

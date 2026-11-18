@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -270,17 +270,89 @@ def _is_under(path, directory):
         return False
 
 
-def _git(checkout, *args):
+def _git(checkout, *args, strip=True):
     try:
         out = subprocess.run(
             ["git", "-C", checkout, *args],
             capture_output=True,
             text=True,
+            errors="surrogateescape",
             check=True,
         )
     except (OSError, subprocess.CalledProcessError):
         return None
-    return out.stdout.strip()
+    return out.stdout.strip() if strip else out.stdout
+
+
+# what is recorded as ``dirty_ignored`` if only such files changed
+GENERATED_SOURCES_NOTE = "generated C++ sources"
+
+
+def _generated_tu_matcher():
+    """``is_generated_tu_filename`` of the imported endf_parserpy, which
+    the build of this package used; None if it has none."""
+    try:
+        from endf_parserpy.compiler.compiler import is_generated_tu_filename
+    except ImportError:
+        return None
+    return is_generated_tu_filename
+
+
+def _status_entries(checkout):
+    """The changes to tracked files in ``checkout`` from ``git status
+    --porcelain -z``: a list of ``(XY, paths)``, the paths relative to
+    the top level of the repository, two of them (new, old) for a rename
+    or copy; None if git fails."""
+    out = _git(
+        checkout, "status", "--porcelain", "-z", "--untracked-files=no", strip=False
+    )
+    if out is None:
+        return None
+    fields = out.split("\0")
+    entries = []
+    i = 0
+    while i < len(fields):
+        field = fields[i]
+        i += 1
+        if len(field) < 4:
+            continue
+        xy, paths = field[:2], [field[3:]]
+        if ("R" in xy or "C" in xy) and i < len(fields):
+            paths.append(fields[i])
+            i += 1
+        entries.append((xy, paths))
+    return entries
+
+
+def _checkout_changes(checkout):
+    """Whether tracked files in ``checkout`` changed, as ``(dirty,
+    ignored)``: changes to the translation units that a build of the C++
+    module writes into ``endf_parserpy/cpp_parsers/`` (and removes before
+    writing new ones) are build output; they set ``ignored``, not
+    ``dirty``. Every other change, and a conflict, sets ``dirty``."""
+    entries = _status_entries(checkout)
+    if not entries:
+        return False, False
+    is_generated = _generated_tu_matcher()
+    prefix = _git(checkout, "rev-parse", "--show-prefix")
+    if is_generated is None or prefix is None:
+        return True, False
+    prefix += "endf_parserpy/cpp_parsers/"
+
+    def generated(path):
+        if not path.startswith(prefix):
+            return False
+        name = path[len(prefix) :]
+        return "/" not in name and is_generated(name)
+
+    dirty = ignored = False
+    for xy, paths in entries:
+        conflict = "U" in xy or xy in ("AA", "DD")
+        if not conflict and all(generated(path) for path in paths):
+            ignored = True
+        else:
+            dirty = True
+    return dirty, ignored
 
 
 def _package_dir():
@@ -467,10 +539,10 @@ def software_record(location=None):
     if location["checkout"]:
         commit = _git(location["checkout"], "rev-parse", "HEAD")
         if commit:
-            dirty = _git(
-                location["checkout"], "status", "--porcelain", "--untracked-files=no"
-            )
+            dirty, ignored = _checkout_changes(location["checkout"])
             record["git_commit"] = commit + ("+dirty" if dirty else "")
+            if ignored:
+                record["dirty_ignored"] = GENERATED_SOURCES_NOTE
             record["git_describe"] = _git(location["checkout"], "describe", "--tags")
     elif location["commit"]:
         record["git_commit"] = location["commit"]

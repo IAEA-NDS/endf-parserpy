@@ -99,6 +99,9 @@ Reproducing the numbers
    installed from a git checkout, also the commit and ``git describe``
    of the checkout, with ``+modified`` if the installed ``.py`` files
    differ from those of the checkout, and for a git URL the commit.
+   Other changes to tracked files of the checkout mark the commit
+   ``+dirty``, except those to the C++ sources that the build generates
+   in the checkout.
 3. Run the measurement with the tool of the repository,
    ``tools/benchmark_report.py``, from a directory that does not
    contain an ``endf_parserpy`` source tree, which would be imported

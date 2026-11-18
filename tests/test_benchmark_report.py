@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/17
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -520,6 +520,130 @@ def test_installed_without_direct_url(tmp_path, monkeypatch, direct_url):
     assert record["git_commit"] is None
     assert record["git_describe"] is None
     assert "warnings" not in record
+
+
+def _checkout_with_shared_cpp(path):
+    """A checkout as ``_git_checkout`` that also tracks a generated
+    translation unit, a source file that is not generated and a file
+    outside ``cpp_parsers/`` with the name of a generated one."""
+    _git_checkout(path)
+    _make_library(
+        path,
+        {
+            "endf_parserpy/cpp_parsers/_shared.cpp": "// generated\n",
+            "endf_parserpy/cpp_parsers/helper.cpp": "// not generated\n",
+            "other/_shared.cpp": "// not in cpp_parsers\n",
+            "README.md": "readme\n",
+        },
+    )
+    _run_git(path, "add", ".")
+    _run_git(path, "commit", "-q", "-m", "third")
+    return _run_git(path, "rev-parse", "HEAD")
+
+
+def _source_tree_record(checkout, monkeypatch):
+    monkeypatch.setattr(br, "cpp_module_info", lambda: {"available": False})
+    location = {
+        "kind": "source tree",
+        "checkout": str(checkout),
+        "commit": None,
+        "warnings": [],
+        "modified": False,
+    }
+    return br.software_record(location)
+
+
+def _change(checkout, change):
+    shared = checkout / "endf_parserpy" / "cpp_parsers" / "_shared.cpp"
+    if change == "delete":
+        shared.unlink()
+    elif change == "modify":
+        shared.write_text("// generated anew\n")
+    elif change == "stage":
+        shared.write_text("// generated anew\n")
+        _run_git(checkout, "add", str(shared))
+    elif change == "rename":
+        _run_git(
+            checkout,
+            "mv",
+            "endf_parserpy/cpp_parsers/_shared.cpp",
+            "endf_parserpy/cpp_parsers/_shared_part_00.cpp",
+        )
+    else:
+        (checkout / change).write_text("changed\n")
+
+
+@pytest.mark.parametrize("change", ["delete", "modify", "stage", "rename"])
+def test_generated_sources_are_not_dirty(tmp_path, monkeypatch, change):
+    # a build of the C++ module removes and writes the generated
+    # translation units in cpp_parsers/, some of which are tracked
+    checkout = tmp_path / "checkout"
+    commit = _checkout_with_shared_cpp(checkout)
+    _change(checkout, change)
+    record = _source_tree_record(checkout, monkeypatch)
+    assert record["git_commit"] == commit
+    assert record["dirty_ignored"] == "generated C++ sources"
+    assert str(tmp_path) not in json.dumps(record)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "endf_parserpy/__init__.py",
+        "README.md",
+        "endf_parserpy/cpp_parsers/helper.cpp",
+        "other/_shared.cpp",
+    ],
+)
+def test_other_changes_are_dirty(tmp_path, monkeypatch, change):
+    checkout = tmp_path / "checkout"
+    commit = _checkout_with_shared_cpp(checkout)
+    _change(checkout, change)
+    record = _source_tree_record(checkout, monkeypatch)
+    assert record["git_commit"] == commit + "+dirty"
+    assert "dirty_ignored" not in record
+    # also with a generated source changed; that is still recorded
+    _change(checkout, "delete")
+    record = _source_tree_record(checkout, monkeypatch)
+    assert record["git_commit"] == commit + "+dirty"
+    assert record["dirty_ignored"] == "generated C++ sources"
+
+
+def test_renamed_out_of_generated_sources_is_dirty(tmp_path, monkeypatch):
+    checkout = tmp_path / "checkout"
+    commit = _checkout_with_shared_cpp(checkout)
+    _run_git(checkout, "mv", "endf_parserpy/cpp_parsers/_shared.cpp", "other/moved.cpp")
+    record = _source_tree_record(checkout, monkeypatch)
+    assert record["git_commit"] == commit + "+dirty"
+    assert "dirty_ignored" not in record
+
+
+def test_clean_checkout_has_no_note(tmp_path, monkeypatch):
+    checkout = tmp_path / "checkout"
+    commit = _checkout_with_shared_cpp(checkout)
+    # untracked files are not looked at, generated or not
+    _make_library(checkout, {"endf_parserpy/cpp_parsers/_shared_part_00.cpp": "\n"})
+    record = _source_tree_record(checkout, monkeypatch)
+    assert record["git_commit"] == commit
+    assert "dirty_ignored" not in record
+
+
+def test_installed_from_checkout_after_build(tmp_path, monkeypatch):
+    # pip builds in the checkout and removes the tracked _shared.cpp
+    checkout = tmp_path / "checkout"
+    commit = _checkout_with_shared_cpp(checkout)
+    direct_url = {"dir_info": {}, "url": checkout.as_uri()}
+    _fake_install(monkeypatch, tmp_path / "site", checkout, direct_url)
+    _change(checkout, "delete")
+    record = _software(tmp_path)
+    assert record["package_location"] == "installed from a checkout"
+    assert record["git_commit"] == commit
+    assert record["dirty_ignored"] == "generated C++ sources"
+    assert "warnings" not in record
+    # the page shows the commit without a marker
+    results = _results()
+    results["software"] = record
+    assert f"commit {commit[:12]}\n" in br.render_machine(results)
 
 
 # --- measure ----------------------------------------------------------

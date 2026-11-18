@@ -91,10 +91,24 @@ def set_description(endf_dic, text):
     endf_dic : dict
         Dictionary with ENDF-6 data
     text : str
-        String with description.
-        Lines with more than 66 characters are trimmed.
+        String with description. Lines with fewer than 66
+        characters are padded with blanks to 66 characters.
+
+    Raises
+    ------
+    ValueError
+        If a line has more than 66 characters, the width of a
+        TEXT record, naming the first such line (counted from 1)
+        and its length. The description is then not changed.
     """
     lines = text.splitlines()
+    for number, line in enumerate(lines, start=1):
+        if len(line) > 66:
+            raise ValueError(
+                f"line {number} of the description has {len(line)} characters, "
+                "but a line of the description (a TEXT record) can have at "
+                "most 66 characters"
+            )
     numlines = len(lines)
     endf_dic[1][451]["NWD"] = numlines + 5
     descr_dic = {}
@@ -115,7 +129,10 @@ def insert_description(endf_dic, text, after_line=0):
     endf_dic : dict
         Dictionary with ENDF-6 data
     text : str
-        String with text to be inserted.
+        String with text to be inserted. Lines with more than 66
+        characters raise a :exc:`ValueError` (see
+        :func:`set_description`), whose line number counts the
+        lines of the whole new description.
     after_line : int
         After which line ``text`` should be inserted.
         ``after_line=0`` inserted the text provided

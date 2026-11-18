@@ -195,3 +195,48 @@ def test_cli_validate_rejects_blank_line_in_the_middle(files):
     assert result.returncode == 1
     assert f"failed - {files['middle_blank']}" in result.stdout.splitlines()
     assert "line 871: blank line" in result.stdout
+
+
+# --- a list of lines that keep their line endings, e.g. from readlines() ---
+
+
+@pytest.mark.parametrize("name", PARSERS)
+@pytest.mark.parametrize("ending", ENDINGS)
+def test_parse_list_of_lines_with_line_endings(files, expected, name, ending):
+    parser = PARSERS[name]()
+    # readlines() in text mode (universal newlines: "\r\n" becomes "\n")
+    with open(files[ending], encoding="latin-1") as fh:
+        assert parser.parse(fh.readlines(), include=INCLUDE) == expected
+    # the line endings as they are in the file
+    with open(files[ending], encoding="latin-1", newline="") as fh:
+        lines = fh.readlines()
+    if ending.startswith("crlf"):
+        assert lines[0].endswith("\r\n")
+    assert parser.parse(lines, include=INCLUDE) == expected
+
+
+@pytest.mark.parametrize("name", PARSERS)
+@pytest.mark.parametrize("end", ("\n", "\r\n", "\r"))
+def test_parse_list_last_line_without_ending(expected, name, end):
+    parser = PARSERS[name]()
+    lines = [line + end for line in _lines()]
+    lines[-1] = lines[-1][: -len(end)]
+    assert parser.parse(lines, include=INCLUDE) == expected
+
+
+@pytest.mark.parametrize("name", PARSERS)
+@pytest.mark.parametrize("blank", ("\n", "\r\n", "", "   \n"))
+def test_parse_list_with_blank_element_is_rejected(name, blank):
+    parser = PARSERS[name]()
+    lines = [line + "\n" for line in _lines()]
+    lines.insert(870, blank)
+    with pytest.raises(Exception, match="(?i)blank line"):
+        parser.parse(lines, include=INCLUDE)
+
+
+def test_factory_parse_of_readlines(files, expected):
+    with open(files["crlf_final"], encoding="latin-1", newline="") as fh:
+        lines = fh.readlines()
+    for select in ("python", "cpp", "fastest"):
+        parser = EndfParserFactory.create(select=select)
+        assert parser.parse(lines, include=INCLUDE) == expected

@@ -1191,6 +1191,9 @@ class EndfParserPy(EndfParserBase):
             This argument can be either a list of strings with each
             string storing a single line, or a string containing
             all ENDF-6 formatted data including linebreaks.
+            A line of the list may end with its line ending
+            (``"\\n"``, ``"\\r\\n"`` or ``"\\r"``), e.g. the lines
+            returned by ``readlines()``.
             Each character stands for the byte with the same code
             (see :func:`parsefile`), so the strings must not contain
             characters above U+00FF, which raise an

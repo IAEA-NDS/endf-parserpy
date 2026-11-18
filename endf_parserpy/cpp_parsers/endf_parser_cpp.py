@@ -432,6 +432,9 @@ class EndfParserCpp(EndfParserBase):
             This argument can be either a list of strings with each
             string storing a single line, or a string containing
             all ENDF-6 formatted data including linebreaks.
+            A line of the list may end with its line ending
+            (``"\\n"``, ``"\\r\\n"`` or ``"\\r"``), e.g. the lines
+            returned by ``readlines()``.
             Each character stands for the byte with the same code
             (see :func:`parsefile`), so the strings must not contain
             characters above U+00FF, which raise an
@@ -458,7 +461,7 @@ class EndfParserCpp(EndfParserBase):
         # find in the selection (see _normalize_section_selection)
         exclude, include = _normalize_section_selections(exclude, include)
         if isinstance(lines, list):
-            lines = "\n".join(lines)
+            lines = _join_lines(lines)
         # (the list is created before the call, see parsefile)
         tolerated = []
         result = self._parse_endf(
@@ -477,7 +480,7 @@ class EndfParserCpp(EndfParserBase):
         # see parse
         exclude, include = _normalize_section_selections(exclude, include)
         if isinstance(lines, list):
-            lines = "\n".join(lines)
+            lines = _join_lines(lines)
         tolerated = []
         result = self._parse_endf(
             lines, exclude, include, self._cpp_read_opts, tolerated
@@ -676,6 +679,19 @@ class EndfParserCpp(EndfParserBase):
                 path, endf_dict, exclude, include, self._cpp_write_opts
             ),
         )
+
+
+def _join_lines(lines):
+    """The lines of a list as one string for the C++ module, each line
+    without its line ending (a final ``"\\n"``, ``"\\r\\n"`` or ``"\\r"``),
+    as EndfParserPy reads the lines of a list (see _line_columns), e.g.
+    those of ``readlines()``: otherwise a line ending in the list and the
+    one added between the lines gave an empty line, a blank line for the
+    module. An element without characters is a blank line."""
+    return "\n".join(
+        line[:-1] if line.endswith("\r") else line
+        for line in (line[:-1] if line.endswith("\n") else line for line in lines)
+    )
 
 
 def _warn_after_parse(entries, source):

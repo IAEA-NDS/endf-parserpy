@@ -55,7 +55,9 @@ kept as lists of raw strings:
 Because each material is an ordinary dictionary, modifying the
 data before writing it back is a plain assignment. To change,
 for instance, the atomic weight ratio in the MF1/MT451 section
-of the first material:
+of the first material, which must have been parsed (with
+``include=[3]`` above, MF1/MT451 is a list of raw strings and the
+assignment raises a :exc:`TypeError`):
 
 .. code:: Python
 
@@ -152,12 +154,14 @@ sections the material contains:
 
 A section is addressed on a material by an ``(MF, MT)`` pair.
 Accessing it parses that section and returns it as a
-dictionary; a section for which no recipe exists is returned
-as a list of raw strings instead:
+mapping; a section for which no recipe exists is returned
+as a list of raw strings instead. By default, the mapping is a
+read-only view of the section (see :ref:`below <multimaterial_editing_sec>`
+for how to change it):
 
 .. code:: Python
 
-   section = endf_file[0][3, 2]       # parsed MF=3/MT=2 section, a dict
+   section = endf_file[0][3, 2]       # parsed MF=3/MT=2 section, a read-only mapping
 
 A whole material can also be lifted out of the tape as an
 ordinary single-material tape dictionary with the
@@ -169,10 +173,16 @@ the parser's writer or to :func:`~endf_parserpy.write_tape`:
 
 .. code:: Python
 
+   from endf_parserpy import EndfParserPy
+   parser = EndfParserPy()
    material_dict = endf_file[0].to_tape_dict()   # one material as a tape dict
    text = parser.write(material_dict)            # render it on its own
 
 The result is a copy: changing it does not change the tape.
+The sections that have not been accessed (nor edited) are not
+parsed for it: they are lists of raw strings, as with the
+``include`` argument of the parsers, and the tape head is a list of
+raw strings as well.
 
 Because the same material number (``MAT``) may occur several
 times on a tape (a PENDF tape repeats it for every
@@ -223,12 +233,18 @@ added material:
 .. code:: Python
 
    donor = parse_tape_file('other.endf')[0]            # a material dictionary
-   mat = donor[1][451]['MAT']                          # the MAT it carries
-   new_material = endf_file.append_material(donor, mat=mat)
+   mt451 = donor[1][451]
+   new_material = endf_file.append_material(
+       donor, mat=mt451['MAT'], za=mt451['ZA'], awr=mt451['AWR']
+   )
 
 The ``mat`` argument must equal the MAT number the material
 carries in its own records; it is rejected otherwise, since the
 records, not the argument, are what gets written to the tape.
+The ``za`` and ``awr`` arguments are not derived from the material:
+without them, the ``za`` and ``awr`` of the new
+:class:`~endf_parserpy.tape.MaterialView` are ``None``, and
+:meth:`~endf_parserpy.EndfFile.by_za` does not find the material.
 
 The materials can be reordered by passing a permutation of
 their positions to :meth:`~endf_parserpy.EndfFile.reorder`:
@@ -440,6 +456,8 @@ no nested form: its
 :meth:`~endf_parserpy.tape.MaterialView.to_tape_list` returns it as a
 single-material tape in the list form.
 
+.. _multimaterial_editing_sec:
+
 A retrieved section is not a plain dictionary but a *view* over
 the tape, and what that view permits is governed by the
 ``check_edits`` argument of the :class:`~endf_parserpy.EndfFile`
@@ -489,7 +507,8 @@ array as a *read-only* numpy array that shares its data with the
 tape's copy of the section (no data is copied). Changing it in
 place, e.g. ``section['xstable/xs'][0] = 1.5`` or
 ``section['xstable/xs'] *= 2``, therefore raises numpy's
-``ValueError: assignment destination is read-only`` in both modes,
+``ValueError: assignment destination is read-only`` (for the element)
+or ``ValueError: output array is read-only`` (for ``*=``) in both modes,
 rather than silently changing data that would not be written out.
 To change an array, use one of the following:
 
@@ -545,14 +564,20 @@ files in parallel:
    from functools import partial
    from endf_parserpy import EndfParserFactory, EndfFile
 
-   parser = EndfParserFactory.create(select='fastest')
-
    def material_count(path, parser):
        return path, len(EndfFile(path, parser=parser))
 
-   with ProcessPoolExecutor() as pool:
-       worker = partial(material_count, parser=parser)  # parser is pickled
-       counts = dict(pool.map(worker, library_files))
+   if __name__ == "__main__":
+       parser = EndfParserFactory.create(select='fastest')
+       library_files = ['tape1.endf', 'tape2.endf']    # the files to scan
+       with ProcessPoolExecutor() as pool:
+           worker = partial(material_count, parser=parser)  # parser is pickled
+           counts = dict(pool.map(worker, library_files))
+       print(counts)
+
+The ``if __name__ == "__main__":`` guard is needed where the worker
+processes are started by *spawning* a new interpreter that imports the
+script, as on Windows and macOS.
 
 .. tip::
 

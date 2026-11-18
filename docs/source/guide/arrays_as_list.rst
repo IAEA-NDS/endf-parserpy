@@ -86,8 +86,11 @@ If you are using the ``array_type="list"`` option, be aware of the following:
   especially if you want to manipulate ENDF data through it, ensure
   to initialize it with the ``array_type="list"`` argument, e.g.,
   ``endf_dict = EndfDict(orig_endf_dict, array_type="list")``.
-  If you forget this extra argument, intuitive assignments, such as
-  ``endf_dict['1/451/MOD/3'] = 4`` won't work and will yield an error message.
+  If you forget this extra argument, reading and changing existing
+  elements, such as ``endf_dict['1/451/MOD/3'] = 4``, still works, but
+  assignments that append an element to a list or create a new one,
+  e.g. ``endf_dict['1/451/MOD/115'] = 4`` for a list with 115
+  elements, fail with an error message.
 
 
 .. _arrays_as_numpy_sec:
@@ -156,11 +159,16 @@ accepted for integer fields, and numpy arrays of any integer or float type
 for float fields, as well as numpy scalars of these types.
 
 :ref:`EndfPath notation <endf_path_class>`, the
-:ref:`EndfDict <endf_dict_class>` class (initialized with
-``array_type="list"``, see above) and asterisks in paths work with
-such data as with data parsed with ``array_type="list"``, also for
-elements inside a numpy array, e.g. ``6/5/subsection/0/b/0/1/1`` for
-an element of the two-dimensional array ``b[0]``. Assigning to an
+:ref:`EndfDict <endf_dict_class>` class and asterisks in paths work with
+such data as with data parsed with ``array_type="list"``,
+also for elements inside a numpy array, e.g. ``6/5/subsection/0/b/0/1/1``
+for an element of the two-dimensional array ``b[0]``, provided that
+:class:`~endf_parserpy.EndfPath` and :class:`~endf_parserpy.EndfDict`
+are created with ``array_type="list"`` (see above), e.g.
+``EndfPath("6/5/subsection/0/b/0/1/1", array_type="list").set(endf_dict, 2.0)``;
+without it, setting an element whose path passes through a list, as
+this one does (``subsection`` and ``b`` are lists), raises an
+:class:`AttributeError`. Assigning to an
 element of a numpy array changes the array in place. As numpy arrays
 have a fixed size, appending an element to them or removing one raises
 a :class:`TypeError`; assign a new array to the enclosing element

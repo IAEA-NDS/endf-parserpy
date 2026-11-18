@@ -101,7 +101,7 @@ we can compare the original file with the adjusted one:
    from endf_parserpy import compare_objects
    endf_dict1 = parser.parsefile('input.endf')
    endf_dict2 = parser.parsefile('output.endf')
-   compare_objects(endf_dict1, endf_dict2, atol=1e-6, rtol=1e-6 fail_on_diff=False)
+   compare_objects(endf_dict1, endf_dict2, atol=1e-6, rtol=1e-6, fail_on_diff=False)
 
 The reported differences should only involve the location ``3/2/xstable/xs``.
 Please also take note of the information in the
@@ -122,7 +122,7 @@ example would be:
 
 .. code:: python
 
-   endf_dict = EndfDict(parser.parsefile('input.endf', include=[(3,2)])
+   endf_dict = EndfDict(parser.parsefile('input.endf', include=[(3, 2)]))
 
 
 Removing an MF/MT section
@@ -138,29 +138,39 @@ from an ENDF-6 file:
    from endf_parserpy import EndfParserPy, EndfDict
    from endf_parserpy import update_directory
    parser = EndfParserPy()
-   endf_dict = EndfDict(parser.parsefile('input.endf', include=[])
+   endf_dict = EndfDict(parser.parsefile('input.endf', include=[(1, 451)]))
    del endf_dict['3/2']
    update_directory(endf_dict, parser)
-   parser.writefile('output.endf')
+   parser.writefile('output.endf', endf_dict)
 
-The ``include=[]`` argument causes the parser to not parse any
-MF/MT section in the ENDF-6 files and to store the raw strings
-in the dictionary instead. In this way, we ensure that all preserved
-sections are copied verbatim to the new file.
+The ``include=[(1, 451)]`` argument causes the parser to parse only
+the MF1/MT451 section and to store the raw strings of all other
+MF/MT sections in the dictionary instead. In this way, we ensure that
+all preserved sections are copied verbatim to the new file.
 The :func:`~endf_parserpy.update_directory` invocation ensures
 that line counts are properly updated in the directory listing in
-MF1/MT451 (see :endf6manshort:`60`).
+MF1/MT451 (see :endf6manshort:`60`). It needs MF1/MT451 in parsed
+form, so that this section must not be left out of ``include``.
 
 To check if everything worked as expected, we can again compare
 the input and output file:
 
 .. code:: pycon
 
+    >>> from endf_parserpy import compare_objects
     >>> endf_dict1 = parser.parsefile('input.endf', include=[])
     >>> endf_dict2 = parser.parsefile('output.endf', include=[])
-    >>> compare_objects(endf_dict1, endf_dict2, fail_on_diff=False)
+    >>> del endf_dict1[1][451], endf_dict2[1][451]
+    >>> compare_objects(endf_dict1, endf_dict2, rstrcut=75, fail_on_diff=False)
     at path /3: only obj1 contains {2}
     False
+
+The directory in MF1/MT451 differs by design and is therefore removed
+before the comparison. The argument ``rstrcut=75`` leaves the
+sequence numbers in columns 76 to 80 out of the comparison of the raw
+lines: the writer numbers the lines (``include_linenum=True`` by
+default), also those of a file without sequence numbers, such as the
+files of ENDF/B-VIII.1.
 
 .. _including_mfmt_sec:
 
@@ -173,7 +183,10 @@ basic Python functionality to manipulate the dictionaries
 for the desired effect. The resulting dictionary is then
 written to an ENDF-6 file. Assume that we want to merge the
 elastic cross sections (stored in MF3/MT2) from a file ``input1.endf``
-into another file ``input2.endf``.
+into another file ``input2.endf``, e.g. from the ENDF/B-VIII.1 file of
+Cu-63 into the ENDF/B-VIII.0 one. Both files must describe the same
+material, with the same MAT number, as the MAT number is part of every
+raw line that is copied.
 Here's the code snippet that
 implements the described actions for this case:
 
@@ -182,16 +195,18 @@ implements the described actions for this case:
    from copy import deepcopy
    from endf_parserpy import EndfParserPy, EndfDict
    from endf_parserpy import update_directory
-   endf_dict1 = parser.parsefile('input1.endf', include=[])
-   endf_dict2 = parser.parsefile('input2.endf', include=[])
+   parser = EndfParserPy()
+   endf_dict1 = parser.parsefile('input1.endf', include=[(1, 451)])
+   endf_dict2 = parser.parsefile('input2.endf', include=[(1, 451)])
    endf_dict1 = EndfDict(endf_dict1)
    endf_dict2 = EndfDict(endf_dict2)
    endf_dict2['3/2'] = deepcopy(endf_dict1['3/2'])
    update_directory(endf_dict2, parser)
    parser.writefile('output.endf', endf_dict2)
 
-The argument ``include=[]`` prevents parsing so that all sections are
-read verbatim into lists of strings. Thereby, all string
+The argument ``include=[(1, 451)]`` prevents parsing so that all
+sections except MF1/MT451, which :func:`~endf_parserpy.update_directory`
+needs, are read verbatim into lists of strings. Thereby, all string
 representations of numbers in the input files  are copied as they are to the
 output file.
 The invocation of the :func:`~copy.deepcopy` function is not really necessary.
@@ -214,6 +229,7 @@ material <endf_path_sections>`):
 .. code:: python
 
    from endf_parserpy.utils.accessories import EndfList
+   gendf_parser = EndfParserPy(endf_format="gendf")
    material1 = EndfList(gendf_parser.parsefile('input1.gendf'))
    material2 = EndfList(gendf_parser.parsefile('input2.gendf'))
    material2['3/102#1'] = deepcopy(material1['3/102#1'])
@@ -231,8 +247,9 @@ Consider the following part extracted from the
 .. code:: text
 
     for j=1 to NE:
-        [MAT, 6, MT/ 0.0, E[j] , ND[j], NA[j], NW[j], NEP[j]/
-                 {Ep[j,k], {b[m,j,k]}{m=0 to NA[j]}}{k=1 to NEP[j]} ]LIST
+        NW := NEP[j] * (NA[j]+2)
+        [MAT, 6, MT/ 0.0, E[j] , ND[j], NA[j], NW, NEP[j]/
+                 {Ep[j,k], {b[j,k,m]}{m=0 to NA[j]}}{k=1 to NEP[j]} ]LIST
     endfor
 
 

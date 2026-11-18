@@ -102,10 +102,10 @@ Reproducing the numbers
    Other changes to tracked files of the checkout mark the commit
    ``+dirty``, except those to the C++ sources that the build generates
    in the checkout.
-3. Run the measurement with the tool of the repository,
-   ``tools/benchmark_report.py``, from a directory that does not
-   contain an ``endf_parserpy`` source tree, which would be imported
-   instead of the installed package::
+3. Copy the tool of the repository, ``tools/benchmark_report.py``, into
+   a directory that does not contain an ``endf_parserpy`` source tree,
+   which would be imported instead of the installed package, and run
+   the measurement there::
 
        python benchmark_report.py measure <directory> --out my_results.json \
            --check-manifest results.json --sample results.json --pin-cpu 2

@@ -131,6 +131,13 @@ of material ``102``, run the following code:
 
    parsed_mat_dict[102][3][16].keys()
 
+which returns, for the file ``examples/data/eaf2007_abridged.endf`` of
+the source repository:
+
+.. code:: text
+
+   dict_keys(['MAT', 'MF', 'MT', 'DESCRIPTION', 'ZA', 'AWR', 'LFS', 'QM', 'QI', 'LR', 'xstable'])
+
 
 In summary, this tutorial showed how to parse a nuclear data file (EAF-2007)
 given in a legacy format by creating a custom ENDF recipe definition.

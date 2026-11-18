@@ -45,8 +45,8 @@ which yields
    positional arguments:
      {compare,convert,validate,replace,show,list-materials,update-directory,insert-text,insert-material,remove-material,explain,match}
 
-     options:
-       -h, --help            show this help message and exit
+   options:
+     -h, --help            show this help message and exit
 
 
 Basic help on subcommands, such as ``compare``, can also be obtained on the command line:
@@ -80,8 +80,15 @@ tape, run
 
    endf-cli list-materials <endf-file>
 
-which prints one line per material, with its tape position, MAT number,
-ZA and AWR.
+which prints a header line with the number of materials and then one
+line per material, with its tape position, MAT number, ZA and AWR, e.g.
+for a tape with Cu-63 and Zn-64:
+
+.. code-block:: text
+
+   tape.endf: 2 materials
+     #0  MAT=2925  ZA=29063  AWR=62.389
+     #1  MAT=3025  ZA=30064  AWR=63.38
 
 Subcommands that take an :ref:`EndfPath <endf_path_class>` (``show``,
 ``explain``, ``replace``) accept a *material-qualified* path on a
@@ -123,6 +130,18 @@ it stands alone or is followed by an MF number or by another ``#``. A
 position ``k`` of a single-material file. So ``#2`` alone is the third
 material, and the third section of a single material is ``#0/#2``.
 ``show`` lists a label that occurs several times as ``MF/MT#k``.
+
+A GENDF tape needs the option ``--endf_format gendf``, also for these
+paths, e.g.
+
+.. code-block:: bash
+
+   endf-cli show --endf_format gendf 3/102#2/IZAM am241_nuclide_production.gendf
+
+which prints ``952422.0`` for the file ``am241_nuclide_production.gendf``
+in ``tests/testdata/gendf`` of the source repository. Without the
+option, the tape is read as ENDF-6, which does not allow a label to
+occur twice in a material, and the command fails.
 
 
 Comparing
@@ -294,13 +313,16 @@ one can be done by
 
    endf-cli replace /1/451 source.endf target.endf
 
+The source and the target must have the same MAT number.
 
 Replacing content can also be done on a more fine-grained level. As an
-advanced example, a specific spingroup in MF2/MT151, can be replaced by
+advanced example, a specific spin group in MF2/MT151 of a file with
+resonance parameters in the R-matrix limited format (LRF=7), such as
+``n-017_Cl_035.endf`` of ENDF/B-VIII.1, can be replaced by
 
 .. code-block:: bash
 
-   endf-cli replace 2/151/isotope/1/range/1/spingroup/1 source.endf target.endf
+   endf-cli replace 2/151/isotope/1/range/1/j_group/1 source.endf target.endf
 
 During this fine-grained replacement, the :ref:`original string representation
 of float numbers is preserved <guide_perfect_precision>`.
@@ -391,7 +413,8 @@ The ``remove-material`` subcommand drops a material from a
    endf-cli remove-material <selector> <endf-file> ...
 
 The ``<selector>`` is a :ref:`material selector <cli_multimaterial>`
-(``#k`` or ``MAT#k``) identifying the material to remove. Several files
+(``#k`` or ``MAT#k``; a bare MAT number is not accepted here)
+identifying the material to remove. Several files
 may be given, and the material is removed from each. Removing the only
 material of a file leaves a valid, empty tape. A backup with suffix
 ``.bak`` is created unless ``-n`` is supplied.
@@ -571,8 +594,8 @@ operators, e.g. ``/3/1/ZA <= 25056 & /1/451/LRP == 1``.
 .. note::
 
    Please be aware that all :ref:`EndfPaths <endf_path_class>`
-   must start with a ``/`` character, e.g. ``/3/1/ZA``. Otherwise,
-   omitting the slash will yield an error message.
+   in the ``<MATCH-EXPR>`` must start with a ``/`` character, e.g.
+   ``/3/1/ZA``; ``3/1/ZA`` is not a valid query.
 
 
 In more detail, the order relations ``==``, ``!=``, ``>``, ``>=``, ``<``, ``<=``
@@ -588,8 +611,8 @@ expressions are also implemented. An example, showcasing the explained capabilit
 
 An advanced feature is the asterik wildcard ``*`` in an EndfPath, useful
 for finding matches within arrays of values or subsections. For instance,
-to match files whose energy mesh for the total cross section covers energies
-larger than 1 MeV, execute
+to match files whose energy mesh for the total cross section contains
+energies of 1 MeV or more, execute
 
 .. code-block:: bash
 

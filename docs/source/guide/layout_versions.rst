@@ -54,6 +54,8 @@ pin, and the flavor whose recipes a name stands for can be queried:
    # 'endf6-ext@0.19'
    resolve_endf_flavor('endf6-ext@0.19')
    # 'endf6-ext'
+   get_layout_version('gendf')
+   # None: the flavor has no layout versions
 
 As long as a layout version gives the same dictionaries as the latest
 flavor, it uses the recipes and the compiled C++ code of the flavor;

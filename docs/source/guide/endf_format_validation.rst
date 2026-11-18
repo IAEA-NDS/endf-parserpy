@@ -71,15 +71,15 @@ in the case of a format violation:
     endf_parserpy.interpreter.custom_exceptions.InvalidIntegerError:
     Here is the parser record log until failure:
 
-    -------- Line 0 -----------
+    -------- Line 2358 -----------
     Template:  [ MAT , 4 , MT / ZA , AWR , 0 , LTT , 0 , 0 ] HEAD
     Line:     " 6.415500+4 1.535920+2          0          1          0          06434 4  2"
 
-    -------- Line 1 -----------
+    -------- Line 2359 -----------
     Template:  [ MAT , 4 , MT / 0.0 , AWR ? , LI , LCT ? , 0 , 0 ] CONT
     Line:     " 0.000000+0 1.535920+2          0          2          0          06434 4  2"
 
-    -------- Line 2 -----------
+    -------- Line 2360 -----------
     Template:  [ MAT , 4 , MT / 0.0 , 0.0 , 0 , 0 , NR , NE / Eint ] TAB2
     Line:     " 1.000000+0 4.340500-3 8.478030-6-9.08196-19 0.000000+0 0.000000+06434 4  2    3"
 
@@ -91,7 +91,8 @@ that looks like a float. The output further shows the lines encountered in the
 ENDF-6 file (after ``Line:``) and which lines of an :ref:`ENDF-6 recipe <endf6_recipe_sec>`
 (after ``Template:``) they are supposed to match.
 
-The last line printed out (``Line 2``) caused the failure.
+The last line printed out (``Line 2360``, the number of the line in the
+file) caused the failure.
 From the last three numbers displayed in the string after ``Line:``,
 we see that the issue occurred in the third line of an MF=4/MT=2 section.
 The comparison of the template with the actual line of the ENDF-6 recipe
@@ -133,16 +134,18 @@ correctly formatted file by design.
 Tolerated mismatches
 --------------------
 
-With their default options, both parsers accept some values that differ
-from the values given by the ENDF-6 recipe:
+Both parsers can accept some values that differ from the values given
+by the ENDF-6 recipe; the first two of the following options are
+``True`` by default:
 
 - ``ignore_zero_mismatch=True``: a value other than zero in a field given
   as ``0`` or ``0.0`` in the recipe (kind ``zero``);
 - ``ignore_varspec_mismatch=True``: a value of a variable marked with
   ``?`` in the recipe, e.g. ``AWR?``, that differs from the value read
   before (kind ``varspec``);
-- ``ignore_number_mismatch=True`` (``False`` by default): a value other
-  than a desired number such as ``0.0?`` (kind ``number``).
+- ``ignore_number_mismatch=True``: a value other than a desired number
+  such as ``0.0?`` (kind ``number``), tolerated only if this option is
+  given.
 
 The values found in these fields are not kept, so that writing the data
 gives the values expected by the recipe instead. Each call of

@@ -99,7 +99,12 @@ Probability tables are essential for calculating
 self-shielded cross sections in the Unresolved Resonance Range (URR).
 We provide an example code demonstrating how self-shielded cross sections
 can be (approximately) calculated based on the information in an appropriately
-prepared PENDF file. We provide the code without additional explanations,
+prepared PENDF file, here ``92U_235_stripped.pendf``, a PENDF file of
+U-235 with the self-shielded cross sections in MF2/MT152 and the
+probability tables in MF2/MT153, as written by the UNRESR and PURR
+modules of NJOY2016 (no such file is part of the source repository; the code also needs
+the pandas and matplotlib packages).
+We provide the code without additional explanations,
 hoping that it will be nevertheless sufficient inspiration for people
 who are confronted with this advanced use case. Here is the code:
 
@@ -112,7 +117,6 @@ who are confronted with this advanced use case. Here is the code:
     import matplotlib.pyplot as plt
 
     parser = EndfParserCpp(endf_format="pendf", array_type="list")
-    # endf_dict = parser.parsefile("92U_235_stripped.pendf")
     endf_dict = parser.parsefile("92U_235_stripped.pendf")
     show_content(endf_dict[2][153])
     endf_dict[2][153].keys()

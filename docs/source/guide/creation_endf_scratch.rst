@@ -150,7 +150,7 @@ This instruction yields the following error message:
 
 .. code:: pycon
 
-    endf_parserpy.custom_exceptions.VariableNotFoundError:
+    endf_parserpy.interpreter.custom_exceptions.VariableNotFoundError:
     Here is the parser record log until failure:
     --------------------------------------------
     Template:  [ MAT , 1 , 451 / ZA , AWR , LRP , LFI , NLIB , NMOD ] HEAD
@@ -174,7 +174,7 @@ Based on this information, we can now add the missing variable:
 
    endf_dict['1/451/ZA'] = 1000.0 * 26 + 54  # 26054.0
 
-The alternative assignment  ``p['ZA'] = 26054.0`` would have had the same effect.
+The alternative assignment ``d['ZA'] = 26054.0`` would have had the same effect.
 One approach to completing the dictionary is calling ``parser.write(endf_dict)``
 iteratively and add each time the variable that was reported until
 the function doesn't complain anymore.
@@ -190,7 +190,7 @@ all quantities of an MF=1/MT=451 section:
     endf_dict = EndfDict()
     endf_dict['1/451'] = {}
     p = endf_dict['1/451']
-    p['MAT'] = 2654;      p['ZA'] = 26*1000. + 54
+    p['MAT'] = 2625;      p['ZA'] = 26*1000. + 54
     p['AWR'] = 53.47625 ; p['LRP'] = 2;      p['LFI'] = 0
     p['NLIB'] = 45;       p['NMOD'] = 1;     p['ELIS'] = 0.0
     p['STA'] = 0;         p['LIS'] = 0;      p['LISO'] = 0
@@ -208,7 +208,7 @@ all quantities of an MF=1/MT=451 section:
     p['HSUB/1'] = (f'----LIBPROJ-{p["NVER"]}'.ljust(22) + f'MATERIAL {p["MAT"]}').ljust(66)
     p['HSUB/2'] = '-----INCIDENT NEUTRON DATA'.ljust(66)
     p['HSUB/3'] = '------ENDF-6 FORMAT'.ljust(66)
-    p['DESCRIPTION/1'] = 'A new file is born with beautiful data!'.ljust(66)
+    p['DESCRIPTION/1'] = 'A new file is born!'.ljust(66)
     p['MFx/1'] = 1;   p['MTx/1'] = 451;  p['NCx/1'] = 5;  p['MOD/1'] = p['NMOD']
 
 
@@ -607,7 +607,7 @@ script:
 .. code:: python
 
     import numpy as np
-    covmat = np.diag([0.1, 0.2, 0.3, 0.4])
+    covmat = np.diag([0.04, 0.09, 0.16, 0.25])
 
     endf_dict['33/1'] = {}
     endf_dict['33/1/MAT'] = endf_dict['1/451/MAT']
@@ -635,6 +635,8 @@ script:
         for kp in range(k, NE):
             F[k, kp] = float(covmat[k-1, kp-1])
 
+
+.. _creating_tpid_sec:
 
 Adding the TPID record
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -720,36 +722,37 @@ This yields the following output:
 
 .. code:: text
 
-     2.605400+4 5.347625+1          2          0         45          12654 1451    1
-     0.000000+0 0.000000+0          0          0          0          62654 1451    2
-     1.000000+0 2.000000+8          0          0         10          12654 1451    3
-     0.000000+0 0.000000+0          0          0          6          32654 1451    4
-     26-FE- 54 MyLab      EVAL-JAN24 John Doe                         2654 1451    5
-     ABC-2023             DIST-FEB24 REV2-MAR24            20240315   2654 1451    6
-    ----LIBPROJ-1         MATERIAL 2654                               2654 1451    7
-    -----INCIDENT NEUTRON DATA                                        2654 1451    8
-    ------ENDF-6 FORMAT                                               2654 1451    9
-    A new file is born!                                               2654 1451   10
-                                    1        451         13          12654 1451   11
-                                    3          1          5          02654 1451   12
-                                   33          1          6          02654 1451   13
-     0.000000+0 0.000000+0          0          0          0          02654 1  099999
-     0.000000+0 0.000000+0          0          0          0          02654 0  0    0
-     2.605400+4 5.347625+1          0          0          0          02654 3  1    1
-     0.000000+0 0.000000+0          0          0          1          52654 3  1    2
-              5          2                                            2654 3  1    3
-     1.000000+0 1.000000+1 2.000000+0 1.100000+1 3.000000+0 1.200000+12654 3  1    4
-     4.000000+0 1.300000+1 5.000000+0 1.400000+1                      2654 3  1    5
-     0.000000+0 0.000000+0          0          0          0          02654 3  099999
-     0.000000+0 0.000000+0          0          0          0          02654 0  0    0
-     2.605400+4 5.347625+1          0          0          0          1265433  1    1
-     0.000000+0 0.000000+0       2654          1          0          1265433  1    2
-     0.000000+0 0.000000+0          1          5         15          5265433  1    3
-     1.000000+0 2.000000+0 3.000000+0 4.000000+0 5.000000+0 1.000000-1265433  1    4
-     0.000000+0 0.000000+0 0.000000+0 2.000000-1 0.000000+0 0.000000+0265433  1    5
-     3.000000-1 0.000000+0 4.000000-1 0.000000+0 0.000000+0 0.000000+0265433  1    6
-     0.000000+0 0.000000+0          0          0          0          0265433  099999
-     0.000000+0 0.000000+0          0          0          0          02654 0  0    0
+    some ignored description in the TPID record                          1 0  0    0
+     2.605400+4 5.347625+1          2          0         45          12625 1451    1
+     0.000000+0 0.000000+0          0          0          0          62625 1451    2
+     1.000000+0 2.000000+8          0          0         10          12625 1451    3
+     0.000000+0 0.000000+0          0          0          6          32625 1451    4
+     26-FE- 54 MyLab      EVAL-JAN24 John Doe                         2625 1451    5
+     ABC-2023             DIST-FEB24 REV2-MAR24            20240315   2625 1451    6
+    ----LIBPROJ-1         MATERIAL 2625                               2625 1451    7
+    -----INCIDENT NEUTRON DATA                                        2625 1451    8
+    ------ENDF-6 FORMAT                                               2625 1451    9
+    A new file is born!                                               2625 1451   10
+                                    1        451         13          12625 1451   11
+                                    3          1          5          02625 1451   12
+                                   33          1          6          02625 1451   13
+     0.000000+0 0.000000+0          0          0          0          02625 1  099999
+     0.000000+0 0.000000+0          0          0          0          02625 0  0    0
+     2.605400+4 5.347625+1          0          0          0          02625 3  1    1
+     0.000000+0 0.000000+0          0          0          1          52625 3  1    2
+              5          2                                            2625 3  1    3
+     1.000000+0 1.000000+1 2.000000+0 1.100000+1 3.000000+0 1.200000+12625 3  1    4
+     4.000000+0 1.300000+1 5.000000+0 1.400000+1                      2625 3  1    5
+     0.000000+0 0.000000+0          0          0          0          02625 3  099999
+     0.000000+0 0.000000+0          0          0          0          02625 0  0    0
+     2.605400+4 5.347625+1          0          0          0          1262533  1    1
+     0.000000+0 0.000000+0       2625          1          0          1262533  1    2
+     0.000000+0 0.000000+0          1          5         15          5262533  1    3
+     1.000000+0 2.000000+0 3.000000+0 4.000000+0 5.000000+0 4.000000-2262533  1    4
+     0.000000+0 0.000000+0 0.000000+0 9.000000-2 0.000000+0 0.000000+0262533  1    5
+     1.600000-1 0.000000+0 2.500000-1                                 262533  1    6
+     0.000000+0 0.000000+0          0          0          0          0262533  099999
+     0.000000+0 0.000000+0          0          0          0          02625 0  0    0
      0.000000+0 0.000000+0          0          0          0          0   0 0  0    0
      0.000000+0 0.000000+0          0          0          0          0  -1 0  0    0
 
@@ -791,7 +794,7 @@ in the following Python script:
     # definition of MF1/MT451
     endf_dict['1/451'] = {}
     p = endf_dict['1/451']
-    p['MAT'] = 2654;      p['ZA'] = 26*1000. + 54
+    p['MAT'] = 2625;      p['ZA'] = 26*1000. + 54
     p['AWR'] = 53.47625 ; p['LRP'] = 2;      p['LFI'] = 0
     p['NLIB'] = 45;       p['NMOD'] = 1;     p['ELIS'] = 0.0
     p['STA'] = 0;         p['LIS'] = 0;      p['LISO'] = 0
@@ -826,7 +829,7 @@ in the following Python script:
 
     # definition of MF33/MT1
 
-    covmat = np.diag([0.1, 0.2, 0.3, 0.4])
+    covmat = np.diag([0.04, 0.09, 0.16, 0.25])
 
     endf_dict['33/1'] = {}
     endf_dict['33/1/MAT'] = endf_dict['1/451/MAT']

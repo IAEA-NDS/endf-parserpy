@@ -94,7 +94,7 @@ is a possible form of the additional branch:
 
     """
 
-The notation ``numel := ...``` introduces a
+The notation ``numel := ...`` introduces a
 name for an expression that can be used
 as an abbreviation in record specifications.
 
@@ -128,7 +128,7 @@ option into the ENDF-6 recipe dictionary:
     new_recipe_dictionary = deepcopy(endf_recipe_dictionary)
     new_recipe_dictionary[33] = new_mf33_recipe
 
-This code snippet finds the last ``elif ... endfif`` part
+This code snippet finds the last ``elif ... endif`` part
 by regular expression matching and then introduces the
 string with the format extension just before the word ``endif``.
 We could have achieved the same by copy-pasting the
@@ -141,6 +141,7 @@ with the updated ENDF recipe dictionary to its constructor:
 
 .. code:: python
 
+   from endf_parserpy import EndfParserPy
    parser = EndfParserPy(recipes=new_recipe_dictionary)
 
 
@@ -156,6 +157,7 @@ specifying that we want to have one *NI-type subsection*:
 
 .. code:: python
 
+    from endf_parserpy import EndfDict
     endf_dict = EndfDict()
     endf_dict['33/1'] = {}
     endf_dict['33/1/MAT'] = 2625
@@ -206,11 +208,19 @@ matrices ``S`` and ``A``:
             A[k, kp] = float(myA[k-1, kp-1])
 
 
-Finally, we can output the data in the ENDF-6 format:
+Finally, we add the tape head (TPID record, see
+:ref:`the tutorial on the creation of an ENDF-6 file <creating_tpid_sec>`)
+and output the data in the ENDF-6 format:
 
 .. code:: python
 
+   endf_dict['0/0/MAT'] = 1
+   endf_dict['0/0/TAPEDESCR'] = 'a file with an MF33 format extension'
    parser.writefile('output.endf', endf_dict)
+
+Without the tape head, ``writefile`` raises a :exc:`RuntimeError`
+(``no tape identification (TPID) record written``), unless the parser
+is created with ``ignore_missing_tpid=True``.
 
 
 Once you understand the `formal ENDF format description language

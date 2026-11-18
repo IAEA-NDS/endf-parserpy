@@ -94,8 +94,8 @@ could look something like this:
                 raise TypeError('both x and y must be a `list`')
             self._xarr.value = x
             self._yarr.value = y
-            self._nbt_arr.value = [2]
-            self._int_arr.value = [len(x)]
+            self._nbt_arr.value = [len(x)]
+            self._int_arr.value = [2]
 
         def __call__(self, xout):
             return np.interp(xout, self._xarr.value, self._yarr.value)
@@ -116,7 +116,7 @@ cross section (MF3/MT1):
    xvar = EndfVariable('3/1/xstable/E', endf_dict)
    yvar = EndfVariable('3/1/xstable/xs', endf_dict)
    int_arr = EndfVariable('3/1/xstable/INT', endf_dict)
-   nbt_arr = EndfVariable('3/1/xstable/INT', endf_dict)
+   nbt_arr = EndfVariable('3/1/xstable/NBT', endf_dict)
 
    interpobj = LinearCrossSectionInterpolation(xvar, yvar, nbt_arr, int_arr)
 
@@ -135,8 +135,12 @@ energies within the permissible energy range, e.g.
 
 .. code:: python
 
-   interp_ens = [10, 100, 1000]
+   interp_ens = [1e6, 5e6, 1e7]
    interp_xs = interpobj(interp_ens)
+
+For the Cu-63 file ``tests/testdata/n_2925_29-Cu-63.endf`` of the
+source repository, ``print(interp_xs)`` gives
+``[3.70051 3.7903  3.4701 ]`` (in barns, at the energies in eV).
 
 
 Importantly, also the energy mesh and cross sections at the mesh
@@ -148,7 +152,13 @@ points can be updated, e.g.:
    new_xs = [20, 40, 60]
    interpobj.table = (new_ens, new_xs)
 
-Because the variables used by the ``LinearCrossSectionInterpolationClass``
+after which ``endf_dict[3][1]['xstable']`` is
+
+.. code:: text
+
+   {'NBT': [3], 'INT': [2], 'E': [1, 50, 100], 'xs': [20, 40, 60]}
+
+Because the variables used by the ``LinearCrossSectionInterpolation`` class
 are :class:`~endf_parserpy.EndfVariable` objects, any adjustment performed using an
 object of that class will also lead to a corresponding update
 of the ``endf_dict``.

@@ -52,6 +52,19 @@ a JSON file.
    automatically to :class:`str` before writing them
    to a JSON file.
 
+.. note::
+
+   :func:`json.dump` cannot write numpy arrays: for data parsed with
+   ``array_type="numpy"``, it raises
+   ``TypeError: Object of type ndarray is not JSON serializable``.
+   Parse with ``array_type="dict"`` (the default) or
+   ``array_type="list"`` for a conversion to JSON.
+   Non-finite values, such as ``NaN`` and ``Inf``, are written as the
+   tokens ``NaN`` and ``Infinity``, which :func:`json.load` reads back
+   but which are not part of the JSON standard, so that other JSON
+   parsers may reject them; with ``allow_nan=False``, :func:`json.dump`
+   raises a :exc:`ValueError` for them instead.
+
 
 The reverse process, converting a JSON file to an ENDF-6 formatted file,
 is equally simple. The following code snippet accomplishes

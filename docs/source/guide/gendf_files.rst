@@ -86,7 +86,11 @@ sections; a material without them is written back from the nested form
 with its sections in ascending order.
 
 GROUPR writes the data of every temperature as a separate material with
-the same MAT number. ``parsefile`` reads one material; read a tape of
+the same MAT number. ``parsefile`` reads one material and raises an
+error for a tape of several (from :class:`~endf_parserpy.EndfParserPy`
+``No MF/MT section allowed after the MEND record: parse reads one
+material; use parse_tape ...``, from :class:`~endf_parserpy.EndfParserCpp`
+``No MF/MT section allowed after MEND/TEND record``); read a tape of
 several with ``parse_tape_file`` (a list of materials) or with
 :class:`~endf_parserpy.EndfFile`:
 
@@ -247,10 +251,6 @@ P0 component at infinite dilution:
 Limitations
 -----------
 
-- A section that occurs several times in a material cannot be addressed
-  by its MF/MT numbers in :class:`~endf_parserpy.EndfFile` (nor be
-  edited or deleted there); read the material as a list with the
-  parsers to work with such sections.
 - To write the numbers in the forms of NJOY, parse with
   ``preserve_value_strings=True``. Writing from the values with
   ``prefer_noexp=True`` and ``standard_form_on_tie=True`` gives the

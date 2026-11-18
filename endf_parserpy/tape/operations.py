@@ -117,7 +117,13 @@ def _iter_materials(lines, parser, exclude, include, on_error, source=None):
     :mod:`~endf_parserpy.utils.tolerated_mismatches`); ``source`` is the
     name of the file, if any.
     """
-    for chunk, numbers in _split_materials_with_lines(lines):
+    # blank lines are kept for a parser that rejects them, so that it
+    # rejects a blank line within a material as when parsing the material
+    # alone; a parser without the option (another class derived from
+    # EndfParserBase) gets the tapes without blank lines, as before
+    read_opts = getattr(parser, "read_opts", None) or {}
+    keep_blank_lines = read_opts.get("ignore_blank_lines", True) is False
+    for chunk, numbers in _split_materials_with_lines(lines, keep_blank_lines):
         try:
             result, mismatches = parse_and_collect(
                 parser, chunk, exclude=exclude, include=include
@@ -174,6 +180,13 @@ def iter_parse_tape(text, *, parser=None, exclude=None, include=None, on_error="
 
     Notes
     -----
+    A blank line before the tape end (TEND) record is rejected as by the
+    parser if the parser rejects blank lines (``ignore_blank_lines=False``,
+    the default): the material in which it occurs (a blank line after a
+    MEND record: the material of this record) fails with the error of the
+    parser. With ``ignore_blank_lines=True``, blank lines are dropped.
+    Lines after the TEND record are ignored.
+
     Only one material is held in parsed form at a time, so the parsed
     data does not accumulate; for a tape too large to hold in memory at
     all, parse it from disk with :func:`iter_parse_tape_file`.

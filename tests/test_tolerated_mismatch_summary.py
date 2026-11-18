@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/11
-# Last modified:   2026/11/11
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -494,11 +494,14 @@ def test_parse_tape_file_reports_file_lines(ParserCls, tmp_path):
     path = tmp_path / "tape.endf"
     text = _multi_material_tape()
     # a blank line between the materials is not part of the materials
+    # with ignore_blank_lines=True (with False, the default, it makes the
+    # first material fail, see test_tape_blank_lines)
     lines = text.split("\n")
     lines.insert(12, "")
     text = "\n".join(lines)
     path.write_text(text)
-    _, found = _tolerated(parse_tape_file, path, parser=ParserCls())
+    parser = ParserCls(ignore_blank_lines=True)
+    _, found = _tolerated(parse_tape_file, path, parser=parser)
     assert [w.source for w in found] == [str(path)] * 2
     mismatches = [m for w in found for m in w.mismatches]
     assert mismatches == [

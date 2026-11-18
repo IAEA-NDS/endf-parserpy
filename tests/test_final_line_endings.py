@@ -159,11 +159,6 @@ def test_tape_layer_rejects_blank_line_in_the_middle(files, cls):
     assert "blank line" in err.value.detail.lower()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="the material splitter of parse_tape/parse_tape_file drops all "
-    "blank lines, also within a section, before the parser sees them",
-)
 @pytest.mark.parametrize("cls", (EndfParserPy, EndfParserCpp), ids=lambda c: c.__name__)
 def test_parse_tape_file_rejects_blank_line_in_the_middle(files, cls):
     parser = cls(ignore_blank_lines=False)

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/11
+# Last modified:   2026/11/18
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -26,7 +26,7 @@ from .errors import TapeStructureError
 from .records import _control_numbers, TEND_LINE
 
 
-def split_materials(lines):
+def split_materials(lines, keep_blank_lines=False):
     """Yield single-material tapes from a multi-material ENDF tape.
 
     Parameters
@@ -35,6 +35,14 @@ def split_materials(lines):
         The lines of a (possibly multi-material) ENDF tape. May be a
         list, an open file object, or any other iterable of strings.
         Trailing line breaks are stripped.
+    keep_blank_lines : bool
+        If ``False`` (the default), blank lines are dropped. If ``True``,
+        a blank line before the tape end (TEND) record is kept in the
+        single-material tape where it occurs, so that a parser that
+        rejects blank lines (``ignore_blank_lines=False``) rejects it:
+        a blank line before the first material in the first tape (before
+        its TPID record), one after a MEND record in the tape of that
+        material. Lines after the TEND record are dropped in both cases.
 
     Yields
     ------
@@ -52,24 +60,28 @@ def split_materials(lines):
 
     Notes
     -----
-    Blank lines (e.g. padding between materials) are not preserved.
+    Without ``keep_blank_lines``, blank lines (e.g. padding between
+    materials) are not preserved.
     """
-    for chunk, _ in _split_materials_with_lines(lines):
+    for chunk, _ in _split_materials_with_lines(lines, keep_blank_lines):
         yield chunk
 
 
-def _split_materials_with_lines(lines):
+def _split_materials_with_lines(lines, keep_blank_lines=False):
     """Yield the single-material tapes of :func:`split_materials`, each
     with the list of the numbers (counting from 1) of the lines of the
     tape ``lines`` given by its lines between the TPID and the TEND
-    record."""
+    record (with ``keep_blank_lines``, the blank lines before the TPID
+    record of the first tape are not counted)."""
     line_iter = enumerate(lines, start=1)
 
     # locate the tape head (TPID): the first non-blank record
     tpid = None
+    leading = []
     for _, raw in line_iter:
         line = raw.rstrip("\r\n")
         if line.strip() == "":
+            leading.append(line)
             continue
         tpid = line
         break
@@ -83,29 +95,67 @@ def _split_materials_with_lines(lines):
             f"(found MAT={mat}, MF={mf}, MT={mt}); a multi-material tape "
             "must start with a TPID record"
         )
+    # with keep_blank_lines, the blank lines before the TPID record are
+    # given to the parser with the first material, so that the lines of
+    # the first tape are those of the file
+    head = leading + [tpid] if keep_blank_lines else [tpid]
 
     current = []
     numbers = []
+    # the number of records (non-blank lines) in current
+    records = 0
+    # with keep_blank_lines, a complete material is held back until the
+    # next record, so that blank lines after its MEND record join it
+    done = None
     for number, raw in line_iter:
         line = raw.rstrip("\r\n")
         if line.strip() == "":
-            # inter-material and padding blank lines are not preserved
+            if not keep_blank_lines:
+                # inter-material and padding blank lines are not preserved
+                continue
+            if done is not None:
+                done[0].append(line)
+                done[1].append(number)
+            else:
+                current.append(line)
+                numbers.append(number)
             continue
+        if done is not None:
+            yield head + done[0] + [TEND_LINE], done[1]
+            head = [tpid]
+            done = None
         mat, mf, mt = _control_numbers(line)
         if mat == -1:
             # tape end (TEND) record: nothing meaningful follows
             break
         current.append(line)
         numbers.append(number)
+        records += 1
         if mat == 0 and mf == 0 and mt == 0:
             # MEND record: the current material is complete
-            if len(current) > 1:
-                yield [tpid] + current + [TEND_LINE], numbers
+            if records > 1:
+                if keep_blank_lines:
+                    done = (current, numbers)
+                else:
+                    yield head + current + [TEND_LINE], numbers
+                    head = [tpid]
+            elif keep_blank_lines and len(current) > 1:
+                # only blank lines before a MEND record: rejected by
+                # the parser as a material with these lines
+                done = (current, numbers)
             current = []
             numbers = []
+            records = 0
 
-    if current:
+    if done is not None:
+        yield head + done[0] + [TEND_LINE], done[1]
+    if records:
         raise TapeStructureError(
             "the tape ends in the middle of a material; the final "
             "MEND or TEND record is missing"
         )
+    if keep_blank_lines and current:
+        # blank lines before the TEND record and after the last MEND
+        # record without a material to join: given to the parser as a
+        # tape of their own, which it rejects
+        yield head + current + [TEND_LINE], numbers

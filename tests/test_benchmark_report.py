@@ -187,6 +187,10 @@ def _results():
 def test_placeholder_results_schema():
     results = br.load_results(str(PLACEHOLDER))
     assert results["format"] == br.FORMAT
+    # the placeholder is in format 1, with the list of ignored entries,
+    # which is still read
+    assert results["format_version"] == 1
+    assert isinstance(results["ignored"], list)
     assert results["placeholder"] is True
     # no absolute paths
     text = PLACEHOLDER.read_text(encoding="utf-8")
@@ -194,6 +198,88 @@ def test_placeholder_results_schema():
         assert not os.path.isabs(f["path"])
     assert str(REPO_ROOT) not in text
     assert "/tmp/" not in text and "/home/" not in text
+
+
+def test_format_versions():
+    old = _results()
+    assert old["format_version"] == 1
+    new = br.strip_ignored(copy.deepcopy(old))
+    br.validate_results(new)
+    # format 2 has no list of ignored entries, format 1 needs it
+    with_list = dict(new, ignored=[])
+    with pytest.raises(ValueError, match="not recorded from format 2 on"):
+        br.validate_results(with_list)
+    without = copy.deepcopy(old)
+    del without["ignored"]
+    with pytest.raises(ValueError, match="format 1"):
+        br.validate_results(without)
+    with pytest.raises(ValueError, match="newer"):
+        br.validate_results(dict(new, format_version=br.FORMAT_VERSION + 1))
+    # both formats give the same tables and README sentence
+    for render in (
+        br.render_summary,
+        lambda r: br.render_method(r, "performance/"),
+        br.render_machine,
+        br.render_by_sublibrary,
+        lambda r: br.render_by_size(r, "performance/"),
+        br.render_memory,
+        br.readme_sentence,
+    ):
+        assert render(old) == render(new)
+
+
+def _strip_ignored(src, out):
+    return subprocess.run(
+        [sys.executable, str(TOOL), "strip-ignored", str(src), "--out", str(out)],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_strip_ignored(tmp_path):
+    src = tmp_path / "old.json"
+    shutil.copyfile(PLACEHOLDER, src)
+    old_text = src.read_text(encoding="utf-8")
+    old = json.loads(old_text)
+    assert old["ignored"]
+    outputs = []
+    for name in ("one.json", "two.json"):
+        proc = _strip_ignored(src, tmp_path / name)
+        assert proc.returncode == 0, proc.stderr
+        outputs.append((tmp_path / name).read_bytes())
+    # deterministic, and the input is not changed
+    assert outputs[0] == outputs[1]
+    assert src.read_text(encoding="utf-8") == old_text
+    new_text = outputs[0].decode("utf-8")
+    new = json.loads(new_text)
+    # only the list of ignored entries is removed and the version set
+    assert new["format_version"] == 2
+    assert "ignored" not in new
+    expected = {k: v for k, v in old.items() if k != "ignored"}
+    expected["format_version"] = 2
+    assert new == expected
+    assert list(new) == list(expected)
+    # the layout is kept: the text is that of the input without the lines
+    # of the list and with the line of the version changed
+    old_lines = old_text.split("\n")
+    start = old_lines.index('  "ignored": [')
+    end = old_lines.index("  ],", start)
+    version = old_lines.index('  "format_version": 1,')
+    old_lines[version] = '  "format_version": 2,'
+    assert new_text.split("\n") == old_lines[:start] + old_lines[end + 1 :]
+    # no names of ignored entries remain
+    for entry in old["ignored"]:
+        assert entry["path"] not in new_text
+    # a file of format 2 is not converted again
+    proc = _strip_ignored(tmp_path / "one.json", tmp_path / "three.json")
+    assert proc.returncode != 0 and "format 2, not 1" in proc.stderr
+    assert not (tmp_path / "three.json").exists()
+    # nor a file in another layout, whose lines would change
+    other = tmp_path / "other.json"
+    other.write_text(json.dumps(old, indent=4), encoding="utf-8")
+    proc = _strip_ignored(other, tmp_path / "four.json")
+    assert proc.returncode != 0 and "layout" in proc.stderr
+    assert not (tmp_path / "four.json").exists()
 
 
 def test_schema_errors():
@@ -691,13 +777,14 @@ def _measure(tmp_path, *options):
 
 def _check_measured(results):
     assert results["rounds_completed"] == 1 and results["finished"]
+    # the ignored README.txt is not recorded, not even its name
+    assert results["format_version"] == 2
+    assert "ignored" not in results
+    assert "README" not in json.dumps(results)
     assert [f["path"] for f in results["manifest"]] == [
         "decay-version.VIII.1/dec-094_Pu_244.endf",
         "nfy-version.VIII.1/broken.endf",
         "nfy-version.VIII.1/dec-094_Pu_244.endf",
-    ]
-    assert results["ignored"] == [
-        {"path": "decay-version.VIII.1/README.txt", "reason": "not an .endf file"}
     ]
     assert [e["path"] for e in results["excluded"]] == [
         "nfy-version.VIII.1/broken.endf"
@@ -714,8 +801,10 @@ def _check_measured(results):
 
 def test_measure_smoke(tmp_path):
     pytest.importorskip("endf_parserpy.cpp_parsers._flavors")
-    results, _ = _measure(tmp_path, "--modes", "numpy")
+    results, proc = _measure(tmp_path, "--modes", "numpy")
     _check_measured(results)
+    assert "1 entries ignored (not an .endf file: 1)" in proc.stdout
+    assert "README" not in (tmp_path / "results.json").read_text(encoding="utf-8")
     assert sorted(results["cells"]) == ["cpp/numpy", "py/numpy"]
     if results["memory_method"] is not None:
         for cell in results["cells"].values():
@@ -739,6 +828,28 @@ def test_measure_smoke(tmp_path):
     assert results["manifest_check"]["identical"]
     assert results["sample"]["source"] == "reused"
     assert results["memory_method"] is None
+    # a published results file of format 1 is read as well
+    old = json.loads(published.read_text(encoding="utf-8"))
+    old["format_version"] = 1
+    old["ignored"] = [
+        {"path": "decay-version.VIII.1/README.txt", "reason": "not an .endf file"}
+    ]
+    published.write_text(br._dump(old) + "\n", encoding="utf-8")
+    results, proc = _measure(
+        tmp_path,
+        "--modes",
+        "numpy",
+        "--parsers",
+        "cpp",
+        "--no-memory",
+        "--check-manifest",
+        str(published),
+        "--sample",
+        str(published),
+    )
+    assert results["manifest_check"]["identical"]
+    assert results["sample"]["source"] == "reused"
+    assert "ignored" not in results
 
 
 @pytest.mark.exhaustive

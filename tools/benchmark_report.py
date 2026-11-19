@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/18
+# Last modified:   2026/11/19
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -21,6 +21,7 @@ usage:
       [--modes dict,list,numpy] [--max-py-seconds-per-file S]
   python tools/benchmark_report.py render results.json --out-dir docs/source/performance/
   python tools/benchmark_report.py readme-sentence results.json
+  python tools/benchmark_report.py strip-ignored old.json --out new.json
 
 ``measure`` takes the directory that contains the sublibraries as
 distributed by the NNDC (``neutrons-version.VIII.1``, ...), and measures
@@ -32,12 +33,19 @@ file cache, and then the peak memory in a separate pass. The results
 file holds every time, the machine and software record, the manifest
 of the files used (path, size, sha256) and the sample, so that another
 person can check their data against it (``--check-manifest``) and reuse
-the sample (``--sample``).
+the sample (``--sample``). The other entries of the directory are
+skipped and only counted on the terminal; their names are not recorded.
 
 ``render`` writes the tables of the page as RST include files, the chart
 (it needs matplotlib, ``measure`` does not) and a copy of the results
 file. ``readme-sentence`` prints the sentence of the Performance section
-of the README from the same results file.
+of the README from the same results file. Both read the results files of
+format 1 and 2.
+
+``strip-ignored`` converts a results file of format 1, which listed the
+ignored entries of the directory by name, to format 2: it removes the
+list ``ignored`` and sets ``format_version`` to 2, and changes nothing
+else, also not the layout of the file.
 
 For reproducible numbers: an idle machine on AC power, the CPU pinned
 (``--pin-cpu``), and the package installed, not a source tree in the
@@ -65,7 +73,9 @@ import warnings
 
 
 FORMAT = "endf-parserpy-benchmark"
-FORMAT_VERSION = 1
+# 2: no list of the ignored entries of the library directory (format 1
+# had ``ignored``, a list of their paths and reasons)
+FORMAT_VERSION = 2
 
 PARSERS = ("cpp", "py")
 PARSER_CLASSES = {"cpp": "EndfParserCpp", "py": "EndfParserPy"}
@@ -1017,10 +1027,20 @@ def measure(args):
         {k: f[k] for k in ("path", "sublibrary", "size", "sha256")} for f in files
     ]
     total = sum(f["size"] for f in files)
+    # the ignored entries are only counted here: their names (the user's
+    # own files next to the data, for example) are not recorded
+    reasons = {}
+    for entry in ignored:
+        reasons[entry["reason"]] = reasons.get(entry["reason"], 0) + 1
     print(
         f"{len(files)} ENDF files ({total / MB:.1f} MB) in "
         f"{len(set(f['sublibrary'] for f in files))} sublibraries, "
         f"{len(ignored)} entries ignored"
+        + (
+            " (" + ", ".join(f"{r}: {n}" for r, n in sorted(reasons.items())) + ")"
+            if reasons
+            else ""
+        )
     )
 
     manifest_check = None
@@ -1091,7 +1111,6 @@ def measure(args):
         "software": software_record(location),
         "load_average": {"start": load_start, "end": None},
         "manifest": manifest,
-        "ignored": ignored,
         "manifest_check": manifest_check,
         "sample": {
             "source": sample["source"],
@@ -1283,6 +1302,38 @@ def write_results(path, results):
     os.replace(tmp, path)
 
 
+def strip_ignored(results):
+    """A results file of format 1 in format 2: without the list
+    ``ignored`` of the entries of the directory that are not ENDF files
+    of a sublibrary, and with ``format_version`` 2. Everything else,
+    including the order of the keys, is unchanged."""
+    validate_results(results)
+    if results["format_version"] != 1:
+        raise ValueError(
+            f"the results are in format {results['format_version']}, not 1"
+        )
+    stripped = {k: v for k, v in results.items() if k != "ignored"}
+    stripped["format_version"] = 2
+    validate_results(stripped)
+    return stripped
+
+
+def strip_ignored_file(path, out):
+    """``strip-ignored``: convert the results file ``path`` of format 1
+    to format 2 in ``out``. The input must be in the layout that
+    ``measure`` writes, so that the output differs from it only by the
+    removed lines and the line of ``format_version``."""
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    results = json.loads(text)
+    if _dump(results) + "\n" != text:
+        raise ValueError(
+            f"{path} is not in the layout that measure writes; "
+            "it is not converted, so that its other lines stay unchanged"
+        )
+    write_results(out, strip_ignored(results))
+
+
 def load_results(path):
     with open(path, encoding="utf-8") as f:
         results = json.load(f)
@@ -1301,7 +1352,6 @@ _TOP_LEVEL = {
     "software": dict,
     "load_average": dict,
     "manifest": list,
-    "ignored": list,
     "sample": dict,
     "excluded": list,
     "warnings": dict,
@@ -1322,6 +1372,13 @@ def validate_results(results):
         problems.append(f"format is not {FORMAT!r}")
     if results["format_version"] > FORMAT_VERSION:
         problems.append(f"format_version {results['format_version']} is newer")
+    elif results["format_version"] < 1:
+        problems.append(f"format_version {results['format_version']} is unknown")
+    elif results["format_version"] == 1:
+        if not isinstance(results.get("ignored"), list):
+            problems.append("ignored: missing or not a list (format 1)")
+    elif "ignored" in results:
+        problems.append("ignored: not recorded from format 2 on (see strip-ignored)")
     paths = set()
     for f in results["manifest"]:
         if set(f) != {"path", "sublibrary", "size", "sha256"}:
@@ -2047,6 +2104,14 @@ def main(argv=None):
     p = sub.add_parser("readme-sentence", help="print the sentence of the README")
     p.add_argument("results")
 
+    p = sub.add_parser(
+        "strip-ignored",
+        help="convert a results file of format 1 to format 2 (without the "
+        "names of the ignored entries)",
+    )
+    p.add_argument("results")
+    p.add_argument("--out", required=True)
+
     p = sub.add_parser("_worker")
     p.add_argument("parser", choices=PARSERS)
     p.add_argument("mode", choices=MODES)
@@ -2064,6 +2129,12 @@ def main(argv=None):
         if results.get("placeholder"):
             print("warning: the results are a placeholder", file=sys.stderr)
         print(_wrap(readme_sentence(results)))
+    elif args.command == "strip-ignored":
+        try:
+            strip_ignored_file(args.results, args.out)
+        except ValueError as exc:
+            raise SystemExit(f"error: {exc}")
+        print(f"written {args.out} (format 2)")
     elif args.command == "_worker":
         worker_main(args)
 

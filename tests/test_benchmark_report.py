@@ -13,6 +13,8 @@
 Performance page, on the test data and synthetic directories (without
 the ENDF/B-VIII.1 data)."""
 
+import argparse
+import ast
 import copy
 import datetime
 import importlib.util
@@ -376,6 +378,84 @@ def test_dump_is_json():
     assert json.loads(br._dump(results)) == results
 
 
+# --- the line endings -------------------------------------------------
+
+
+def _text_writes(tree):
+    """The calls of ``open`` and ``os.fdopen`` in ``tree`` that open a
+    file for writing in text mode."""
+    calls = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        name = func.id if isinstance(func, ast.Name) else getattr(func, "attr", None)
+        if name not in ("open", "fdopen"):
+            continue
+        mode = node.args[1] if len(node.args) > 1 else None
+        for kw in node.keywords:
+            if kw.arg == "mode":
+                mode = kw.value
+        if not isinstance(mode, ast.Constant) or not isinstance(mode.value, str):
+            continue
+        if set(mode.value) & set("wax+") and "b" not in mode.value:
+            calls.append(node)
+    return calls
+
+
+def _is_exempt(call):
+    # the null device and the files of /proc (Linux), whose line
+    # endings do not matter
+    target = call.args[0]
+    if isinstance(target, ast.Attribute) and target.attr == "devnull":
+        return True
+    return isinstance(target, ast.Constant) and str(target.value).startswith("/proc/")
+
+
+def test_every_text_write_has_lf_line_endings():
+    # on Windows, text mode writes "\r\n" for "\n" unless newline="\n";
+    # checked in the source, so that it is caught on every platform
+    tree = ast.parse(TOOL.read_text(encoding="utf-8"))
+    calls = [c for c in _text_writes(tree) if not _is_exempt(c)]
+    # write_results, the .rst files, the cleanup of the SVG, the worker
+    assert len(calls) == 4
+    for call in calls:
+        newline = [kw.value for kw in call.keywords if kw.arg == "newline"]
+        assert newline and isinstance(newline[0], ast.Constant), call.lineno
+        assert newline[0].value == "\n", call.lineno
+    # no other ways of writing text files
+    source = TOOL.read_text(encoding="utf-8")
+    assert ".write_text(" not in source
+
+
+def test_results_file_has_lf_line_endings(tmp_path):
+    results = _results()
+    path = tmp_path / "results.json"
+    br.write_results(str(path), results)
+    data = path.read_bytes()
+    assert b"\r" not in data
+    assert data == (br._dump(results) + "\n").encode("utf-8")
+
+
+def test_rendered_tables_have_lf_line_endings(tmp_path, monkeypatch):
+    # the tables without matplotlib (the chart is not drawn)
+    monkeypatch.setattr(br, "render_chart", lambda results, path: None)
+    out = tmp_path / "performance"
+    br.render(argparse.Namespace(results=str(PLACEHOLDER), out_dir=str(out)))
+    names = sorted(p.name for p in out.glob("*.rst"))
+    assert len(names) == 6
+    for name in names:
+        assert b"\r" not in (out / name).read_bytes(), name
+
+
+def test_strip_trailing_spaces(tmp_path):
+    # the cleanup of the SVG, which matplotlib writes in text mode
+    path = tmp_path / "chart.svg"
+    path.write_bytes(b"<svg>  \r\n<g/> \r\n</svg>\n")
+    br.strip_trailing_spaces(str(path))
+    assert path.read_bytes() == b"<svg>\n<g/>\n</svg>\n"
+
+
 # --- render and the README sentence -----------------------------------
 
 
@@ -411,12 +491,17 @@ def test_render_is_deterministic(tmp_path):
     }
     svg = outputs[0]["throughput_by_size.svg"].decode()
     assert "<dc:date>" not in svg
+    # "\n" as the line ending on every platform
+    for name in ("throughput_by_size.svg", "summary.rst"):
+        assert b"\r" not in outputs[0][name], name
     # the committed tables are those of the committed results (the chart
-    # depends on the version of matplotlib)
+    # depends on the version of matplotlib); a checkout on Windows may
+    # have "\r\n" in the committed files, which git converts on checkout
     committed = COMMITTED.parent
     for name, content in outputs[0].items():
         if name.endswith(".rst"):
-            assert (committed / name).read_bytes() == content, name
+            expected = (committed / name).read_bytes().replace(b"\r\n", b"\n")
+            assert expected == content, name
 
 
 def test_rendered_tables():

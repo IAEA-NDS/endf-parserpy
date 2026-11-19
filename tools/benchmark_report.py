@@ -846,7 +846,7 @@ def worker_main(args):
     """A worker process for one parser and mode: reads one command per
     line from stdin and answers with one JSON line on its stdout (the
     package's own output goes to the null device)."""
-    proto = os.fdopen(os.dup(1), "w")
+    proto = os.fdopen(os.dup(1), "w", newline="\n")
     devnull = os.open(os.devnull, os.O_WRONLY)
     os.dup2(devnull, 1)
     sys.stdout = open(os.devnull, "w")
@@ -1337,8 +1337,12 @@ def _dump(obj, indent=0):
 
 
 def write_results(path, results):
+    """Write the results file in the layout of the tool. Like every text
+    file of the tool, with "\\n" as the line ending on every platform
+    (``newline="\\n"``), so that a file written on Windows has the same
+    bytes as one written elsewhere."""
     tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
         f.write(_dump(results) + "\n")
     os.replace(tmp, path)
 
@@ -2018,11 +2022,16 @@ def render_chart(results, path):
         fig.tight_layout(rect=(0, 0.14, 1, 1))
         fig.savefig(path, format="svg", metadata={"Date": None, "Creator": None})
         plt.close(fig)
-    # without trailing spaces (which matplotlib writes in some lines), so
-    # that the committed file is the rendered one
+    strip_trailing_spaces(path)
+
+
+def strip_trailing_spaces(path):
+    """Rewrite the text file ``path`` without trailing spaces (which
+    matplotlib writes in some lines of the SVG) and with "\\n" as the
+    line ending, so that the committed chart is the rendered one."""
     with open(path, encoding="utf-8") as f:
         lines = [line.rstrip() for line in f]
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
 
 
@@ -2040,7 +2049,7 @@ def render(args):
         "memory.rst": render_memory(results),
     }
     for name, content in files.items():
-        with open(os.path.join(out, name), "w", encoding="utf-8") as f:
+        with open(os.path.join(out, name), "w", encoding="utf-8", newline="\n") as f:
             f.write(content.rstrip("\n") + "\n")
     render_chart(results, os.path.join(out, "throughput_by_size.svg"))
     target = os.path.join(out, "results.json")

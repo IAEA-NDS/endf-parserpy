@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-19
+
 ### Added
 
 - Layout versions of the flavors `endf6-ext` and `endf6`, which can be given as `endf_format` to `EndfParserPy`, `EndfParserCpp`, `EndfParserFactory.create` and `endf-cli` (`--endf_format`) to keep the layout of the dictionaries (keys, nesting, array shapes and the meaning of the values) when a later release changes the recipes of the flavor; the bare name of a flavor is always the latest layout. A version is named `<flavor>@<X.Y>` after the release X.Y whose layout it keeps, and every release adds the versions of its own number. As long as a version has the layout of the latest flavor, it is an alias of the flavor and uses its recipes and C++ module, so that the installation has no additional C++ module. `list_endf_flavors` also returns the layout versions; `resolve_endf_flavor` gives the flavor whose recipes a name stands for, and `get_layout_version` the version that a flavor currently gives (of the latest release with this layout) (all in `endf_parserpy.endf_recipes`). The versions:

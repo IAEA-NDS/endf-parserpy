@@ -19,6 +19,7 @@ import importlib.util
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -198,6 +199,22 @@ def test_placeholder_results_schema():
         assert not os.path.isabs(f["path"])
     assert str(REPO_ROOT) not in text
     assert "/tmp/" not in text and "/home/" not in text
+
+
+def test_committed_results_schema():
+    results = br.load_results(str(COMMITTED))
+    assert results["format"] == br.FORMAT
+    assert results["placeholder"] is False
+    assert results["format_version"] == 2
+    assert "ignored" not in results
+    text = COMMITTED.read_text(encoding="utf-8")
+    for f in results["manifest"]:
+        assert not os.path.isabs(f["path"])
+    assert str(REPO_ROOT) not in text
+    assert "/tmp/" not in text and "/home/" not in text
+    # the only file names are those of the measured files
+    names = set(re.findall(r'"([a-z0-9_]+-version\.[^"/]+/[^"]+)"', text))
+    assert names == {f["path"] for f in results["manifest"]}
 
 
 def test_format_versions():

@@ -1,0 +1,200 @@
+{
+  "format": "endf-parserpy-benchmark",
+  "format_version": 1,
+  "placeholder": true,
+  "library": "ENDF/B-VIII.1",
+  "started": "2026-11-17T16:57:56+00:00",
+  "finished": "2026-11-17T16:59:11+00:00",
+  "rounds_completed": 3,
+  "settings": {
+    "rounds": 3,
+    "sample_per_group": 3,
+    "size_bounds": [100000.0, 1000000.0, 10000000.0],
+    "parsers": ["cpp", "py"],
+    "modes": ["dict", "list", "numpy"],
+    "sublibraries": null,
+    "memory": true,
+    "max_py_seconds_per_file": null
+  },
+  "machine": {
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz",
+    "architecture": "x86_64",
+    "base_clock_mhz": 1200,
+    "max_clock_mhz": 4700,
+    "boost": true,
+    "governor": "powersave",
+    "platform_profile": "performance",
+    "power": "AC",
+    "battery": true,
+    "ram_bytes": 33358659584,
+    "os": "Debian GNU/Linux 12 (bookworm)",
+    "kernel": "5.15.0-202-generic",
+    "pin_cpu": null
+  },
+  "software": {
+    "python": "3.11.2",
+    "python_implementation": "CPython",
+    "endf_parserpy": "0.18.0",
+    "package_location": "source tree",
+    "git_commit": "e16c324e1875161201ccaa7e3384ed1f6219f457+dirty",
+    "git_describe": "v0.18.0-227-ge16c324",
+    "numpy": "2.4.6",
+    "cpp_module": {
+      "available": true,
+      "build_info": {
+        "compiler": "gcc",
+        "compiler_version": "13.4.0",
+        "cplusplus": 201103,
+        "cpp_standard": "C++11",
+        "ndebug": true,
+        "origin": "setup.py",
+        "build_type": "Release",
+        "optimization_flags": "-O2 -O2 -O1",
+        "optimization": "-O1"
+      },
+      "simd_tier": "avx512",
+      "compiler_family": "gcc",
+      "origin": "source build"
+    }
+  },
+  "load_average": {"start": [2.82, 2.68, 2.08], "end": [2.56, 2.65, 2.12]},
+  "manifest": [
+    {
+      "path": "decay-version.VIII.1/dec-094_Pu_244.endf",
+      "sublibrary": "decay",
+      "size": 8132,
+      "sha256": "ca4ec896674e4c0bcd402b6ac74719543180da979c8c93e5aa35f1c9dc8d7173"
+    },
+    {
+      "path": "decay-version.VIII.1/dec-094_Pu_244_truncated.endf",
+      "sublibrary": "decay",
+      "size": 4560,
+      "sha256": "e1ecc52337d8dc7ad997c9e49ee572e75594d625ce06b3e73fe3531a614d01ad"
+    },
+    {
+      "path": "neutrons-version.VIII.1/n_2925_29-Cu-63.endf",
+      "sublibrary": "neutrons",
+      "size": 2034801,
+      "sha256": "0bcc0b9373a3c8c9764cc4791e0f6f70c08686315f023dfbecac04c5d2e584fd"
+    },
+    {
+      "path": "neutrons-version.VIII.1/n_3025_30-Zn-64.endf",
+      "sublibrary": "neutrons",
+      "size": 1711935,
+      "sha256": "294d9a9e9826b7c035a3783b762c365f6be74e6d2b93ffc3ab9aef17b128d884"
+    },
+    {
+      "path": "thermal_scatt-version.VIII.1/tsl_Al.endf",
+      "sublibrary": "thermal_scatt",
+      "size": 310391,
+      "sha256": "0be1ca02d565fd2446841e1401c4fbf5047befdcdc30be4b3c9de34a46a6ab58"
+    }
+  ],
+  "ignored": [
+    {"path": "neutrons-version.VIII.1/README.txt", "reason": "not an .endf file"},
+    {
+      "path": "neutrons-version.VIII.1/jeff33_13-Al-27g_mf4_mt2.endf",
+      "reason": "the first line is not a tape head"
+    }
+  ],
+  "manifest_check": null,
+  "sample": {
+    "source": "selected",
+    "per_group": 3,
+    "files": [
+      {
+        "path": "decay-version.VIII.1/dec-094_Pu_244.endf",
+        "sha256": "ca4ec896674e4c0bcd402b6ac74719543180da979c8c93e5aa35f1c9dc8d7173"
+      },
+      {
+        "path": "decay-version.VIII.1/dec-094_Pu_244_truncated.endf",
+        "sha256": "e1ecc52337d8dc7ad997c9e49ee572e75594d625ce06b3e73fe3531a614d01ad"
+      },
+      {
+        "path": "neutrons-version.VIII.1/n_2925_29-Cu-63.endf",
+        "sha256": "0bcc0b9373a3c8c9764cc4791e0f6f70c08686315f023dfbecac04c5d2e584fd"
+      },
+      {
+        "path": "neutrons-version.VIII.1/n_3025_30-Zn-64.endf",
+        "sha256": "294d9a9e9826b7c035a3783b762c365f6be74e6d2b93ffc3ab9aef17b128d884"
+      },
+      {
+        "path": "thermal_scatt-version.VIII.1/tsl_Al.endf",
+        "sha256": "0be1ca02d565fd2446841e1401c4fbf5047befdcdc30be4b3c9de34a46a6ab58"
+      }
+    ]
+  },
+  "excluded": [
+    {
+      "path": "decay-version.VIII.1/dec-094_Pu_244_truncated.endf",
+      "sublibrary": "decay",
+      "errors": [
+        {"cell": "cpp/dict", "operation": "parse", "error": "RuntimeError: Blank line detected: Correct file or use `ignore_blank_lines` option"}
+      ]
+    }
+  ],
+  "memory_method": "clear_refs",
+  "warnings": {"cpp/dict": {}, "cpp/list": {}, "cpp/numpy": {}, "py/dict": {}, "py/list": {}, "py/numpy": {}},
+  "cells": {
+    "cpp/dict": {
+      "parser": "cpp",
+      "mode": "dict",
+      "files": {
+        "decay-version.VIII.1/dec-094_Pu_244.endf": {"parse_ns": [175787, 196047, 167985], "write_ns": [149217, 169300, 142830], "bytes_written": 8667, "parse_peak": 0, "write_peak": 0},
+        "neutrons-version.VIII.1/n_2925_29-Cu-63.endf": {"parse_ns": [9902681, 11076142, 8560735], "write_ns": [17339263, 21812865, 18663685], "bytes_written": 2034801, "parse_peak": 20430848, "write_peak": 6307840},
+        "neutrons-version.VIII.1/n_3025_30-Zn-64.endf": {"parse_ns": [7622462, 8709870, 7190442], "write_ns": [14131309, 17458144, 14507153], "bytes_written": 1711935, "parse_peak": 14594048, "write_peak": 6279168},
+        "thermal_scatt-version.VIII.1/tsl_Al.endf": {"parse_ns": [648557, 852403, 721587], "write_ns": [1678478, 2024020, 1661609], "bytes_written": 310392, "parse_peak": 266240, "write_peak": 1056768}
+      }
+    },
+    "cpp/list": {
+      "parser": "cpp",
+      "mode": "list",
+      "files": {
+        "decay-version.VIII.1/dec-094_Pu_244.endf": {"parse_ns": [174867, 181944, 162892], "write_ns": [149075, 135323, 145442], "bytes_written": 8667, "parse_peak": 0, "write_peak": 0},
+        "neutrons-version.VIII.1/n_2925_29-Cu-63.endf": {"parse_ns": [6044464, 5645570, 5294230], "write_ns": [17208046, 16726085, 16974829], "bytes_written": 2034801, "parse_peak": 11509760, "write_peak": 6311936},
+        "neutrons-version.VIII.1/n_3025_30-Zn-64.endf": {"parse_ns": [3784434, 4611789, 3521617], "write_ns": [12857206, 15462470, 13632989], "bytes_written": 1711935, "parse_peak": 5672960, "write_peak": 4657152},
+        "thermal_scatt-version.VIII.1/tsl_Al.endf": {"parse_ns": [895672, 742610, 841734], "write_ns": [2070805, 2261865, 1763964], "bytes_written": 310392, "parse_peak": 266240, "write_peak": 1118208}
+      }
+    },
+    "cpp/numpy": {
+      "parser": "cpp",
+      "mode": "numpy",
+      "files": {
+        "decay-version.VIII.1/dec-094_Pu_244.endf": {"parse_ns": [216029, 175405, 197177], "write_ns": [149736, 145239, 169237], "bytes_written": 8667, "parse_peak": 0, "write_peak": 0},
+        "neutrons-version.VIII.1/n_2925_29-Cu-63.endf": {"parse_ns": [4322587, 3823361, 4323765], "write_ns": [14269408, 15758467, 17877659], "bytes_written": 2034801, "parse_peak": 4964352, "write_peak": 6459392},
+        "neutrons-version.VIII.1/n_3025_30-Zn-64.endf": {"parse_ns": [2358160, 2636550, 3036749], "write_ns": [11188640, 11243595, 13133664], "bytes_written": 1711935, "parse_peak": 3239936, "write_peak": 4927488},
+        "thermal_scatt-version.VIII.1/tsl_Al.endf": {"parse_ns": [637920, 747811, 816412], "write_ns": [1777340, 1647826, 2003719], "bytes_written": 310392, "parse_peak": 266240, "write_peak": 1118208}
+      }
+    },
+    "py/dict": {
+      "parser": "py",
+      "mode": "dict",
+      "files": {
+        "decay-version.VIII.1/dec-094_Pu_244.endf": {"parse_ns": [11385177, 8327811, 8735680], "write_ns": [4972639, 5292567, 6355925], "bytes_written": 8667, "parse_peak": 536576, "write_peak": 0},
+        "neutrons-version.VIII.1/n_2925_29-Cu-63.endf": {"parse_ns": [1155569677, 1201968487, 1189712153], "write_ns": [1395452952, 1599638255, 1419025464], "bytes_written": 2034801, "parse_peak": 24162304, "write_peak": 19460096},
+        "neutrons-version.VIII.1/n_3025_30-Zn-64.endf": {"parse_ns": [1014694122, 1154883436, 961903517], "write_ns": [1201381773, 1197081365, 1180065520], "bytes_written": 1711935, "parse_peak": 4050944, "write_peak": 4055040},
+        "thermal_scatt-version.VIII.1/tsl_Al.endf": {"parse_ns": [32113794, 29155401, 30528332], "write_ns": [55397257, 57269871, 51117559], "bytes_written": 310392, "parse_peak": 266240, "write_peak": 0}
+      }
+    },
+    "py/list": {
+      "parser": "py",
+      "mode": "list",
+      "files": {
+        "decay-version.VIII.1/dec-094_Pu_244.endf": {"parse_ns": [12098870, 7358743, 7448500], "write_ns": [5956906, 6370899, 5630619], "bytes_written": 8667, "parse_peak": 536576, "write_peak": 0},
+        "neutrons-version.VIII.1/n_2925_29-Cu-63.endf": {"parse_ns": [1260405733, 1364760926, 1460180157], "write_ns": [1781571865, 1760610103, 1946093870], "bytes_written": 2034801, "parse_peak": 18718720, "write_peak": 5672960},
+        "neutrons-version.VIII.1/n_3025_30-Zn-64.endf": {"parse_ns": [1060272481, 1055390525, 1137684723], "write_ns": [1731509835, 1667062709, 1741354245], "bytes_written": 1711935, "parse_peak": 2428928, "write_peak": 7520256},
+        "thermal_scatt-version.VIII.1/tsl_Al.endf": {"parse_ns": [32230643, 29609910, 28986527], "write_ns": [50260425, 49188422, 47833623], "bytes_written": 310392, "parse_peak": 266240, "write_peak": 0}
+      }
+    },
+    "py/numpy": {
+      "parser": "py",
+      "mode": "numpy",
+      "files": {
+        "decay-version.VIII.1/dec-094_Pu_244.endf": {"parse_ns": [12104880, 7267736, 7410240], "write_ns": [5244136, 5187854, 5372868], "bytes_written": 8667, "parse_peak": 532480, "write_peak": 0},
+        "neutrons-version.VIII.1/n_2925_29-Cu-63.endf": {"parse_ns": [1407605363, 1356133163, 1292865698], "write_ns": [1887936138, 2177685746, 1829923387], "bytes_written": 2034801, "parse_peak": 17862656, "write_peak": 8646656},
+        "neutrons-version.VIII.1/n_3025_30-Zn-64.endf": {"parse_ns": [1173526200, 1117562297, 1165146324], "write_ns": [1783870720, 1916554351, 1733293327], "bytes_written": 1711935, "parse_peak": 2158592, "write_peak": 7028736},
+        "thermal_scatt-version.VIII.1/tsl_Al.endf": {"parse_ns": [29152606, 35765221, 31609562], "write_ns": [50451407, 55326695, 48290276], "bytes_written": 310392, "parse_peak": 266240, "write_peak": 0}
+      }
+    }
+  }
+}

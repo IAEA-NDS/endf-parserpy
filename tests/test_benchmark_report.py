@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/18
+# Last modified:   2026/11/19
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -30,7 +30,10 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TOOL = REPO_ROOT / "tools" / "benchmark_report.py"
 TESTDATA = Path(__file__).resolve().parent / "testdata"
-PLACEHOLDER = REPO_ROOT / "docs" / "source" / "performance" / "results.json"
+# the results of the page, and a placeholder from the test data (the
+# first version of the page), on which the tests of the tables run
+COMMITTED = REPO_ROOT / "docs" / "source" / "performance" / "results.json"
+PLACEHOLDER = TESTDATA / "benchmark_placeholder_results.json"
 
 if not TOOL.exists():
     pytest.skip("tools/benchmark_report.py is not available", allow_module_level=True)
@@ -265,7 +268,7 @@ def test_render_is_deterministic(tmp_path):
                 sys.executable,
                 str(TOOL),
                 "render",
-                str(PLACEHOLDER),
+                str(COMMITTED),
                 "--out-dir",
                 str(out),
             ],
@@ -288,7 +291,7 @@ def test_render_is_deterministic(tmp_path):
     assert "<dc:date>" not in svg
     # the committed tables are those of the committed results (the chart
     # depends on the version of matplotlib)
-    committed = PLACEHOLDER.parent
+    committed = COMMITTED.parent
     for name, content in outputs[0].items():
         if name.endswith(".rst"):
             assert (committed / name).read_bytes() == content, name

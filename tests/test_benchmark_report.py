@@ -215,7 +215,7 @@ def test_placeholder_results_schema():
     # no absolute paths
     text = PLACEHOLDER.read_text(encoding="utf-8")
     for f in results["manifest"]:
-        assert not os.path.isabs(f["path"])
+        assert br.is_library_path(f["path"])
     assert str(REPO_ROOT) not in text
     assert "/tmp/" not in text and "/home/" not in text
 
@@ -228,7 +228,7 @@ def test_committed_results_schema():
     assert "ignored" not in results
     text = COMMITTED.read_text(encoding="utf-8")
     for f in results["manifest"]:
-        assert not os.path.isabs(f["path"])
+        assert br.is_library_path(f["path"])
     assert str(REPO_ROOT) not in text
     assert "/tmp/" not in text and "/home/" not in text
     # the only file names are those of the measured files
@@ -332,8 +332,42 @@ def test_schema_errors():
         br.validate_results(results)
     results = _results()
     results["manifest"][0]["path"] = "/abs/" + results["manifest"][0]["path"]
-    with pytest.raises(ValueError, match="relative"):
+    with pytest.raises(ValueError, match="not a relative path"):
         br.validate_results(results)
+
+
+# the paths of a results file are relative POSIX paths on every platform
+# (os.path.isabs differs: on Windows, since Python 3.13, "/x" is not
+# absolute; on Linux and macOS, "C:/x" is not)
+NOT_LIBRARY_PATHS = [
+    "/abs/x",
+    "C:/x",
+    "C:x",
+    r"\\server\share\x",
+    r"a\b",
+    "a/../b",
+    "../x",
+    "",
+]
+
+
+@pytest.mark.parametrize("path", NOT_LIBRARY_PATHS)
+def test_not_a_library_path(path):
+    assert br.is_library_path(path) is False
+    results = _results()
+    results["manifest"][0]["path"] = path
+    with pytest.raises(ValueError, match="not a relative path"):
+        br.validate_results(results)
+
+
+def test_library_path():
+    path = "neutrons-version.VIII.1/n-001_H_001.endf"
+    assert br.is_library_path(path) is True
+    results = _results()
+    results["manifest"].append(
+        {"path": path, "sublibrary": "neutrons", "size": 1, "sha256": "0"}
+    )
+    br.validate_results(results)
 
 
 def test_excluded_file_is_dropped_from_all_cells():

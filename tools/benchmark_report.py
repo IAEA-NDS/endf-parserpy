@@ -72,6 +72,7 @@ import time
 import urllib.parse
 import urllib.request
 import warnings
+from pathlib import PureWindowsPath
 
 
 FORMAT = "endf-parserpy-benchmark"
@@ -1404,6 +1405,24 @@ _TOP_LEVEL = {
 }
 
 
+def is_library_path(path):
+    """Whether ``path`` is a path of a results file: a POSIX path
+    relative to the library directory and below it, the same on every
+    platform, whatever platform measured the file. Not one that starts
+    with "/", contains "\\", has a drive (``C:``) or a component
+    "..". (``os.path.isabs`` differs by platform: on Windows, since
+    Python 3.13, "/x" is not absolute, nor is "C:x"; on Linux and macOS,
+    "C:/x" is not absolute.)"""
+    return (
+        isinstance(path, str)
+        and path != ""
+        and not path.startswith("/")
+        and "\\" not in path
+        and not PureWindowsPath(path).drive
+        and ".." not in path.split("/")
+    )
+
+
 def validate_results(results):
     """Check the schema of a results file; raises ValueError naming the
     problems."""
@@ -1430,7 +1449,7 @@ def validate_results(results):
             problems.append(f"manifest entry {f.get('path')}: wrong keys")
         elif f["sublibrary"] not in SUBLIBRARY_LABELS:
             problems.append(f"manifest entry {f['path']}: unknown sublibrary")
-        elif os.path.isabs(f["path"]) or "\\" in f["path"]:
+        elif not is_library_path(f["path"]):
             problems.append(f"manifest entry {f['path']}: not a relative path")
         paths.add(f.get("path"))
     for entry in results["sample"].get("files", []):

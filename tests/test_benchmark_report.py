@@ -44,6 +44,21 @@ br = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(br)
 
 
+def _tool_env():
+    """The environment of a process of the tool: it imports the same
+    ``endf_parserpy`` as this test process. Not the checkout by force: in
+    CI the package is installed with its C++ module, which the checkout
+    lacks (see tests/test_cli_equivalence.py)."""
+    env = dict(os.environ)
+    spec = importlib.util.find_spec("endf_parserpy")
+    if spec is not None and spec.origin:
+        pkgdir = str(Path(spec.origin).parent.parent)
+        env["PYTHONPATH"] = os.pathsep.join(
+            p for p in (pkgdir, env.get("PYTHONPATH")) if p
+        )
+    return env
+
+
 def _tape_head():
     # a tape head (TPID) of 80 columns: MAT 1, MF 0, MT 0
     return " synthetic tape".ljust(66) + "   1 0  0    0\n"
@@ -58,7 +73,9 @@ def _make_library(root, layout):
         if isinstance(content, Path):
             shutil.copyfile(content, path)
         else:
-            path.write_text(content)
+            # the same bytes on every platform
+            with open(path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(content)
     return str(root)
 
 
@@ -250,6 +267,7 @@ def _strip_ignored(src, out):
         [sys.executable, str(TOOL), "strip-ignored", str(src), "--out", str(out)],
         capture_output=True,
         text=True,
+        env=_tool_env(),
     )
 
 
@@ -377,6 +395,7 @@ def test_render_is_deterministic(tmp_path):
             ],
             check=True,
             capture_output=True,
+            env=_tool_env(),
         )
         outputs.append({p.name: p.read_bytes() for p in sorted(out.iterdir())})
     assert outputs[0] == outputs[1]
@@ -930,7 +949,6 @@ def _measure(tmp_path, *options):
         },
     )
     out = tmp_path / "results.json"
-    env = dict(os.environ, PYTHONPATH=str(REPO_ROOT))
     proc = subprocess.run(
         [
             sys.executable,
@@ -945,7 +963,7 @@ def _measure(tmp_path, *options):
         ],
         capture_output=True,
         text=True,
-        env=env,
+        env=_tool_env(),
         cwd=str(tmp_path),
     )
     assert proc.returncode == 0, proc.stderr

@@ -752,6 +752,166 @@ def test_installed_from_checkout_after_build(tmp_path, monkeypatch):
     assert f"commit {commit[:12]}\n" in br.render_machine(results)
 
 
+# --- where the package is imported from -------------------------------
+
+SITE_PACKAGES = f"lib/python{sys.version_info[0]}.{sys.version_info[1]}/site-packages"
+SOURCE_TREE_WARNING = "imported from a source tree, not the installed package"
+
+
+def _locate(
+    monkeypatch,
+    cwd,
+    package_dir,
+    purelib=None,
+    site_packages=(),
+    user_site=None,
+    path0=None,
+    git=False,
+):
+    """Make the tool see the package in ``package_dir``, with ``cwd`` as
+    the current directory, the given install directories of the
+    interpreter and, unless None, ``path0`` as the first entry of
+    ``sys.path``; with ``git``, a ``.git`` next to the package."""
+    package_dir = Path(package_dir)
+    package_dir.mkdir(parents=True)
+    (package_dir / "__init__.py").write_text("")
+    if git:
+        (package_dir.parent / ".git").mkdir()
+    Path(cwd).mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(cwd)
+    monkeypatch.setattr(br, "_package_dir", lambda: str(package_dir))
+    monkeypatch.setattr(br, "_distribution", lambda: None)
+    paths = {"purelib": str(purelib or "/nonexistent/purelib")}
+    paths["platlib"] = paths["purelib"]
+    monkeypatch.setattr(br.sysconfig, "get_paths", lambda: dict(paths))
+    monkeypatch.setattr(
+        br.site, "getsitepackages", lambda: [str(d) for d in site_packages]
+    )
+    monkeypatch.setattr(
+        br.site, "getusersitepackages", lambda: str(user_site or "/nonexistent/user")
+    )
+    if path0 is not None:
+        monkeypatch.setattr(sys, "path", [str(path0), *sys.path])
+
+
+@pytest.mark.parametrize("path0", ["script in cwd", "-c", "script elsewhere"])
+def test_venv_under_cwd_does_not_shadow(tmp_path, monkeypatch, path0):
+    # a venv in the working directory, from which the tool is run as
+    # python benchmark_report.py (sys.path[0] is the directory of the
+    # script), python -m benchmark_report (the current directory), or
+    # python -c (''), or as a script in another directory
+    site = tmp_path / "venv" / SITE_PACKAGES
+    path0 = {
+        "script in cwd": tmp_path,
+        "-c": "",
+        "script elsewhere": tmp_path / "tools",
+    }[path0]
+    _locate(monkeypatch, tmp_path, site / "endf_parserpy", purelib=site, path0=path0)
+    location = br.package_location()
+    assert location["kind"] == "installed"
+    assert location["shadows"] is False
+
+
+@pytest.mark.parametrize("path0", [None, "script in cwd", "-c"])
+def test_source_tree_in_cwd_shadows(tmp_path, monkeypatch, path0):
+    # an endf_parserpy without a .git next to it (e.g. an unpacked
+    # sdist) in the current directory, also with a venv there
+    site = tmp_path / "venv" / SITE_PACKAGES
+    path0 = {None: None, "script in cwd": tmp_path, "-c": ""}[path0]
+    _locate(
+        monkeypatch, tmp_path, tmp_path / "endf_parserpy", purelib=site, path0=path0
+    )
+    location = br.package_location()
+    assert location["kind"] == "installed"
+    assert location["shadows"] is True
+
+
+def test_source_tree_in_script_dir_shadows(tmp_path, monkeypatch):
+    # python <dir>/benchmark_report.py with <dir>/endf_parserpy, run from
+    # another directory: sys.path[0] is <dir>
+    _locate(
+        monkeypatch,
+        tmp_path / "work",
+        tmp_path / "tools" / "endf_parserpy",
+        path0=tmp_path / "tools",
+    )
+    assert br.package_location()["shadows"] is True
+
+
+def test_package_outside_cwd_does_not_shadow(tmp_path, monkeypatch):
+    _locate(
+        monkeypatch,
+        tmp_path / "work",
+        tmp_path / "elsewhere" / "endf_parserpy",
+        path0=tmp_path / "work",
+    )
+    location = br.package_location()
+    assert location["kind"] == "installed"
+    assert location["shadows"] is False
+
+
+def test_user_and_system_site_under_cwd_do_not_shadow(tmp_path, monkeypatch):
+    # pip install --user, and a system install, both under the cwd
+    user_site = tmp_path / "home" / ".local" / SITE_PACKAGES
+    _locate(monkeypatch, tmp_path, user_site / "endf_parserpy", user_site=user_site)
+    assert br.package_location()["shadows"] is False
+    system_site = tmp_path / "usr" / "lib" / "python3" / "dist-packages"
+    _locate(
+        monkeypatch,
+        tmp_path,
+        system_site / "endf_parserpy",
+        site_packages=[tmp_path / "usr" / "local" / "lib", system_site],
+    )
+    assert br.package_location()["shadows"] is False
+
+
+def test_cwd_is_site_packages(tmp_path, monkeypatch):
+    # run from site-packages itself, e.g. python -m from there
+    site = tmp_path / "venv" / SITE_PACKAGES
+    _locate(monkeypatch, site, site / "endf_parserpy", purelib=site, path0=site)
+    assert br.package_location()["shadows"] is False
+
+
+@pytest.mark.parametrize("cwd", ["checkout", "elsewhere"])
+def test_source_tree_with_git(tmp_path, monkeypatch, cwd):
+    # a checkout, by PYTHONPATH or an editable install, in or outside
+    # the current directory: a source tree, as before
+    checkout = tmp_path / "checkout"
+    _locate(monkeypatch, tmp_path / cwd, checkout / "endf_parserpy", git=True)
+    location = br.package_location()
+    assert location["kind"] == "source tree"
+    assert location["shadows"] is (cwd == "checkout")
+
+
+def _measure_stderr(tmp_path, capsys):
+    """The stderr of ``measure`` until it stops on an empty directory,
+    after the check of the package location."""
+    empty = tmp_path / "empty-library"
+    empty.mkdir()
+    capsys.readouterr()
+    with pytest.raises(SystemExit, match="no ENDF files"):
+        br.main(["measure", str(empty), "--out", str(tmp_path / "out.json")])
+    return capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "case", ["venv under cwd", "source tree in cwd", "outside cwd", "git"]
+)
+def test_measure_source_tree_warning(tmp_path, monkeypatch, capsys, case):
+    site = tmp_path / "venv" / SITE_PACKAGES
+    package_dir = {
+        "venv under cwd": site / "endf_parserpy",
+        "source tree in cwd": tmp_path / "endf_parserpy",
+        "outside cwd": tmp_path / "elsewhere" / "endf_parserpy",
+        "git": tmp_path / "elsewhere" / "checkout" / "endf_parserpy",
+    }[case]
+    cwd = tmp_path / "work" if case in ("outside cwd", "git") else tmp_path
+    _locate(monkeypatch, cwd, package_dir, purelib=site, path0=cwd, git=case == "git")
+    err = _measure_stderr(tmp_path, capsys)
+    expected = case in ("source tree in cwd", "git")
+    assert (SOURCE_TREE_WARNING in err) is expected, err
+
+
 # --- measure ----------------------------------------------------------
 
 

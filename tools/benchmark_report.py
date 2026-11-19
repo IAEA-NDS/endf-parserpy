@@ -64,8 +64,10 @@ import os
 import platform
 import re
 import shutil
+import site
 import subprocess
 import sys
+import sysconfig
 import time
 import urllib.parse
 import urllib.request
@@ -471,14 +473,53 @@ def _tool_checkout():
     return parent if os.path.exists(os.path.join(parent, ".git")) else None
 
 
+def _same_dir(a, b):
+    return os.path.normcase(os.path.realpath(a)) == os.path.normcase(
+        os.path.realpath(b)
+    )
+
+
+def _install_dirs():
+    """The directories into which this interpreter installs packages: the
+    ``purelib`` and ``platlib`` of its install scheme (those of the venv
+    in a venv), the site-packages directories and the user site-packages
+    directory."""
+    dirs = []
+    paths = sysconfig.get_paths()
+    dirs.extend(paths[key] for key in ("purelib", "platlib") if paths.get(key))
+    for get in ("getsitepackages", "getusersitepackages"):
+        try:
+            found = getattr(site, get)()
+        except Exception:
+            continue
+        dirs.extend([found] if isinstance(found, str) else found)
+    return [d for d in dirs if d]
+
+
+def _shadows_installed(package_dir):
+    """Whether the package in ``package_dir`` is one that is imported
+    instead of an installed package: it is not in an install directory
+    of the interpreter (``_install_dirs``), and it is under the current
+    directory or in the first entry of ``sys.path``, the directory of
+    the script (or the current directory for ``python -m`` and ``-c``).
+    A venv under the current directory is not such a package."""
+    parent = os.path.dirname(package_dir)
+    if any(_same_dir(parent, d) for d in _install_dirs()):
+        return False
+    if _is_under(package_dir, os.getcwd()):
+        return True
+    first = sys.path[0] if sys.path else None
+    return first is not None and _same_dir(parent, first or os.getcwd())
+
+
 def package_location():
     """Where the imported endf_parserpy is, as ``kind``: ``"source tree"``
     (a checkout, e.g. by ``PYTHONPATH`` or an editable install),
     ``"installed from a checkout"``, ``"installed from a directory"``
     (not a git checkout), ``"installed from a repository"`` (a VCS URL)
     or ``"installed"`` (e.g. a wheel from PyPI), the latter four from the
-    ``direct_url.json`` of the distribution; whether it is under the
-    current directory, which shadows an installed package; the checkout
+    ``direct_url.json`` of the distribution; whether it ``shadows`` an
+    installed package (see ``_shadows_installed``); the checkout
     for the git commit; the commit of a VCS URL; whether the installed
     files differ from the checkout (``modified``); and warnings."""
     package_dir = _package_dir()
@@ -492,7 +533,7 @@ def package_location():
         }
     else:
         location = _installed_location(package_dir)
-    location["under_cwd"] = _is_under(package_dir, os.getcwd())
+    location["shadows"] = _shadows_installed(package_dir)
     location.setdefault("modified", False)
     return location
 
@@ -1007,7 +1048,7 @@ def measure(args):
         os.sched_setaffinity(0, {args.pin_cpu})
 
     location = package_location()
-    if location["under_cwd"] or location["kind"] == "source tree":
+    if location["shadows"] or location["kind"] == "source tree":
         print(
             "warning: endf_parserpy is imported from a source tree, not the "
             "installed package",

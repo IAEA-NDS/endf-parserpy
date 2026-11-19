@@ -105,7 +105,7 @@ Reproducing the numbers
 3. Copy the tool of the repository, ``tools/benchmark_report.py``, into
    a directory that does not contain an ``endf_parserpy`` source tree,
    which would be imported instead of the installed package, and run
-   the measurement there::
+   the measurement there (a venv in that directory is fine)::
 
        python benchmark_report.py measure <directory> --out my_results.json \
            --check-manifest results.json --sample results.json --pin-cpu 2

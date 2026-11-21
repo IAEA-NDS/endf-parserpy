@@ -609,6 +609,63 @@ def test_readme_sentence():
     )
 
 
+def test_readme_sentence_complete_sublibrary(capsys):
+    results = _results()
+    neutrons = [f["path"] for f in results["manifest"] if f["sublibrary"] == "neutrons"]
+    complete = "reads the complete neutron sublibrary of ENDF/B-VIII.1 — 2 files"
+    reduced = "reads 2 files (4 MB) of the neutron sublibrary of ENDF/B-VIII.1 in "
+    # without a manifest check, the results do not tell: the sentence is
+    # unchanged, and readme-sentence warns
+    assert results["manifest_check"] is None
+    assert br.sublibrary_complete(results, "neutrons") is None
+    assert complete in br.readme_sentence(results)
+    br.main(["readme-sentence", str(PLACEHOLDER)])
+    captured = capsys.readouterr()
+    assert "no manifest check" in captured.err
+    assert "complete neutron" in captured.out
+    # an identical manifest check, or one with differences in other
+    # sublibraries only
+    check = {"missing": [], "different": [], "extra": [], "identical": True}
+    results["manifest_check"] = check
+    assert br.sublibrary_complete(results, "neutrons") is True
+    assert complete in br.readme_sentence(results)
+    results["manifest_check"] = dict(
+        check, missing=["decay-version.VIII.1/x.endf"], identical=False
+    )
+    assert br.sublibrary_complete(results, "neutrons") is True
+    assert complete in br.readme_sentence(results)
+    # a missing, different or extra neutron file: not complete
+    for key in ("missing", "different", "extra"):
+        results["manifest_check"] = dict(
+            check, **{key: ["neutrons-version.VIII.1/x.endf"]}, identical=False
+        )
+        assert br.sublibrary_complete(results, "neutrons") is False
+        sentence = br.readme_sentence(results)
+        assert "complete" not in sentence
+        assert reduced in sentence and "and writes them back" in sentence
+    # an excluded neutron file: not complete, also without a check
+    results["manifest_check"] = None
+    results["excluded"].append(
+        {
+            "path": neutrons[0],
+            "sublibrary": "neutrons",
+            "errors": [{"cell": "cpp/numpy", "operation": "parse", "error": "x"}],
+        }
+    )
+    assert br.sublibrary_complete(results, "neutrons") is False
+    assert "complete" not in br.readme_sentence(results)
+
+
+def test_empty_sample_warnings():
+    cells = {"cpp/numpy": ["a"], "py/dict": [], "py/numpy": []}
+    (text,) = br.empty_sample_warnings(cells, "results.json")
+    assert text.startswith("the cell(s) py/dict, py/numpy measure no files")
+    assert "none of the files of the sample of results.json is in the data" in text
+    (text,) = br.empty_sample_warnings(cells)
+    assert "the sample is empty" in text
+    assert br.empty_sample_warnings({"cpp/numpy": ["a"], "py/numpy": ["a"]}) == []
+
+
 def test_short_cpu_name():
     assert br.short_cpu_name("11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz") == (
         "Intel Core i7-1165G7"
@@ -1175,6 +1232,71 @@ def test_measure_smoke(tmp_path):
     assert results["manifest_check"]["identical"]
     assert results["sample"]["source"] == "reused"
     assert "ignored" not in results
+
+
+def test_measure_warns_on_empty_sample(tmp_path):
+    # the sample of the placeholder results has no file of the nfy
+    # sublibrary of _measure, so the EndfParserPy cell measures no files
+    results, proc = _measure(
+        tmp_path,
+        "--sublibraries",
+        "nfy",
+        "--modes",
+        "numpy",
+        "--parsers",
+        "py",
+        "--no-memory",
+        "--sample",
+        str(PLACEHOLDER),
+    )
+    assert results["sample"]["files"] == []
+    assert results["cells"]["py/numpy"]["files"] == {}
+    assert (
+        "warning: the cell(s) py/numpy measure no files: none of the files of "
+        f"the sample of {PLACEHOLDER} is in the data" in proc.stderr
+    )
+
+
+def test_measure_warns_on_cell_without_measured_files(tmp_path):
+    # the only file is rejected (a blank line), so the cell is empty at
+    # the end
+    root = _make_library(
+        tmp_path / "lib",
+        {
+            "nfy-version.VIII.1/broken.endf": "".join(
+                (TESTDATA / "dec-094_Pu_244.endf").read_text().splitlines(True)[:60]
+            ),
+        },
+    )
+    out = tmp_path / "results.json"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(TOOL),
+            "measure",
+            root,
+            "--out",
+            str(out),
+            "--rounds",
+            "1",
+            "--parsers",
+            "py",
+            "--modes",
+            "numpy",
+            "--no-memory",
+        ],
+        capture_output=True,
+        text=True,
+        env=_tool_env(),
+        cwd=str(tmp_path),
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "measure no files" not in proc.stderr
+    assert (
+        "warning: the cell py/numpy has no measured files: all its files are "
+        "excluded" in proc.stderr
+    )
+    assert br.load_results(str(out))["cells"]["py/numpy"]["files"] == {}
 
 
 @pytest.mark.exhaustive

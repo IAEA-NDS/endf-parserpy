@@ -39,8 +39,11 @@ skipped and only counted on the terminal; their names are not recorded.
 ``render`` writes the tables of the page as RST include files, the chart
 (it needs matplotlib, ``measure`` does not) and a copy of the results
 file. ``readme-sentence`` prints the sentence of the Performance section
-of the README from the same results file. Both read the results files of
-format 1 and 2.
+of the README from the same results file; it calls the neutron
+sublibrary complete unless the manifest check of the results
+(``--check-manifest``) or the excluded files show that it is not, and
+warns if the results record no manifest check. Both read the results
+files of format 1 and 2.
 
 ``strip-ignored`` converts a results file of format 1, which listed the
 ignored entries of the directory by name, to format 2: it removes the
@@ -1023,6 +1026,25 @@ def _estimation_file(files):
     return max(files, key=lambda f: (f["size"], f["path"]))
 
 
+def empty_sample_warnings(cell_files, sample_source=None):
+    """The warnings for the cells without files, i.e. those of
+    ``EndfParserPy`` if the sample is empty, e.g. because none of the
+    files of the sample reused from ``sample_source`` (``--sample``) is
+    in the data."""
+    empty = [key for key, paths in cell_files.items() if not paths]
+    if not empty:
+        return []
+    reason = (
+        f"none of the files of the sample of {sample_source} is in the data"
+        if sample_source
+        else "the sample is empty"
+    )
+    return [
+        f"the cell(s) {', '.join(empty)} measure no files: {reason}; "
+        "their results will be empty"
+    ]
+
+
 def measure(args):
     root = os.path.abspath(args.datadir)
     sublibraries = (
@@ -1130,6 +1152,8 @@ def measure(args):
     for parser, mode in configs:
         paths = [f["path"] for f in files] if parser == "cpp" else sample["paths"]
         cell_files[f"{parser}/{mode}"] = paths
+    for text in empty_sample_warnings(cell_files, args.sample):
+        print(f"warning: {text}", file=sys.stderr)
 
     results = {
         "format": FORMAT,
@@ -1307,6 +1331,13 @@ def measure(args):
     for cell in results["cells"].values():
         for path in errors:
             cell["files"].pop(path, None)
+    for key, cell in results["cells"].items():
+        if cell_files[key] and not cell["files"]:
+            print(
+                f"warning: the cell {key} has no measured files: all its "
+                "files are excluded (see 'excluded' in the results)",
+                file=sys.stderr,
+            )
     results["load_average"]["end"] = _load_average()
     results["finished"] = _now()
     save()
@@ -2106,9 +2137,37 @@ def _in_about(seconds):
     return f"in about {value} second{'s' if value != 1 else ''}"
 
 
+def _sublibrary_of_path(path):
+    match = SUBLIBRARY_DIR.match(path.split("/")[0])
+    return match.group(1) if match else None
+
+
+def sublibrary_complete(results, sublibrary):
+    """Whether the files measured of ``sublibrary`` are the complete
+    sublibrary of the published manifest: True if the results record a
+    manifest check (``measure --check-manifest``) without missing,
+    different or extra files of the sublibrary and no file of it is
+    excluded; False if they record one with such a file, or an excluded
+    file of the sublibrary; None if they record no manifest check (as
+    the published results, whose manifest is the reference), so that
+    the results do not tell."""
+    if any(e["sublibrary"] == sublibrary for e in results["excluded"]):
+        return False
+    check = results.get("manifest_check")
+    if check is None:
+        return None
+    for key in ("missing", "different", "extra"):
+        if any(_sublibrary_of_path(p) == sublibrary for p in check[key]):
+            return False
+    return True
+
+
 def readme_sentence(results):
     """The sentence of the Performance section of the README: the
-    neutron sublibrary with ``EndfParserCpp`` and ``array_type="numpy"``."""
+    neutron sublibrary with ``EndfParserCpp`` and ``array_type="numpy"``.
+    It calls the sublibrary complete unless :func:`sublibrary_complete`
+    is False; without a manifest check (None), the main function warns
+    that this is not verified."""
     paths = cell_paths(results, "cpp", ("neutrons",))
     t = totals(results, "cpp/numpy", paths)
     if t is None:
@@ -2124,11 +2183,19 @@ def readme_sentence(results):
     library = results.get("library") or "ENDF/B-VIII.1"
     size = t["bytes_in"]
     size_text = f"{size / 1e9:.1f} GB" if size >= 1e9 else f"{size / MB:.0f} MB"
+    if sublibrary_complete(results, "neutrons") is False:
+        what = (
+            f"{t['files']} files ({size_text}) of the neutron sublibrary of "
+            f"{library} {_in_about(t['parse'])} and writes them"
+        )
+    else:
+        what = (
+            f"the complete neutron sublibrary of {library} — {t['files']} files, "
+            f"{size_text} — {_in_about(t['parse'])} and writes it"
+        )
     return (
         f'With the C++ backend and `array_type="numpy"`, `endf-parserpy` reads '
-        f"the complete neutron sublibrary of {library} — {t['files']} files, "
-        f"{size_text} — {_in_about(t['parse'])} and writes it "
-        f"back to ENDF-6 text {_in_about(t['write'])} (single "
+        f"{what} back to ENDF-6 text {_in_about(t['write'])} (single "
         f"core of an {short_cpu_name(m['cpu'])} {kind}, warm file cache; "
         f"measured {when})."
     )
@@ -2214,6 +2281,13 @@ def main(argv=None):
         results = load_results(args.results)
         if results.get("placeholder"):
             print("warning: the results are a placeholder", file=sys.stderr)
+        if sublibrary_complete(results, "neutrons") is None:
+            print(
+                "warning: the results record no manifest check "
+                "(measure --check-manifest), so it is not verified that the "
+                "neutron sublibrary is complete",
+                file=sys.stderr,
+            )
         print(_wrap(readme_sentence(results)))
     elif args.command == "strip-ignored":
         try:

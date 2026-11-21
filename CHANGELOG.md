@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The error for `array_type="numpy"` without NumPy says how to install it (`pip install "endf-parserpy[fast]"` or `pip install numpy`), and the one for a logical expression without Lark quotes `"endf-parserpy[cli]"`, so that the command also works in shells such as zsh, which expand the brackets.
 - `tools/benchmark_report.py`: the Performance page names a measured development version as the one after the last release, e.g. "a development version of endf-parserpy after 0.18.0 (v0.18.0-268-g6daa570)" instead of "endf-parserpy 0.18.0 (development version …)", in the summary and the machine table.
+- `tools/benchmark_report.py`: `measure` warns on stderr if a cell has no files to measure, e.g. the cells of `EndfParserPy` when none of the files of the sample reused with `--sample` is in the data, and if all files of a cell are excluded; `readme-sentence` no longer calls the neutron sublibrary complete if the manifest check of the results (`--check-manifest`) shows a missing, different or extra file of it or a file of it is excluded (it then says "reads 6 files (4 MB) of the neutron sublibrary of ENDF/B-VIII.1 …", with the numbers of the measured files), and warns if the results record no manifest check.
 
 ## [0.19.0] - 2026-11-19
 

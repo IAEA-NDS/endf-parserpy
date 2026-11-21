@@ -226,6 +226,10 @@ def test_committed_results_schema():
     assert results["placeholder"] is False
     assert results["format_version"] == 2
     assert "ignored" not in results
+    # the published results are the reference (mark-reference)
+    assert results["reference"] is True
+    assert results["manifest_check"] is None
+    assert br.sublibrary_complete(results, "neutrons") is True
     text = COMMITTED.read_text(encoding="utf-8")
     for f in results["manifest"]:
         assert br.is_library_path(f["path"])

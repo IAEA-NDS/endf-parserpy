@@ -362,12 +362,17 @@ class EndfParserPy(EndfParserBase):
             format requires 11 but the user may opt for a different width
             for their storage/application needs. *(parsing, writing)*
         check_arrays : bool
-            Ensures that index ranges provided in the Python :class:`dict`
+            Ensures that index ranges of the arrays in the data
             passed as argument to the :func:`write` and :func:`writefile`
             method are consistent with the values of counter variables.
-            If ``True``, a :class:`dict` containing larger index ranges than
-            expected by counter variables will lead to failure, otherwise
-            the presence of additional indices will be ignored. *(writing)*
+            If ``True``, an array (also an array nested in another one)
+            containing larger index ranges than expected by counter
+            variables will lead to failure (an :class:`IndexError`
+            naming the first element not written), otherwise
+            the presence of additional elements will be ignored.
+            This applies to all values of ``array_type``.
+            The columns of a TAB1 or TAB2 table are written as a whole,
+            their length is the number of points or ranges. *(writing)*
         strict_datatypes : bool
             Strict data type checking will lead to failure if a `float`
             needs to be cast to an `int`. If `false`, the writing process

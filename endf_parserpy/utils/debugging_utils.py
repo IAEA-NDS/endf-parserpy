@@ -269,6 +269,15 @@ class TrackingDict(MutableMapping):
     Otherwise, it means that some elements have not been written
     to the ENDF-6 file and this situation indicates an inconsistency
     between counter variables and the index ranges of arrays.
+    A :class:`list`-like element (the arrays of ``array_type="list"``
+    and ``"numpy"``, whose numpy arrays are converted to lists before
+    writing) is returned wrapped in a
+    :class:`~endf_parserpy.utils.debugging_utils.TrackingList`, a
+    :class:`dict`-like element in a ``TrackingDict``, the same wrapper
+    at each access of the same key.
+
+    Elements can be assigned and deleted, which changes the wrapped
+    object; an assigned element counts as not accessed.
     """
 
     def __init__(self, dict_like):
@@ -348,8 +357,7 @@ class TrackingDict(MutableMapping):
         return self._basedict.__setitem__(key, value)
 
     def __delitem__(self, key):
-        if key in self._accessed:
-            self._accessed.__delitem__(key)
+        self._accessed.discard(key)
         if key in self._trackingobjs:
             self._trackingobjs.__delitem__(key)
         return self._basedict.__delitem__(key)
@@ -414,6 +422,20 @@ class TrackingList(MutableSequence):
     the wrapped list were read, so that
     :meth:`verify_complete_retrieval` can report elements
     that have not been accessed.
+
+    The tracking is applied recursively: an element that is itself
+    :class:`list`-like or :class:`dict`-like is returned wrapped in a
+    ``TrackingList`` or
+    :class:`~endf_parserpy.utils.debugging_utils.TrackingDict`, the same
+    wrapper at each access of the same index, and
+    :meth:`verify_complete_retrieval` also verifies these wrappers.
+    Reading a slice records the access of each index in it and returns
+    a :class:`list` of the (wrapped) elements. Iterating over the object
+    returns the unwrapped elements and records no access.
+
+    The elements can be changed, deleted and inserted (also via
+    ``append`` and ``extend``), which changes the wrapped list.
+    An element that is assigned or inserted counts as not accessed.
     """
 
     def __init__(self, list_like):
@@ -429,29 +451,41 @@ class TrackingList(MutableSequence):
         self._accessed = [False] * len(list_like)
 
     def __getitem__(self, key):
-        retval = self._baselist.__getitem__(key)
+        retval = self._baselist[key]
+        t = type(retval)
+        if t is float or t is int or t is str:
+            self._accessed[key] = True
+            return retval
+        if type(key) is slice:
+            return [self[i] for i in range(*key.indices(len(self._baselist)))]
         self._accessed[key] = True
+        trackobj = self._trackingobjs[key]
+        if trackobj is not None:
+            return trackobj
         if isinstance(retval, MutableSequence):
-            if key not in self._trackingobjs:
-                self._trackingobjs[key] = TrackingList(retval)
-            retval = self._trackingobjs[key]
+            trackobj = TrackingList(retval)
         elif isinstance(retval, MutableMapping):
-            if key not in self._trackingobjs:
-                self._trackingobjs[key] = TrackingDict(retval)
-            retval = self._trackingobjs[key]
-        return retval
+            trackobj = TrackingDict(retval)
+        else:
+            return retval
+        self._trackingobjs[key] = trackobj
+        return trackobj
 
     def __setitem__(self, key, value):
-        retval = self._baselist.__setitem__(key, value)
+        if isinstance(key, slice):
+            value = list(value)
+            self._baselist[key] = value
+            self._accessed[key] = [False] * len(value)
+            self._trackingobjs[key] = [None] * len(value)
+            return
+        self._baselist[key] = value
         self._accessed[key] = False
-        self._trackinglists[key] = None
-        return retval
+        self._trackingobjs[key] = None
 
     def __delitem__(self, key):
-        retval = self._baselists.__delitem__(key)
-        self._accessed.__delitem__(key)
-        self._trackinglists.__delitem__(key)
-        return retval
+        del self._baselist[key]
+        del self._accessed[key]
+        del self._trackingobjs[key]
 
     def __iter__(self):
         return self._baselist.__iter__()
@@ -460,10 +494,11 @@ class TrackingList(MutableSequence):
         return self._baselist.__len__()
 
     def insert(self, key, value):
-        retval = self._baselist.insert(key, value)
+        # the same position in the lists of the access records
+        # (insert clips an index out of range like list.insert)
+        self._baselist.insert(key, value)
         self._accessed.insert(key, False)
-        self._trackinglists.insert(key, None)
-        return retval
+        self._trackingobjs.insert(key, None)
 
     def _verify_complete_retrieval(self, path=""):
         if any(self._accessed):
@@ -476,10 +511,10 @@ class TrackingList(MutableSequence):
                         continue
                     indexpath = path + "/" + str(k)
                     raise IndexError(f"The content of {indexpath} was not accessed")
-        for k, curval in enumerate(self._baselist):
-            if isinstance(curval, (TrackingList, TrackingDict)):
+        for k, trackobj in enumerate(self._trackingobjs):
+            if trackobj is not None:
                 indexpath = path + "/" + str(k)
-                curval._verify_complete_retrieval(indexpath)
+                trackobj._verify_complete_retrieval(indexpath)
 
     def verify_complete_retrieval(self):
         """Verify that all array elements have been accessed.

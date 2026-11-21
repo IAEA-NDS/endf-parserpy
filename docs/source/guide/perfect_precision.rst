@@ -86,10 +86,10 @@ Comparisons between :class:`~endf_parserpy.EndfFloat` objects and  Python numeri
 Lossless writing with the global options
 ----------------------------------------
 
-Even without the original strings, the global formatting options
-can reproduce every value read from an ENDF file and keep the text
-of every number that is already written in the standard form
-``␣1.234567+8``. With
+To read, modify and write a file without changing any of its values,
+while working with plain :class:`float` numbers instead of
+:class:`~endf_parserpy.EndfFloat` objects, use these four writing
+options:
 
 .. code:: Python
 
@@ -101,35 +101,64 @@ of every number that is already written in the standard form
        standard_form_on_tie=True,
    )
 
-(or the same arguments of :class:`~endf_parserpy.EndfParserPy`,
-which writes the same characters), every value of all 4513 files of the
-ENDF/B-VIII.1 neutron sublibrary and of the ENDF/B-VIII.0 thermal
-scattering, decay data and electro-atomic sublibraries was written and
-read back without any change: every float equal bit for bit, and the
-integers, strings and the structure unchanged. In addition, each of the
-111,975,026 float fields of these files that is in the standard form
-kept its text. Of the 115.5 million float fields, 341,436 are written in
-decimal notation and 26,229 as integers, e.g. ``13.7740142`` or
-``218588031``, because the standard form does not represent them
-exactly, and all others in the standard form. The fields that change
-their text are those of other spellings of the same number, e.g.
-``3007.00000`` or ``1.00000E-5``, which become ``␣3.007000+3`` and
-``␣1.000000-5``, and blank fields, which become ``␣0.000000+0``.
+:class:`~endf_parserpy.EndfParserPy` takes the same arguments and
+writes the same characters. With these options:
 
-Without ``standard_form_on_tie=True``, the values are also preserved,
-but ``prefer_noexp=True`` writes numbers in decimal notation wherever
-this is as exact as the standard form (``␣3.007000+3`` becomes
-``3007``) and ``abuse_signpos=True`` writes positive numbers with eight
-digits from the first column (``3.0070000+3``): 103.8 million of the
-112.0 million fields in the standard form then change their text.
-With the default options, 367,665 float fields of these files change
-their value, because they have more than seven significant digits.
-With ``abuse_signpos=True`` and ``standard_form_on_tie=True`` only,
-282,804 still do, because they need more than eight digits, while no
-field in the standard form changes its text.
+- every value is written back exactly: a float read and written is
+  read back equal bit for bit;
+- a number written in the standard form, e.g. ``␣1.234567+8``, keeps
+  its text;
+- other spellings of the same number are written in the standard form,
+  e.g. ``3007.00000`` and ``1.00000E-5`` become ``␣3.007000+3`` and
+  ``␣1.000000-5``, and a blank field becomes ``␣0.000000+0``;
+- a number that the standard form cannot represent exactly is written
+  in decimal notation or as an integer, e.g. ``13.7740142`` or
+  ``218588031``.
 
-To keep the original text of every field, read the file with
-``preserve_value_strings=True``, as explained below.
+The options can also be used on their own or in other combinations;
+they then differ in what changes:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 30 30
+
+   * - Writing options
+     - Values
+     - Text of numbers in the standard form
+   * - the defaults
+     - numbers with more than seven significant digits are rounded
+       (about 0.3 % of the float fields of evaluated files)
+     - kept
+   * - ``abuse_signpos=True``, ``standard_form_on_tie=True``
+     - numbers with more than eight significant digits are rounded
+       (about 0.25 %)
+     - kept
+   * - ``prefer_noexp=True``, ``abuse_signpos=True``,
+       ``skip_intzero=True``
+     - kept
+     - mostly changed: written in decimal notation wherever this is as
+       exact (``␣3.007000+3`` becomes ``3007``), or with eight digits
+       from the first column (``3.0070000+3``)
+   * - all four options above
+     - kept
+     - kept
+
+``standard_form_on_tie=True`` makes the difference between the last two
+rows: the other three options then use their special forms only where
+these represent a number more closely than the standard form.
+
+This was checked on all 4513 files of the ENDF/B-VIII.1 neutron
+sublibrary and of the ENDF/B-VIII.0 thermal scattering, decay data and
+electro-atomic sublibraries, over 110 million float fields of
+evaluations from many laboratories, with the many ways of writing
+numbers they use: with all four options, no value changed. This is a
+result for these files rather than a guarantee for every possible file.
+
+The four options keep the values, not the text of every number. To
+keep the original text of every field, read the file with
+``preserve_value_strings=True``, as explained below. The values are then
+:class:`~endf_parserpy.EndfFloat` objects, which must be converted to
+:class:`float` before they can be used in arithmetic.
 
 
 Perfect precision control for writing

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/19
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -1650,14 +1650,29 @@ def _placeholder_note(results):
     ]
 
 
+def _release_before(software):
+    """The release that a development version follows, e.g. "0.18.0" for
+    the ``git describe`` "v0.18.0-268-g6daa570" of version 0.18.0, or
+    ``None`` for a release or an unknown commit."""
+    version = software["endf_parserpy"]
+    match = re.fullmatch(r"v?(.+)-\d+-g[0-9a-f]+", software.get("git_describe") or "")
+    if match and match.group(1) == version:
+        return version
+    return None
+
+
 def _measurement_line(results):
     software = results["software"]
     version = software["endf_parserpy"]
     describe = software.get("git_describe")
-    if describe and describe.lstrip("v") != version:
-        version = f"{version} (development version {describe})"
+    if _release_before(software):
+        package = f"a development version of endf-parserpy after {version} ({describe})"
+    elif describe and describe.lstrip("v") != version:
+        package = f"endf-parserpy {version} (development version {describe})"
+    else:
+        package = f"endf-parserpy {version}"
     date = results["started"][:10]
-    return f"Measured on {date} with endf-parserpy {version}."
+    return f"Measured on {date} with {package}."
 
 
 def render_summary(results):
@@ -1772,6 +1787,8 @@ def render_machine(results):
         ["numpy", text(s.get("numpy"))],
     ]
     version = s.get("endf_parserpy")
+    if _release_before(s):
+        version = f"development version after {version}"
     if s.get("git_commit"):
         commit, plus, suffix = s["git_commit"].partition("+")
         version += f", commit {commit[:12]}{plus}{suffix}"

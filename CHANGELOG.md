@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `tools/benchmark_report.py`: the Performance page names a measured development version as the one after the last release, e.g. "a development version of endf-parserpy after 0.18.0 (v0.18.0-268-g6daa570)" instead of "endf-parserpy 0.18.0 (development version …)", in the summary and the machine table.
+
 ## [0.19.0] - 2026-11-19
 
 ### Added

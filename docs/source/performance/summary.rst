@@ -107,4 +107,4 @@ sublibrary.
 
 \ :sup:`*` On the sample of 94 files (see below). \ :sup:`†` Deuterons, tritons, helium-3 and alphas, which have only a few files each, as one group.
 
-Measured on 2026-11-19 with endf-parserpy 0.18.0 (development version v0.18.0-268-g6daa570).
+Measured on 2026-11-19 with a development version of endf-parserpy after 0.18.0 (v0.18.0-268-g6daa570).

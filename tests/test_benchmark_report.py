@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/19
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -594,7 +594,18 @@ def test_readme_sentence():
         f"measured on the development version of {date.strftime('%B %Y')})."
     )
     assert br._measurement_line(results).endswith(
-        "with endf-parserpy 0.18.0 (development version v0.18.0-42-g135ffaa)."
+        "with a development version of endf-parserpy after 0.18.0 "
+        "(v0.18.0-42-g135ffaa)."
+    )
+    assert "development version after 0.18.0, commit" in br.render_machine(results)
+    # a release, and a describe that does not follow the version
+    results["software"]["git_describe"] = "v0.19.0"
+    results["software"]["endf_parserpy"] = "0.19.0"
+    assert br._measurement_line(results).endswith("with endf-parserpy 0.19.0.")
+    assert "development" not in br.render_machine(results)
+    results["software"]["git_describe"] = "v0.17.0-3-gabcdef0"
+    assert br._measurement_line(results).endswith(
+        "with endf-parserpy 0.19.0 (development version v0.17.0-3-gabcdef0)."
     )
 
 

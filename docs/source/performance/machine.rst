@@ -27,7 +27,7 @@
    * - numpy
      - 2.2.6
    * - endf-parserpy
-     - 0.18.0, commit 6daa5703acad
+     - development version after 0.18.0, commit 6daa5703acad
    * - C++ module
      - source build
    * - Compiler

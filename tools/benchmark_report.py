@@ -16,12 +16,13 @@ results for the Performance page of the documentation.
 usage:
   python tools/benchmark_report.py measure <library dir> --out results.json
       [--rounds 5] [--sample-per-group 3] [--sample results.json]
-      [--check-manifest results.json] [--pin-cpu N] [--no-memory]
-      [--sublibraries neutrons,decay,...] [--parsers cpp,py]
+      [--check-manifest results.json | --reference] [--pin-cpu N]
+      [--no-memory] [--sublibraries neutrons,decay,...] [--parsers cpp,py]
       [--modes dict,list,numpy] [--max-py-seconds-per-file S]
   python tools/benchmark_report.py render results.json --out-dir docs/source/performance/
   python tools/benchmark_report.py readme-sentence results.json
   python tools/benchmark_report.py strip-ignored old.json --out new.json
+  python tools/benchmark_report.py mark-reference old.json --out new.json
 
 ``measure`` takes the directory that contains the sublibraries as
 distributed by the NNDC (``neutrons-version.VIII.1``, ...), and measures
@@ -35,20 +36,35 @@ of the files used (path, size, sha256) and the sample, so that another
 person can check their data against it (``--check-manifest``) and reuse
 the sample (``--sample``). The other entries of the directory are
 skipped and only counted on the terminal; their names are not recorded.
+``--reference`` states that the run defines the reference, i.e. that
+its manifest is the published one; the results record it as
+``"reference": true`` (false otherwise). A reference run is not checked
+against another one, so ``--reference`` and ``--check-manifest``
+exclude each other.
 
 ``render`` writes the tables of the page as RST include files, the chart
 (it needs matplotlib, ``measure`` does not) and a copy of the results
 file. ``readme-sentence`` prints the sentence of the Performance section
 of the README from the same results file; it calls the neutron
-sublibrary complete unless the manifest check of the results
-(``--check-manifest``) or the excluded files show that it is not, and
-warns if the results record no manifest check. Both read the results
-files of format 1 and 2.
+sublibrary complete only if that is known: if the results are of a
+reference run (``--reference``) or record a manifest check
+(``--check-manifest``) without a missing, different or extra neutron
+file, and no neutron file is excluded. Otherwise it gives the number of
+files measured ("reads 6 files (4 MB) of the neutron sublibrary of
+..."), and warns if the results are neither of a reference run nor
+checked. Both read the results files of format 1 and 2, with or without
+``reference`` (a file without it is not of a reference run).
 
 ``strip-ignored`` converts a results file of format 1, which listed the
 ignored entries of the directory by name, to format 2: it removes the
 list ``ignored`` and sets ``format_version`` to 2, and changes nothing
 else, also not the layout of the file.
+
+``mark-reference`` marks a results file measured before ``--reference``
+existed as that of a reference run: it adds ``"reference": true`` before
+``manifest_check`` and changes nothing else, also not the layout of the
+file. It refuses a file that records ``reference`` already or a
+manifest check.
 
 For reproducible numbers: an idle machine on AC power, the CPU pinned
 (``--pin-cpu``), and the package installed, not a source tree in the
@@ -80,7 +96,9 @@ from pathlib import PureWindowsPath
 
 FORMAT = "endf-parserpy-benchmark"
 # 2: no list of the ignored entries of the library directory (format 1
-# had ``ignored``, a list of their paths and reasons)
+# had ``ignored``, a list of their paths and reasons). The optional
+# ``reference`` (measure --reference) needs no new version: a file
+# without it is not of a reference run, as before.
 FORMAT_VERSION = 2
 
 PARSERS = ("cpp", "py")
@@ -1177,6 +1195,7 @@ def measure(args):
         "software": software_record(location),
         "load_average": {"start": load_start, "end": None},
         "manifest": manifest,
+        "reference": bool(args.reference),
         "manifest_check": manifest_check,
         "sample": {
             "source": sample["source"],
@@ -1411,6 +1430,50 @@ def strip_ignored_file(path, out):
     write_results(out, strip_ignored(results))
 
 
+def mark_reference(results):
+    """The results of a run measured before ``measure --reference``
+    existed, marked as a reference run: with ``"reference": true``
+    before ``manifest_check`` (after ``manifest`` if there is no
+    ``manifest_check``). Everything else, including the order of the
+    other keys, is unchanged. Refuses results that record ``reference``
+    already, true or false (the run recorded what it was), or a manifest
+    check (a run checked against the reference is not one)."""
+    validate_results(results)
+    if "reference" in results:
+        raise ValueError(
+            f"the results record reference: {json.dumps(results['reference'])} "
+            "already"
+        )
+    if results.get("manifest_check") is not None:
+        raise ValueError("the results record a manifest check: not a reference run")
+    anchor = "manifest_check" if "manifest_check" in results else None
+    marked = {}
+    for key, value in results.items():
+        if key == anchor:
+            marked["reference"] = True
+        marked[key] = value
+        if anchor is None and key == "manifest":
+            marked["reference"] = True
+    validate_results(marked)
+    return marked
+
+
+def mark_reference_file(path, out):
+    """``mark-reference``: write the results file ``path`` marked as
+    that of a reference run to ``out``. The input must be in the layout
+    that ``measure`` writes, so that the output differs from it only by
+    the added line of ``reference``."""
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    results = json.loads(text)
+    if _dump(results) + "\n" != text:
+        raise ValueError(
+            f"{path} is not in the layout that measure writes; "
+            "it is not marked, so that its other lines stay unchanged"
+        )
+    write_results(out, mark_reference(results))
+
+
 def load_results(path):
     with open(path, encoding="utf-8") as f:
         results = json.load(f)
@@ -1504,6 +1567,13 @@ def validate_results(results):
     for entry in results["excluded"]:
         if not entry.get("errors"):
             problems.append(f"excluded {entry.get('path')}: no errors")
+    # optional, also in format 2: absent in the files measured before
+    # measure --reference existed, which are not of a reference run
+    if "reference" in results:
+        if not isinstance(results["reference"], bool):
+            problems.append("reference: not a bool")
+        elif results["reference"] and results.get("manifest_check") is not None:
+            problems.append("reference: a reference run has no manifest check")
     if problems:
         raise ValueError("invalid results file: " + "; ".join(problems[:20]))
 
@@ -2144,15 +2214,17 @@ def _sublibrary_of_path(path):
 
 def sublibrary_complete(results, sublibrary):
     """Whether the files measured of ``sublibrary`` are the complete
-    sublibrary of the published manifest: True if the results record a
-    manifest check (``measure --check-manifest``) without missing,
-    different or extra files of the sublibrary and no file of it is
-    excluded; False if they record one with such a file, or an excluded
-    file of the sublibrary; None if they record no manifest check (as
-    the published results, whose manifest is the reference), so that
-    the results do not tell."""
+    sublibrary of the published manifest: False if a file of it is
+    excluded; otherwise True if the results are of a reference run
+    (``measure --reference``), whose manifest is the published one, or
+    record a manifest check (``measure --check-manifest``) without
+    missing, different or extra files of the sublibrary; False if the
+    check has such a file; None if the results are neither of a
+    reference run nor checked, so that they do not tell."""
     if any(e["sublibrary"] == sublibrary for e in results["excluded"]):
         return False
+    if results.get("reference") is True:
+        return True
     check = results.get("manifest_check")
     if check is None:
         return None
@@ -2165,9 +2237,10 @@ def sublibrary_complete(results, sublibrary):
 def readme_sentence(results):
     """The sentence of the Performance section of the README: the
     neutron sublibrary with ``EndfParserCpp`` and ``array_type="numpy"``.
-    It calls the sublibrary complete unless :func:`sublibrary_complete`
-    is False; without a manifest check (None), the main function warns
-    that this is not verified."""
+    It calls the sublibrary complete only if :func:`sublibrary_complete`
+    is True, and gives the number of files measured otherwise; if that
+    is None (neither a reference run nor checked), the main function
+    warns that the completeness is not verified."""
     paths = cell_paths(results, "cpp", ("neutrons",))
     t = totals(results, "cpp/numpy", paths)
     if t is None:
@@ -2183,7 +2256,7 @@ def readme_sentence(results):
     library = results.get("library") or "ENDF/B-VIII.1"
     size = t["bytes_in"]
     size_text = f"{size / 1e9:.1f} GB" if size >= 1e9 else f"{size / MB:.0f} MB"
-    if sublibrary_complete(results, "neutrons") is False:
+    if sublibrary_complete(results, "neutrons") is not True:
         what = (
             f"{t['files']} files ({size_text}) of the neutron sublibrary of "
             f"{library} {_in_about(t['parse'])} and writes them"
@@ -2228,7 +2301,17 @@ def main(argv=None):
     p.add_argument("--rounds", type=int, default=5)
     p.add_argument("--sample-per-group", type=int, default=3)
     p.add_argument("--sample", help="reuse the sample of this results file")
-    p.add_argument("--check-manifest", help="check the data against this results file")
+    p.add_argument(
+        "--check-manifest",
+        help="check the data against this results file (not with --reference)",
+    )
+    p.add_argument(
+        "--reference",
+        action="store_true",
+        help="this run defines the reference (its manifest is the published "
+        'one); recorded as "reference": true; not with --check-manifest, as a '
+        "reference run is not checked against another one",
+    )
     p.add_argument("--pin-cpu", type=int, help="run on this CPU only (Linux)")
     p.add_argument("--no-memory", action="store_true")
     p.add_argument("--sublibraries", help="e.g. neutrons,decay (default: all)")
@@ -2265,6 +2348,14 @@ def main(argv=None):
     p.add_argument("results")
     p.add_argument("--out", required=True)
 
+    p = sub.add_parser(
+        "mark-reference",
+        help="mark a results file measured before --reference existed as that "
+        'of a reference run ("reference": true; nothing else changes)',
+    )
+    p.add_argument("results")
+    p.add_argument("--out", required=True)
+
     p = sub.add_parser("_worker")
     p.add_argument("parser", choices=PARSERS)
     p.add_argument("mode", choices=MODES)
@@ -2274,6 +2365,12 @@ def main(argv=None):
     if args.command == "measure":
         if args.rounds < 1:
             raise SystemExit("--rounds must be at least 1")
+        if args.reference and args.check_manifest:
+            raise SystemExit(
+                "error: --reference and --check-manifest exclude each other: "
+                "a reference run defines the published manifest and is not "
+                "checked against another one"
+            )
         measure(args)
     elif args.command == "render":
         render(args)
@@ -2283,9 +2380,11 @@ def main(argv=None):
             print("warning: the results are a placeholder", file=sys.stderr)
         if sublibrary_complete(results, "neutrons") is None:
             print(
-                "warning: the results record no manifest check "
+                "warning: the results are not of a reference run "
+                "(measure --reference) and record no manifest check "
                 "(measure --check-manifest), so it is not verified that the "
-                "neutron sublibrary is complete",
+                "neutron sublibrary is complete; the sentence gives the "
+                "number of files measured",
                 file=sys.stderr,
             )
         print(_wrap(readme_sentence(results)))
@@ -2295,6 +2394,12 @@ def main(argv=None):
         except ValueError as exc:
             raise SystemExit(f"error: {exc}")
         print(f"written {args.out} (format 2)")
+    elif args.command == "mark-reference":
+        try:
+            mark_reference_file(args.results, args.out)
+        except ValueError as exc:
+            raise SystemExit(f"error: {exc}")
+        print(f"written {args.out} (marked as a reference run)")
     elif args.command == "_worker":
         worker_main(args)
 

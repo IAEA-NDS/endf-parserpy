@@ -251,6 +251,17 @@ def test_format_versions():
         br.validate_results(without)
     with pytest.raises(ValueError, match="newer"):
         br.validate_results(dict(new, format_version=br.FORMAT_VERSION + 1))
+    # reference is optional in both formats, and a bool; a reference run
+    # has no manifest check
+    for results in (old, new):
+        for value in (True, False):
+            br.validate_results(dict(results, reference=value))
+        with pytest.raises(ValueError, match="reference: not a bool"):
+            br.validate_results(dict(results, reference="yes"))
+        check = {"missing": [], "different": [], "extra": [], "identical": True}
+        br.validate_results(dict(results, reference=False, manifest_check=check))
+        with pytest.raises(ValueError, match="reference run has no manifest check"):
+            br.validate_results(dict(results, reference=True, manifest_check=check))
     # both formats give the same tables and README sentence
     for render in (
         br.render_summary,
@@ -317,6 +328,79 @@ def test_strip_ignored(tmp_path):
     proc = _strip_ignored(other, tmp_path / "four.json")
     assert proc.returncode != 0 and "layout" in proc.stderr
     assert not (tmp_path / "four.json").exists()
+
+
+def _mark_reference(src, out):
+    return subprocess.run(
+        [sys.executable, str(TOOL), "mark-reference", str(src), "--out", str(out)],
+        capture_output=True,
+        text=True,
+        env=_tool_env(),
+    )
+
+
+@pytest.mark.parametrize("version", [1, 2])
+def test_mark_reference(tmp_path, version):
+    src = tmp_path / "old.json"
+    if version == 1:
+        shutil.copyfile(PLACEHOLDER, src)
+    else:
+        br.strip_ignored_file(str(PLACEHOLDER), str(src))
+    old_text = src.read_text(encoding="utf-8")
+    old = json.loads(old_text)
+    assert old["format_version"] == version
+    assert "reference" not in old and old["manifest_check"] is None
+    outputs = []
+    for name in ("one.json", "two.json"):
+        proc = _mark_reference(src, tmp_path / name)
+        assert proc.returncode == 0, proc.stderr
+        outputs.append((tmp_path / name).read_bytes())
+    # deterministic, and the input is not changed
+    assert outputs[0] == outputs[1]
+    assert src.read_text(encoding="utf-8") == old_text
+    new_text = outputs[0].decode("utf-8")
+    new = json.loads(new_text)
+    # only the field is added, before manifest_check; the version stays
+    assert new["reference"] is True
+    assert {k: v for k, v in new.items() if k != "reference"} == old
+    keys = list(old)
+    keys.insert(keys.index("manifest_check"), "reference")
+    assert list(new) == keys
+    # the layout is kept: the text is that of the input with one line more
+    old_lines = old_text.split("\n")
+    at = old_lines.index('  "manifest_check": null,')
+    assert new_text.split("\n") == (
+        old_lines[:at] + ['  "reference": true,'] + old_lines[at:]
+    )
+    # the marked results are of a reference run: complete
+    marked = br.load_results(str(tmp_path / "one.json"))
+    assert br.sublibrary_complete(marked, "neutrons") is True
+    assert "the complete neutron sublibrary" in br.readme_sentence(marked)
+    # a marked file is not marked again
+    proc = _mark_reference(tmp_path / "one.json", tmp_path / "three.json")
+    assert proc.returncode != 0
+    assert "record reference: true already" in proc.stderr
+    assert not (tmp_path / "three.json").exists()
+    # nor one that records it as false (measured with the flag known)
+    unmarked = tmp_path / "unmarked.json"
+    br.write_results(str(unmarked), dict(old, reference=False))
+    proc = _mark_reference(unmarked, tmp_path / "four.json")
+    assert proc.returncode != 0
+    assert "record reference: false already" in proc.stderr
+    assert not (tmp_path / "four.json").exists()
+    # nor one with a manifest check
+    checked = tmp_path / "checked.json"
+    check = {"missing": [], "different": [], "extra": [], "identical": True}
+    br.write_results(str(checked), dict(old, manifest_check=check))
+    proc = _mark_reference(checked, tmp_path / "five.json")
+    assert proc.returncode != 0 and "manifest check" in proc.stderr
+    assert not (tmp_path / "five.json").exists()
+    # nor a file in another layout, whose lines would change
+    other = tmp_path / "other.json"
+    other.write_text(json.dumps(old, indent=4), encoding="utf-8")
+    proc = _mark_reference(other, tmp_path / "six.json")
+    assert proc.returncode != 0 and "layout" in proc.stderr
+    assert not (tmp_path / "six.json").exists()
 
 
 def test_schema_errors():
@@ -571,6 +655,7 @@ def test_light_charged_particles_are_one_group():
 
 def test_readme_sentence():
     results = _results()
+    results["reference"] = True
     sentence = br.readme_sentence(results)
     assert sentence.startswith(
         'With the C++ backend and `array_type="numpy"`, `endf-parserpy` reads '
@@ -609,20 +694,38 @@ def test_readme_sentence():
     )
 
 
-def test_readme_sentence_complete_sublibrary(capsys):
+def test_readme_sentence_complete_sublibrary(tmp_path, capsys):
     results = _results()
     neutrons = [f["path"] for f in results["manifest"] if f["sublibrary"] == "neutrons"]
     complete = "reads the complete neutron sublibrary of ENDF/B-VIII.1 — 2 files"
     reduced = "reads 2 files (4 MB) of the neutron sublibrary of ENDF/B-VIII.1 in "
-    # without a manifest check, the results do not tell: the sentence is
-    # unchanged, and readme-sentence warns
-    assert results["manifest_check"] is None
+    # neither a reference run nor a manifest check: the results do not
+    # tell, so the sentence gives the number of files, and
+    # readme-sentence warns
+    assert "reference" not in results and results["manifest_check"] is None
     assert br.sublibrary_complete(results, "neutrons") is None
-    assert complete in br.readme_sentence(results)
+    sentence = br.readme_sentence(results)
+    assert "complete" not in sentence
+    assert reduced in sentence and "and writes them back" in sentence
+    results["reference"] = False
+    assert br.sublibrary_complete(results, "neutrons") is None
+    assert reduced in br.readme_sentence(results)
     br.main(["readme-sentence", str(PLACEHOLDER)])
     captured = capsys.readouterr()
+    assert "not of a reference run" in captured.err
     assert "no manifest check" in captured.err
-    assert "complete neutron" in captured.out
+    assert "complete" not in captured.out
+    # a reference run: complete, without a warning
+    results["reference"] = True
+    assert br.sublibrary_complete(results, "neutrons") is True
+    assert complete in br.readme_sentence(results)
+    marked = tmp_path / "marked.json"
+    br.mark_reference_file(str(PLACEHOLDER), str(marked))
+    br.main(["readme-sentence", str(marked)])
+    captured = capsys.readouterr()
+    assert captured.err == "warning: the results are a placeholder\n"
+    assert complete in captured.out.replace("\n", " ")
+    results["reference"] = False
     # an identical manifest check, or one with differences in other
     # sublibraries only
     check = {"missing": [], "different": [], "extra": [], "identical": True}
@@ -652,6 +755,10 @@ def test_readme_sentence_complete_sublibrary(capsys):
             "errors": [{"cell": "cpp/numpy", "operation": "parse", "error": "x"}],
         }
     )
+    assert br.sublibrary_complete(results, "neutrons") is False
+    assert "complete" not in br.readme_sentence(results)
+    # and also for a reference run
+    results["reference"] = True
     assert br.sublibrary_complete(results, "neutrons") is False
     assert "complete" not in br.readme_sentence(results)
 
@@ -1183,8 +1290,10 @@ def _check_measured(results):
 
 def test_measure_smoke(tmp_path):
     pytest.importorskip("endf_parserpy.cpp_parsers._flavors")
-    results, proc = _measure(tmp_path, "--modes", "numpy")
+    # the first run is the reference
+    results, proc = _measure(tmp_path, "--modes", "numpy", "--reference")
     _check_measured(results)
+    assert results["reference"] is True and results["manifest_check"] is None
     assert "1 entries ignored (not an .endf file: 1)" in proc.stdout
     assert "README" not in (tmp_path / "results.json").read_text(encoding="utf-8")
     assert sorted(results["cells"]) == ["cpp/numpy", "py/numpy"]
@@ -1208,6 +1317,7 @@ def test_measure_smoke(tmp_path):
         str(published),
     )
     assert results["manifest_check"]["identical"]
+    assert results["reference"] is False
     assert results["sample"]["source"] == "reused"
     assert results["memory_method"] is None
     # a published results file of format 1 is read as well
@@ -1232,6 +1342,28 @@ def test_measure_smoke(tmp_path):
     assert results["manifest_check"]["identical"]
     assert results["sample"]["source"] == "reused"
     assert "ignored" not in results
+
+
+def test_reference_excludes_check_manifest(tmp_path, capsys):
+    out = tmp_path / "out.json"
+    with pytest.raises(SystemExit) as exc:
+        br.main(
+            [
+                "measure",
+                str(tmp_path),
+                "--out",
+                str(out),
+                "--reference",
+                "--check-manifest",
+                str(PLACEHOLDER),
+            ]
+        )
+    assert str(exc.value) == (
+        "error: --reference and --check-manifest exclude each other: a "
+        "reference run defines the published manifest and is not checked "
+        "against another one"
+    )
+    assert not out.exists()
 
 
 def test_measure_warns_on_empty_sample(tmp_path):

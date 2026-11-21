@@ -80,7 +80,8 @@ tapes, are supported as well; see the guide on
 Parsing and writing have been extensively optimized; the C++
 backend processes ENDF-6 data at rates of up to several hundred
 megabytes per second (see
-:ref:`accelerated parsing and writing <accelerated_parsing_and_writing_sec>`).
+:ref:`accelerated parsing and writing <accelerated_parsing_and_writing_sec>`,
+and the :doc:`performance` page for the measurements).
 
 
 Install endf-parserpy

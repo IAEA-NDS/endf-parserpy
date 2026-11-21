@@ -54,6 +54,8 @@ The optional NumPy dependency, installed with
 `array_type="numpy"`, the fastest parsing mode, and speeds up the
 scan of multi-material files, which otherwise runs in pure Python.
 Parsing with the other array types does not need NumPy.
+The `match` command of `endf-cli` needs the optional Lark package,
+installed with `python -m pip install "endf-parserpy[cli]"`.
 
 
 ## Documentation

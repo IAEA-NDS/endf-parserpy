@@ -85,8 +85,9 @@ def _check_numpy_available(array_type):
             import numpy  # noqa: F401
         except ImportError as exc:
             raise ImportError(
-                "array_type `numpy` requires the numpy package, "
-                "which could not be imported"
+                "array_type `numpy` requires the numpy package, which could "
+                'not be imported. Install it with `pip install "endf-parserpy[fast]"` '
+                "or `pip install numpy`."
             ) from exc
 
 

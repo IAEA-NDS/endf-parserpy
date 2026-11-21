@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/12/07
-# Last modified:   2026/10/26
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2024 International Atomic Energy Agency (IAEA)
 #
@@ -114,7 +114,7 @@ def _import_lark():
         raise ImportError(
             "Logical expressions with EndfPath wildcards, e.g. the queries "
             "of `endf-cli match`, require the lark package, which could not "
-            "be imported. Install it with `pip install endf-parserpy[cli]` "
+            'be imported. Install it with `pip install "endf-parserpy[cli]"` '
             "or `pip install lark`."
         ) from exc
     return lark

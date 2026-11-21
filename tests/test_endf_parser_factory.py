@@ -48,7 +48,9 @@ def test_numpy_array_type_without_numpy(monkeypatch, select):
     monkeypatch.setitem(sys.modules, "numpy", None)
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        with pytest.raises(ImportError, match="requires the numpy package"):
+        with pytest.raises(
+            ImportError, match=r'requires the numpy package.*"endf-parserpy\[fast\]"'
+        ):
             EndfParserFactory.create(select=select, array_type="numpy")
 
 

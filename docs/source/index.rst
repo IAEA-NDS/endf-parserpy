@@ -143,6 +143,13 @@ Install endf-parserpy
       python -m pip install "endf-parserpy[fast]"
 
    Parsing with the other array types does not need NumPy.
+   The ``match`` command of :ref:`endf-cli <command_line_interface>`
+   needs the optional `Lark <https://github.com/lark-parser/lark>`_
+   package, installed with the ``cli`` extra:
+
+   .. code:: bash
+
+      python -m pip install "endf-parserpy[cli]"
 
 
 .. note::

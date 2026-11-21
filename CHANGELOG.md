@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The error for `array_type="numpy"` without NumPy says how to install it (`pip install "endf-parserpy[fast]"` or `pip install numpy`), and the one for a logical expression without Lark quotes `"endf-parserpy[cli]"`, so that the command also works in shells such as zsh, which expand the brackets.
 - `tools/benchmark_report.py`: the Performance page names a measured development version as the one after the last release, e.g. "a development version of endf-parserpy after 0.18.0 (v0.18.0-268-g6daa570)" instead of "endf-parserpy 0.18.0 (development version …)", in the summary and the machine table.
 
 ## [0.19.0] - 2026-11-19

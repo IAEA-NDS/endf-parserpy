@@ -90,7 +90,7 @@ def test_logical_expressions_need_lark():
             eval_expr("/1/451/ZA > 0", {})
         except ImportError as exc:
             msg = str(exc)
-            assert "lark" in msg and "endf-parserpy[cli]" in msg, msg
+            assert "lark" in msg and '"endf-parserpy[cli]"' in msg, msg
         else:
             raise AssertionError("ImportError expected")
         """

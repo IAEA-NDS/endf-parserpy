@@ -203,8 +203,9 @@ records, e.g. for a survey of a library:
        warnings.simplefilter("always", EndfToleratedMismatchWarning)
        parser.parsefile("input.endf")
    for w in caught:
-       for m in w.message.mismatches:
-           print(m.mf, m.mt, m.field, m.kind, m.line, m.expected, m.found)
+       if issubclass(w.category, EndfToleratedMismatchWarning):
+           for m in w.message.mismatches:
+               print(m.mf, m.mt, m.field, m.kind, m.line, m.expected, m.found)
 
 With the strict options shown above, a mismatch is an error, not a
 warning. :class:`~endf_parserpy.EndfParserPy` logs the details of each

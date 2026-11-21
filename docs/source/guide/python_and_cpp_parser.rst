@@ -109,7 +109,7 @@ if the Python parser (:class:`~endf_parserpy.EndfParserPy`) is selected or
    from endf_parserpy import EndfParserCpp
    parser = EndfParserCpp(...)
 
-if the C++ parser (:class:`~endf_parserpy.EndfParserCpp`) is selected
+if the C++ parser (:class:`~endf_parserpy.EndfParserCpp`) is selected.
 As described above, the selection of the parser
 depends on the availability of the C++ parser and whether the arguments
 provided to :class:`~endf_parserpy.EndfParserFactory` are supported by the

@@ -93,8 +93,9 @@ Reproducing the numbers
    `NNDC <https://www.nndc.bnl.gov/endf-releases/>`_ and unpack them
    into one directory, which then contains ``neutrons-version.VIII.1``,
    ``decay-version.VIII.1`` and so on.
-2. Install endf-parserpy and numpy, e.g.
-   ``python -m pip install endf-parserpy numpy``.
+2. Install endf-parserpy and numpy, and matplotlib for the chart that
+   ``render`` writes in step 4 (``measure`` does not need it), e.g.
+   ``python -m pip install endf-parserpy numpy matplotlib``.
    The results record the version of a release; for a package
    installed from a git checkout, also the commit and ``git describe``
    of the checkout, with ``+modified`` if the installed ``.py`` files

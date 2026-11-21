@@ -166,8 +166,15 @@ with an exit code other than ``0``, e.g. for a blank line in MF3/MT1:
 If the file can be parsed with an option, as here, the message names
 it. The exit code is ``1``, except for ``compare`` and ``match``, which
 exit with ``2`` (see their sections). ``validate`` gives the same
-message in its report on the standard output. The message of the Python
-parser (``--no-cpp``) lists the records it has read up to the failure. A file
+message in its report on the standard output. For most errors, the
+message of the Python parser (``--no-cpp``) lists the records it has
+read up to the failure, each with its template and its first line, and
+ends with the error; for a malformed number in the body of a TAB1
+record, e.g., the list ends with the first line of the TAB1 record,
+and the error does not name the line with the number. For a blank
+line, the Python parser gives only the hint, with the number of the
+line. ``explain`` gives the message of the Python parser, also without
+``--no-cpp``. A file
 that cannot be read at all, e.g. a missing file or a tape that ends in
 the middle of a material, is reported in the same way (``show: cannot
 read file.endf: ...``).

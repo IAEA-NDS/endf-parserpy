@@ -64,7 +64,7 @@ This limitation is a design feature to prevent the user or any
 processing script to inadvertently break the association with the
 original string representation. If the float values represented
 by :class:`~endf_parserpy.EndfFloat` objects should enter arithmetic
-expressions, they must be explicilty converted to :class:`float` types:
+expressions, they must be explicitly converted to :class:`float` types:
 
 .. code:: Python
 
@@ -178,7 +178,7 @@ assignment of a number to the ``ZA`` variable:
    Z = 26  # for iron-56
    ZA = 1000.0*Z + A
    endf_dict[1][451]['ZA'] = EndfFloat(ZA, "26056".rjust(11))
-   parser.writefile('output.endf', endf_dict)
+   parser.writefile('output_modified.endf', endf_dict)
 
 
 Using default options during the :class:`~endf_parserpy.EndfParserPy` object initialization,

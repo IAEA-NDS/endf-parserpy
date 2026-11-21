@@ -179,6 +179,7 @@ Resources
   - :doc:`guide/endf_plumbing`
   - :doc:`guide/creation_endf_scratch`
   - :doc:`guide/pendf_and_format_flavors`
+  - :doc:`guide/gendf_files`
   - :doc:`guide/layout_versions`
   - :doc:`guide/format_extensions`
   - :doc:`guide/working_with_legacy_formats`
@@ -186,6 +187,7 @@ Resources
   - :doc:`guide/perfect_precision`
   - :doc:`guide/arrays_as_list`
   - :doc:`guide/accelerated_parsing_and_writing`
+  - :doc:`performance`
 
 - Reference
 

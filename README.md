@@ -131,10 +131,10 @@ in the documentation.
 
 With the C++ backend and `array_type="numpy"`, `endf-parserpy` reads
 the complete neutron sublibrary of ENDF/B-VIII.1 — 558 files, 1.3 GB —
-in about 2 seconds and writes it back to ENDF-6 text in about
-8 seconds (single core of an Intel Core i7-1165G7 laptop, warm file
-cache; measured on the development version of November 2026). Every
-value is fully interpreted during parsing, and written output is
+in about 2 seconds and writes it back to ENDF-6 text in about 8
+seconds (single core of an Intel Core i7-1165G7 laptop, warm file
+cache; measured on the development version of November 2026).
+Every value is fully interpreted during parsing, and written output is
 formatted field by field.
 
 The [Performance](https://endf-parserpy.readthedocs.io/en/latest/performance.html)

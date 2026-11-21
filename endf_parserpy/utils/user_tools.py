@@ -10,7 +10,7 @@
 ############################################################
 
 
-from collections.abc import MutableMapping, MutableSequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 
 
 def locate(dic, varname, as_string=False):
@@ -54,10 +54,15 @@ def list_unparsed_sections(dic):
 
     Parameters
     ----------
-    dic : Union[dict, list]
+    dic : Union[dict, list, MaterialView]
         A material in the form as returned by the
         :meth:`~endf_parserpy.EndfParserPy.parsefile` method of the :class:`~endf_parserpy.EndfParserPy` class,
-        the nested dictionary or the list of its sections.
+        the nested dictionary (or another mapping of the same structure)
+        or the list of its sections, or a material of an
+        :class:`~endf_parserpy.EndfFile` (a
+        :class:`~endf_parserpy.tape.MaterialView`, whose sections are
+        parsed by this function if they have not been, and which has
+        no tape head among its sections).
 
     Returns
     -------
@@ -71,7 +76,7 @@ def list_unparsed_sections(dic):
     """
     unparsed = []
     for mf, mt, mtsec in _labelled_sections(dic):
-        if isinstance(mtsec, list):
+        if not isinstance(mtsec, Mapping) and isinstance(mtsec, Sequence):
             unparsed.append((mf, mt))
     return tuple(unparsed)
 
@@ -81,10 +86,12 @@ def list_parsed_sections(dic):
 
     Parameters
     ----------
-    dic : Union[dict, list]
+    dic : Union[dict, list, MaterialView]
         A material in the form as returned by the
         ``.parsefile()`` method of the :class:`~endf_parserpy.EndfParserPy` class,
-        the nested dictionary or the list of its sections.
+        the nested dictionary (or another mapping of the same structure)
+        or the list of its sections, or a material of an
+        :class:`~endf_parserpy.EndfFile` (see :func:`list_unparsed_sections`).
 
     Returns
     -------
@@ -95,20 +102,27 @@ def list_parsed_sections(dic):
     """
     parsed = []
     for mf, mt, mtsec in _labelled_sections(dic):
-        if isinstance(mtsec, dict):
+        if isinstance(mtsec, Mapping):
             parsed.append((mf, mt))
     return tuple(parsed)
 
 
 def _labelled_sections(material):
     """Yield ``(MF, MT, section)`` of a material in the nested form or in
-    the list form (in the order of the list, a label once per section)."""
+    the list form (in the order of the list, a label once per section),
+    also of a MaterialView of an EndfFile (in the order of its sections,
+    each read by its position, so also a label that occurs several
+    times)."""
     if isinstance(material, list):
         from .tape_structure import section_label
 
         for section in material:
             _, mf, mt = section_label(section)
             yield mf, mt, section
+        return
+    if not isinstance(material, Mapping) and hasattr(material, "sections"):
+        for k, (mf, mt) in enumerate(material.sections()):
+            yield mf, mt, material[f"#{k}"]
         return
     for mf, mfsec in material.items():
         for mt, mtsec in mfsec.items():
@@ -122,8 +136,21 @@ def sanitize_fieldname_types(dic):
     type :class:`int` whereas hashtable implementations in other
     language may only allow the use of strings. For example,
     the JSON format only allows strings as keys. This function
-    recursively replaces all keys containing integer numbers
-    but being of type :class:`str` to type :class:`int`.
+    undoes this conversion: it recursively replaces all keys of type
+    :class:`str` that are the canonical text of an integer number,
+    i.e. the text that :class:`str` gives for it (``"3"``, ``"-1"``),
+    by this integer. Other strings, e.g. ``" 3 "``, ``"03"``, ``"+3"``
+    or ``"1_0"``, are kept, and so are keys that are already of type
+    :class:`int`, so that the function can be applied again to its
+    result.
+
+    The function recurses into the values of the :class:`dict` objects
+    and into the elements of :class:`list` objects. A :class:`list` can
+    be given as ``dic``: a material in the list form (e.g. with
+    ``material_form="list"``, the form of GENDF materials), whose
+    sections are sanitized one by one and whose sections of raw lines
+    are kept, or a list of materials, as JSON gives for a tape with
+    several materials.
 
     Noteworthy, this conversion is necessary before using the :meth:`~endf_parserpy.EndfParserPy.writefile`
     method of the :class:`~endf_parserpy.EndfParserPy`
@@ -131,35 +158,60 @@ def sanitize_fieldname_types(dic):
 
     Parameters
     ----------
-    dic : dict
-        A :class:`dict`-like object.
+    dic : Union[dict, list]
+        A :class:`dict`-like object, or a :class:`list` of them.
 
     Returns
     -------
     None
-        Datatypes are changed in-place in the :class:`dict`-like object provided as ``dic`` argument.
+        Datatypes are changed in-place in the object provided as ``dic`` argument.
+
+    Raises
+    ------
+    TypeError
+        If ``dic`` is neither a :class:`dict` nor a :class:`list`.
+    IndexError
+        If a :class:`dict` has both a key and the text of the same
+        integer as keys, e.g. ``3`` and ``"3"``.
     """
+    if isinstance(dic, list):
+        for element in dic:
+            if isinstance(element, (dict, list)):
+                sanitize_fieldname_types(element)
+        return
     if not isinstance(dic, dict):
-        raise TypeError("please provide dictionary")
-    keys = tuple(dic.keys())
-    for key in keys:
-        try:
-            intkey = int(key)
-        except Exception:
-            intkey = None
-        if intkey is not None:
-            if intkey in dic:
-                raise IndexError(
-                    "integer version of key already exists, something wrong"
-                )
-            cont = dic[key]
-            dic[intkey] = cont
-            del dic[key]
-    # recurse into sub-dictionaries
-    keys = tuple(dic.keys())
-    for key in keys:
-        if isinstance(dic[key], dict):
-            sanitize_fieldname_types(dic[key])
+        raise TypeError("please provide dictionary or list")
+    items = []
+    changed = False
+    for key, value in dic.items():
+        if type(key) is str:
+            intkey = _canonical_int(key)
+            if intkey is not None:
+                if intkey in dic:
+                    raise IndexError(
+                        f"the keys {intkey!r} and {key!r} both exist, but the "
+                        "string is converted to the integer"
+                    )
+                key = intkey
+                changed = True
+        items.append((key, value))
+    if changed:
+        # the same order of the keys
+        dic.clear()
+        dic.update(items)
+    # recurse into sub-dictionaries and lists
+    for value in dic.values():
+        if isinstance(value, (dict, list)):
+            sanitize_fieldname_types(value)
+
+
+def _canonical_int(key):
+    # the integer whose text (str) is the string key, otherwise None
+    try:
+        intkey = int(key)
+    except ValueError:
+        return None
+    return intkey if str(intkey) == key else None
 
 
 def show_content(endf_dic, maxlevel=0, prefix="/"):

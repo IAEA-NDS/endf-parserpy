@@ -128,11 +128,9 @@ they then differ in what changes:
      - Text of numbers in the standard form
    * - the defaults
      - numbers with more than seven significant digits are rounded
-       (about 0.3 % of the float fields of evaluated files)
      - kept
    * - ``abuse_signpos=True``, ``standard_form_on_tie=True``
      - numbers with more than eight significant digits are rounded
-       (about 0.25 %)
      - kept
    * - ``prefer_noexp=True``, ``abuse_signpos=True``,
        ``skip_intzero=True``
@@ -152,8 +150,11 @@ This was checked on all 4513 files of the ENDF/B-VIII.1 neutron
 sublibrary and of the ENDF/B-VIII.0 thermal scattering, decay data and
 electro-atomic sublibraries, over 110 million float fields of
 evaluations from many laboratories, with the many ways of writing
-numbers they use: with all four options, no value changed. This is a
-result for these files rather than a guarantee for every possible file.
+numbers they use: with all four options, no value changed. With the
+default options, about 0.3 % of these float fields were rounded, and
+about 0.25 % with ``abuse_signpos=True`` and
+``standard_form_on_tie=True`` only. This is a result for these files
+rather than a guarantee for every possible file.
 
 The four options keep the values, not the text of every number. To
 keep the original text of every field, read the file with

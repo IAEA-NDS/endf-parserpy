@@ -105,7 +105,8 @@ options:
 writes the same characters. With these options:
 
 - every value is written back exactly: a float read and written is
-  read back equal bit for bit;
+  read back equal bit for bit, in all the evaluated files this was
+  checked on (see *How this was checked* below);
 - a number written in the standard form, e.g. ``␣1.234567+8``, keeps
   its text;
 - other spellings of the same number are written in the standard form,
@@ -146,21 +147,24 @@ they then differ in what changes:
 rows: the other three options then use their special forms only where
 these represent a number more closely than the standard form.
 
-This was checked on all 4513 files of the ENDF/B-VIII.1 neutron
-sublibrary and of the ENDF/B-VIII.0 thermal scattering, decay data and
-electro-atomic sublibraries, over 110 million float fields of
-evaluations from many laboratories, with the many ways of writing
-numbers they use: with all four options, no value changed. With the
-default options, about 0.3 % of these float fields were rounded, and
-about 0.25 % with ``abuse_signpos=True`` and
-``standard_form_on_tie=True`` only. This is a result for these files
-rather than a guarantee for every possible file.
-
 The four options keep the values, not the text of every number. To
 keep the original text of every field, read the file with
 ``preserve_value_strings=True``, as explained below. The values are then
 :class:`~endf_parserpy.EndfFloat` objects, which must be converted to
 :class:`float` before they can be used in arithmetic.
+
+.. dropdown:: How this was checked
+
+   The writing options were checked on all 4513 files of the
+   ENDF/B-VIII.1 neutron sublibrary and of the ENDF/B-VIII.0 thermal
+   scattering, decay data and electro-atomic sublibraries, over 110
+   million float fields of
+   evaluations from many laboratories, with the many ways of writing
+   numbers they use: with all four options, no value changed. With the
+   default options, about 0.3 % of these float fields were rounded, and
+   about 0.25 % with ``abuse_signpos=True`` and
+   ``standard_form_on_tie=True`` only. This is a result for these files
+   rather than a guarantee for every possible file.
 
 
 Perfect precision control for writing

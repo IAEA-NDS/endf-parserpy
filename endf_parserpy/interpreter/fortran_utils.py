@@ -207,6 +207,8 @@ def _fortstr2float(
 
 
 def float2basicnumstr(val, write_opts=None):
+    if write_opts is None:
+        write_opts = {}
     width = write_opts.get("width", 11)
     abuse_signpos = write_opts.get("abuse_signpos", False)
     skip_intzero = write_opts.get("skip_intzero", False)
@@ -275,6 +277,8 @@ def _fits_width(numstr, val, width, abuse_signpos):
 
 
 def float2expformstr(val, write_opts=None):
+    if write_opts is None:
+        write_opts = {}
     width = write_opts.get("width", 11)
     abuse_signpos = write_opts.get("abuse_signpos", False)
     keep_E = write_opts.get("keep_E", False)
@@ -348,9 +352,10 @@ def float2fortstr(val, write_opts=None):
     val : float
         The float variable/number whose string
         representation is desired.
-    write_opts : dict
+    write_opts : Optional[dict]
         Python dictionary with field/value
-        pairs to influence conversion process.
+        pairs to influence conversion process
+        (``None``, the default, for the default of each option).
         Supported field names are ``prefer_noexp``,
         ``width``, ``abuse_signpos``, ``keep_E``,
         ``skip_intzero`` and ``standard_form_on_tie``. Consider the equally
@@ -362,6 +367,8 @@ def float2fortstr(val, write_opts=None):
     str
         String representation of the :class:`float` number
     """
+    if write_opts is None:
+        write_opts = {}
     width = write_opts.get("width", 11)
     if type(val) is not float and isinstance(val, EndfFloat):
         orig_str = val.get_original_string()
@@ -476,6 +483,8 @@ def read_fort_floats(line, n=6, read_opts=None):
     list[float]
         A list with the extracted :class:`float` numbers
     """
+    if read_opts is None:
+        read_opts = {}
     width = read_opts.get("width", 11)
     assert isinstance(line, str)
     opts = _fortstr2float_opts(read_opts)

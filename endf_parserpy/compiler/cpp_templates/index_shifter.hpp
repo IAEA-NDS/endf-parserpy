@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <climits>
+#include <cmath>
 #include <cstring>
 
 
@@ -295,6 +296,54 @@ inline bool cpp_ndarray_to_vector(const CppNdarrayView& view, std::vector<int>& 
     return true;
 }
 
+// The value of an integer field of the data to write, as py::cast<int>
+// except for a number that is not an integer: a float with an integral
+// value (e.g. 5.0, also a numpy float or another object with __float__
+// but without __index__, e.g. an EndfFloat object) is the integer, as
+// in EndfParserPy (without strict_datatypes); another float raises a
+// ValueError, and an object that is not a number (e.g. a string or None)
+// a TypeError, naming the variable instead of the error of the cast
+// ("Unable to cast Python instance of type <class 'float'> to C++ type").
+INDEX_SHIFTER_NOINLINE inline int cpp_cast_int_other(PyObject* p, const char* varname) {
+    std::string what = std::string("the variable `") + varname
+        + "` of an integer field must be an integer";
+    if (! PyFloat_Check(p) && PyIndex_Check(p)) {
+        // an int subclass (e.g. bool) or a numpy integer
+        try {
+            return py::cast<int>(py::handle(p));
+        } catch (const py::cast_error&) {
+            throw py::value_error(what + " in the range of a C++ int, but is "
+                + py::repr(py::handle(p)).cast<std::string>());
+        }
+    }
+    PyNumberMethods* nb = Py_TYPE(p)->tp_as_number;
+    if (PyFloat_Check(p) || (nb != nullptr && nb->nb_float != nullptr)) {
+        double d = PyFloat_AsDouble(p);
+        if (d == -1.0 && PyErr_Occurred()) throw py::error_already_set();
+        if (std::isfinite(d) && d == std::floor(d) && d >= INT_MIN && d <= INT_MAX) {
+            return static_cast<int>(d);
+        }
+        throw py::value_error(what + ", but is "
+            + py::repr(py::handle(p)).cast<std::string>()
+            + " (a float is accepted if its value is an integer)");
+    }
+    throw py::type_error(what + ", but is of type `" + Py_TYPE(p)->tp_name
+        + "`: " + py::repr(py::handle(p)).cast<std::string>());
+}
+
+inline int cpp_cast_int(const py::handle& h, const char* varname) {
+    PyObject* p = h.ptr();
+    if (PyLong_CheckExact(p)) {
+        int overflow;
+        long v = PyLong_AsLongAndOverflow(p, &overflow);
+        if (overflow == 0 && v >= INT_MIN && v <= INT_MAX && ! (v == -1 && PyErr_Occurred())) {
+            return static_cast<int>(v);
+        }
+        if (PyErr_Occurred()) PyErr_Clear();
+    }
+    return cpp_cast_int_other(p, varname);
+}
+
 template <typename V>
 inline V cpp_cast_vector(const py::object& obj) {
     CppNdarrayView view;
@@ -303,6 +352,27 @@ inline V cpp_cast_vector(const py::object& obj) {
         if (cpp_ndarray_to_vector(view, vec)) return vec;
     }
     return py::cast<V>(obj);
+}
+
+// A list of integers (NBT and INT of a TAB1/TAB2 table) as by
+// cpp_cast_vector<std::vector<int>>, with the conversion of each element
+// of a sequence by cpp_cast_int if the cast fails (e.g. for a float),
+// whose error names the variable.
+inline std::vector<int> cpp_cast_int_vector(const py::object& obj, const char* varname) {
+    try {
+        return cpp_cast_vector<std::vector<int>>(obj);
+    } catch (const py::cast_error&) {
+        if (! PySequence_Check(obj.ptr()) || PyUnicode_Check(obj.ptr())) {
+            throw py::type_error(std::string("the variable `") + varname
+                + "` must be a sequence of integers, but is of type `"
+                + Py_TYPE(obj.ptr())->tp_name + "`");
+        }
+    }
+    std::vector<int> vec;
+    py::sequence seq = py::reinterpret_borrow<py::sequence>(obj);
+    vec.reserve(seq.size());
+    for (auto item : seq) vec.push_back(cpp_cast_int(item, varname));
+    return vec;
 }
 
 // equivalent of py::cast<V>(obj) without overhead if obj is already of type V
@@ -708,8 +778,8 @@ public:
     T get(const int (&indices)[N]) {
         T value;
         if (! get_fast(indices, value)) {
-            value = py::cast<T>(store.get_value(
-                varname, std::vector<int>(indices, indices + N), py::none()));
+            convert_generic(store.get_value(
+                varname, std::vector<int>(indices, indices + N), py::none()), value);
         }
         return value;
     }
@@ -779,7 +849,7 @@ private:
         return item;
     }
 
-    static void convert(PyObject* item, EndfFloatCpp& value) {
+    void convert(PyObject* item, EndfFloatCpp& value) {
         if (PyFloat_CheckExact(item)) {
             value = EndfFloatCpp(PyFloat_AS_DOUBLE(item));
         } else {
@@ -787,17 +857,18 @@ private:
         }
     }
 
-    static void convert(PyObject* item, int& value) {
-        if (PyLong_CheckExact(item)) {
-            int overflow;
-            long v = PyLong_AsLongAndOverflow(item, &overflow);
-            if (overflow == 0 && v >= INT_MIN && v <= INT_MAX && ! (v == -1 && PyErr_Occurred())) {
-                value = static_cast<int>(v);
-                return;
-            }
-            if (PyErr_Occurred()) PyErr_Clear();
-        }
-        value = py::cast<int>(py::handle(item));
+    // (an integer as by cpp_cast_int, whose error names the variable)
+    void convert(PyObject* item, int& value) {
+        value = cpp_cast_int(py::handle(item), varname);
+    }
+
+    // the conversion of the element of the generic access
+    void convert_generic(const py::object& obj, EndfFloatCpp& value) {
+        value = py::cast<EndfFloatCpp>(obj);
+    }
+
+    void convert_generic(const py::object& obj, int& value) {
+        value = cpp_cast_int(obj, varname);
     }
 
     // integer element of a numpy array in the range of int

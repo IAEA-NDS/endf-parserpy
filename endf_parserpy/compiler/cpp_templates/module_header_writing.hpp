@@ -1473,7 +1473,7 @@ inline int get_mat_from_mfmt_section(py::object mfmt_section, int mf, int mt) {
   int mat;
   if (py::isinstance<py::dict>(mfmt_section)) {
     py::dict mfmt_section_dict = py::cast<py::dict>(mfmt_section);
-    mat = py::cast<int>(mfmt_section_dict["MAT"]);
+    mat = cpp_cast_int(mfmt_section_dict["MAT"], "MAT");
     return mat;
   }
   if (! py::isinstance<py::list>(mfmt_section)) {
@@ -1610,8 +1610,8 @@ inline py::list cpp_material_sections(
           " of the list has no MF or MT key"
         );
       }
-      mf = py::cast<int>(section_dict["MF"]);
-      mt = py::cast<int>(section_dict["MT"]);
+      mf = cpp_cast_int(section_dict["MF"], "MF");
+      mt = cpp_cast_int(section_dict["MT"], "MT");
     } else if (py::isinstance<py::list>(section)) {
       py::list lines = py::reinterpret_borrow<py::list>(section);
       if (lines.size() == 0) {

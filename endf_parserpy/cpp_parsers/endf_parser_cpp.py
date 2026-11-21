@@ -643,6 +643,12 @@ class EndfParserCpp(EndfParserBase):
             are MF numbers and the keys of second level MT numbers.
             The structure of the :class:`dict` stored under an MF/MT combination
             depends on the corresponding ENDF recipe.
+            The value of an integer field may also be a :class:`float`
+            with an integral value (e.g. ``5.0``), which is written as
+            that integer, as by :class:`~endf_parserpy.EndfParserPy`
+            without ``strict_datatypes``; another :class:`float` raises
+            a :exc:`ValueError` and a value that is not a number a
+            :exc:`TypeError`, both naming the variable.
         exclude : Union[None, tuple[Union[int, tuple[int, int]]]]
             A section will only be written to the file if
             not excluded. For an explanation of how to specify

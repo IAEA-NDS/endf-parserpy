@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/15
-# Last modified:   2026/11/17
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -297,9 +297,17 @@ def get_node_value_using_endf_dict(
         return retobj
     else:
         dtypestr = map_dtype(dtype)
-        if dtype in ("intvec", "floatvec"):
+        if dtype == "intvec":
+            # tables of TAB1/TAB2 records, fast path for numpy arrays; the
+            # error of an element that is not an integer names the variable
+            valcode = f'cpp_cast_int_vector({retobj}, "{varname}")'
+        elif dtype == "floatvec":
             # tables of TAB1/TAB2 records, fast path for numpy arrays
             valcode = f"cpp_cast_vector<{dtypestr}>({retobj})"
+        elif dtype == int:
+            # a float with an integral value is accepted as in EndfParserPy,
+            # another value raises an error naming the variable
+            valcode = f'cpp_cast_int({retobj}, "{varname}")'
         elif dtype == str:
             # text: each character becomes the byte with the same code
             valcode = f'cpp_text_from_pyobj({retobj}, "{varname}")'

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/05/29
-# Last modified:   2026/11/18
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -324,7 +324,11 @@ class EndfParserCpp(EndfParserBase):
             If ``True``, the C++ parser strictly verifies that the
             MAT / MF / MT control record fields in every line of an
             ENDF-6 section are consistent with the surrounding section
-            structure. Off by default; only the Python parser performs
+            structure. This includes the sections read verbatim (left
+            out by ``include`` or ``exclude``, or without a recipe):
+            their lines must have the MAT number of their first line,
+            and their SEND records the MAT and MF numbers of the
+            section. Off by default; only the Python parser performs
             this validation unconditionally. The MAT / MF / MT fields
             of a line longer than 80 columns, e.g. of a TEXT record
             with a multi-byte character, whose columns are shifted,

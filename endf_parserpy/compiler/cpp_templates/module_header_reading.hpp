@@ -3628,18 +3628,12 @@ inline std::string cpp_read_raw_line(std::istream& cont) {
 }
 
 
-// content_size (if given) receives the length of the line before the
-// padding of a short line (see cpp_pad_short_line).
-// The MAT/MF/MT fields of every line must hold numbers (see
-// cpp_read_mat_number). The MAT/MF/MT numbers of a line are compared
-// with mat, mf and mt with validate_control_records=true and, if check_long_line is true, for a
-// line longer than 80 columns: such a line is not valid, and a non-ASCII
-// character that occupies several bytes (e.g. in UTF-8) in a TEXT record
-// shifts the MAT/MF/MT columns, which EndfParserPy, which divides a file
-// into sections by these columns, also detects.
-inline void cpp_read_line(
-  CppLine& line, std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts,
-  std::size_t* content_size = nullptr, bool check_long_line = true
+// The part of cpp_read_line before the comparison of the MAT/MF/MT
+// numbers: the next line (blank lines skipped with ignore_blank_lines),
+// padded and checked for its characters; returns the length of the line
+// before the padding.
+inline std::size_t cpp_read_padded_line(
+  CppLine& line, std::istream& cont, ParsingOptions &parse_opts
 ) {
   line.clear();
   cpp_getline(cont, line);
@@ -3655,8 +3649,26 @@ inline void cpp_read_line(
     );
   }
   std::size_t size = cpp_pad_short_line(line);
-  if (content_size != nullptr) *content_size = size;
   cpp_check_line_ascii(line, size, cont, parse_opts);
+  return size;
+}
+
+
+// content_size (if given) receives the length of the line before the
+// padding of a short line (see cpp_pad_short_line).
+// The MAT/MF/MT fields of every line must hold numbers (see
+// cpp_read_mat_number). The MAT/MF/MT numbers of a line are compared
+// with mat, mf and mt with validate_control_records=true and, if check_long_line is true, for a
+// line longer than 80 columns: such a line is not valid, and a non-ASCII
+// character that occupies several bytes (e.g. in UTF-8) in a TEXT record
+// shifts the MAT/MF/MT columns, which EndfParserPy, which divides a file
+// into sections by these columns, also detects.
+inline void cpp_read_line(
+  CppLine& line, std::istream& cont, int mat, int mf, int mt, ParsingOptions &parse_opts,
+  std::size_t* content_size = nullptr, bool check_long_line = true
+) {
+  std::size_t size = cpp_read_padded_line(line, cont, parse_opts);
+  if (content_size != nullptr) *content_size = size;
 
   if (parse_opts.validate_control_records || (check_long_line && size > 80)) {
     int curmat = cpp_read_mat_number(line.data());
@@ -3780,19 +3792,19 @@ inline bool cpp_is_send_record(const CppLine& line, ParsingOptions &parse_opts) 
 }
 
 
+// A line with another MAT number is not a MEND (TEND) record: the MAT
+// number is compared first, as cpp_is_fend_record raises an error for
+// another MAT number with validate_control_records (e.g. for a FEND
+// record tested for a TEND record with ignore_send_records).
 inline bool cpp_is_mend_record(const CppLine& line, ParsingOptions &parse_opts) {
-  int mat = cpp_read_mat_number(line.data());
-  bool cond = cpp_is_fend_record(line, 0, parse_opts);
-  cond &= (mat == 0);
-  return cond;
+  if (cpp_read_mat_number(line.data()) != 0) return false;
+  return cpp_is_fend_record(line, 0, parse_opts);
 }
 
 
 inline bool cpp_is_tend_record(const CppLine& line, ParsingOptions &parse_opts) {
-  int mat = cpp_read_mat_number(line.data());
-  bool cond = cpp_is_fend_record(line, -1, parse_opts);
-  cond &= (mat == -1);
-  return cond;
+  if (cpp_read_mat_number(line.data()) != -1) return false;
+  return cpp_is_fend_record(line, -1, parse_opts);
 }
 
 
@@ -4841,13 +4853,25 @@ inline py::list read_section_verbatim(
       at_end = true;
       break;
     }
-    // the MF/MT numbers of every line are checked below
-    cpp_read_line(line, cont, mat, mf, mt, parse_opts, &content_size, false);
+    // the section ends at the first line with other MF/MT numbers (the
+    // SEND record, or the first line of the next section or of the
+    // material after the tape head), so that the numbers of a line are
+    // compared here and not in cpp_read_line; the fields must hold
+    // numbers in any case
+    content_size = cpp_read_padded_line(line, cont, parse_opts);
+    cpp_check_control_fields(line.data());
     // a blank MF/MT field (e.g. of a tape header) reads as zero, as in
     // EndfParserPy and everywhere else in this parser
     curmf = cpp_read_mf_number(line.data());
     curmt = cpp_read_mt_number(line.data());
     if (curmf != mf || curmt != mt) break;
+    // with validate_control_records, every line of the section has the
+    // MAT number of its first line, as in a section read with its recipe
+    if (parse_opts.validate_control_records) {
+      int curmat = cpp_read_mat_number(line.data());
+      if (curmat != mat)
+        throw_mismatch_error("MAT", mat, curmat);
+    }
     // the line as read (without the blanks added to a short line), with
     // the newline for compatibility with the Python parser
     verbatim_line.assign(line.data(), content_size);
@@ -4861,10 +4885,20 @@ inline py::list read_section_verbatim(
     if (! at_end && (no_send || curmf == 0 || curmt != 0)) {
       cont.clear();
       cont.seekg(curpos);
-    } else if (! at_end && ! cpp_send_fields_zero(line, parse_opts)) {
+    } else if (! at_end) {
       // a SEND record that has been read: its fields 1-6 are checked as
-      // without ignore_send_records
-      throw std::runtime_error("Expected SEND record does not contain one!\n");
+      // without ignore_send_records, and with validate_control_records
+      // also its MAT and MF numbers (see cpp_read_send)
+      if (! cpp_send_fields_zero(line, parse_opts)) {
+        throw std::runtime_error("Expected SEND record does not contain one!\n");
+      }
+      if (parse_opts.validate_control_records) {
+        int curmat = cpp_read_mat_number(line.data());
+        if (curmat != mat)
+          throw_mismatch_error("MAT", mat, curmat);
+        if (curmf != mf)
+          throw_mismatch_error("MF", mf, curmf);
+      }
     }
   } else if (! is_first && (curmf != mf || curmt != 0)) {
      std::string errmsg = "expected SEND of MF/MT " +

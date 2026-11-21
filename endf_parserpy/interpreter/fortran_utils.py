@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/11
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -90,13 +90,19 @@ def fortstr2float(valstr, read_opts=None):
         ``preserve_value_strings`` and ``width``.
         Consider the equally named options of the
         :class:`~endf_parserpy.EndfParserPy` class for
-        an explanation of their meaning.
+        an explanation of the first four.
+        ``width`` (default ``None``) is the number of
+        leading characters of ``valstr`` that are converted;
+        with ``None``, the whole string is converted.
 
     Returns
     -------
-        float
-            :class:`float` that corresponds to string
-            representation of number.
+    Union[float, endf_parserpy.EndfFloat]
+        :class:`float` that corresponds to the string
+        representation of the number, or, if
+        ``preserve_value_strings`` is true, an
+        :class:`~endf_parserpy.EndfFloat` that also
+        stores ``valstr`` as its original string.
     """
     if read_opts is None:
         read_opts = {}

@@ -132,9 +132,13 @@ class EndfParserFactory:
           (also if ``select="fastest"`` falls back on it because the
           C++ parser is not available), and ``False`` for the C++
           parser, which has no array checks.
-        - An argument of only ``EndfParserCpp`` with a value other
-          than its default (``validate_control_records=True``)
-          raises a :exc:`ValueError` if the Python parser is selected.
+        - ``validate_control_records=True`` raises a :exc:`ValueError`
+          if the Python parser is selected (with ``select="python"``,
+          or because ``select="fastest"`` falls back on it) and with
+          ``require_compat=True``; it does not affect the selection.
+        - ``load_file_into_memory`` is ignored, whatever its value, if
+          the Python parser is selected (no error, no warning), and it
+          does not affect the selection.
 
         Parameters
         ----------

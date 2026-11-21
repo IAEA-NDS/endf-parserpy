@@ -368,8 +368,13 @@ class TapeStructure:
 
     def to_spec(self):
         """Return the tape structure as a normalized dictionary, which
-        :meth:`from_spec` turns into an equal object; rules equal to
-        those of ENDF-6 are left out."""
+        :meth:`from_spec` turns into an equal object; a rule is left out
+        if it equals the value it would inherit otherwise: the value of
+        ENDF-6 for a top-level rule, the top-level rule for a rule of an
+        MF, and the rule of its MF for a rule of a section. For instance,
+        ``{"send": False, "mf": {3: {"send": True}}}`` keeps the
+        ``send`` rule of MF=3, whereas ``{"mf": {3: {"send": True}}}``
+        becomes ``{}``."""
         send, fend, repeat, mt_asc = self.defaults
         spec = {}
         top = {

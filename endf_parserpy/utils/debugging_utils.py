@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/09/09
-# Last modified:   2026/11/18
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -41,13 +41,20 @@ def compare_objects(
 
     This function enables the recursive comparison of two objects
     possible being or containing objects of type :class:`dict` or
-    iterable array-like objects. For example, this class can be
+    iterable array-like objects. For example, this function can be
     used to confirm or reject the equality of two nested dictionaries
     resulting from the parsing of ENDF-6 files via the
     :func:`~endf_parserpy.EndfParserPy.parsefile`
     method of the :class:`~endf_parserpy.EndfParserPy` class.
     The function can print out meaningful information where the
     discrepancies are present in the objects with a nested structure.
+
+    Objects of different types are reported as a type mismatch
+    (an :class:`EndfFloat` is compared as its :class:`float` value).
+    In particular, a numpy array and a :class:`list` with the same
+    elements are reported as different, so are an :class:`int` and
+    a :class:`float` of equal value; materials parsed with different
+    ``array_type`` settings are therefore not comparable.
 
     Parameters
     ----------
@@ -238,16 +245,16 @@ class TrackingDict(MutableMapping):
     elements of :class:`dict`-like and :class:`list`-like objects
     stored within the root :class:`dict`-like object are potentially tracked.
     Not all keys are tracked, though.
-    Read access to a key is only tracked if the following two criteria are
+    Read access to a key is only tracked if the following criteria are
     met:
 
     - The key is an integer, i.e. of type :class:`int`
-    - Elements within :class:`dict`-like`` objects are never tracked if
+    - Elements within :class:`dict`-like objects are never tracked if
       the :class:`dict`-like object itself is stored under a
       key that starts with two underscores (``__``).
-    - If an object is :class:`list`-like, it's elements are tracked.
+    - If an object is :class:`list`-like, its elements are tracked.
 
-    The first criteria are owed to the mode of operation of the
+    These criteria are owed to the mode of operation of the
     :class:`~endf_parserpy.EndfParserPy` class.
     The methods :func:`~endf_parserpy.EndfParserPy.parsefile` and
     :func:`~endf_parserpy.EndfParserPy.writefile` of the
@@ -380,6 +387,13 @@ class TrackingDict(MutableMapping):
         self._verify_complete_retrieval()
 
     def unwrap(self):
+        """Return the wrapped :class:`dict`-like object.
+
+        Returns
+        -------
+        dict
+            The object given at initialization (not a copy).
+        """
         return self._basedict
 
 
@@ -392,6 +406,15 @@ def _is_empty_array(obj):
 
 
 class TrackingList(MutableSequence):
+    """Class for tracking read access of elements in :class:`list`-like objects.
+
+    This class is the counterpart of
+    :class:`~endf_parserpy.utils.debugging_utils.TrackingDict`
+    for :class:`list`-like objects. It records which indices of
+    the wrapped list were read, so that
+    :meth:`verify_complete_retrieval` can report elements
+    that have not been accessed.
+    """
 
     def __init__(self, list_like):
         """Initialize a ``TrackingList`` object.
@@ -468,4 +491,11 @@ class TrackingList(MutableSequence):
         self._verify_complete_retrieval()
 
     def unwrap(self):
+        """Return the wrapped :class:`list`-like object.
+
+        Returns
+        -------
+        list
+            The object given at initialization (not a copy).
+        """
         return self._baselist

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/18
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
@@ -63,8 +63,11 @@ def list_unparsed_sections(dic):
     -------
     tuple[tuple[int,int]]
         A tuple of tuples with pairs of MF and MT numbers that were not parsed.
-        For instance, if MF=1/MT=451 an MF=2/MT=151 were not parsed,
+        For instance, if MF=1/MT=451 and MF=2/MT=151 were not parsed,
         the return value would be ``((1, 451), (2, 151))``.
+        The tape head counts as a section with MF=0/MT=0: if it was
+        not parsed, e.g. with ``include=[3]``, ``(0, 0)`` is listed
+        as well.
     """
     unparsed = []
     for mf, mt, mtsec in _labelled_sections(dic):
@@ -87,7 +90,7 @@ def list_parsed_sections(dic):
     -------
     tuple[tuple[int,int]]
         A tuple of tuples with pairs of MF and MT numbers that are available in parsed form.
-        For instance, if MF=1/MT=451 an MF=2/MT=151 were not parsed,
+        For instance, if MF=1/MT=451 and MF=2/MT=151 were parsed,
         the return value would be ``((1, 451), (2, 151))``.
     """
     parsed = []

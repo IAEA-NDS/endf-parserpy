@@ -26,6 +26,16 @@ class EndfFloat:
     is not possible. They must be explicitly converted to an integer
     or float number before via :class:`float` or :class:`int`,
     respectively.
+
+    In a comparison, the other operand is converted via
+    :class:`float`. A string that :class:`float` cannot convert,
+    such as ``"abc"``, therefore raises a :class:`ValueError`
+    instead of comparing unequal (``EndfFloat(1, "1") == "abc"``),
+    whereas a string such as ``"1.0"`` compares as the number it
+    represents.
+
+    :class:`EndfFloat` instances are not hashable, so they cannot
+    be elements of a :class:`set` or keys of a :class:`dict`.
     """
 
     def __init__(self, value, orig_str):
@@ -128,24 +138,28 @@ def math_isclose(x, y, rtol=1e-5, atol=1e-8):
 def math_op(x, y, op, **kwargs):
     """Performs a binary operation.
 
+    The iterable arguments can be lists or tuples;
+    numpy arrays are not supported (they raise a :class:`TypeError`).
+
     Parameters
     ----------
-    x : Union[float, Iterable[float]]
-        First number or iterable of numbers
-    y : Union[float, Iterable[float]]
-        Second number or iterable of numbers
+    x : Union[float, list[float], tuple[float, ...]]
+        First number or list/tuple of numbers
+    y : Union[float, list[float], tuple[float, ...]]
+        Second number or list/tuple of numbers
     op : Callable[..., Any]
         Function (e.g. ``lambda`` function) that
         takes two floats and, optionally, keyword arguments.
-    kwargs : Optional[dict[str, int]]
+    kwargs : dict[str, Any]
         Keyword arguments also passed to function
         provided as ``op`` argument.
 
     Returns
     -------
-    Union[Any, Iterable[Any]]
+    Union[Any, list[Any], tuple[Any, ...]]
         If either of the input arguments
-        ``x`` or ``y`` is an iterable, returns an iterable
+        ``x`` or ``y`` is a list or tuple, returns a list or tuple
+        (of the type of ``x`` if both are)
         with results of the the element-wise application of the function.
         If both ``x`` and ``y`` are scalar/non-iterable,
         the result of the function.
@@ -170,12 +184,15 @@ def math_neg(x):
 
     Parameters
     ----------
-    x : Union[float, Iterable[float]]
+    x : Union[float, list[float], tuple[float, ...]]
+        Number or list/tuple of numbers;
+        numpy arrays are not supported (they raise a :class:`TypeError`).
 
     Returns
     -------
-    float
-        Negated number or iterable of negated numbers.
+    Union[float, list[float], tuple[float, ...]]
+        Negated number or list/tuple (of the type of ``x``)
+        of negated numbers.
     """
     if hasattr(x, "__iter__"):
         return type(x)(-z for z in x)

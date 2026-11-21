@@ -1,0 +1,13 @@
+/* Tables of prose (list-table with :class: wrap-cells): the theme keeps
+   every cell on one line, which makes such tables scroll sideways; their
+   cells wrap instead, in the column widths given by :widths:. The tables
+   of numbers, e.g. those of the Performance page, keep the theme's
+   behaviour. */
+.wy-table-responsive table.wrap-cells {
+    width: 100%;
+}
+.wy-table-responsive table.wrap-cells td,
+.wy-table-responsive table.wrap-cells th {
+    white-space: normal;
+    vertical-align: top;
+}

@@ -91,6 +91,7 @@ The tier is chosen once, when the C++ module is loaded:
 
 .. list-table::
    :header-rows: 1
+   :class: wrap-cells
    :widths: 15 55 30
 
    * - Tier
@@ -132,6 +133,7 @@ object is created in a Python process, whatever its format flavor:
 
 .. list-table::
    :header-rows: 1
+   :class: wrap-cells
    :widths: 25 75
 
    * - Value

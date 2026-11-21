@@ -120,6 +120,7 @@ they then differ in what changes:
 
 .. list-table::
    :header-rows: 1
+   :class: wrap-cells
    :widths: 40 30 30
 
    * - Writing options

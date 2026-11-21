@@ -126,6 +126,7 @@ MF1/MT451:
 
 .. list-table::
    :header-rows: 1
+   :class: wrap-cells
 
    * - Key
      - Content
@@ -160,6 +161,7 @@ a HEAD record and one LIST record per group:
 
 .. list-table::
    :header-rows: 1
+   :class: wrap-cells
 
    * - Key
      - Content

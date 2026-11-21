@@ -71,6 +71,7 @@ Available layout versions
 
 .. list-table::
    :header-rows: 1
+   :class: wrap-cells
    :widths: 20 15 65
 
    * - Version

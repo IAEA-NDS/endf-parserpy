@@ -3,12 +3,13 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/18
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2022-2025 International Atomic Energy Agency (IAEA)
 #
 ############################################################
 
+from collections.abc import Mapping
 from endf_parserpy.interpreter.endf_utils import split_sections
 import re
 
@@ -58,13 +59,48 @@ def set_library(endf_dic, libtype):
     descr[3] = new_descr_line
 
 
+def _array_values(arr):
+    # the elements of an array in the order of their indices: a dict
+    # (array_type="dict"), a list ("list") or a numpy array ("numpy")
+    if isinstance(arr, Mapping):
+        return [arr[k] for k in sorted(arr)]
+    return list(arr)
+
+
+def _array_form(mt451):
+    # the form of the arrays of MF1/MT451: "dict", "list" or "numpy"
+    # (the strings of DESCRIPTION are a list also with array_type="numpy")
+    for name in ("MFx", "DESCRIPTION"):
+        arr = mt451.get(name)
+        if arr is None:
+            continue
+        if isinstance(arr, Mapping):
+            return "dict"
+        if hasattr(arr, "__array_interface__"):
+            return "numpy"
+        return "list"
+    return "dict"
+
+
+def _new_array(values, form, like=None):
+    # an array with the given elements (counted from 1) in the given form
+    if form == "dict":
+        return {i: v for i, v in enumerate(values, start=1)}
+    if form == "numpy" and like is not None:
+        import numpy as np
+
+        return np.array(values, dtype=like.dtype)
+    return list(values)
+
+
 def get_description(endf_dic):
     """Retrieve the description from MF1/MT451 section.
 
     Parameters
     ----------
     endf_dic : dict
-        Dictionary with ENDF-6 data
+        Dictionary with ENDF-6 data, parsed with any ``array_type``
+        (``"dict"``, ``"list"`` or ``"numpy"``).
 
     Returns
     -------
@@ -72,11 +108,8 @@ def get_description(endf_dic):
         String with the description
         extracted from MF1/MT451
     """
-    descr_dic = endf_dic[1][451]["DESCRIPTION"]
-    descr_list = []
-    for k in sorted(descr_dic.keys()):
-        descr_list.append(descr_dic[k])
-    return "\n".join(descr_list)
+    descr = endf_dic[1][451]["DESCRIPTION"]
+    return "\n".join(_array_values(descr))
 
 
 def set_description(endf_dic, text):
@@ -89,7 +122,12 @@ def set_description(endf_dic, text):
     Parameters
     ----------
     endf_dic : dict
-        Dictionary with ENDF-6 data
+        Dictionary with ENDF-6 data, parsed with any ``array_type``
+        (``"dict"``, ``"list"`` or ``"numpy"``). The new
+        ``DESCRIPTION`` has the form of the arrays in MF1/MT451:
+        a :class:`dict` with the line numbers (from 1) as keys, or
+        a :class:`list` of the lines (also with ``"numpy"``, whose
+        description is a :class:`list` of strings).
     text : str
         String with description. Lines with fewer than 66
         characters are padded with blanks to 66 characters.
@@ -109,12 +147,10 @@ def set_description(endf_dic, text):
                 "but a line of the description (a TEXT record) can have at "
                 "most 66 characters"
             )
-    numlines = len(lines)
-    endf_dic[1][451]["NWD"] = numlines + 5
-    descr_dic = {}
-    for k in range(1, numlines + 1):
-        descr_dic[k] = lines[k - 1].ljust(66)
-    endf_dic[1][451]["DESCRIPTION"] = descr_dic
+    mt451 = endf_dic[1][451]
+    form = "dict" if _array_form(mt451) == "dict" else "list"
+    mt451["NWD"] = len(lines) + 5
+    mt451["DESCRIPTION"] = _new_array([line.ljust(66) for line in lines], form)
 
 
 def insert_description(endf_dic, text, after_line=0):
@@ -127,7 +163,8 @@ def insert_description(endf_dic, text, after_line=0):
     Parameters
     ----------
     endf_dic : dict
-        Dictionary with ENDF-6 data
+        Dictionary with ENDF-6 data, parsed with any ``array_type``
+        (see :func:`set_description`).
     text : str
         String with text to be inserted. Lines with more than 66
         characters raise a :exc:`ValueError` (see
@@ -153,11 +190,17 @@ def update_directory(endf_dic, parser=None, lines=None, read_opts=None):
     Parameters
     ----------
     endf_dic : dict
-        Dictionary of appropriate structure with ENDF-6 data.
+        Dictionary of appropriate structure with ENDF-6 data, parsed
+        with any ``array_type`` (``"dict"``, ``"list"`` or ``"numpy"``).
+        The arrays of the directory (``MFx``, ``MTx``, ``NCx``, ``MOD``)
+        are replaced by arrays of the same form: :class:`dict` objects,
+        :class:`list` objects or numpy arrays. Without a directory
+        before, its form is that of ``DESCRIPTION``.
     parser : EndfParserBase
         An :class:`~endf_parserpy.EndfParserBase` instance, used to
         write ``endf_dic`` to determine the lengths of the sections.
-        It is required unless ``lines`` is provided.
+        It is required unless ``lines`` is provided, and must
+        have been created with the ``array_type`` of ``endf_dic``.
     lines: list[str]
         A list of strings with the ENDF-6 formatted data
         corresponding to the data in ``endf_dic``.
@@ -199,29 +242,31 @@ def update_directory(endf_dic, parser=None, lines=None, read_opts=None):
     # previous value of MOD (modified version number)
     moddic = {}
     mt451 = endf_dic[1][451]
-    ilist = mt451["MFx"].keys() if "MFx" in mt451 else tuple()
-    for i in ilist:
-        curmf = mt451["MFx"][i]
-        curmt = mt451["MTx"][i]
-        curmod = mt451["MOD"][i]
-        moddic[(curmf, curmt)] = curmod
-    # construct the dictionaries
-    MFx = {}
-    MTx = {}
-    NCx = {}
-    MOD = {}
-    i = 0
+    form = _array_form(mt451)
+    old_mfx = mt451.get("MFx")
+    if old_mfx is not None:
+        for curmf, curmt, curmod in zip(
+            _array_values(old_mfx),
+            _array_values(mt451["MTx"]),
+            _array_values(mt451["MOD"]),
+        ):
+            moddic[(int(curmf), int(curmt))] = curmod
+    # construct the arrays
+    MFx = []
+    MTx = []
+    NCx = []
+    MOD = []
     for mf, mfsec in countdic.items():
         for mt, count in mfsec.items():
-            i += 1
-            MFx[i] = mf
-            MTx[i] = mt
-            NCx[i] = countdic[mf][mt]
-            MOD[i] = moddic.get((mf, mt), 0)
-    # update MT451
-    mt451["MFx"] = MFx
-    mt451["MTx"] = MTx
-    mt451["NCx"] = NCx
-    mt451["MOD"] = MOD
+            MFx.append(mf)
+            MTx.append(mt)
+            NCx.append(count)
+            MOD.append(moddic.get((mf, mt), 0))
+    # update MT451, with arrays of the form of the existing ones
+    like = old_mfx if form == "numpy" else None
+    mt451["MFx"] = _new_array(MFx, form, like)
+    mt451["MTx"] = _new_array(MTx, form, like)
+    mt451["NCx"] = _new_array(NCx, form, like)
+    mt451["MOD"] = _new_array(MOD, form, like)
     # finally, update the counter NXC
     mt451["NXC"] = numsecs

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/11/18
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -234,7 +234,7 @@ class EndfParserBase(ABC):
     A parser is picklable: it is pickled *by recipe* -- the arguments
     it was constructed with -- and rebuilt by re-running ``__init__`` on
     unpickling. A subclass must decorate its ``__init__`` with
-    :func:`_record_init_kwargs` for this to work.
+    ``_record_init_kwargs`` for this to work.
     """
 
     # The tape structure of the flavor of the parser (see

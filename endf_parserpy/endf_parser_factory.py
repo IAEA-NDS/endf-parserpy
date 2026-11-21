@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/11/18
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -138,7 +138,7 @@ class EndfParserFactory:
 
         Parameters
         ----------
-        select : string
+        select : str
             Can be ``fastest``, ``cpp``, or ``python``. If ``fastest``,
             selects the C++ parser if possible and falls back
             on the Python parser otherwise. If ``cpp`` or ``python``,

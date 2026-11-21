@@ -11,6 +11,9 @@ tape_structure
 .. autoclass:: TapeStructure
    :members: from_spec, send, fend, repeat, mt_ascending, is_endf6, to_spec, cpp_options
 
+.. autodata:: endf_parserpy.utils.tape_structure.ENDF6
+   :no-value:
+
 .. autofunction:: section_label
 
 .. autofunction:: to_list_form

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/11/15
-# Last modified:   2026/10/20
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -21,10 +21,10 @@ class EndfFloat:
 
     Numeric comparisons between :class:`EndfFloat` instances and
     data types convertible to float numbers via the
-    :func:`float()` function are possible. However, using
+    :class:`float` function are possible. However, using
     :class:`EndfFloat` instances directly in arithmetic expressions
     is not possible. They must be explicitly converted to an integer
-    or float number before via :func:`float` or :func:`int` function,
+    or float number before via :class:`float` or :class:`int`,
     respectively.
     """
 
@@ -134,7 +134,7 @@ def math_op(x, y, op, **kwargs):
         First number or iterable of numbers
     y : Union[float, Iterable[float]]
         Second number or iterable of numbers
-    op : Callable[[float, float, \\*\\*kwargs], Any]
+    op : Callable[..., Any]
         Function (e.g. ``lambda`` function) that
         takes two floats and, optionally, keyword arguments.
     kwargs : Optional[dict[str, int]]

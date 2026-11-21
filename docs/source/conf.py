@@ -62,6 +62,14 @@ html_theme = "sphinx_rtd_theme"
 
 napoleon_use_rtype = True
 
+# numpydoc conventions in the parameter types, not names: "optional"
+# in "int, optional", and the quoted values of a set of allowed values,
+# e.g. {"raise", "mark"}, which the type field splits at the commas
+nitpick_ignore_regex = [
+    ("py:class", "optional"),
+    ("py:class", r'\{?"[a-z_]+"\}?'),
+]
+
 source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
 
 master_doc = "index"

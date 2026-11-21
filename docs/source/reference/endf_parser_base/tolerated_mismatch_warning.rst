@@ -11,3 +11,5 @@ See :ref:`tolerated_mismatches_sec` for an introduction.
    :show-inheritance:
 
 .. autoclass:: endf_parserpy.utils.tolerated_mismatches.ToleratedMismatch
+
+.. autodata:: endf_parserpy.utils.tolerated_mismatches.MISMATCH_KINDS

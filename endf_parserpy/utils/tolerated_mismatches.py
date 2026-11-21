@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/11
-# Last modified:   2026/11/11
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -42,8 +42,9 @@ class EndfToleratedMismatchWarning(UserWarning):
     :class:`~endf_parserpy.EndfParserCpp` (and once per section parsed
     by :class:`~endf_parserpy.EndfFile`) if mismatches were tolerated.
     The mismatches are available as the tuple ``mismatches`` of
-    :class:`ToleratedMismatch` records, and ``source`` is the name of the
-    file parsed (``None`` for data parsed from a string). To turn the
+    :class:`~endf_parserpy.utils.tolerated_mismatches.ToleratedMismatch`
+    records, and ``source`` is the name of the file parsed (``None`` for
+    data parsed from a string). To turn the
     warning into an error or to silence it, use the filters of the
     :mod:`warnings` module, e.g.
     ``warnings.simplefilter("error", EndfToleratedMismatchWarning)``.
@@ -70,13 +71,14 @@ the name of the field of the line (``"C1"``, ``"C2"``, ``"L1"``,
 a LIST record; ``variable`` names the variables of the field (e.g.
 ``"AWR"``), ``None`` for a field without variables; ``kind`` is one of
 ``"zero"``, ``"number"`` and ``"varspec"`` (see
-:data:`MISMATCH_KINDS`); ``line`` is the number (counting from 1) of the
-line of the input holding the value, ``expected`` the value given by the
+:data:`~endf_parserpy.utils.tolerated_mismatches.MISMATCH_KINDS`);
+``line`` is the number (counting from 1) of the line of the input
+holding the value, ``expected`` the value given by the
 recipe and ``found`` the value in the input.
 """
 
 
-# the kinds of tolerated mismatches and the options tolerating them
+#: The kinds of tolerated mismatches and the options tolerating them.
 MISMATCH_KINDS = {
     "zero": "ignore_zero_mismatch",
     "number": "ignore_number_mismatch",

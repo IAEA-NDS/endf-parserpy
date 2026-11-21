@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2022/05/30
-# Last modified:   2026/11/18
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2022-2026 International Atomic Energy Agency (IAEA)
 #
@@ -430,13 +430,13 @@ class EndfParserPy(EndfParserBase):
             them all. A layout version, e.g. `endf6-ext@0.19`, keeps the layout of
             the dictionaries of a flavor when the flavor changes it
             (see :ref:`layout_versions_sec`).
-        recipes : dict_like
+        recipes : dict
             The default ENDF-6 recipes can be overridden by providing a
             nested dictionary with custom recipes. Inspect the default
             recipe dictionary to see the required structure
             (``from endf_parserpy.endf_recipes import get_recipe_dict``,
             then ``get_recipe_dict("endf6-ext")``).
-        parsing_funs : dict_like
+        parsing_funs : dict
             Python functions that parse sections instead of the recipes,
             in a nested dictionary of the same structure as ``recipes``:
             a function under ``parsing_funs[MF][MT]`` parses the section

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/18
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -182,7 +182,7 @@ class TapeStructure:
     """The validated and resolved rules of a tape structure.
 
     Create it with :meth:`from_spec` from a dictionary (see the module
-    documentation); :data:`ENDF6` is the structure of ENDF-6. The object
+    documentation); :data:`~endf_parserpy.utils.tape_structure.ENDF6` is the structure of ENDF-6. The object
     is immutable, hashable and can be pickled. The rules ``send`` and
     ``repeat`` can be given globally, per MF and per section, ``fend``
     and ``mt_order`` globally and per MF, the others globally only.
@@ -437,7 +437,7 @@ class TapeStructure:
 
 
 ENDF6 = TapeStructure.from_spec({})
-"""The tape structure of ENDF-6: all rules at their defaults."""
+"""The tape structure of ENDF-6, with all rules at their defaults."""
 
 
 # -- the forms of a material -----------------------------------------------

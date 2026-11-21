@@ -50,3 +50,27 @@ def test_relations(obj1, obj2, relation, expval):
 )
 def test_math_isclose(obj1, obj2, expval):
     assert math_isclose(obj1, obj2) == expval
+
+
+@pytest.mark.parametrize("left", [2.5, 3.0, 3.5, 3])
+def test_reflected_relations_with_float_on_the_left(left):
+    # Python calls the swapped comparison of EndfFloat (e.g. __gt__ for
+    # left < x); there are no __rlt__ etc. in the comparison protocol
+    x = EndfFloat(3.0, "3.0")
+    assert (left < x) == (left < 3.0)
+    assert (left <= x) == (left <= 3.0)
+    assert (left > x) == (left > 3.0)
+    assert (left >= x) == (left >= 3.0)
+    assert (left == x) == (left == 3.0)
+    assert (left != x) == (left != 3.0)
+
+
+def test_relations_of_two_endf_floats():
+    a, b = EndfFloat(1.0, "1.0"), EndfFloat(2.0, "2.0")
+    assert a < b and a <= b and b > a and b >= a and a != b
+    assert not a > b and not a == b
+
+
+def test_no_reflected_relation_methods():
+    for name in ("__rlt__", "__rle__", "__rgt__", "__rge__"):
+        assert not hasattr(EndfFloat, name)

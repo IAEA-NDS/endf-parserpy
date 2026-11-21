@@ -83,19 +83,9 @@ class EndfFloat:
     def __ge__(self, other):
         return self._value >= float(other)
 
-    # reverse relation variants
-
-    def __rlt__(self, other):
-        return float(other) < self._value
-
-    def __rle__(self, other):
-        return float(other) <= self._value
-
-    def __rgt__(self, other):
-        return float(other) > self._value
-
-    def __rge__(self, other):
-        return float(other) >= self._value
+    # a comparison with the EndfFloat object on the right (e.g. 3 < x) is
+    # the reflected one of the above (x > 3), which Python calls if the
+    # left operand does not support the comparison
 
     # conversion to Python's numeric primitives
 
@@ -205,14 +195,16 @@ def math_mul(x, y):
 
     Parameters
     ----------
-    x : Union[float, Iterable[float]]
-        First number or iterable of numbers
-    y : Union[float, Iterable[float]]
-        Second number or iterable of numbers
+    x : Union[float, list[float], tuple[float, ...]]
+        First number or list/tuple of numbers
+    y : Union[float, list[float], tuple[float, ...]]
+        Second number or list/tuple of numbers;
+        numpy arrays are not supported (they raise a :class:`TypeError`,
+        see :func:`math_op`).
 
     Returns
     -------
-    Union[float, Iterable[float]]
+    Union[float, list[float], tuple[float, ...]]
         Multiplication result
     """
     return math_op(x, y, lambda a, b: a * b)
@@ -223,10 +215,12 @@ def math_div(x, y, cast_int=False):
 
     Parameters
     ----------
-    x : Union[float, Iterable[float]]
-        First number or iterable of numbers
-    y : Union[float, Iterable[float]]
-        Second number or iterable of numbers
+    x : Union[float, list[float], tuple[float, ...]]
+        First number or list/tuple of numbers
+    y : Union[float, list[float], tuple[float, ...]]
+        Second number or list/tuple of numbers;
+        numpy arrays are not supported (they raise a :class:`TypeError`,
+        see :func:`math_op`).
     cast_int : bool
         If both ``x`` and ``y`` are :class:`int`,
         and result does not correspond to integer,
@@ -235,7 +229,7 @@ def math_div(x, y, cast_int=False):
 
     Returns
     -------
-    Union[float, Iterable[float]]
+    Union[float, list[float], tuple[float, ...]]
         Result of division
     """
     res = math_op(x, y, lambda a, b: a / b)
@@ -288,14 +282,16 @@ def math_add(x, y):
 
     Parameters
     ----------
-    x : Union[float, Iterable[float]]
-        First number or iterable of numbers
-    y : Union[float, Iterable[float]]
-        Second number or iterable of numbers
+    x : Union[float, list[float], tuple[float, ...]]
+        First number or list/tuple of numbers
+    y : Union[float, list[float], tuple[float, ...]]
+        Second number or list/tuple of numbers;
+        numpy arrays are not supported (they raise a :class:`TypeError`,
+        see :func:`math_op`).
 
     Returns
     -------
-    Union[float, Iterable[float]]
+    Union[float, list[float], tuple[float, ...]]
         Result of addition
     """
     return math_op(x, y, lambda a, b: a + b)
@@ -306,14 +302,16 @@ def math_sub(x, y):
 
     Parameters
     ----------
-    x : Union[float, Iterable[float]]
-        First number or iterable of numbers
-    y : Union[float, Iterable[float]]
-        Second number or iterable of numbers
+    x : Union[float, list[float], tuple[float, ...]]
+        First number or list/tuple of numbers
+    y : Union[float, list[float], tuple[float, ...]]
+        Second number or list/tuple of numbers;
+        numpy arrays are not supported (they raise a :class:`TypeError`,
+        see :func:`math_op`).
 
     Returns
     -------
-    Union[float, Iterable[float]]
+    Union[float, list[float], tuple[float, ...]]
         Result of subtraction
     """
     return math_op(x, y, lambda a, b: a - b)

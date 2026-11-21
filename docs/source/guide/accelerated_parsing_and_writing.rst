@@ -63,132 +63,59 @@ the package as a new format flavor (see :ref:`adding_recipe_flavor_sec`)
 or generate a standalone C++ module from them (see
 :ref:`generating_cpp_code_sec`).
 
+The next section describes how the C++ parser reads numeric data and
+how to check it; the last two sections describe how to use your own
+recipes with C++ code.
+
 
 .. _cpp_bulk_bodies_sec:
 
-Bulk reading of TAB1 and LIST bodies
-------------------------------------
+Fast reading of numeric data
+----------------------------
 
-The float values of the bodies of TAB1 and LIST records can be read in
-two forms by the C++ module:
+Most of the data of an ENDF-6 file are the numbers in the bodies of
+TAB1 and LIST records. :class:`~endf_parserpy.EndfParserCpp` converts
+them a whole line at a time instead of field by field (*bulk reading*)
+and, where the processor supports it, with its vector instructions
+(AVX2 or AVX-512 on x86-64, NEON on 64-bit ARM). This happens
+automatically, and nothing needs to be configured.
 
-- the *per-field form*: each field is converted when its value is
-  needed, and the lines of a body are read one after the other;
-- the *bulk form* (the default): the float fields of the lines are
-  converted with one call of a *row kernel* per line. A TAB1 body is read
-  this way line by line. A LIST body is first read and converted as a
-  whole into a buffer (a body of several lines of 75 to 80 columns with
-  the same line ending, only printable characters and the MAT, MF and MT
-  numbers of the section is checked and converted as one block of
-  memory, any other body line by line, with the same checks and errors
-  as in the per-field form), from which its values are then delivered to the
-  variables: by strided copies if the code generator has proven the
-  layout of the body regular (e.g. one copy per array for the bodies of
-  MF6 LAW=1 records, the bulk of most neutron files, and one copy per
-  row for the triangular matrices of covariance data, whose rows have
-  lengths that depend on the row), otherwise by the same code as in the
-  per-field form, which takes each value from the buffer. With the
-  scalar row kernel, bodies without a regular layout (e.g. the
-  scattering laws of thermal scattering data) are read in the per-field
-  form, which is as fast for them, unless the tier is forced (see below);
-  with a vector tier they are read in the bulk form, which is faster
-  then.
+The results are exactly the same as with reading field by field: every
+value, every check of the data and every error, including its message
+and the line it names. Only the speed differs. Bulk reading is not used
+with ``preserve_value_strings=True`` and ``load_file_into_memory=False``,
+which affects only the speed; writing is not affected.
 
-The row kernel has several implementations (tiers); which one is used is
-decided once when the C++ module is loaded, from the features of the
-processor:
+The implementation of bulk reading for a processor is called a *tier*.
+The tier is chosen once, when the C++ module is loaded:
 
-- ``avx512``: AVX-512 (the subsets F, BW, VL, DQ and VBMI, e.g. Intel
-  processors since Ice Lake and Tiger Lake, AMD processors since Zen 4);
-- ``avx2``: AVX2 with FMA (most x86-64 processors since about 2013);
-- ``neon``: NEON (Advanced SIMD) of 64-bit ARM processors (AArch64,
-  e.g. Apple silicon and the ARM servers of cloud providers);
-- ``scalar``: the conversion field by field applied to a whole line, on
-  every platform.
+.. list-table::
+   :header-rows: 1
+   :widths: 15 55 30
 
-The ``avx2`` and ``avx512`` tiers are built on x86-64 with GCC and Clang
-(Linux, macOS on Intel processors, MinGW, and clang-cl if its headers
-declare the intrinsics without global compiler flags) and with the
-Microsoft compiler (MSVC, Windows x64); the module itself is
-compiled for the baseline instruction set, and only the functions of a
-tier use its instructions, which are executed only if the processor and
-the operating system support them. The ``neon`` tier is
-built on 64-bit ARM (AArch64) with GCC, Clang and MSVC (Linux, macOS,
-Windows); NEON is part of the baseline instruction set there, so this
-tier is always supported. If the module is compiled with GCC (e.g. the
-Linux wheels and most installations from source under Linux), the
-``neon`` tier is built but not chosen automatically, only if it is
-requested: on a Neoverse N2 processor, parsing with it compiled by GCC
-13 was a few percent slower than with the ``scalar`` tier, while the
-same code compiled by Clang was 10–13% faster than the scalar tier
-(``array_type="numpy"``). A module compiled with Clang (also Apple
-Clang) or MSVC chooses ``neon``. On other architectures (e.g. 32-bit
-ARM, 32-bit x86), only the scalar tier is built.
-The vector tiers need GCC 8 or later, Clang 8 or later (Apple Clang 11
-or later) or MSVC 19.30 (Visual Studio 2022) or later; with an older
-compiler the module is built with the scalar tier only.
-The parse results do not depend on the form or the tier: a row kernel
-converts a field only if the conversion field by field would give the
-same value, every other field is converted field by field, and the
-checks of the values and all errors (type, message and the line named in
-it) are those of the per-field form, in the same order. The bulk form is
-not used for ``preserve_value_strings=True`` (which needs the strings of
-the fields), for ``load_file_into_memory=False`` and in the lookahead of
-recipes; writing is not affected.
+   * - Tier
+     - Processors
+     - Chosen automatically
+   * - ``avx512``
+     - x86-64 with AVX-512 (the subsets F, BW, VL, DQ and VBMI), e.g.
+       Intel processors since Ice Lake and Tiger Lake, AMD processors
+       since Zen 4
+     - yes
+   * - ``avx2``
+     - x86-64 with AVX2 and FMA (most x86-64 processors since about 2013)
+     - yes, if ``avx512`` is not available
+   * - ``neon``
+     - 64-bit ARM (AArch64), e.g. Apple silicon and the ARM servers of
+       cloud providers
+     - yes, unless the module is compiled with GCC, as the Linux wheels are
+   * - ``scalar``
+     - every processor, without vector instructions
+     - if no vector tier is available
 
-The environment variable ``ENDF_PARSERPY_CPP_BULK_BODIES``, read when
-the C++ module is loaded (i.e. when the first
-:class:`~endf_parserpy.EndfParserCpp` object is created in a Python
-process, whatever its format flavor), selects the form and the tier of the row
-kernel:
+Checking and changing the selection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ``auto`` (the default, also if the variable is unset or empty): the
-  bulk form with the fastest vector tier supported by the processor (not
-  ``neon`` if the module is compiled with GCC, see above), or with the scalar
-  row kernel if there is none (then only for the LIST bodies with a
-  regular layout);
-- ``off``: the per-field form, as in versions without the bulk form; for
-  diagnosis and comparisons;
-- ``scalar``: the bulk form with the scalar row kernel, the conversion
-  field by field applied to a whole line, for all LIST bodies with a
-  loop; it is also the reference for testing the vector tiers;
-- ``avx2``, ``avx512``, ``neon``: the bulk form with this vector tier
-  (``avx2`` and ``avx512`` on x86-64, ``neon`` on 64-bit ARM), if it is
-  built and supported by the processor.
-
-If the requested tier is not available, or the value is not one of
-these, the automatic choice is used and a ``RuntimeWarning`` is issued
-when the module is loaded. For example, to parse in the per-field form
-under Linux or macOS:
-
-.. code:: bash
-
-   ENDF_PARSERPY_CPP_BULK_BODIES=off python my_script.py
-
-The function ``_bulk_body_info`` of the C++ module returns the
-selected tier (``selected``: ``avx512``, ``avx2``, ``neon``,
-``scalar`` or ``off``), the name and the value of the variable (``variable``,
-``requested``), the reason why a requested tier is not used
-(``warning``), for each tier whether it is built, supported by the
-processor, a vector tier and chosen by ``auto`` if available
-(``tiers``), the detected processor features (``cpu``), the compiler of
-the module (``compiler``: ``gcc``, ``clang``, ``apple-clang``,
-``clang-cl``, ``msvc`` or ``other``), the number of lines converted by
-the scalar tier
-(``scalar_kernel_lines``), whether all LIST bodies
-with a loop are read in the bulk form (``bulk_all_list_bodies``) and the
-numbers of LIST bodies read in the bulk form (``bulk_list_bodies``:
-delivered by strided copies, delivered by the code of the per-field
-form, those whose conversion stopped at a field the row kernel does
-not convert, the bodies of several lines read as one block of memory
-and line by line, and, of the bodies delivered by strided copies, those
-with one copy per row, their values and their rows). It is meant for diagnostics and tests; its name and content
-may change between versions. The C++ code of all format flavors is in
-one module, so that the selection and the counters are the same for
-all flavors: the counters count the bodies read by the parsers of all
-flavors in the Python process (until version 0.18, every flavor had a
-module and counters of its own). The function is found through the
-functions of a parser:
+The selected tier can be printed with:
 
 .. code:: Python
 
@@ -198,13 +125,159 @@ functions of a parser:
    module = importlib.import_module(parser._parse_endf.__module__)
    print(module._bulk_body_info()["selected"])
 
+The environment variable ``ENDF_PARSERPY_CPP_BULK_BODIES`` selects
+the tier, or switches bulk reading off. It is read when the C++ module
+is loaded, i.e. when the first :class:`~endf_parserpy.EndfParserCpp`
+object is created in a Python process, whatever its format flavor:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Value
+     - Effect
+   * - ``auto``
+     - The default, also if the variable is unset or empty: the fastest
+       tier available, as in the table above.
+   * - ``off``
+     - Reading field by field, as in versions without bulk reading; for
+       diagnosis and comparisons.
+   * - ``scalar``
+     - Bulk reading without vector instructions, for all LIST bodies with
+       a loop; the reference for testing the vector tiers.
+   * - ``avx2``, ``avx512``, ``neon``
+     - Bulk reading with this tier, if it is built and supported by the
+       processor.
+
+If the requested tier is not available, or the value is not one of
+these, the automatic choice is used and a ``RuntimeWarning`` is issued
+when the module is loaded. For example, to read field by field under
+Linux or macOS:
+
+.. code:: bash
+
+   ENDF_PARSERPY_CPP_BULK_BODIES=off python my_script.py
+
+The following technical details are for those who want to know how
+bulk reading works; they are not needed to use it.
+
+.. dropdown:: How bulk reading works
+
+   The float values of the bodies of TAB1 and LIST records can be read in
+   two forms by the C++ module:
+
+   - the *per-field form*: each field is converted when its value is
+     needed, and the lines of a body are read one after the other;
+   - the *bulk form* (the default): the float fields of a line are
+     converted with one call of a *row kernel*, of which each tier is an
+     implementation.
+
+   A TAB1 body is read in the bulk form line by line. A LIST body is
+   read in three steps:
+
+   1. The body is read and converted as a whole into a buffer. A body of
+      several lines that all have 75 to 80 columns, the same line ending,
+      only printable characters and the MAT, MF and MT numbers of the
+      section is checked and converted as one block of memory; any other
+      body line by line, with the same checks and errors as in the
+      per-field form.
+   2. If the code generator has proven the layout of the body regular,
+      its values are delivered to the variables by strided copies: e.g.
+      one copy per array for the bodies of MF6 LAW=1 records, the bulk of
+      most neutron files, and one copy per row for the triangular
+      matrices of covariance data, whose rows have lengths that depend on
+      the row.
+   3. Otherwise, the values are delivered by the same code as in the
+      per-field form, which takes each value from the buffer.
+
+   With the scalar row kernel, bodies without a regular layout (e.g. the
+   scattering laws of thermal scattering data) are read in the per-field
+   form, which is as fast for them, unless the tier is requested with
+   ``ENDF_PARSERPY_CPP_BULK_BODIES=scalar``; with a vector tier they are
+   read in the bulk form, which is faster then.
+
+   The parse results do not depend on the form or the tier: a row
+   kernel converts a field only if the conversion field by field would
+   give the same value, every other field is converted field by field,
+   and the checks of the values and all errors (type, message and the
+   line named in it) are those of the per-field form, in the same order.
+   The bulk form is not used for ``preserve_value_strings=True`` (which
+   needs the strings of the fields), for ``load_file_into_memory=False``
+   and in the lookahead of recipes.
+
+.. dropdown:: Platforms and compilers
+
+   The ``avx2`` and ``avx512`` tiers are built on x86-64 with GCC and
+   Clang (Linux, macOS on Intel processors, MinGW, and clang-cl if its
+   headers declare the intrinsics without global compiler flags) and with
+   the Microsoft compiler (MSVC, Windows x64). The module itself is
+   compiled for the baseline instruction set, and only the functions of a
+   tier use its instructions, which are executed only if the processor
+   and the operating system support them.
+
+   The ``neon`` tier is built on 64-bit ARM (AArch64) with GCC, Clang and
+   MSVC (Linux, macOS, Windows); NEON is part of the baseline instruction
+   set there, so this tier is always supported. If the module is compiled
+   with GCC (e.g. the Linux wheels and most installations from source
+   under Linux), the ``neon`` tier is built but not chosen automatically,
+   only if it is requested: on a Neoverse N2 processor, parsing with it
+   compiled by GCC 13 was a few percent slower than with the ``scalar``
+   tier, while the same code compiled by Clang was 10–13% faster than the
+   scalar tier (``array_type="numpy"``). A module compiled with Clang
+   (also Apple Clang) or MSVC chooses ``neon``.
+
+   On other architectures (e.g. 32-bit ARM, 32-bit x86), only the scalar
+   tier is built. The vector tiers need GCC 8 or later, Clang 8 or later
+   (Apple Clang 11 or later) or MSVC 19.30 (Visual Studio 2022) or later;
+   with an older compiler the module is built with the scalar tier only.
+
+.. dropdown:: What ``_bulk_body_info`` returns
+
+   The function ``_bulk_body_info`` of the C++ module (see the example
+   above) is meant for diagnostics and tests; its name and content may
+   change between versions. It returns a dictionary with:
+
+   - ``selected``: the selected tier (``avx512``, ``avx2``, ``neon``,
+     ``scalar`` or ``off``);
+   - ``variable``, ``requested``: the name and the value of the
+     environment variable;
+   - ``warning``: the reason why a requested tier is not used;
+   - ``tiers``: for each tier, whether it is built, supported by the
+     processor, a vector tier and chosen by ``auto`` if available;
+   - ``cpu``: the detected processor features;
+   - ``compiler``: the compiler of the module (``gcc``, ``clang``,
+     ``apple-clang``, ``clang-cl``, ``msvc`` or ``other``);
+   - ``scalar_kernel_lines``: the number of lines converted by the scalar
+     tier;
+   - ``bulk_all_list_bodies``: whether all LIST bodies with a loop are
+     read in the bulk form;
+   - ``bulk_list_bodies``: the numbers of LIST bodies read in the bulk
+     form: delivered by strided copies, delivered by the code of the
+     per-field form, those whose conversion stopped at a field the row
+     kernel does not convert, the bodies of several lines read as one
+     block of memory and line by line, and, of the bodies delivered by
+     strided copies, those with one copy per row, their values and their
+     rows.
+
+   The C++ code of all format flavors is in one module, so that the
+   selection and the counters are the same for all flavors: the counters
+   count the bodies read by the parsers of all flavors in the Python
+   process (until version 0.18, every flavor had a module and counters of
+   its own).
+
+
+.. _cpp_module_names_sec:
+
+C++ module names before version 0.19
+-------------------------------------
+
 The modules of the flavors until version 0.18, e.g.
 ``endf_parserpy.cpp_parsers.endf6``, are deprecated: they can still be
 imported and give the functions of the flavor, with a
 ``DeprecationWarning``, and will be removed in a later version. Use
 :class:`~endf_parserpy.EndfParserCpp` with the ``endf_format`` argument
 instead, and ``importlib.import_module(parser._parse_endf.__module__)``
-as above for the diagnostic functions.
+as in :ref:`cpp_bulk_bodies_sec` for the diagnostic functions.
 
 
 .. _adding_recipe_flavor_sec:

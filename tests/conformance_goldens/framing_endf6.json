@@ -827,18 +827,10 @@
    "ignore_send_records": [
     [
      46,
-     "column 6 of the FEND record contains the byte 0x7f, which is not a printable ASCII character (codes 32 to 126) as required by the ENDF-6 format; use the option accept_non_ascii=True to accept it"
-    ],
-    [
-     46,
      "the fields 1-6 (columns 1-66) of the FEND record must be zero or blank, but field 1 is not: \"     \u007f\""
     ]
    ],
    "strict": [
-    [
-     46,
-     "column 6 of the FEND record contains the byte 0x7f, which is not a printable ASCII character (codes 32 to 126) as required by the ENDF-6 format; use the option accept_non_ascii=True to accept it"
-    ],
     [
      46,
      "the fields 1-6 (columns 1-66) of the FEND record must be zero or blank, but field 1 is not: \"     \u007f\""

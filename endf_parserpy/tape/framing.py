@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/08
-# Last modified:   2026/11/18
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -584,9 +584,9 @@ def check_framing(
     ignore_send_records=False,
     ignore_blank_lines=False,
     ignore_missing_tpid=False,
-    accept_non_ascii=False,
-    accept_spaces=False,
-    accept_d_exponent=False,
+    accept_non_ascii=True,
+    accept_spaces=True,
+    accept_d_exponent=True,
     tape_structure=None,
 ):
     """Check the framing records of the ENDF tape stored at ``path``.
@@ -643,7 +643,15 @@ def check_framing(
     ``ignore_missing_tpid`` accepts a tape without a tape head (as
     :class:`~endf_parserpy.TapeIndex`), ``accept_non_ascii`` accepts other characters,
     and ``accept_spaces`` and ``accept_d_exponent`` concern the reading
-    of the zeros in the float fields of the framing records.
+    of the zeros in the float fields of the framing records (e.g.
+    ``'  0. 0000+0'`` and ``' 0.00000D+0'``).
+
+    The defaults of the options are those of the parsers:
+    ``accept_non_ascii``, ``accept_spaces`` and ``accept_d_exponent``
+    are ``True``, the other options ``False``. ``endf-cli validate``
+    passes the options of its parser, by default all ``False``; for the
+    same strict check, pass ``accept_non_ascii=False``,
+    ``accept_spaces=False`` and ``accept_d_exponent=False``.
 
     ``tape_structure`` (a :class:`~endf_parserpy.TapeStructure` or its
     dictionary; ENDF-6 by default) gives the rules of the flavor: where

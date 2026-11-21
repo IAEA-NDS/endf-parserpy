@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/08
-# Last modified:   2026/11/08
+# Last modified:   2026/11/21
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -35,6 +35,9 @@ CU = TESTDATA / "n_2925_29-Cu-63.endf"
 ZN = TESTDATA / "n_3025_30-Zn-64.endf"
 PU = TESTDATA / "dec-094_Pu_244.endf"
 BLANK = b" " * 80
+# the options of check_framing whose defaults are those of the parsers
+# (True), as endf-cli validate passes them by default
+STRICT = {"accept_non_ascii": False, "accept_spaces": False, "accept_d_exponent": False}
 
 
 def _lines(path):
@@ -387,7 +390,7 @@ def test_valid_tapes(tmp_path, cpp_parser):
 def test_damaged(name, tmp_path):
     lines, line, text = CU_CASES[name]
     path = _write(tmp_path / "bad.endf", lines)
-    problems = check_framing(path)
+    problems = check_framing(path, **STRICT)
     assert problems, name
     assert problems[0].line == line
     assert text in problems[0].message
@@ -403,7 +406,7 @@ def test_validate_report(name, parser_kind, cpp_parsers, py_parsers, tmp_path):
     path = _write(tmp_path / "bad.endf", lines)
     ok, detail = validate._validate_file(parsers[0], str(path), parsers[1])
     assert not ok
-    problem = check_framing(path)[0]
+    problem = check_framing(path, **STRICT)[0]
     assert problem.line == line
     assert detail.startswith(f"framing records (SEND/FEND/MEND/TEND):\n{problem}")
     assert text in detail.splitlines()[1]
@@ -518,7 +521,7 @@ _OTHER_WITH_IGNORE_SEND = {
 def test_ignore_send_records(name, tmp_path):
     lines, line, text = CU_CASES[name]
     path = _write(tmp_path / "bad.endf", lines)
-    problems = check_framing(path, ignore_send_records=True)
+    problems = check_framing(path, ignore_send_records=True, **STRICT)
     line, text = _OTHER_WITH_IGNORE_SEND.get(name, (line, text))
     # also blank lines and a section occurring twice (the order of the
     # sections) remain problems
@@ -533,19 +536,54 @@ def test_ignore_send_records(name, tmp_path):
 
 
 def test_accept_non_ascii(tmp_path):
+    # accepted by default, as by the parsers
     path = _write(tmp_path / "bad.endf", CU_CASES["fend_non_ascii"][0])
+    assert check_framing(path) == []
     assert check_framing(path, accept_non_ascii=True) == []
+    assert len(check_framing(path, accept_non_ascii=False)) == 1
 
 
-def test_accept_d_exponent_and_spaces(tmp_path):
+@pytest.mark.parametrize(
+    "field, text, option",
+    [
+        (0, b"0.0D+0", "accept_d_exponent"),
+        (0, b" 0.00000D+0", "accept_d_exponent"),
+        (1, b"0.0 +0", "accept_spaces"),
+        (1, b"  0. 0000+0", "accept_spaces"),
+    ],
+)
+def test_accept_d_exponent_and_spaces(tmp_path, field, text, option):
+    # accepted by default, as by the parsers
     lines = _lines(CU)
     S = _index(lines, "SEND")
-    path = _write(tmp_path / "d.endf", _edit(lines, S, _field(lines[S], 0, b"0.0D+0")))
-    assert len(check_framing(path)) == 1
-    assert check_framing(path, accept_d_exponent=True) == []
-    path = _write(tmp_path / "s.endf", _edit(lines, S, _field(lines[S], 1, b"0.0 +0")))
-    assert len(check_framing(path)) == 1
-    assert check_framing(path, accept_spaces=True) == []
+    path = _write(tmp_path / "f.endf", _edit(lines, S, _field(lines[S], field, text)))
+    assert check_framing(path) == []
+    assert check_framing(path, **{option: True}) == []
+    problems = check_framing(path, **{option: False})
+    assert [p.line for p in problems] == [S + 1]
+    assert len(check_framing(path, **STRICT)) == 1
+
+
+@pytest.mark.parametrize(
+    "text", [b" 0.00000D+0", b"  0. 0000+0"], ids=["d_exponent", "spaces"]
+)
+@pytest.mark.parametrize("parser_kind", ["cpp", "python"])
+def test_defaults_as_parsers_validate_strict(
+    text, parser_kind, cpp_parsers, py_parsers, tmp_path
+):
+    # the SEND record parses with the defaults of the parsers and passes
+    # check_framing with its defaults; endf-cli validate (all three
+    # options False by default) reports it
+    lines = _lines(CU)
+    S = _index(lines, "SEND")
+    path = _write(tmp_path / "f.endf", _edit(lines, S, _field(lines[S], 0, text)))
+    assert check_framing(path) == []
+    parser = EndfParserCpp() if parser_kind == "cpp" else EndfParserPy()
+    parser.parsefile(str(path), include=[(1, 451)])
+    parsers = cpp_parsers if parser_kind == "cpp" else py_parsers
+    ok, detail = validate._validate_file(parsers[0], str(path), parsers[1])
+    assert not ok
+    assert detail.startswith("framing records (SEND/FEND/MEND/TEND):")
 
 
 def test_missing_tpid(tmp_path):

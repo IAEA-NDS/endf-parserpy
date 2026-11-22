@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/17
+# Last modified:   2026/11/22
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -93,10 +93,8 @@ def test_from_lines(send):
 @pytest.mark.parametrize("send", [True, False], ids=["send", "no_send"])
 def test_from_file(send, chunk_bytes, numpy, tmp_path, monkeypatch):
     # the bulk scan with and without numpy, and in small blocks
-    if numpy:
-        pytest.importorskip("numpy")
-    else:
-        monkeypatch.setattr(index_module, "_np", None)
+    np = pytest.importorskip("numpy") if numpy else None
+    monkeypatch.setattr(index_module, "_numpy_for_scan", lambda size: np)
     lines, starts = _repeated(send=send)
     path = _write(tmp_path / "repeated.endf", lines)
     kwargs = {} if chunk_bytes is None else {"chunk_bytes": chunk_bytes}

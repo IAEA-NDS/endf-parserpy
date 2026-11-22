@@ -52,7 +52,9 @@ python -m pip install endf-parserpy --upgrade
 The optional NumPy dependency, installed with
 `python -m pip install "endf-parserpy[fast]"`, is needed for
 `array_type="numpy"`, the fastest parsing mode, and speeds up the
-scan of multi-material files, which otherwise runs in pure Python.
+scan of multi-material files if it is already loaded (e.g. with
+`array_type="numpy"`) and for files of 200 MB or more; otherwise the
+scan runs in pure Python.
 Parsing with the other array types does not need NumPy.
 The `match` command of `endf-cli` needs the optional Lark package,
 installed with `python -m pip install "endf-parserpy[cli]"`.

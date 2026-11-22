@@ -135,9 +135,10 @@ Install endf-parserpy
 
    `NumPy <https://numpy.org/>`_ is needed for ``array_type="numpy"``,
    the fastest parsing mode, and speeds up the structural scan of the
-   :doc:`multi-material file interface <guide/multimaterial_files>`,
-   which otherwise runs in pure Python. To install this optional
-   dependency, add the ``fast`` extra:
+   :doc:`multi-material file interface <guide/multimaterial_files>`
+   if it is already loaded (e.g. with ``array_type="numpy"``) and for
+   files of 200 MB or more; otherwise the scan runs in pure Python. To
+   install this optional dependency, add the ``fast`` extra:
 
    .. code:: bash
 

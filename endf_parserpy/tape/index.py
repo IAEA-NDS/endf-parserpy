@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/18
+# Last modified:   2026/11/22
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -27,8 +27,9 @@ The scan is memory-bounded: :meth:`TapeIndex.from_file` reads the file
 in chunks and never holds it wholly in memory. Within a chunk, the
 records are taken in windows of consecutive records of equal byte
 width, and the control fields of all records of a window are compared
-in one bulk operation -- with ``numpy`` if it is installed, otherwise
-with Python big-integer arithmetic -- so the per-record work runs in C.
+in one bulk operation -- with ``numpy`` if it is already imported or
+the file is large (see :func:`_numpy_for_scan`), otherwise with Python
+big-integer arithmetic -- so the per-record work runs in C.
 A record of another width (e.g. a CRLF line among LF lines, or a line
 with sequence numbers) merely starts the next window. The result is
 identical to that of the record-by-record scan used by
@@ -38,16 +39,37 @@ alike.
 
 import os
 import re
+import sys
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
 from .errors import TapeStructureError
 from .records import _control_int, _MAT_COLS, _MF_COLS, _MT_COLS, _CTRL_COLS
 
-try:
-    import numpy as _np
-except ImportError:  # pragma: no cover - numpy is an optional accelerator
-    _np = None
+# The file size from which the scan imports numpy if it is not imported
+# yet. With numpy, the bulk scan takes about 0.17-0.21 ms less per MB
+# (measured on files of 2-370 MB), but importing numpy costs about
+# 35-40 ms, which every short run (e.g. of endf-cli) would pay. The two
+# break even at about 170-230 MB. Below this size, the scan uses numpy
+# only if it is already imported (e.g. for array_type="numpy").
+_NUMPY_SCAN_MIN_BYTES = 200 << 20
+
+
+def _numpy_for_scan(size):
+    """Return the numpy module for the scan of ``size`` bytes, or None.
+
+    numpy is used if it is already imported, and imported (if installed)
+    for a file of at least ``_NUMPY_SCAN_MIN_BYTES`` bytes. Both kernels
+    give the same result.
+    """
+    np = sys.modules.get("numpy")
+    if np is None and size >= _NUMPY_SCAN_MIN_BYTES:
+        try:
+            import numpy as np
+        except ImportError:  # numpy is an optional accelerator
+            np = None
+    return np
+
 
 # default read granularity for from_file(); bounds peak memory during
 # indexing to a small multiple of this regardless of the tape size
@@ -584,26 +606,27 @@ def _single_line_rows(buf, pos, num_rows, width):
     return lo
 
 
-def _bulk_rows_numpy(buf, pos, num_rows, width):
+def _bulk_rows_numpy(np, buf, pos, num_rows, width):
     """Find the uniform rows and their control-field runs using numpy.
 
     Return ``(n, starts)``: the rows ``[0, n)`` of ``width`` bytes from
     ``buf[pos]`` are single records, and ``starts`` lists the first row
-    of every run of identical control fields among them. See
-    :func:`_bulk_rows_python` for the variant used without numpy.
+    of every run of identical control fields among them; ``np`` is the
+    numpy module. See :func:`_bulk_rows_python` for the variant used
+    without numpy.
     """
-    arr = _np.frombuffer(buf, dtype=_np.uint8, count=num_rows * width, offset=pos)
+    arr = np.frombuffer(buf, dtype=np.uint8, count=num_rows * width, offset=pos)
     arr = arr.reshape(num_rows, width)
     terminated = arr[:, width - 1] == 0x0A
     n = num_rows if terminated.all() else int(terminated.argmin())
     # a row holding a further newline contains more than one record
     inner = arr[:n, : width - 1] == 0x0A
     if inner.any():
-        n = int(_np.argmax(inner.any(axis=1)))
+        n = int(np.argmax(inner.any(axis=1)))
     if n == 1:
         return 1, [0]
     ctrl = arr[:n, _CTRL_COLS]
-    boundary = _np.flatnonzero(_np.any(ctrl[1:] != ctrl[:-1], axis=1))
+    boundary = np.flatnonzero(np.any(ctrl[1:] != ctrl[:-1], axis=1))
     return n, [0] + (boundary + 1).tolist()
 
 
@@ -683,13 +706,14 @@ def _scan_rows(st, buf, pos, num_rows, width, starts, base):
                 return
 
 
-def _scan_block(st, buf, end, base):
+def _scan_block(st, buf, end, base, np):
     """Apply the whole records ``buf[:end]`` to ``st``.
 
-    ``buf[end - 1]`` is a newline and ``base`` the file offset of
-    ``buf[0]``. The records are taken in windows of consecutive records
-    of one byte width: :func:`_bulk_rows_numpy` -- or, without numpy or
-    for a short window, where its fixed cost dominates,
+    ``buf[end - 1]`` is a newline, ``base`` the file offset of
+    ``buf[0]`` and ``np`` the numpy module or None. The records are
+    taken in windows of consecutive records of one byte width:
+    :func:`_bulk_rows_numpy` -- or, without numpy or for a short
+    window, where its fixed cost dominates,
     :func:`_bulk_rows_python` -- locates the extent of the window and
     the runs of identical control fields within it in one bulk
     operation, and :func:`_scan_rows` applies those runs. A record of a
@@ -716,8 +740,8 @@ def _scan_block(st, buf, end, base):
             pos = nl + 1
             continue
         num_rows = min((end - pos) // width, window)
-        if _np is not None and num_rows > _MIN_WINDOW_ROWS:
-            n, starts = _bulk_rows_numpy(buf, pos, num_rows, width)
+        if np is not None and num_rows > _MIN_WINDOW_ROWS:
+            n, starts = _bulk_rows_numpy(np, buf, pos, num_rows, width)
         else:
             n, starts = _bulk_rows_python(buf, pos, num_rows, width)
         if n == num_rows:
@@ -752,6 +776,7 @@ def _scan_file_into(st, fh, chunk_bytes):
     The scan of :func:`_scan_file`, which ends at the TEND record or at
     the end of the file; the state is not checked for completeness.
     """
+    np = _numpy_for_scan(os.fstat(fh.fileno()).st_size)
     base = 0
     read_size = chunk_bytes
     while not st.done:
@@ -772,7 +797,7 @@ def _scan_file_into(st, fh, chunk_bytes):
             fh.seek(base)
             continue
         read_size = chunk_bytes
-        _scan_block(st, buf, end, base)
+        _scan_block(st, buf, end, base, np)
         base += end
         if end < len(buf):
             fh.seek(base)

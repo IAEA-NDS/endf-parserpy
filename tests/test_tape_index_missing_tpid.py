@@ -67,10 +67,10 @@ def _materials_canon(index, shift=0):
 @pytest.fixture(params=["numpy", "python"])
 def kernel(request, monkeypatch):
     if request.param == "numpy":
-        if tape_index._np is None:
-            pytest.skip("numpy not installed")
+        np = pytest.importorskip("numpy")
     else:
-        monkeypatch.setattr(tape_index, "_np", None)
+        np = None
+    monkeypatch.setattr(tape_index, "_numpy_for_scan", lambda size: np)
     return request.param
 
 

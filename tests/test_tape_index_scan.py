@@ -1,8 +1,8 @@
 """The bulk structural scan of TapeIndex.from_file.
 
 ``TapeIndex.from_file`` scans a tape in windows of records of equal
-width, with numpy where it is installed and with a pure-Python kernel
-otherwise. Both must yield exactly what the record-by-record ``_scan``
+width, with numpy where it is already imported or the file is large,
+and with a pure-Python kernel otherwise. Both must yield exactly what the record-by-record ``_scan``
 yields over the records of the file -- the same index, or the same
 exception -- for any input, including tapes of mixed record widths and
 malformed tapes. These tests compare the two on multi-material tapes
@@ -85,10 +85,10 @@ def _from_file(path, **kwargs):
 @pytest.fixture(params=["numpy", "python"])
 def kernel(request, monkeypatch):
     if request.param == "numpy":
-        if tape_index._np is None:
-            pytest.skip("numpy not installed")
+        np = pytest.importorskip("numpy")
     else:
-        monkeypatch.setattr(tape_index, "_np", None)
+        np = None
+    monkeypatch.setattr(tape_index, "_numpy_for_scan", lambda size: np)
     return request.param
 
 
@@ -233,7 +233,7 @@ def test_from_file_without_numpy(tmp_path):
         "sys.modules['numpy'] = None\n"
         "from endf_parserpy.tape import TapeIndex\n"
         "import endf_parserpy.tape.index as ti\n"
-        "assert ti._np is None\n"
+        "assert ti._numpy_for_scan(1 << 40) is None\n"
         f"idx = TapeIndex.from_file({str(path)!r})\n"
         "assert sys.modules['numpy'] is None\n"
         "sys.stdout.buffer.write(pickle.dumps(idx))\n"
@@ -251,3 +251,63 @@ def test_from_file_without_numpy(tmp_path):
 
     assert _canon(pickle.loads(result.stdout)) == _reference(path)
     assert _canon(TapeIndex.from_file(path)) == _reference(path)
+
+
+def _count_numpy_windows(monkeypatch, module=tape_index):
+    calls = []
+    bulk = module._bulk_rows_numpy
+
+    def counting(*args):
+        calls.append(None)
+        return bulk(*args)
+
+    monkeypatch.setattr(module, "_bulk_rows_numpy", counting)
+    return calls
+
+
+def test_scan_uses_numpy_if_imported(tmp_path, monkeypatch):
+    np = pytest.importorskip("numpy")
+    path = tmp_path / "tape.endf"
+    path.write_bytes(_tape(SOURCES))
+    assert tape_index._numpy_for_scan(0) is np
+    calls = _count_numpy_windows(monkeypatch)
+    assert _from_file(path) == _reference(path)
+    assert calls
+
+
+def test_scan_imports_numpy_for_large_files(tmp_path):
+    # in a fresh process: a file below the threshold is scanned without
+    # importing numpy, one of at least its size with numpy imported
+    pytest.importorskip("numpy")
+    path = tmp_path / "tape.endf"
+    path.write_bytes(_tape(SOURCES))
+    code = (
+        "import os, sys, pickle\n"
+        "import endf_parserpy.tape.index as ti\n"
+        "from endf_parserpy.tape import TapeIndex\n"
+        "assert 'numpy' not in sys.modules\n"
+        "calls = []\n"
+        "bulk = ti._bulk_rows_numpy\n"
+        "ti._bulk_rows_numpy = lambda *a: calls.append(None) or bulk(*a)\n"
+        f"size = os.path.getsize({str(path)!r})\n"
+        "assert size < ti._NUMPY_SCAN_MIN_BYTES\n"
+        f"small = TapeIndex.from_file({str(path)!r})\n"
+        "assert 'numpy' not in sys.modules and not calls\n"
+        "ti._NUMPY_SCAN_MIN_BYTES = size\n"
+        f"large = TapeIndex.from_file({str(path)!r})\n"
+        "assert 'numpy' in sys.modules and calls\n"
+        "sys.stdout.buffer.write(pickle.dumps((small, large)))\n"
+    )
+    env = dict(os.environ)
+    pkg_root = str(Path(endf_parserpy.__file__).parent.parent)
+    env["PYTHONPATH"] = os.pathsep.join(
+        [pkg_root] + [p for p in [env.get("PYTHONPATH")] if p]
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, cwd=tmp_path, env=env
+    )
+    assert result.returncode == 0, result.stderr.decode()
+    import pickle
+
+    small, large = pickle.loads(result.stdout)
+    assert _canon(small) == _canon(large) == _reference(path)

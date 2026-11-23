@@ -320,6 +320,16 @@ the line of the file at which it is found, e.g.
    framing records (SEND/FEND/MEND/TEND):
    line 603: expected a section of MF=1 of MAT 2925 or the FEND record (MAT/MF/MT 2925/0/0), found a FEND record (MAT/MF/MT 2926/0/0)
 
+With the C++ parser, the strict defaults of the flags that relax the
+check of the framing records (``ignore_send_records``,
+``ignore_blank_lines``, ``ignore_missing_tpid``, ``accept_non_ascii``,
+``accept_spaces`` and ``accept_d_exponent``) and a flavor with the tape
+structure of ENDF-6 (all flavors except ``gendf``), ``validate`` first
+parses each file once as a whole, which checks the framing records as
+strictly. A file of one material that parses without a tolerated mismatch
+passes without the steps above; any other file is validated by them, so
+that the report is the same.
+
 
 By default, the faster C++ parser (:class:`~endf_parserpy.EndfParserCpp`) is used,
 which yields less detailed logging output in case of failure. For easier debugging,

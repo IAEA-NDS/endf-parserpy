@@ -197,6 +197,56 @@ def _framing_detail(parser, file):
     return detail, index
 
 
+# whether a file may pass by one parse of the whole file (see
+# _passes_in_one_parse); False forces the scan and the per-MF path for
+# every file, e.g. to compare the reports of both paths
+WHOLE_FILE_PARSE = True
+
+
+def _passes_in_one_parse(parser, file, fast_parser):
+    """Return whether ``file`` passes by one parse of the whole file.
+
+    The file is parsed once by ``fast_parser`` (with all checks of the
+    MAT/MF/MT numbers and of the framing records of the C++ parser), in
+    the list form. It passes if the parse succeeds, the file holds one
+    material and no mismatch was tolerated; then the framing check, the
+    :class:`EndfFile` and the parses of its MFs would find no problem
+    either and report nothing (see ``test_cli_validate_whole_file.py``).
+    Otherwise ``False`` is returned, and the file is validated as
+    without this step, so that the report is the same.
+
+    The step is taken only with the C++ parser, the strict defaults of
+    validate for the options of the framing check (see
+    ``_FRAMING_OPTIONS``) and a tape structure with the rules of
+    ENDF-6, in which the sections of a material are in ascending order
+    and cannot repeat (all flavors except ``gendf``), as only then the
+    parser checks the framing records as strictly as the framing check.
+    """
+    if not WHOLE_FILE_PARSE or not isinstance(fast_parser, EndfParserCpp):
+        return False
+    tape_structure = getattr(fast_parser, "tape_structure", None)
+    if tape_structure is None or not tape_structure.is_endf6:
+        return False
+    for p in (parser, fast_parser):
+        opts = getattr(p, "read_opts", None) or {}
+        if any(opts.get(name) for name in _FRAMING_OPTIONS):
+            return False
+    tolerated = []
+    try:
+        # the list of the sections as returned by the C++ module, without
+        # a warning about tolerated mismatches, which are collected
+        sections = fast_parser._parse_endf_file(
+            str(file), None, None, fast_parser._cpp_read_opts, tolerated
+        )
+        if tolerated:
+            return False
+        # the MAT numbers of the sections other than the tape head
+        mats = {label[0] for label in map(section_label, sections) if label[1] != 0}
+    except Exception:  # noqa: BLE001
+        return False
+    return len(mats) == 1
+
+
 def _validate_file(parser, file, fast_parser=None, tolerated=None):
     """Validate the framing records and every section of ``file``.
 
@@ -219,7 +269,12 @@ def _validate_file(parser, file, fast_parser=None, tolerated=None):
     describes the failure. As the sections are visited in the same
     order as without ``fast_parser``, the first failing section is the
     same.
+
+    Before all this, a file of one material may pass by one parse of
+    the whole file with ``fast_parser`` (see :func:`_passes_in_one_parse`).
     """
+    if _passes_in_one_parse(parser, file, fast_parser):
+        return True, None
     framing, index = _framing_detail(parser, file)
     ok, detail = _validate_sections(parser, file, fast_parser, index, tolerated)
     if framing is None:

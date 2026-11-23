@@ -116,6 +116,14 @@ writes the same characters. With these options:
   in decimal notation or as an integer, e.g. ``13.7740142`` or
   ``218588031``.
 
+The ENDF-6 format allows a float field without a decimal point and
+reads it as an integer (the formats manual gives the Fortran edit
+descriptor ``F11.0`` for these fields, see the :endf6manpage:`50`), so
+these forms are read exactly by programs that follow the format. A
+program that reads float fields with an edit descriptor implying decimal
+digits, e.g. ``F11.4``, would read ``218588031`` as ``21858.8031``, as it
+would misread any number written without a decimal point.
+
 The options can also be used on their own or in other combinations;
 they then differ in what changes:
 

@@ -363,24 +363,19 @@ data gives a zero (see :ref:`tolerated_mismatches_sec`). The flavor
    dictionary is that of ENDF-6.
 
 3. Register the flavor in ``endf_parserpy/endf_recipes/catalogue.py``,
-   with two imports at the top of the file and an entry in each of the
-   dictionaries ``_FORMAT_DICT`` and ``_TAPE_STRUCTURE_DICT``, whose
-   keys are the names of the flavors:
+   with an entry in the dictionary ``_FLAVOR_PACKAGES``, which maps the
+   names of the flavors to the names of their folders:
 
    .. code:: Python
 
-      from .myflavor import endf_recipe_dictionary as myflavor_recipes
-      from .myflavor import TAPE_STRUCTURE as myflavor_tape_structure
-
-      _FORMAT_DICT = {
+      _FLAVOR_PACKAGES = {
           # ... the entries of the other flavors
-          "myflavor": myflavor_recipes,
+          "myflavor": "myflavor",
       }
 
-      _TAPE_STRUCTURE_DICT = {
-          # ... the entries of the other flavors
-          "myflavor": myflavor_tape_structure,
-      }
+   The folder of a flavor is imported when its recipes or its tape
+   structure are first needed, not with the package, so that an error
+   in one of its files appears only then.
 
 4. Try the flavor with :class:`~endf_parserpy.EndfParserPy` first, in an
    interactive Python session started in the root directory of the clone,
@@ -412,7 +407,7 @@ data gives a zero (see :ref:`tolerated_mismatches_sec`). The flavor
    module, with no message unless ``pip`` is run with ``-v``, and
    :class:`~endf_parserpy.EndfParserCpp` raises an ``ImportError``
    (``Unable to import the cpp module ...``).
-   The build generates the C++ code of all flavors in ``_FORMAT_DICT``,
+   The build generates the C++ code of all flavors in ``_FLAVOR_PACKAGES``,
    not only of the new one, and compiles it into one module, which takes
    about a minute on a laptop processor with eight threads (about three
    minutes with one compile job). The variables
@@ -464,7 +459,7 @@ Some points to keep in mind:
   shared by the flavors, ``_shared_part_<NN>.cpp``), so that
   ``git status`` shows the C++ files there as modified, deleted or new
   (and, after an editable installation, the compiled module as new). Don't commit them with the flavor; the
-  flavor consists of its folder and the entries in ``catalogue.py``.
+  flavor consists of its folder and its entry in ``catalogue.py``.
 - If your flavor is of general interest, consider contributing it
   through a pull request on
   `GitHub <https://github.com/IAEA-NDS/endf-parserpy>`_.

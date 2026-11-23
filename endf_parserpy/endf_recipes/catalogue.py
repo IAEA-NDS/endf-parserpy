@@ -1,45 +1,29 @@
+import importlib
 import re
-from .endf6_ext import endf_recipe_dictionary as endf6_ext_recipes
-from .endf6 import endf_recipe_dictionary as endf6_recipes
-from .jendl import endf_recipe_dictionary as jendl_recipes
-from .pendf import endf_recipe_dictionary as pendf_recipes
-from .errorr import endf_recipe_dictionary as errorr_recipes
-from .gendf import endf_recipe_dictionary as gendf_recipes
-from .test import endf_recipe_dictionary as test_recipes
-from .endf6_ext import TAPE_STRUCTURE as endf6_ext_tape_structure
-from .endf6 import TAPE_STRUCTURE as endf6_tape_structure
-from .jendl import TAPE_STRUCTURE as jendl_tape_structure
-from .pendf import TAPE_STRUCTURE as pendf_tape_structure
-from .errorr import TAPE_STRUCTURE as errorr_tape_structure
-from .gendf import TAPE_STRUCTURE as gendf_tape_structure
-from .test import TAPE_STRUCTURE as test_tape_structure
 
 
-# The build targets: the flavors with a recipe dictionary of their own.
-# The C++ code generator and setup.py create one entry per build target
-# in the C++ module (see cpp_module_basename).
-_FORMAT_DICT = {
-    "endf6-ext": endf6_ext_recipes,
-    "endf6": endf6_recipes,
-    "jendl": jendl_recipes,
-    "pendf": pendf_recipes,
-    "errorr": errorr_recipes,
-    "gendf": gendf_recipes,
-    "test": test_recipes,
+# The build targets: the flavors with a recipe dictionary of their own,
+# each with the name of its folder in endf_parserpy/endf_recipes. The
+# file __init__.py of the folder defines the recipe dictionary
+# `endf_recipe_dictionary` and the tape structure `TAPE_STRUCTURE` (see
+# endf_parserpy.utils.tape_structure) of the flavor; the folder is
+# imported when they are first needed (see _flavor_package), not with
+# the package. The C++ code generator and setup.py create one entry per
+# build target in the C++ module (see cpp_module_basename).
+_FLAVOR_PACKAGES = {
+    "endf6-ext": "endf6_ext",
+    "endf6": "endf6",
+    "jendl": "jendl",
+    "pendf": "pendf",
+    "errorr": "errorr",
+    "gendf": "gendf",
+    "test": "test",
 }
 
 
-# the tape structure of each build target (see
-# endf_parserpy.utils.tape_structure), given next to its recipes
-_TAPE_STRUCTURE_DICT = {
-    "endf6-ext": endf6_ext_tape_structure,
-    "endf6": endf6_tape_structure,
-    "jendl": jendl_tape_structure,
-    "pendf": pendf_tape_structure,
-    "errorr": errorr_tape_structure,
-    "gendf": gendf_tape_structure,
-    "test": test_tape_structure,
-}
+def _flavor_package(target):
+    """Import the folder of a build target and return the module."""
+    return importlib.import_module("." + _FLAVOR_PACKAGES[target], __package__)
 
 
 # Layout versions and other names that stand for another flavor. An
@@ -63,10 +47,10 @@ _TAPE_STRUCTURE_DICT = {
 #    change affects. Its `__init__.py` derives the recipe dictionary from
 #    the flavor for the rest, as `jendl` does from `endf6`, and replaces
 #    the recipes of these sections by the copies.
-# 2. Move `endf6-ext@0.20` from `_ALIASES` to `_FORMAT_DICT`, which makes
-#    it a build target with its own entry in the C++ module, and let the
-#    earlier versions with the same layout, e.g. `endf6-ext@0.19`, refer
-#    to it.
+# 2. Move `endf6-ext@0.20` from `_ALIASES` to `_FLAVOR_PACKAGES`, as
+#    `"endf6-ext@0.20": "endf6_ext_0_20"`, which makes it a build target
+#    with its own entry in the C++ module, and let the earlier versions
+#    with the same layout, e.g. `endf6-ext@0.19`, refer to it.
 # 3. Change the recipes of `endf6-ext` and add the alias
 #    `"endf6-ext@0.21": "endf6-ext"` with the release.
 # 4. Store the checksum of `endf6-ext@0.21` in the test; those of the
@@ -98,7 +82,8 @@ def _resolve_aliases(targets, aliases):
     Parameters
     ----------
     targets : dict
-        The build targets, mapping their names to recipe dictionaries.
+        The build targets, mapping their names to the names of their
+        folders.
     aliases : dict
         Mapping of alias names to build targets or other aliases.
 
@@ -151,7 +136,7 @@ def _resolve_aliases(targets, aliases):
     return resolved
 
 
-_RESOLVED = _resolve_aliases(_FORMAT_DICT, _ALIASES)
+_RESOLVED = _resolve_aliases(_FLAVOR_PACKAGES, _ALIASES)
 
 
 def resolve_endf_flavor(format_spec):
@@ -214,7 +199,7 @@ def get_layout_version(format_spec):
 
 def get_recipe_dict(format_spec):
     """Return the recipe dictionary of a flavor or a layout version."""
-    return _FORMAT_DICT[resolve_endf_flavor(format_spec)]
+    return _flavor_package(resolve_endf_flavor(format_spec)).endf_recipe_dictionary
 
 
 def get_tape_structure(format_spec):
@@ -232,7 +217,7 @@ def get_tape_structure(format_spec):
     target = resolve_endf_flavor(format_spec)
     ts = _TAPE_STRUCTURES.get(target)
     if ts is None:
-        ts = TapeStructure.from_spec(_TAPE_STRUCTURE_DICT[target])
+        ts = TapeStructure.from_spec(_flavor_package(target).TAPE_STRUCTURE)
         _TAPE_STRUCTURES[target] = ts
     return ts
 
@@ -295,7 +280,7 @@ def _check_entry_names(targets):
         seen[entry] = name
 
 
-_check_entry_names(_FORMAT_DICT)
+_check_entry_names(_FLAVOR_PACKAGES)
 
 
 def list_endf_build_targets():
@@ -303,4 +288,4 @@ def list_endf_build_targets():
 
     Each of them has an entry in the C++ module.
     """
-    return tuple(_FORMAT_DICT.keys())
+    return tuple(_FLAVOR_PACKAGES.keys())

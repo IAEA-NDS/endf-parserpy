@@ -1,10 +1,7 @@
+import importlib as _importlib
+
 from .endf_parser_base import EndfParserBase
 from .endf_parser_factory import EndfParserFactory
-from .interpreter import (
-    EndfParserPy,
-    EndfParser,  # deprecated alias
-    BasicEndfParser,  # deprecated alias
-)
 from .cpp_parsers import EndfParserCpp
 from .utils import (
     debugging_utils,
@@ -58,6 +55,30 @@ from .tape import (
 
 
 __version__ = "0.19.0"
+
+
+# The Python parser (endf_parserpy.interpreter.endf_parser and the
+# modules it imports) is imported when one of these names is first
+# accessed (PEP 562), not with the package: EndfParserCpp, endf-cli and
+# the multi-material interface do not need it.
+_INTERPRETER_NAMES = (
+    "EndfParserPy",
+    "EndfParser",  # deprecated alias
+    "BasicEndfParser",  # deprecated alias
+)
+
+
+def __getattr__(name):
+    if name in _INTERPRETER_NAMES:
+        module = _importlib.import_module(".interpreter", __name__)
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    return sorted(set(globals()) | set(_INTERPRETER_NAMES))
 
 
 __all__ = (

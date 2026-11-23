@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/11/21
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -12,7 +12,6 @@
 import logging
 import inspect
 import warnings
-from .interpreter.endf_parser import EndfParserPy
 from .cpp_parsers.endf_parser_cpp import EndfParserCpp
 from .endf_parser_base import _check_numpy_available
 from .endf_recipes import get_recipe_dict
@@ -241,6 +240,8 @@ class EndfParserFactory:
         )
         parser_args.pop("validate_control_records", None)
         parser_args.pop("load_file_into_memory", None)
+        from .interpreter.endf_parser import EndfParserPy
+
         return EndfParserPy(**parser_args)
 
     @staticmethod

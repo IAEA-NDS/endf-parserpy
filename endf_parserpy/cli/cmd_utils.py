@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/18
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -17,7 +17,6 @@ import platform
 from copy import copy
 import argparse
 from .. import (
-    EndfParserPy,
     EndfParserCpp,
     EndfFile,
     EndfMaterialPath,
@@ -268,6 +267,8 @@ def get_endf_parser(args, args_override=None, allow_cpp=True, cpp_only_args=None
     if can_use_cpp:
         parser = EndfParserCpp(**cpp_parser_args, **(cpp_only_args or {}))
     else:
+        from ..interpreter.endf_parser import EndfParserPy
+
         parser = EndfParserPy(**py_parser_args)
     return parser
 

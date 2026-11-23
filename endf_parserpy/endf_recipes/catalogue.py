@@ -5,11 +5,13 @@ import re
 # The build targets: the flavors with a recipe dictionary of their own,
 # each with the name of its folder in endf_parserpy/endf_recipes. The
 # file __init__.py of the folder defines the recipe dictionary
-# `endf_recipe_dictionary` and the tape structure `TAPE_STRUCTURE` (see
-# endf_parserpy.utils.tape_structure) of the flavor; the folder is
-# imported when they are first needed (see _flavor_package), not with
-# the package. The C++ code generator and setup.py create one entry per
-# build target in the C++ module (see cpp_module_basename).
+# `endf_recipe_dictionary` of the flavor, and the module of the same
+# name in endf_recipes/tape_structures its tape structure
+# `TAPE_STRUCTURE` (see endf_parserpy.utils.tape_structure), so that the
+# tape structure is read without the recipes. Both are imported when
+# they are first needed (see _flavor_package and _tape_structure_spec),
+# not with the package. The C++ code generator and setup.py create one
+# entry per build target in the C++ module (see cpp_module_basename).
 _FLAVOR_PACKAGES = {
     "endf6-ext": "endf6_ext",
     "endf6": "endf6",
@@ -24,6 +26,12 @@ _FLAVOR_PACKAGES = {
 def _flavor_package(target):
     """Import the folder of a build target and return the module."""
     return importlib.import_module("." + _FLAVOR_PACKAGES[target], __package__)
+
+
+def _tape_structure_spec(target):
+    """Import the tape structure module of a build target, return its spec."""
+    name = ".tape_structures." + _FLAVOR_PACKAGES[target]
+    return importlib.import_module(name, __package__).TAPE_STRUCTURE
 
 
 # Layout versions and other names that stand for another flavor. An
@@ -46,7 +54,9 @@ def _flavor_package(target):
 #    of the current (unchanged) recipes of all MF/MT sections that the
 #    change affects. Its `__init__.py` derives the recipe dictionary from
 #    the flavor for the rest, as `jendl` does from `endf6`, and replaces
-#    the recipes of these sections by the copies.
+#    the recipes of these sections by the copies. Create
+#    `tape_structures/endf6_ext_0_20.py` with a copy of the tape
+#    structure of the flavor.
 # 2. Move `endf6-ext@0.20` from `_ALIASES` to `_FLAVOR_PACKAGES`, as
 #    `"endf6-ext@0.20": "endf6_ext_0_20"`, which makes it a build target
 #    with its own entry in the C++ module, and let the earlier versions
@@ -217,7 +227,7 @@ def get_tape_structure(format_spec):
     target = resolve_endf_flavor(format_spec)
     ts = _TAPE_STRUCTURES.get(target)
     if ts is None:
-        ts = TapeStructure.from_spec(_flavor_package(target).TAPE_STRUCTURE)
+        ts = TapeStructure.from_spec(_tape_structure_spec(target))
         _TAPE_STRUCTURES[target] = ts
     return ts
 

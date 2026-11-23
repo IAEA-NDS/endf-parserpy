@@ -8,7 +8,3 @@ from .endf_recipe_mf8_mt457 import ENDF_RECIPE_MF8_MT457
 
 endf_recipe_dictionary = deepcopy(base_recipe_dictionary)
 defdic(endf_recipe_dictionary, (8, 457), ENDF_RECIPE_MF8_MT457)
-
-# The tape structure of the flavor (see endf_parserpy.utils.tape_structure):
-# that of ENDF-6, the defaults
-TAPE_STRUCTURE = {}

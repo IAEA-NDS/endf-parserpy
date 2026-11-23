@@ -349,18 +349,27 @@ data gives a zero (see :ref:`tolerated_mismatches_sec`). The flavor
       endf_recipe_dictionary = deepcopy(base_recipe_dictionary)
       defdic(endf_recipe_dictionary, (1, 451), ENDF_RECIPE_MF1_MT451)
 
-      # the tape structure of the flavor: that of ENDF-6, the defaults
-      TAPE_STRUCTURE = {}
-
    The copy of the ``endf6`` dictionary contains all its recipes,
    including the recipe of the tape identification (TPID) record under
    MF=0 and MT=0, which every recipe dictionary needs. ``defdic``
    replaces the recipe of MF1/MT451; the index ``(MF,)`` instead of
    ``(MF, MT)`` sets a recipe for all MT sections of an MF section. The
    file ``__init__.py`` is also needed for the folder to be installed
-   with the package. ``TAPE_STRUCTURE`` is the
-   :ref:`tape structure <tape_structure_sec>` of the flavor; the empty
-   dictionary is that of ENDF-6.
+   with the package.
+
+   The :ref:`tape structure <tape_structure_sec>` of the flavor is the
+   dictionary ``TAPE_STRUCTURE`` in a file with the name of the folder
+   in ``endf_parserpy/endf_recipes/tape_structures``, here
+   ``endf_parserpy/endf_recipes/tape_structures/myflavor.py``; the empty
+   dictionary is that of ENDF-6:
+
+   .. code:: Python
+
+      # the tape structure of the flavor: that of ENDF-6, the defaults
+      TAPE_STRUCTURE = {}
+
+   It is in a file of its own so that it can be read without the recipes,
+   e.g. by ``endf-cli`` and :class:`~endf_parserpy.EndfParserCpp`.
 
 3. Register the flavor in ``endf_parserpy/endf_recipes/catalogue.py``,
    with an entry in the dictionary ``_FLAVOR_PACKAGES``, which maps the
@@ -373,9 +382,10 @@ data gives a zero (see :ref:`tolerated_mismatches_sec`). The flavor
           "myflavor": "myflavor",
       }
 
-   The folder of a flavor is imported when its recipes or its tape
-   structure are first needed, not with the package, so that an error
-   in one of its files appears only then.
+   The folder of a flavor is imported when its recipes are first needed,
+   and its file in ``tape_structures`` when its tape structure is first
+   needed, not with the package, so that an error in one of these files
+   appears only then.
 
 4. Try the flavor with :class:`~endf_parserpy.EndfParserPy` first, in an
    interactive Python session started in the root directory of the clone,
@@ -459,7 +469,8 @@ Some points to keep in mind:
   shared by the flavors, ``_shared_part_<NN>.cpp``), so that
   ``git status`` shows the C++ files there as modified, deleted or new
   (and, after an editable installation, the compiled module as new). Don't commit them with the flavor; the
-  flavor consists of its folder and its entry in ``catalogue.py``.
+  flavor consists of its folder, its file in ``tape_structures`` and its
+  entry in ``catalogue.py``.
 - If your flavor is of general interest, consider contributing it
   through a pull request on
   `GitHub <https://github.com/IAEA-NDS/endf-parserpy>`_.

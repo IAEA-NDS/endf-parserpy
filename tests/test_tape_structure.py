@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/17
+# Last modified:   2026/11/24
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -11,14 +11,17 @@
 
 """The data model of the tape structure and the forms of a material."""
 
+import importlib
 import pickle
 
 import pytest
 
 from endf_parserpy import TapeStructure, section_label, to_dict_form, to_list_form
 from endf_parserpy.endf_recipes import (
+    catalogue,
     get_recipe_dict,
     get_tape_structure,
+    list_endf_build_targets,
     list_endf_flavors,
 )
 from endf_parserpy.interpreter.custom_exceptions import UnexpectedControlRecordError
@@ -222,3 +225,13 @@ def test_tape_structure_of_an_alias():
     assert get_tape_structure("endf6-ext@0.19") is get_tape_structure("endf6-ext")
     with pytest.raises(TypeError):
         get_tape_structure("no-such-flavor")
+
+
+@pytest.mark.parametrize("flavor", list_endf_build_targets())
+def test_tape_structure_in_a_module_of_its_own(flavor):
+    # tape_structures/<folder>.py
+    folder = catalogue._FLAVOR_PACKAGES[flavor]
+    module = importlib.import_module(
+        "endf_parserpy.endf_recipes.tape_structures." + folder
+    )
+    assert catalogue._tape_structure_spec(flavor) is module.TAPE_STRUCTURE

@@ -13,7 +13,6 @@
 import os
 import re
 import sys
-import platform
 from copy import copy
 import argparse
 from .. import (
@@ -25,7 +24,12 @@ from ..interpreter.custom_exceptions import ParserException
 from ..tape import SectionParseError
 
 
-OS_NAME = platform.system()
+# The name of the operating system as platform.system() gives it for the
+# systems that atomic_rename knows (from sys.platform, which saves the
+# import of platform); the value of sys.platform for any other.
+OS_NAME = {"win32": "Windows", "linux": "Linux", "darwin": "Darwin"}.get(
+    sys.platform, sys.platform
+)
 
 
 ENDF_PARSER_ARGS = (

@@ -9,17 +9,15 @@
 #
 ############################################################
 
-import typing
+# postponed evaluation of the annotations (PEP 563): they need neither
+# typing nor, in this syntax, Python 3.10
+from __future__ import annotations
+
 import inspect
 import functools
 import numbers
 import os
-from typing import Optional, Union
-from typing import Dict, List, Tuple
 from abc import ABC, abstractmethod
-
-
-StringInput = Union[str, List[str]]
 
 
 def _record_init_kwargs(init):
@@ -146,17 +144,52 @@ def _normalize_section_selections(exclude, include):
     )
 
 
-MfNumberType = MtNumberType = int
-MfMtTupleType = Tuple[MfNumberType, MtNumberType]
-MfMtTuplesType = Tuple[Union[MfNumberType, MfMtTupleType]]
+# The type aliases of the arguments and results of the parse and write
+# methods (whose annotations give them in full). They are created from
+# typing when one of them is first accessed (PEP 562).
+_TYPE_ALIAS_NAMES = (
+    "StringInput",
+    "MfNumberType",
+    "MtNumberType",
+    "MfMtTupleType",
+    "MfMtTuplesType",
+    "EndfValueType",
+    "ParsedEndfSectionType",
+    "UnparsedEndfSectionType",
+    "EndfSectionType",
+    "MtDictType",
+    "MfMtDictType",
+)
 
-EndfValueType = Union[dict, list, int, float, str]
-ParsedEndfSectionType = Dict[str, EndfValueType]
-UnparsedEndfSectionType = List[str]
-EndfSectionType = Union[ParsedEndfSectionType, UnparsedEndfSectionType]
 
-MtDictType = Dict[int, EndfSectionType]
-MfMtDictType = Dict[int, MtDictType]
+def _type_aliases():
+    from typing import Dict, List, Tuple, Union
+
+    StringInput = Union[str, List[str]]
+    MfNumberType = MtNumberType = int
+    MfMtTupleType = Tuple[MfNumberType, MtNumberType]
+    MfMtTuplesType = Tuple[Union[MfNumberType, MfMtTupleType]]
+
+    EndfValueType = Union[dict, list, int, float, str]
+    ParsedEndfSectionType = Dict[str, EndfValueType]
+    UnparsedEndfSectionType = List[str]
+    EndfSectionType = Union[ParsedEndfSectionType, UnparsedEndfSectionType]
+
+    MtDictType = Dict[int, EndfSectionType]
+    MfMtDictType = Dict[int, MtDictType]
+    aliases = locals()
+    return {name: aliases[name] for name in _TYPE_ALIAS_NAMES}
+
+
+def __getattr__(name):
+    if name in _TYPE_ALIAS_NAMES:
+        globals().update(_type_aliases())
+        return globals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    return sorted(set(globals()) | set(_TYPE_ALIAS_NAMES))
 
 
 def _create_temporary_file(filename, target, target_exists):
@@ -279,37 +312,41 @@ class EndfParserBase(ABC):
     @abstractmethod
     def parse(
         self,
-        lines: StringInput,
-        exclude: Optional[MfMtTuplesType] = None,
-        include: Optional[MfMtTuplesType] = None,
-    ) -> MfMtDictType:
+        lines: str | list[str],
+        exclude: tuple[int | tuple[int, int]] | None = None,
+        include: tuple[int | tuple[int, int]] | None = None,
+    ) -> dict[int, dict[int, dict[str, dict | list | int | float | str] | list[str]]]:
         pass
 
     @abstractmethod
     def parsefile(
         self,
         filename: str,
-        exclude: Optional[MfMtTuplesType] = None,
-        include: Optional[MfMtTuplesType] = None,
-    ) -> MfMtDictType:
+        exclude: tuple[int | tuple[int, int]] | None = None,
+        include: tuple[int | tuple[int, int]] | None = None,
+    ) -> dict[int, dict[int, dict[str, dict | list | int | float | str] | list[str]]]:
         pass
 
     @abstractmethod
     def write(
         self,
-        endf_dict: MfMtDictType,
-        exclude: Optional[MfMtTuplesType] = None,
-        include: Optional[MfMtTuplesType] = None,
-    ) -> List[str]:
+        endf_dict: dict[
+            int, dict[int, dict[str, dict | list | int | float | str] | list[str]]
+        ],
+        exclude: tuple[int | tuple[int, int]] | None = None,
+        include: tuple[int | tuple[int, int]] | None = None,
+    ) -> list[str]:
         pass
 
     @abstractmethod
     def writefile(
         self,
         filename: str,
-        endf_dict: MfMtDictType,
-        exclude: Optional[MfMtTuplesType] = None,
-        include: Optional[MfMtTuplesType] = None,
+        endf_dict: dict[
+            int, dict[int, dict[str, dict | list | int | float | str] | list[str]]
+        ],
+        exclude: tuple[int | tuple[int, int]] | None = None,
+        include: tuple[int | tuple[int, int]] | None = None,
         overwrite: bool = False,
     ) -> None:
         pass

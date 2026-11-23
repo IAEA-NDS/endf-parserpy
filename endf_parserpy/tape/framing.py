@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/08
-# Last modified:   2026/11/21
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -39,7 +39,6 @@ the index reads them leniently.
 import os
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 from .errors import TapeStructureError
 from .index import (

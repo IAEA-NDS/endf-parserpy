@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/22
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -37,11 +37,14 @@ identical to that of the record-by-record scan used by
 alike.
 """
 
+# postponed evaluation of the annotations (PEP 563): they need neither
+# typing nor, in this syntax, Python 3.10
+from __future__ import annotations
+
 import os
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
 
 from .errors import TapeStructureError
 from .records import _control_int, _MAT_COLS, _MF_COLS, _MT_COLS, _CTRL_COLS
@@ -193,14 +196,14 @@ class MaterialIndexEntry:
 
     position: int
     mat: int
-    za: Optional[int]
-    awr: Optional[float]
+    za: int | None
+    awr: float | None
     byte_offset: int
     byte_length: int
-    sections: Dict[Tuple[int, int], SectionIndexEntry] = field(default_factory=dict)
+    sections: dict[tuple[int, int], SectionIndexEntry] = field(default_factory=dict)
     # all sections in the order of the file, as ((MF, MT), entry), if the
     # material has sections with the same MF and MT numbers, else None
-    repeated_sections: Optional[list] = field(default=None, repr=False, compare=False)
+    repeated_sections: list | None = field(default=None, repr=False, compare=False)
 
     @property
     def section_list(self):

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/10/26
-# Last modified:   2026/10/26
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -40,8 +40,11 @@ license (see ``THIRD_PARTY_NOTICES.md`` in the repository root).
 There is no runtime dependency on Lark.
 """
 
+# postponed evaluation of the annotations (PEP 563): they need neither
+# typing nor, in this syntax, Python 3.10
+from __future__ import annotations
+
 from copy import deepcopy
-from typing import List, Optional, TypeVar, Union
 
 
 class Meta:
@@ -51,8 +54,21 @@ class Meta:
         self.empty = True
 
 
-_Leaf_T = TypeVar("_Leaf_T")
-Branch = Union[_Leaf_T, "Tree"]
+# The type variable _Leaf_T and the type alias Branch (a leaf or a Tree),
+# as in Lark, are created from typing when they are first accessed
+# (PEP 562).
+def __getattr__(name):
+    if name in ("_Leaf_T", "Branch"):
+        from typing import TypeVar, Union
+
+        leaf_t = TypeVar("_Leaf_T")
+        globals().update(_Leaf_T=leaf_t, Branch=Union[leaf_t, "Tree"])
+        return globals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    return sorted(set(globals()) | {"_Leaf_T", "Branch"})
 
 
 class Tree:
@@ -70,7 +86,7 @@ class Tree:
     """
 
     def __init__(
-        self, data: str, children: "List[Branch]", meta: Optional[Meta] = None
+        self, data: str, children: list[Branch], meta: Meta | None = None
     ) -> None:
         self.data = data
         self.children = children
@@ -171,7 +187,7 @@ class Tree:
     def copy(self) -> "Tree":
         return type(self)(self.data, self.children)
 
-    def set(self, data: str, children: "List[Branch]") -> None:
+    def set(self, data: str, children: list[Branch]) -> None:
         self.data = data
         self.children = children
 

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/10/06
-# Last modified:   2026/11/18
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -17,6 +17,7 @@ from ..cmd_utils import (
     parse_failure_detail,
 )
 from endf_parserpy import EndfParserCpp
+from endf_parserpy.tape.endf_file import _line_starts
 from endf_parserpy.tape.framing import _check_framing_and_index
 from endf_parserpy.utils.tape_structure import section_label
 from endf_parserpy.utils.tolerated_mismatches import (
@@ -121,8 +122,8 @@ def _sections_parse_at_once(endf_file, material, keys, fast_parser, tolerated=No
     :func:`_validate_sections`), with the lines counted in the file.
     """
     try:
-        starts = {}
-        text = endf_file._sections_tape(material.position, keys, starts)
+        offsets = {}
+        text = endf_file._sections_tape(material.position, keys, offsets)
         result, mismatches = parse_and_collect(fast_parser, text)
         if isinstance(result, list):
             labels = {section_label(s)[1:] for s in result}
@@ -132,7 +133,10 @@ def _sections_parse_at_once(endf_file, material, keys, fast_parser, tolerated=No
             return False
     except Exception:  # noqa: BLE001
         return False
-    if tolerated is not None:
+    if tolerated is not None and mismatches:
+        # the lines of the tape at which the sections start, counted
+        # only here, where they are needed
+        starts = _line_starts(text, offsets)
         by_section = {}
         for m in mismatches:
             by_section.setdefault((m.mf, m.mt), []).append(m)

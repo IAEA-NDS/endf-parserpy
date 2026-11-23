@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/05/15
-# Last modified:   2026/11/18
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -267,6 +267,20 @@ class FailedSection(_FailedUnit):
             f"FailedSection(position={self.position}, MF={self.mf}, "
             f"MT={self.mt}, exception={self.exception!r})"
         )
+
+
+def _line_starts(text, offsets):
+    """The lines (counting from 1) of ``text`` at which the sections
+    start, by ``(MF, MT)``, from their offsets in ``text`` (see
+    :meth:`EndfFile._sections_tape`)."""
+    starts = {}
+    line = 1
+    pos = 0
+    for key, offset in sorted(offsets.items(), key=lambda item: item[1]):
+        line += text.count("\n", pos, offset)
+        pos = offset
+        starts[key] = line
+    return starts
 
 
 class EndfFile:
@@ -1518,7 +1532,7 @@ class EndfFile:
         sep = "\n" if raw and not raw.endswith("\n") else ""
         return "".join((_tpid_or_default(self._index), "\n", raw, sep, tail))
 
-    def _sections_tape(self, position, keys, starts=None):
+    def _sections_tape(self, position, keys, offsets=None):
         """Return one single-material tape holding several sections.
 
         ``keys`` lists ``(MF, MT)`` sections of the material at
@@ -1531,38 +1545,82 @@ class EndfFile:
         records at the end -- the framing is generated as for
         :meth:`_mini_tape`, the framing records of the file are not
         used. The raw text is read from disk without being cached.
-        If ``starts`` is a dictionary, it receives the line of the tape
-        (counting from 1) at which each section starts, by ``(MF, MT)``.
+        If ``offsets`` is a dictionary, it receives the offset in the
+        returned text at which each section starts, by ``(MF, MT)``
+        (see :func:`_line_starts` for the lines).
+
+        The sections of an MF that follow one another in the file (as
+        those of a file whose sections are in the order of the index)
+        are read as one span: as each of them begins at the start of a
+        line, the span is the text of the sections one after another,
+        which is checked; other sections, and a span with CR
+        characters, are read one by one.
         """
         entry = self._index[position]
         fend = _control_line(entry.mat, 0, 0) + "\n"
         parts = [_tpid_or_default(self._index), "\n"]
+        # the length of the text in parts
+        size = len(parts[0]) + 1
         prev_mf = None
-        tape_line = 2
+        start = 0
         with self._read_session():
-            for mf, mt in keys:
-                if prev_mf is not None and mf != prev_mf and self._ts.fend(prev_mf):
+            while start < len(keys):
+                mf = keys[start][0]
+                stop = start + 1
+                while stop < len(keys) and keys[stop][0] == mf:
+                    stop += 1
+                if prev_mf is not None and self._ts.fend(prev_mf):
                     parts.append(fend)
-                    tape_line += 1
+                    size += len(fend)
                 prev_mf = mf
-                sec_entry = entry.sections[(mf, mt)]
-                raw = self._read_span(sec_entry.offset, sec_entry.length)
-                if starts is not None:
-                    starts[(mf, mt)] = tape_line
-                if "\r" in raw:
-                    lines = _split_lines(raw)
-                    parts.append("".join(line + "\n" for line in lines))
-                    tape_line += len(lines)
-                else:
+                group = keys[start:stop]
+                start = stop
+                secs = [entry.sections[key] for key in group]
+                raw = self._mf_span(secs)
+                if raw is not None:
+                    if offsets is not None:
+                        first = secs[0].offset
+                        for key, sec in zip(group, secs):
+                            offsets[key] = size + sec.offset - first
                     parts.append(raw)
-                    tape_line += raw.count("\n")
+                    size += len(raw)
                     if raw and not raw.endswith("\n"):
                         parts.append("\n")
-                        tape_line += 1
+                        size += 1
+                    continue
+                for key, sec in zip(group, secs):
+                    raw = self._read_span(sec.offset, sec.length)
+                    if offsets is not None:
+                        offsets[key] = size
+                    if "\r" in raw:
+                        raw = "".join(line + "\n" for line in _split_lines(raw))
+                    elif raw and not raw.endswith("\n"):
+                        raw += "\n"
+                    parts.append(raw)
+                    size += len(raw)
         if prev_mf is not None and self._ts.fend(prev_mf):
             parts.append(fend)
         parts.append(_control_line(0, 0, 0) + "\n" + TEND_LINE)
         return "".join(parts)
+
+    def _mf_span(self, secs):
+        """The text of the sections ``secs`` (entries of the index) read
+        as one span of the file, or ``None`` if they do not follow one
+        another in the file, the span holds a CR character or a section
+        but the last does not end with a line ending (see
+        :meth:`_sections_tape`)."""
+        first = secs[0].offset
+        for a, b in zip(secs, secs[1:]):
+            if a.length <= 0 or a.offset + a.length != b.offset:
+                return None
+        last = secs[-1]
+        raw = self._read_span(first, last.offset + last.length - first)
+        if "\r" in raw:
+            return None
+        for sec in secs[1:]:
+            if raw[sec.offset - first - 1] != "\n":
+                return None
+        return raw
 
     def _parse_section(self, entry, mf, mt, raw):
         try:

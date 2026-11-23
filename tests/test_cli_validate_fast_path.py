@@ -18,7 +18,7 @@ import pytest
 
 from endf_parserpy.cli.actions import validate
 from endf_parserpy.cli.cmd_utils import add_common_cmd_parser_args, get_endf_parser
-from endf_parserpy.tape.endf_file import EndfFile
+from endf_parserpy.tape.endf_file import EndfFile, _line_starts
 
 REPO = Path(__file__).resolve().parent.parent
 TESTDATA = REPO / "tests" / "testdata"
@@ -303,3 +303,98 @@ def test_no_fast_path_with_python_parser():
     """With the Python parser, validate parses section by section only."""
     assert validate.get_fast_parser(_args("--no-cpp")) is None
     assert validate.get_fast_parser(_args("--loglevel", "30")) is None
+
+
+# --- the tape of the sections of an MF -------------------------------------
+
+
+def _reference_sections_tape(endf_file, position, keys):
+    """The tape of EndfFile._sections_tape built section by section, and
+    the lines at which the sections start (the former implementation)."""
+    from endf_parserpy.tape.endf_file import (
+        TEND_LINE,
+        _control_line,
+        _split_lines,
+        _tpid_or_default,
+    )
+
+    entry = endf_file._index[position]
+    fend = _control_line(entry.mat, 0, 0) + "\n"
+    parts = [_tpid_or_default(endf_file._index), "\n"]
+    starts = {}
+    prev_mf = None
+    tape_line = 2
+    for mf, mt in keys:
+        if prev_mf is not None and mf != prev_mf and endf_file._ts.fend(prev_mf):
+            parts.append(fend)
+            tape_line += 1
+        prev_mf = mf
+        sec = entry.sections[(mf, mt)]
+        raw = endf_file._read_span(sec.offset, sec.length)
+        starts[(mf, mt)] = tape_line
+        if "\r" in raw:
+            lines = _split_lines(raw)
+            parts.append("".join(line + "\n" for line in lines))
+            tape_line += len(lines)
+        else:
+            parts.append(raw)
+            tape_line += raw.count("\n")
+            if raw and not raw.endswith("\n"):
+                parts.append("\n")
+                tape_line += 1
+    if prev_mf is not None and endf_file._ts.fend(prev_mf):
+        parts.append(fend)
+    parts.append(_control_line(0, 0, 0) + "\n" + TEND_LINE)
+    return "".join(parts), starts
+
+
+@pytest.mark.parametrize("span", [True, False])
+def test_sections_tape_by_mf_spans(span, parsers, tmp_path, monkeypatch):
+    """The tape of the sections of an MF, read as one span (or section by
+    section, if the span is not used), is that built section by section,
+    and the lines at which the sections start are the same, also for
+    CRLF files, files without a newline at the end and tapes."""
+    if not span:
+        monkeypatch.setattr(EndfFile, "_mf_span", lambda self, secs: None)
+    parser, _ = parsers
+    crlf = tmp_path / "crlf.endf"
+    crlf.write_bytes(b"\r\n".join(_lines(CU)) + b"\r\n")
+    files = [CU, PU, crlf, _tape(tmp_path / "tape.endf", [CU, ZN, PU])]
+    nonl = tmp_path / "nonl.endf"
+    nonl.write_bytes(b"\n".join(_lines(PU)))
+    files.append(nonl)
+    compared = 0
+    for path in files:
+        endf_file = EndfFile(path, parser=parser)
+        for entry in endf_file.index:
+            keys = sorted(entry.sections)
+            groups = [
+                [k for k in keys if k[0] == mf] for mf in sorted({k[0] for k in keys})
+            ]
+            for group in groups + [keys]:
+                offsets = {}
+                text = endf_file._sections_tape(entry.position, group, offsets)
+                expected, starts = _reference_sections_tape(
+                    endf_file, entry.position, group
+                )
+                assert text == expected, (path, group)
+                assert _line_starts(text, offsets) == starts, (path, group)
+                assert endf_file._sections_tape(entry.position, group) == text
+                compared += 1
+    assert compared > 30
+
+
+def test_sections_not_following_each_other(parsers):
+    """Sections of an MF that do not follow one another in the file are
+    read one by one."""
+    parser, _ = parsers
+    endf_file = EndfFile(CU, parser=parser)
+    entry = endf_file.index[0]
+    keys = [k for k in sorted(entry.sections) if k[0] == 3][:3]
+    secs = [entry.sections[k] for k in keys]
+    assert endf_file._mf_span(secs) is not None
+    # the second and the first section swapped
+    assert endf_file._mf_span([secs[1], secs[0], secs[2]]) is None
+    assert endf_file._mf_span([secs[0], secs[2]]) is None
+    text = endf_file._sections_tape(0, [keys[0], keys[2]])
+    assert text == _reference_sections_tape(endf_file, 0, [keys[0], keys[2]])[0]

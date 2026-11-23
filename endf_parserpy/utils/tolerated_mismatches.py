@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/11
-# Last modified:   2026/11/21
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -31,7 +31,6 @@ import re
 import sys
 import warnings
 from collections import namedtuple
-from fractions import Fraction
 
 
 class EndfToleratedMismatchWarning(UserWarning):
@@ -116,7 +115,10 @@ def plain_value(value):
         return int(value)
     if isinstance(value, int):
         return value
-    if isinstance(value, Fraction):
+    # A Fraction exists only if the module fractions has been imported,
+    # which this module therefore does not do itself.
+    fractions = sys.modules.get("fractions")
+    if fractions is not None and isinstance(value, fractions.Fraction):
         return int(value) if value.denominator == 1 else float(value)
     try:
         return float(value)

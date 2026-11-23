@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2025/06/01
-# Last modified:   2026/11/21
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2025-2026 International Atomic Energy Agency (IAEA)
 #
@@ -14,9 +14,6 @@ import inspect
 import functools
 import numbers
 import os
-import secrets
-import shutil
-import tempfile
 from typing import Optional, Union
 from typing import Dict, List, Tuple
 from abc import ABC, abstractmethod
@@ -163,6 +160,10 @@ MfMtDictType = Dict[int, MtDictType]
 
 
 def _create_temporary_file(filename, target, target_exists):
+    # (secrets and tempfile are imported here, only for writing a file)
+    import secrets
+    import tempfile
+
     # An empty file next to the target, created with the mode 0o666 that
     # open() uses, so that the operating system applies the umask (and the
     # default ACL of the directory) as for a file created by open().
@@ -209,6 +210,8 @@ def _write_via_temporary_file(filename, write_to_path):
     try:
         write_to_path(tmp)
         if target_exists:
+            import shutil
+
             shutil.copyfile(tmp, target)
         else:
             os.replace(tmp, target)

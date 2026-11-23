@@ -9,7 +9,6 @@
 #
 ############################################################
 
-import logging
 import inspect
 import warnings
 from .cpp_parsers.endf_parser_cpp import EndfParserCpp
@@ -229,6 +228,9 @@ class EndfParserFactory:
 
     @staticmethod
     def get_python_parser(parser_args):
+        import logging
+        from .interpreter.endf_parser import EndfParserPy
+
         parser_args = parser_args.copy()
         _none_to_defaults(
             parser_args,
@@ -240,8 +242,6 @@ class EndfParserFactory:
         )
         parser_args.pop("validate_control_records", None)
         parser_args.pop("load_file_into_memory", None)
-        from .interpreter.endf_parser import EndfParserPy
-
         return EndfParserPy(**parser_args)
 
     @staticmethod

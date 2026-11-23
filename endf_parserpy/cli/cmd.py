@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2024/02/05
-# Last modified:   2026/11/22
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2024-2026 International Atomic Energy Agency (IAEA)
 #
@@ -11,10 +11,8 @@
 
 import argparse
 import sys
-import logging
 import importlib
 import warnings
-from endf_parserpy.interpreter.logging_utils import setup_logger
 from endf_parserpy.utils.tolerated_mismatches import (
     EndfToleratedMismatchWarning,
     format_tolerated_mismatches,
@@ -79,7 +77,6 @@ def cli_interface():
     submodules = _subcommand_modules(sys.argv[1:])
     parser = _make_parser(submodules)
     args = vars(parser.parse_args())
-    logger = setup_logger(__name__, logging.WARNING)
 
     # execute subcommand
     (matching_module,) = (m for m in submodules if m.COMMAND_NAME == args["subcommand"])

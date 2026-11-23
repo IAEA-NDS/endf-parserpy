@@ -4695,6 +4695,16 @@ inline void cpp_check_end_records(
     if (after_mend || after_tend) {
       throw std::runtime_error("No MF/MT section allowed after MEND/TEND record");
     }
+    if (mf != 0 && last_mf != 0 && mat != last_mat) {
+      // another material without the MEND record of the last one, as
+      // the error of EndfParserPy (Currently in MAT=... section but
+      // encountered MAT=...); one material is read
+      throw std::runtime_error(
+        "A section of MAT=" + std::to_string(mat) + " follows the sections of MAT=" +
+        std::to_string(last_mat) + " without a MEND record: parse reads one " +
+        "material; use parse_tape for a tape of several materials"
+      );
+    }
     if (after_fend && ! section_encountered) {
       throw std::runtime_error("FEND record without preceding MF/MT section encountered");
     }

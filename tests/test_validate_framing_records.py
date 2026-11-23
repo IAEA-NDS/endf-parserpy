@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/08
-# Last modified:   2026/11/21
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -661,6 +661,112 @@ def test_damaged_tape(name, parser_kind, cpp_parsers, py_parsers, tmp_path):
     ok, detail = validate._validate_file(parsers[0], str(path), parsers[1])
     assert not ok
     assert detail.startswith(f"framing records (SEND/FEND/MEND/TEND):\n{problems[0]}")
+
+
+def _mend_missing_cases():
+    """Tapes of Cu-63 and Zn-64 without the MEND record between them, and
+    without the FEND and the MEND record: (lines, line of the first
+    record of MAT 3025)."""
+    T = _tape([CU, ZN])
+    mend = _index(T, "MEND")
+    return {
+        "mend_missing": (_delete(T, mend), mend + 1),
+        "fend_mend_missing": (_delete(_delete(T, mend), mend - 1), mend),
+    }
+
+
+@pytest.mark.parametrize("material_form", [None, "list"])
+@pytest.mark.parametrize("name", sorted(_mend_missing_cases()))
+@pytest.mark.parametrize("parser_kind", ["cpp", "python"])
+def test_parse_rejects_second_material_without_mend(
+    parser_kind, name, material_form, tmp_path
+):
+    """parse and parsefile read one material: a section of another MAT
+    number before a MEND record is an error in both parsers, which names
+    the first line of the second material, in the dict and the list form
+    (EndfParserCpp returned the sections of both materials)."""
+    lines, line = _mend_missing_cases()[name]
+    path = _write(tmp_path / "bad.endf", lines)
+    if parser_kind == "cpp":
+        parser = EndfParserCpp(material_form=material_form)
+        message = (
+            "A section of MAT=3025 follows the sections of MAT=2925 without "
+            "a MEND record: parse reads one material; use parse_tape for a "
+            f"tape of several materials\nLine {line}: "
+        )
+    else:
+        parser = EndfParserPy(material_form=material_form)
+        message = (
+            # (without the FEND record, the MF changes first)
+            "Currently in MAT=2925 section but encountered MAT=3025 "
+            if name == "mend_missing"
+            else "Currently in MF=15 section but encountered MF=1 "
+        ) + f"in control record of line {line}."
+    text = path.read_text(encoding="latin-1")
+    for parse, arg in ((parser.parsefile, str(path)), (parser.parse, text)):
+        with pytest.raises(Exception) as excinfo:
+            parse(arg)
+        assert str(excinfo.value).startswith(message)
+    # the same line as check_framing
+    assert check_framing(path)[0].line == line
+
+
+def test_parse_of_another_material_after_send(tmp_path):
+    """A section of another MAT number after a SEND record (the FEND and
+    MEND records missing, the MF the same) is an error in both parsers."""
+    lines = _lines(CU)
+    other = [_ctrl(x, mat=b"2926") for x in _lines(CU)]
+    S = _index(lines, "SEND")
+    # MF1/MT451 of MAT 2925, then MF1/MT451 of MAT 2926
+    tape = lines[: S + 1] + other[1 : S + 1] + lines[S + 1 :]
+    path = _write(tmp_path / "bad.endf", tape)
+    with pytest.raises(Exception, match="A section of MAT=2926 follows the sections"):
+        EndfParserCpp().parsefile(str(path))
+    with pytest.raises(Exception, match="encountered MAT=2926 in control record"):
+        EndfParserPy().parsefile(str(path))
+
+
+@pytest.mark.parametrize("flavor", ["endf6", "pendf", "endf6-ext"])
+def test_tape_functions_on_valid_tape(flavor, tmp_path):
+    """The tape functions split a tape into materials before parsing: a
+    valid tape of two materials gives the materials of the files."""
+    from endf_parserpy import EndfFile, iter_parse_tape_file, parse_tape_file
+
+    parser = EndfParserCpp(endf_format=flavor)
+    path = _write(tmp_path / "tape.endf", _tape([CU, ZN]))
+    expected = [parser.parsefile(str(CU)), parser.parsefile(str(ZN))]
+    for materials in (
+        parse_tape_file(path, parser=parser),
+        list(iter_parse_tape_file(path, parser=parser)),
+    ):
+        assert len(materials) == 2
+        for material, exp in zip(materials, expected):
+            assert compare_objects(material, exp, fail_on_diff=False)
+    endf_file = EndfFile(path, parser=parser)
+    assert [m.mat for m in endf_file] == [2925, 3025]
+    for view, exp in zip(endf_file, expected):
+        keys = [(mf, mt) for mf in exp for mt in exp[mf] if mf != 0]
+        assert list(view.sections()) == keys
+        for mf, mt in keys:
+            assert view[mf, mt].detach() == exp[mf][mt]
+
+
+def test_tape_functions_on_tape_without_mend(tmp_path):
+    """parse_tape gives the material without its MEND record as a failed
+    material with the error of the parser, as EndfParserPy."""
+    from endf_parserpy import parse_tape_file
+    from endf_parserpy.tape import FailedMaterial
+
+    lines, line = _mend_missing_cases()["mend_missing"]
+    path = _write(tmp_path / "bad.endf", lines)
+    for parser, message in (
+        (EndfParserCpp(), "A section of MAT=3025 follows the sections of MAT=2925"),
+        (EndfParserPy(), "Currently in MAT=2925 section but encountered MAT=3025"),
+    ):
+        materials = parse_tape_file(path, parser=parser)
+        assert len(materials) == 1
+        assert isinstance(materials[0], FailedMaterial)
+        assert message in str(materials[0].exception)
 
 
 # --- agreement with a full parse -------------------------------------------

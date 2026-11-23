@@ -2415,6 +2415,92 @@
    "py": "UnexpectedControlRecordError: No MF/MT section allowed after the MEND record: parse reads one material; use parse_tape for a tape of several materials, in control record of line 25121."
   }
  },
+ "tape:cu_zn_fend_mend_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials\nLine 25119: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials, in control record of line 25119."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 25119: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=15 section but encountered MF=1 in control record of line 25119."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials\nLine 25119: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials, in control record of line 25119."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 25119: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=15 section but encountered MF=1 in control record of line 25119."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     25119,
+     "expected a section of MF=15 of MAT 2925 or the FEND record (MAT/MF/MT 2925/0/0), found a record of section MF=1/MT=451 of MAT 3025; the FEND and MEND records are missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials\nLine 25119: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials, in control record of line 25119."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 25119: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=15 section but encountered MF=1 in control record of line 25119."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials\nLine 25119: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials, in control record of line 25119."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 25119: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MF=15 section but encountered MF=1 in control record of line 25119."
+  }
+ },
+ "tape:cu_zn_mend_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials\nLine 25120: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials, in control record of line 25120."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 25120: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MAT=2925 section but encountered MAT=3025 in control record of line 25120."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials\nLine 25120: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials, in control record of line 25120."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 25120: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MAT=2925 section but encountered MAT=3025 in control record of line 25120."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     25120,
+     "expected a section of MAT 2925 or the MEND record (MAT/MF/MT 0/0/0), found a record of section MF=1/MT=451 of MAT 3025; the MEND record is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials\nLine 25120: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials, in control record of line 25120."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 25120: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MAT=2925 section but encountered MAT=3025 in control record of line 25120."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials\nLine 25120: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=3025 follows the sections of MAT=2925: parse reads one material; use parse_tape for a tape of several materials, in control record of line 25120."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: A section of MAT=3025 follows the sections of MAT=2925 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 25120: \" 3.006400+4 6.338000+1          1          0          0          13025 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MAT=2925 section but encountered MAT=3025 in control record of line 25120."
+  }
+ },
  "tape:pu_twice": {
   "exclude/ignore_send_records": {
    "cpp": "RuntimeError: MF sections must be in ascending order, but MF=1 follows MF=8\nLine 107: \" 9.424400+4 2.419676+2         -1          1          0          03564 1451\"",

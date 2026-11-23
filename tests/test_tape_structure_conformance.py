@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/17
-# Last modified:   2026/11/17
+# Last modified:   2026/11/23
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -51,6 +51,7 @@ from endf_parserpy.tape import check_framing
 from endf_parserpy.utils.debugging_utils import compare_objects
 from test_section_order import CASES as ORDER_CASES, _file as _order_file
 from test_validate_framing_records import CU, PU, PU_CASES, ZN, _lines, _tape
+from test_validate_framing_records import _mend_missing_cases
 
 GOLDEN = Path(__file__).resolve().parent / "conformance_goldens" / "framing_endf6.json"
 
@@ -74,6 +75,9 @@ def _cases():
         cases[f"order:{name}"] = _order_file(*parts)
     cases["tape:pu_twice"] = _tape([PU, PU])
     cases["tape:cu_zn"] = _tape([CU, ZN])
+    # the second material without the MEND record of the first
+    for name, (lines, _) in _mend_missing_cases().items():
+        cases[f"tape:cu_zn_{name}"] = lines
     return cases
 
 
@@ -109,6 +113,8 @@ def _gendf_cases():
         return [line for part in parts for line in b[part]]
 
     send_451 = b["s1"][-1][:66] + b" 125 1  0" + b["s1"][-1][75:]
+    # the records of a material with the MAT number 126
+    mat126 = {k: [x[:66] + b" 126" + x[70:] for x in v] for k, v in b.items()}
     fend3 = b["fend1"][0]
     return {
         "valid": tape("tpid", "451", "fend1", "s1", "s2", "mend", "tend"),
@@ -129,6 +135,10 @@ def _gendf_cases():
         + b["s1"][:-1]
         + tape("s2", "mend", "tend"),
         "mend_missing": tape("tpid", "451", "fend1", "s1", "s2", "tend"),
+        # a second material (MAT 126) without the MEND record of the first
+        "second_mat_mend_missing": tape("tpid", "451", "fend1", "s1", "s2")
+        + [line for part in ("451", "fend1", "s1", "s2") for line in mat126[part]]
+        + tape("mend", "tend"),
         # a line too many at the end of MF1/MT451 (a copy of its last
         # line): without a SEND record, the section ends with the last
         # record of its recipe, and the line is not read
@@ -158,6 +168,26 @@ KNOWN_DIFFERENCES = {}
 # the tapes of several materials, which are valid tapes (check_framing)
 # but not a single material for a parse
 _TAPES = ("tape:pu_twice", "tape:cu_zn")
+# the tapes of two materials without the MEND record between them: with
+# ignore_send_records, a material ends where the MAT number changes, so
+# that they are valid tapes (check_framing), but not a single material
+_TAPES_WITHOUT_MEND = ("tape:cu_zn_mend_missing", "tape:cu_zn_fend_mend_missing")
+GENDF_TAPES_WITHOUT_MEND = ("second_mat_mend_missing",)
+
+
+def _assert_framing_agrees(name, result, tapes_without_mend):
+    """check_framing finds a problem if and only if a full parse fails;
+    a tape without MEND record with ignore_send_records is a valid tape
+    that both parsers reject as more than one material."""
+    for option in OPTIONS:
+        entry = result[f"full/{option}"]
+        if name in tapes_without_mend and option == "ignore_send_records":
+            assert result["framing"][option] == [], name
+            assert "parse reads one material" in entry["py"], name
+            assert "parse reads one material" in entry["cpp"], name
+            continue
+        failed = entry["py"] is not None or entry["cpp"] is not None
+        assert (result["framing"][option] != []) == failed, (name, option)
 
 
 def _text(lines):
@@ -338,10 +368,7 @@ def test_framing_check_agrees_with_full_parse(results):
             # same MAT number are not separated (test_section_order)
             assert result["framing"]["strict"] == []
             continue
-        for option in OPTIONS:
-            entry = result[f"full/{option}"]
-            failed = entry["py"] is not None or entry["cpp"] is not None
-            assert (result["framing"][option] != []) == failed, (name, option)
+        _assert_framing_agrees(name, result, _TAPES_WITHOUT_MEND)
 
 
 # the inputs for which the writers give different output
@@ -448,10 +475,7 @@ def test_gendf_framing_check_agrees_with_full_parse(gendf_results):
         if name in GENDF_CONTENT_CASES:
             assert result["framing"] == {option: [] for option in OPTIONS}
             continue
-        for option in OPTIONS:
-            entry = result[f"full/{option}"]
-            failed = entry["py"] is not None or entry["cpp"] is not None
-            assert (result["framing"][option] != []) == failed, (name, option)
+        _assert_framing_agrees(name, result, GENDF_TAPES_WITHOUT_MEND)
 
 
 def test_gendf_offending_lines_agree(gendf_results):

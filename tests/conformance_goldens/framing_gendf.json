@@ -184,6 +184,49 @@
    "py": "UnexpectedControlRecordError: Expecting a Section End (SEND/FEND/MEND) record with MAT=0 but encountered MAT=-1 in control record of line 39."
   }
  },
+ "second_mat_mend_missing": {
+  "exclude/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=126 follows the sections of MAT=125: parse reads one material; use parse_tape for a tape of several materials\nLine 39: \" 1.001000+3 9.991673-1          0          1         -1          1 126 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=126 follows the sections of MAT=125: parse reads one material; use parse_tape for a tape of several materials, in control record of line 39."
+  },
+  "exclude/strict": {
+   "cpp": "RuntimeError: A section of MAT=126 follows the sections of MAT=125 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 39: \" 1.001000+3 9.991673-1          0          1         -1          1 126 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MAT=125 section but encountered MAT=126 in control record of line 39."
+  },
+  "exclude_mt/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=126 follows the sections of MAT=125: parse reads one material; use parse_tape for a tape of several materials\nLine 39: \" 1.001000+3 9.991673-1          0          1         -1          1 126 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=126 follows the sections of MAT=125: parse reads one material; use parse_tape for a tape of several materials, in control record of line 39."
+  },
+  "exclude_mt/strict": {
+   "cpp": "RuntimeError: A section of MAT=126 follows the sections of MAT=125 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 39: \" 1.001000+3 9.991673-1          0          1         -1          1 126 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MAT=125 section but encountered MAT=126 in control record of line 39."
+  },
+  "framing": {
+   "ignore_send_records": [],
+   "strict": [
+    [
+     39,
+     "expected a section of MAT 125 or the MEND record (MAT/MF/MT 0/0/0), found a record of section MF=1/MT=451 of MAT 126; the MEND record is missing"
+    ]
+   ]
+  },
+  "full/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=126 follows the sections of MAT=125: parse reads one material; use parse_tape for a tape of several materials\nLine 39: \" 1.001000+3 9.991673-1          0          1         -1          1 126 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=126 follows the sections of MAT=125: parse reads one material; use parse_tape for a tape of several materials, in control record of line 39."
+  },
+  "full/strict": {
+   "cpp": "RuntimeError: A section of MAT=126 follows the sections of MAT=125 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 39: \" 1.001000+3 9.991673-1          0          1         -1          1 126 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MAT=125 section but encountered MAT=126 in control record of line 39."
+  },
+  "include/ignore_send_records": {
+   "cpp": "RuntimeError: A section of MAT=126 follows the sections of MAT=125: parse reads one material; use parse_tape for a tape of several materials\nLine 39: \" 1.001000+3 9.991673-1          0          1         -1          1 126 1451    1\"",
+   "py": "UnexpectedControlRecordError: A section of MAT=126 follows the sections of MAT=125: parse reads one material; use parse_tape for a tape of several materials, in control record of line 39."
+  },
+  "include/strict": {
+   "cpp": "RuntimeError: A section of MAT=126 follows the sections of MAT=125 without a MEND record: parse reads one material; use parse_tape for a tape of several materials\nLine 39: \" 1.001000+3 9.991673-1          0          1         -1          1 126 1451    1\"",
+   "py": "UnexpectedControlRecordError: Currently in MAT=125 section but encountered MAT=126 in control record of line 39."
+  }
+ },
  "section_twice": {
   "exclude/ignore_send_records": {
    "cpp": null,

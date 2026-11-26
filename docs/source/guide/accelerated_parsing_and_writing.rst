@@ -471,9 +471,16 @@ Some points to keep in mind:
   (and, after an editable installation, the compiled module as new). Don't commit them with the flavor; the
   flavor consists of its folder, its file in ``tape_structures`` and its
   entry in ``catalogue.py``.
+- Change the recipes of your own flavor, not those of the flavors
+  shipped with the package: the recipes of ``endf6`` and ``endf6-ext``
+  also define their layout versions (see :ref:`layout_versions_sec`),
+  which would then quietly give other dictionaries in your installation.
 - If your flavor is of general interest, consider contributing it
   through a pull request on
-  `GitHub <https://github.com/IAEA-NDS/endf-parserpy>`_.
+  `GitHub <https://github.com/IAEA-NDS/endf-parserpy>`_. A fix of a
+  shipped recipe that you want to contribute follows the rules for
+  layout versions in the comments of
+  ``endf_parserpy/endf_recipes/catalogue.py``.
 
 
 .. _generating_cpp_code_sec:

@@ -3,7 +3,7 @@
 # Author(s):       Georg Schnabel
 # Email:           g.schnabel@iaea.org
 # Creation date:   2026/11/16
-# Last modified:   2026/11/18
+# Last modified:   2026/11/26
 # License:         MIT
 # Copyright (c) 2026 International Atomic Energy Agency (IAEA)
 #
@@ -20,7 +20,9 @@ The guard stores a checksum of the recipes of every layout version and
 fails if the recipes that a version resolves to change. The checksum is
 computed from the parse trees of the recipes without the comments and
 the line breaks, so that a change of a comment or of the spacing does not
-change it.
+change it. Its failure message gives the checksum to store in
+LAYOUT_CHECKSUMS, for a new version and for a change that keeps the
+layout.
 """
 
 import argparse

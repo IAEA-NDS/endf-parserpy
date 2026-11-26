@@ -44,7 +44,10 @@ def _tape_structure_spec(target):
 # The bare name of the flavor is always the latest layout. Every release
 # X.Y adds `<flavor>@<X.Y>` for every flavor with layout versions, as an
 # alias of the flavor. The checksums of the recipes of every version are
-# stored in tests/test_layout_versions.py.
+# stored in tests/test_layout_versions.py, whose guard test fails if the
+# recipes of a version change. A change of the recipes that keeps the
+# layout needs no new version: the failure message of the guard then
+# gives the new checksum to store.
 #
 # Procedure when a change of the recipes of a flavor changes its layout
 # (copy-on-write), e.g. a change of `endf6-ext` in the release 0.21 whose
@@ -63,7 +66,9 @@ def _tape_structure_spec(target):
 #    with the same layout, e.g. `endf6-ext@0.19`, refer to it.
 # 3. Change the recipes of `endf6-ext` and add the alias
 #    `"endf6-ext@0.21": "endf6-ext"` with the release.
-# 4. Store the checksum of `endf6-ext@0.21` in the test; those of the
+# 4. Store the checksum of `endf6-ext@0.21` in LAYOUT_CHECKSUMS of the
+#    test: `pytest tests/test_layout_versions.py` fails for the new
+#    version with the entry to add (name and checksum). Those of the
 #    earlier versions stay as they are. Add the version to the table of
 #    layout versions in the docs and to the CHANGELOG.
 #
